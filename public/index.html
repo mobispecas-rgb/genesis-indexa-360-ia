@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Genesis Indexa 360 IA v4.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0d0d0d;color:#fff;min-height:100vh}
+header{background:linear-gradient(135deg,#ff4500,#ff6b00);padding:18px 32px;display:flex;align-items:center;gap:16px}
+header h1{font-size:1.5rem;font-weight:700}
+header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;border-radius:20px;font-size:0.8rem}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px}
+.bar{background:#1a1a1a;border:1px solid #ff4500;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.dot{width:11px;height:11px;background:#00ff88;border-radius:50%;animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+.ok{color:#00ff88;font-weight:700;font-size:.9rem}
+.info{margin-left:auto;color:#666;font-size:.8rem}
+.nav{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.nb{padding:7px 18px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:.85rem;transition:all .2s}
+.nb:hover,.nb.on{border-color:#ff4500;color:#ff4500;background:#ff450011}
+.pg{display:none}.pg.on{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:24px}
+.card{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:20px;cursor:pointer;transition:all .3s}
+.card:hover{border-color:#ff4500;transform:translateY(-2px)}
+.ci{font-size:2rem;margin-bottom:10px}
+.ct{font-size:1rem;font-weight:700;margin-bottom:4px}
+.cd{font-size:.82rem;color:#777;line-height:1.5}
+.sec{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:22px;margin-bottom:20px}
+.sec h2{font-size:1rem;font-weight:700;margin-bottom:16px;color:#ff4500}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:.82rem;color:#aaa;margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none}
+.fg input:focus,.fg select:focus{border-color:#ff4500}
+.fg textarea{min-height:80px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.btn{background:linear-gradient(135deg,#ff4500,#ff6b00);color:#fff;border:none;padding:11px 24px;border-radius:7px;font-size:.92rem;font-weight:700;cursor:pointer;width:100%}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;padding:9px 12px;background:#111;color:#ff4500;font-size:.78rem;text-transform:uppercase}
+td{padding:9px 12px;border-bottom:1px solid #222;color:#ccc}
+tr:hover td{background:#1f1f1f}
+.tag{display:inline-block;background:#ff450015;color:#ff6500;border:1px solid #ff450030;padding:2px 9px;border-radius:15px;font-size:.72rem;font-weight:700}
+.al{padding:10px 14px;border-radius:7px;margin-bottom:12px;font-size:.88rem}
+.al-ok{background:#00ff8815;border:1px solid #00ff8830;color:#00ff88}
+.al-err{background:#ff450015;border:1px solid #ff450030;color:#ff6b00}
+footer{text-align:center;padding:20px;color:#333;font-size:.78rem;margin-top:24px;border-top:1px solid #111}
+</style>
+</head>
+<body>
+<header>
+<span style="font-size:1.6rem">&#9889;</span>
+<h1>Genesis Indexa 360 IA v4.0</h1>
+<span class="badge">MOBIS Pecas Automotivas</span>
+</header>
+<div class="wrap">
+<div class="bar"><div class="dot"></div><span class="ok" id="st">Sistema Online</span><span class="info" id="si">verificando...</span></div>
+<div class="nav">
+<button class="nb on" onclick="pg('dash',this)">Dashboard</button>
+<button class="nb" onclick="pg('prod',this)">Catalogo</button>
+<button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
+<button class="nb" onclick="pg('sobre',this)">Sobre</button>
+</div>
+<div class="pg on" id="pg-dash">
+<div class="cards">
+<div class="card" onclick="pg('prod',document.querySelectorAll('.nb')[1])"><div class="ci">&#128230;</div><div class="ct">Catalogo de Produtos</div><div class="cd">Gerencie pecas automotivas.</div></div>
+<div class="card" onclick="pg('cad',document.querySelectorAll('.nb')[2])"><div class="ci">&#10133;</div><div class="ct">Cadastro Universal</div><div class="cd">Cadastre novos produtos e pecas.</div></div>
+<div class="card"><div class="ci">&#129302;</div><div class="ct">IA de Indexacao</div><div class="cd">Motor inteligente de estoque.</div></div>
+<div class="card"><div class="ci">&#128202;</div><div class="ct">Relatorios</div><div class="cd">Dados de estoque em tempo real.</div></div>
+</div>
+<div class="sec"><h2>Genesis Indexa 360 IA v4.0 - ONLINE</h2><p style="color:#777;line-height:1.8">Bem-vindo ao sistema de catalogacao de pecas automotivas MOBIS. Use o menu para navegar.</p></div>
+</div>
+<div class="pg" id="pg-prod">
+<div class="sec"><h2>Catalogo de Produtos</h2>
+<div style="display:flex;gap:10px;margin-bottom:16px">
+<input id="busca" type="text" placeholder="Buscar produto..." style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none" oninput="filtrar()">
+<button class="btn" style="width:auto;padding:9px 18px" onclick="pg('cad',document.querySelectorAll('.nb')[2])">+ Novo</button>
+</div>
+<div style="overflow-x:auto"><table id="tb">
+<tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Status</th></tr>
+<tr><td><span class="tag">MOB-001</span></td><td>Pastilha de Freio Dianteira</td><td>MOBIS</td><td>Freios</td><td><span class="tag">Ativo</span></td></tr>
+<tr><td><span class="tag">MOB-002</span></td><td>Filtro de Oleo Motor</td><td>MOBIS</td><td>Filtros</td><td><span class="tag">Ativo</span></td></tr>
+<tr><td><span class="tag">MOB-003</span></td><td>Correia Dentada Kit</td><td>MOBIS</td><td>Motor</td><td><span class="tag">Ativo</span></td></tr>
+<tr><td><span class="tag">MOB-004</span></td><td>Amortecedor Traseiro</td><td>MOBIS</td><td>Suspensao</td><td><span class="tag">Ativo</span></td></tr>
+<tr><td><span class="tag">MOB-005</span></td><td>Vela de Ignicao NGK</td><td>NGK</td><td>Ignicao</td><td><span class="tag">Ativo</span></td></tr>
+</table></div></div>
+</div>
+<div class="pg" id="pg-cad">
+<div class="sec"><h2>Novo Cadastro Universal</h2>
+<div id="al"></div>
+<div class="row2">
+<div class="fg"><label>Referencia</label><input id="iref" type="text" placeholder="MOB-006"></div>
+<div class="fg"><label>Categoria</label><select id="icat"><option value="">Selecione...</option><option>Freios</option><option>Filtros</option><option>Motor</option><option>Suspensao</option><option>Ignicao</option><option>Eletrica</option><option>Transmissao</option><option>Outros</option></select></div>
+</div>
+<div class="fg"><label>Descricao</label><input id="idesc" type="text" placeholder="Ex: Pastilha de Freio Dianteira Honda Civic"></div>
+<div class="row2">
+<div class="fg"><label>Marca</label><input id="imarca" type="text" placeholder="MOBIS, Bosch, NGK..."></div>
+<div class="fg"><label>Aplicacao</label><input id="iaplic" type="text" placeholder="Honda Civic 2018-2022"></div>
+</div>
+<div class="row2">
+<div class="fg"><label>Preco (R$)</label><input id="ipreco" type="number" placeholder="0,00" step="0.01"></div>
+<div class="fg"><label>Estoque</label><input id="iest" type="number" placeholder="0"></div>
+</div>
+<div class="fg"><label>Observacoes</label><textarea id="iobs" placeholder="Codigo OEM, compatibilidades..."></textarea></div>
+<button class="btn" onclick="salvar()">Salvar Produto</button>
+</div>
+</div>
+<div class="pg" id="pg-sobre">
+<div class="sec"><h2>Sobre o Sistema</h2><p style="color:#777;line-height:1.9">
+<strong style="color:#ff4500">Genesis Indexa 360 IA v4.0</strong><br><br>
+Plataforma de catalogacao para MOBIS Pecas Automotivas.<br><br>
+Versao: 4.0.0 | Servidor: Render.com | Tecnologia: Node.js + Express
+</p></div>
+</div>
+</div>
+<footer>Genesis Indexa 360 IA v4.0 - MOBIS Pecas Automotivas 2026</footer>
+<script>
+function pg(id,btn){document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+id).classList.add('on');if(btn)btn.classList.add('on');}
+async function check(){try{const r=await fetch('/api/health');const d=await r.json();document.getElementById('st').textContent='Online - '+d.sistema;document.getElementById('si').textContent='Uptime: '+d.uptime+'s';}catch(e){document.getElementById('st').textContent='Conectando...';}}
+function filtrar(){const q=document.getElementById('busca').value.toLowerCase();document.querySelectorAll('#tb tr:not(:first-child)').forEach(r=>{r.style.display=r.innerText.toLowerCase().includes(q)?'':'none';});}
+var lista=JSON.parse(localStorage.getItem('gn_prod')||'[]');
+function salvar(){const ref=document.getElementById('iref').value.trim();const desc=document.getElementById('idesc').value.trim();if(!ref||!desc){document.getElementById('al').innerHTML='<div class="al al-err">Referencia e Descricao sao obrigatorios!</div>';return;}const p={ref,desc,marca:document.getElementById('imarca').value,cat:document.getElementById('icat').value};lista.push(p);localStorage.setItem('gn_prod',JSON.stringify(lista));document.getElementById('al').innerHTML='<div class="al al-ok">Produto cadastrado!</div>';addRow(p);['iref','idesc','imarca','iaplic','ipreco','iest','iobs'].forEach(x=>document.getElementById(x).value='');document.getElementById('icat').value='';setTimeout(()=>document.getElementById('al').innerHTML='',3000);}
+function addRow(p){const tb=document.getElementById('tb');const tr=document.createElement('tr');tr.innerHTML='<td><span class="tag">'+p.ref+'</span></td><td>'+p.desc+'</td><td>'+(p.marca||'-')+'</td><td>'+(p.cat||'-')+'</td><td><span class="tag">Ativo</span></td>';tb.appendChild(tr);}
+lista.forEach(p=>addRow(p));check();setInterval(check,30000);
+</script>
+</body>
+          </html>
