@@ -236,7 +236,7 @@ app.post('/api/ia/indexar', (req, res) => {
         'Suspensao': ['amortecedor','mola','barra','buchas','suspensao','rolamento'],
         'Ignicao': ['vela','bobina','ignicao','faiscamento','platinado'],
         'Eletrica': ['alternador','bateria','fusivel','rele','sensor','modulo','eletrica'],
-        'Transmissao': ['cambio','embreagem','diferencial','semi-eixo','transmissao'],
+        'Transmissao': ['cambio','embreagem','diferencial','semi-eixo','transmissao','plato','embreagem','clutch','kit embreagem'],
     };
 
     const t = texto.toLowerCase();
@@ -248,7 +248,7 @@ app.post('/api/ia/indexar', (req, res) => {
     }
 
     // Extrair marca
-    const marcas = ['mobis','bosch','ngk','mahle','valeo','denso','monroe','sachs','mann'];
+    const marcas = ['mobis','bosch','ngk','mahle','valeo','denso','monroe','sachs','mann','luk','exedy','ate','ferodo','brembo','textar','bendix','monroe','cofap','nakata'];
     let marcaDetectada = 'MOBIS';
     for (const m of marcas) {
         if (t.includes(m)) { marcaDetectada = m.toUpperCase(); break; }
