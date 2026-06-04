@@ -282,6 +282,221 @@ app.get('/api/ia/logs', (req, res) => {
 });
 
 // -----------------------------------------------------------
+// NTC 4.0 — BASE DE CONHECIMENTO
+// -----------------------------------------------------------
+const GRUPOS = {
+  'luk': { grupo: 'Schaeffler', origem: 'Alemanha' },
+  'ina': { grupo: 'Schaeffler', origem: 'Alemanha' },
+  'fag': { grupo: 'Schaeffler', origem: 'Alemanha' },
+  'bosch': { grupo: 'Robert Bosch GmbH', origem: 'Alemanha' },
+  'ngk': { grupo: 'NGK Spark Plug Co.', origem: 'Japao' },
+  'denso': { grupo: 'DENSO Corporation', origem: 'Japao' },
+  'valeo': { grupo: 'Valeo SA', origem: 'Franca' },
+  'sachs': { grupo: 'ZF Friedrichshafen', origem: 'Alemanha' },
+  'zf': { grupo: 'ZF Friedrichshafen', origem: 'Alemanha' },
+  'monroe': { grupo: 'Tenneco', origem: 'EUA' },
+  'cofap': { grupo: 'Tenneco', origem: 'Brasil' },
+  'mahle': { grupo: 'MAHLE GmbH', origem: 'Alemanha' },
+  'mann': { grupo: 'MANN+HUMMEL', origem: 'Alemanha' },
+  'ate': { grupo: 'Continental AG', origem: 'Alemanha' },
+  'continental': { grupo: 'Continental AG', origem: 'Alemanha' },
+  'brembo': { grupo: 'Brembo SpA', origem: 'Italia' },
+  'textar': { grupo: 'TMD Friction', origem: 'Alemanha' },
+  'ferodo': { grupo: 'TMD Friction', origem: 'Reino Unido' },
+  'exedy': { grupo: 'Exedy Corporation', origem: 'Japao' },
+  'ntn': { grupo: 'NTN Corporation', origem: 'Japao' },
+  'skf': { grupo: 'SKF AB', origem: 'Suecia' },
+  'nsk': { grupo: 'NSK Ltd', origem: 'Japao' },
+  'nakata': { grupo: 'Nakata', origem: 'Brasil' },
+  'mobis': { grupo: 'Hyundai Mobis', origem: 'Coreia' },
+  'bendix': { grupo: 'Bendix Commercial Vehicle Systems', origem: 'EUA' },
+};
+
+const TIER1_BRANDS = new Set(['luk','ina','fag','bosch','denso','valeo','sachs','zf','mahle','mann','ate','continental','brembo','exedy','skf','ntn','nsk']);
+const KNOWN_BRANDS = new Set(Object.keys(GRUPOS));
+
+function canonicalizeBrand(key) {
+    const map = { luk:'LuK', ngk:'NGK', ntn:'NTN', skf:'SKF', nsk:'NSK', zf:'ZF', ate:'ATE', ina:'INA', fag:'FAG', zf:'ZF' };
+    return map[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+}
+
+function analisarNTC(texto) {
+    const t = texto.toLowerCase();
+
+    // --- Detectar fabricante ---
+    let fabricanteKey = null;
+    for (const key of Object.keys(GRUPOS)) {
+        if (t.includes(key)) { fabricanteKey = key; break; }
+    }
+    const grupoInfo = fabricanteKey ? GRUPOS[fabricanteKey] : null;
+    const fabricanteDisplay = fabricanteKey ? canonicalizeBrand(fabricanteKey) : null;
+
+    // --- Detectar codigo (7-12 digitos) ---
+    const codigoMatch = texto.match(/\b(\d{7,12})\b/);
+    const codigo = codigoMatch ? codigoMatch[1] : null;
+
+    // --- Detectar dimensoes ---
+    const diamMatch = t.match(/(\d{2,4})\s*mm/);
+    const diametro = diamMatch ? diamMatch[1] + 'mm' : null;
+    const estriasMatch = t.match(/(\d{1,3})\s*estrias/i);
+    const estrias = estriasMatch ? parseInt(estriasMatch[1]) : null;
+
+    // --- Detectar componentes ---
+    const compMap = [
+        { nome: 'Disco', termos: ['disco'] },
+        { nome: 'Plato', termos: ['plato', 'platô'] },
+        { nome: 'Rolamento', termos: ['rolamento'] },
+        { nome: 'Pastilha', termos: ['pastilha'] },
+        { nome: 'Mola', termos: ['mola'] },
+        { nome: 'Sensor', termos: ['sensor'] },
+        { nome: 'Anel', termos: ['anel'] },
+        { nome: 'Cubo', termos: ['cubo'] },
+    ];
+    const componentes = compMap.filter(c => c.termos.some(term => t.includes(term))).map(c => c.nome);
+
+    // --- Detectar sistema ---
+    let sistema = null;
+    if (t.includes('monodisco')) sistema = 'Monodisco seco';
+    else if (t.includes('hidraul')) sistema = 'Hidraulico';
+    else if (t.includes('a cabo') || t.includes('por cabo')) sistema = 'A cabo';
+    else if (t.includes('embreagem') || t.includes('clutch')) sistema = 'Monodisco seco';
+
+    // --- Detectar aplicacoes (veiculos) ---
+    const veicPatterns = [
+        /\b(honda|toyota|ford|chevrolet|gm|volkswagen|vw|fiat|peugeot|renault|hyundai|kia|nissan|mitsubishi|suzuki|bmw|mercedes|audi)\b/gi,
+        /\b(civic|corolla|hb20|celta|gol|uno|palio|fiesta|focus|ka|onix|prisma|sandero|logan|tucson|ix35)\b/gi,
+    ];
+    const veicText = new Set();
+    for (const pat of veicPatterns) {
+        const matches = texto.match(pat);
+        if (matches) matches.forEach(m => veicText.add(m.trim()));
+    }
+    const veiculos = [...veicText];
+
+    // --- Detectar NCM/EAN (NUNCA inventar) ---
+    const ncmMatch = t.match(/\bncm[:\s]*(\d{8})\b/i);
+    const eanMatch = t.match(/\bean[:\s]*(\d{13})\b/i);
+    const ncm = ncmMatch ? ncmMatch[1] : null;
+    const ean = eanMatch ? eanMatch[1] : null;
+
+    // --- Detectar peso/dimensoes logistica ---
+    const pesoMatch = t.match(/(\d+[.,]?\d*)\s*(kg|g)\b/i);
+    const peso = pesoMatch ? pesoMatch[0] : null;
+
+    // --- Calcular scores por modulo ---
+    const fabricanteFound = !!fabricanteKey;
+    const grupoKnown = !!grupoInfo;
+    const codigoFound = !!codigo;
+    const isTier1 = fabricanteKey && TIER1_BRANDS.has(fabricanteKey);
+    const isKnown = fabricanteKey && KNOWN_BRANDS.has(fabricanteKey);
+
+    const scores = {
+        DNA: Math.min((fabricanteFound ? 0.4 : 0) + (grupoKnown ? 0.3 : 0) + (codigoFound ? 0.2 : 0) + (codigoFound && fabricanteFound ? 0.1 : 0), 1.0),
+        TF: Math.min((diametro ? 0.3 : 0) + (estrias ? 0.2 : 0) + (componentes.length > 0 ? Math.min(componentes.length * 0.15, 0.35) : 0) + (sistema ? 0.15 : 0), 1.0),
+        FM: isTier1 ? 1.0 : isKnown ? 0.8 : fabricanteFound ? 0.6 : 0.4,
+        CO: codigoFound ? 1.0 : 0.0,
+        AV: veiculos.length === 0 ? 0.0 : Math.min(0.2 + veiculos.length * 0.15, 1.0),
+        MC: grupoKnown ? 1.0 : isKnown ? 0.7 : 0.5,
+        EC: componentes.length === 0 ? 0.0 : Math.min(componentes.length * 0.25, 1.0),
+        BTA: (fabricanteFound && (codigoFound || diametro || componentes.length > 0)) ? 1.0 : fabricanteFound ? 0.6 : 0.3,
+        CC: codigoFound ? 0.8 : 0.3,
+        LG: peso ? 0.5 : 0.0,
+        FI: (ncm || ean) ? 0.8 : 0.0,
+        FP: (fabricanteFound || codigoFound) ? 0.7 : 0.3,
+    };
+
+    // Pesos NTC 4.0
+    const pesos = { DNA:0.25, TF:0.15, FM:0.10, CO:0.10, AV:0.10, MC:0.05, EC:0.05, BTA:0.05, CC:0.05, LG:0.05, FI:0.03, FP:0.02 };
+
+    let ntcTotal = 0;
+    for (const [mod, s] of Object.entries(scores)) {
+        ntcTotal += s * pesos[mod];
+    }
+    ntcTotal = Math.round(ntcTotal * 100) / 100;
+
+    const status = ntcTotal >= 0.90 ? 'APROVADO' : ntcTotal >= 0.75 ? 'CONDICIONAL' : 'REPROVADO';
+
+    // --- Cadeia de suprimentos ---
+    const cadeia = fabricanteKey
+        ? [fabricanteDisplay, 'Distribuidores', 'Importadores', 'Lojistas']
+        : ['Fabricante Desconhecido', 'Distribuidores', 'Lojistas'];
+
+    // --- PDV ---
+    const cabParts = ['KIT DE EMBREAGEM'];
+    if (diametro) cabParts.push(diametro.toUpperCase());
+    if (componentes.length) cabParts.push(componentes.map(c => c.toUpperCase()).join(' '));
+    if (fabricanteDisplay) cabParts.push(fabricanteDisplay.toUpperCase());
+    if (codigo) cabParts.push(codigo);
+    const cabBling = cabParts.join(' ');
+
+    const frenteParts = [];
+    frenteParts.push(fabricanteDisplay ? `KIT EMBREAGEM ${fabricanteDisplay.toUpperCase()}` : 'KIT EMBREAGEM');
+    if (diametro) frenteParts.push(diametro.toUpperCase());
+    if (codigo) frenteParts.push(codigo);
+    if (componentes.length) frenteParts.push(componentes.join(' + ').toUpperCase());
+    const frenteCaixa = frenteParts.join('\n');
+
+    const tagsSeo = [
+        codigo,
+        fabricanteKey,
+        fabricanteKey ? `kit embreagem ${fabricanteKey}` : null,
+        grupoInfo ? grupoInfo.grupo.toLowerCase().split(' ')[0] : null,
+    ].filter(Boolean);
+
+    // --- RAST-HASH ---
+    const rastParts = [];
+    if (fabricanteKey) rastParts.push(`DNA:${fabricanteKey.toUpperCase()}`);
+    if (codigo) rastParts.push(`CODIGO:${codigo}`);
+    if (componentes.length) rastParts.push(`TIPO:KIT_${componentes[0].toUpperCase()}`);
+    const rastHash = rastParts.length ? rastParts.join('|') : 'INDEFINIDO';
+
+    // --- O que falta ---
+    const faltando = [];
+    if (!peso) faltando.push('Peso oficial de fabrica');
+    if (!ean) faltando.push('EAN validado');
+    if (!ncm) faltando.push('NCM fiscal');
+    if (veiculos.length === 0) faltando.push('Aplicacoes completas');
+    if (!estrias) faltando.push('Numero de estrias');
+    if (!diametro) faltando.push('Diametro do disco');
+
+    return {
+        dna: {
+            fabricante: fabricanteDisplay,
+            grupo: grupoInfo ? grupoInfo.grupo : null,
+            codigo,
+            origem: grupoInfo ? grupoInfo.origem : null,
+            status: codigoFound && fabricanteFound ? 'Certificado' : fabricanteFound ? 'Identificado' : 'Nao identificado',
+        },
+        engenharia: { componentes, diametro, estrias, sistema },
+        aplicacoes: veiculos,
+        cadeia,
+        pdv: { cabecalho_bling: cabBling, frente_caixa: frenteCaixa, tags_seo: tagsSeo },
+        rast_hash: rastHash,
+        scores: Object.fromEntries(Object.entries(scores).map(([k,v]) => [k, Math.round(v * 100) / 100])),
+        ntc: ntcTotal,
+        status,
+        faltando,
+        _pesos: pesos,
+    };
+}
+
+// -----------------------------------------------------------
+// ROTA NTC 4.0
+// -----------------------------------------------------------
+app.post('/api/ia/ntc', (req, res) => {
+    const { texto } = req.body;
+    if (!texto) return res.status(400).json({ ok: false, erro: 'texto obrigatorio' });
+    try {
+        const ntc = analisarNTC(texto);
+        db.prepare("INSERT INTO logs_ia (produto_ref,acao,resultado,confianca) VALUES (?,?,?,?)")
+          .run(ntc.dna.codigo || 'NTC', 'ntc4.0', ntc.status, ntc.ntc);
+        res.json({ ok: true, ntc });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// -----------------------------------------------------------
 // ROTAS — RELATORIOS
 // -----------------------------------------------------------
 app.get('/api/relatorios/resumo', (req, res) => {
