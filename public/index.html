@@ -9,10 +9,10 @@
 body{font-family:'Segoe UI',Arial,sans-serif;background:#0d0d0d;color:#fff;min-height:100vh}
 header{background:linear-gradient(135deg,#ff4500,#ff6b00);padding:18px 32px;display:flex;align-items:center;gap:16px}
 header h1{font-size:1.5rem;font-weight:700}
-header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;border-radius:20px;font-size:0.8rem}
+header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;border-radius:20px;font-size:.8rem}
 .wrap{max-width:1100px;margin:0 auto;padding:28px 20px}
-.bar{background:#1a1a1a;border:1px solid #ff4500;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;gap:10px}
-.dot{width:11px;height:11px;background:#00ff88;border-radius:50%;animation:p 2s infinite}
+.bar{background:#1a1a1a;border:1px solid #ff4500;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dot{width:11px;height:11px;background:#00ff88;border-radius:50%;animation:p 2s infinite;flex-shrink:0}
 @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
 .ok{color:#00ff88;font-weight:700;font-size:.9rem}
 .info{margin-left:auto;color:#666;font-size:.8rem}
@@ -26,101 +26,649 @@ header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;borde
 .ci{font-size:2rem;margin-bottom:10px}
 .ct{font-size:1rem;font-weight:700;margin-bottom:4px}
 .cd{font-size:.82rem;color:#777;line-height:1.5}
+.cnum{font-size:1.6rem;font-weight:900;color:#ff4500;margin-top:8px}
 .sec{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:22px;margin-bottom:20px}
-.sec h2{font-size:1rem;font-weight:700;margin-bottom:16px;color:#ff4500}
+.sec h2{font-size:1rem;font-weight:700;margin-bottom:16px;color:#ff4500;display:flex;align-items:center;gap:8px}
 .fg{margin-bottom:14px}
 .fg label{display:block;font-size:.82rem;color:#aaa;margin-bottom:5px}
-.fg input,.fg select,.fg textarea{width:100%;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none}
-.fg input:focus,.fg select:focus{border-color:#ff4500}
+.fg input,.fg select,.fg textarea{width:100%;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none;transition:border .2s}
+.fg input:focus,.fg select,.fg select:focus,.fg textarea:focus{border-color:#ff4500}
+.fg select option{background:#1a1a1a}
 .fg textarea{min-height:80px;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.btn{background:linear-gradient(135deg,#ff4500,#ff6b00);color:#fff;border:none;padding:11px 24px;border-radius:7px;font-size:.92rem;font-weight:700;cursor:pointer;width:100%}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.btn{background:linear-gradient(135deg,#ff4500,#ff6b00);color:#fff;border:none;padding:11px 24px;border-radius:7px;font-size:.92rem;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn:hover{opacity:.85}
+.btn-full{width:100%}
+.btn-sm{padding:6px 14px;font-size:.78rem;border-radius:5px}
+.btn-danger{background:linear-gradient(135deg,#cc0000,#ff2200)}
+.btn-outline{background:transparent;border:1px solid #ff4500;color:#ff4500}
 table{width:100%;border-collapse:collapse;font-size:.88rem}
-th{text-align:left;padding:9px 12px;background:#111;color:#ff4500;font-size:.78rem;text-transform:uppercase}
-td{padding:9px 12px;border-bottom:1px solid #222;color:#ccc}
+th{text-align:left;padding:9px 12px;background:#111;color:#ff4500;font-size:.78rem;text-transform:uppercase;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #222;color:#ccc;vertical-align:middle}
 tr:hover td{background:#1f1f1f}
 .tag{display:inline-block;background:#ff450015;color:#ff6500;border:1px solid #ff450030;padding:2px 9px;border-radius:15px;font-size:.72rem;font-weight:700}
+.tag-ok{background:#00ff8815;color:#00ff88;border-color:#00ff8830}
+.tag-warn{background:#ffaa0015;color:#ffaa00;border-color:#ffaa0030}
 .al{padding:10px 14px;border-radius:7px;margin-bottom:12px;font-size:.88rem}
 .al-ok{background:#00ff8815;border:1px solid #00ff8830;color:#00ff88}
 .al-err{background:#ff450015;border:1px solid #ff450030;color:#ff6b00}
 footer{text-align:center;padding:20px;color:#333;font-size:.78rem;margin-top:24px;border-top:1px solid #111}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.stat-box{background:#111;border:1px solid #222;border-radius:10px;padding:16px;text-align:center}
+.stat-num{font-size:2rem;font-weight:900;color:#ff4500}
+.stat-lbl{font-size:.78rem;color:#666;margin-top:4px}
+.ia-box{background:#0d1a0d;border:1px solid #00ff8830;border-radius:10px;padding:18px;margin-top:14px}
+.ia-title{color:#00ff88;font-weight:700;margin-bottom:12px;font-size:.9rem}
+.ia-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:.85rem}
+.ia-label{color:#aaa;min-width:100px}
+.ia-val{color:#fff;font-weight:600}
+.conf-bar{flex:1;height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden}
+.conf-fill{height:100%;background:linear-gradient(90deg,#ff4500,#00ff88);border-radius:4px;transition:width .5s}
+.log-item{padding:8px 12px;border-bottom:1px solid #1a1a1a;display:flex;gap:12px;font-size:.8rem}
+.log-time{color:#444;min-width:140px}
+.log-ref{color:#ff6500;min-width:80px}
+.log-acao{color:#aaa}
+.log-result{color:#00ff88;margin-left:auto}
+.img-prev{max-width:80px;max-height:60px;border-radius:5px;object-fit:cover;border:1px solid #333}
+.search-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-row input,.search-row select{background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none;flex:1;min-width:140px}
+.search-row input:focus,.search-row select:focus{border-color:#ff4500}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#1a1a1a;border:1px solid #333;border-radius:14px;padding:28px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto}
+.modal h3{color:#ff4500;margin-bottom:18px}
+.modal-close{float:right;background:none;border:none;color:#666;font-size:1.2rem;cursor:pointer;line-height:1}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a0a00 0%,#0d0d0d 70%)}
+.login-box{background:#1a1a1a;border:1px solid #ff4500;border-radius:16px;padding:40px;width:380px;max-width:95vw;text-align:center}
+.login-box h2{color:#ff4500;margin-bottom:8px;font-size:1.4rem}
+.login-box p{color:#666;font-size:.85rem;margin-bottom:28px}
+.hidden{display:none}
 </style>
 </head>
 <body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-screen">
+  <div class="login-box">
+    <div style="font-size:3rem;margin-bottom:12px">⚡</div>
+    <h2>Genesis Indexa 360 IA</h2>
+    <p>MOBIS Pecas Automotivas</p>
+    <div id="login-al"></div>
+    <div class="fg"><label>Email</label><input id="lemail" type="email" value="admin@mobis.com" placeholder="email@mobis.com"></div>
+    <div class="fg"><label>Senha</label><input id="lsenha" type="password" value="admin123" placeholder="senha"></div>
+    <button class="btn btn-full" onclick="fazerLogin()">Entrar</button>
+    <p style="color:#444;font-size:.75rem;margin-top:16px">admin@mobis.com / admin123</p>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app-screen" class="hidden">
 <header>
-<span style="font-size:1.6rem">&#9889;</span>
-<h1>Genesis Indexa 360 IA v4.0</h1>
-<span class="badge">MOBIS Pecas Automotivas</span>
+  <span style="font-size:1.6rem">⚡</span>
+  <h1>Genesis Indexa 360 IA v4.0</h1>
+  <span class="badge">MOBIS Pecas Automotivas</span>
+  <button class="btn btn-sm" style="margin-left:12px;background:rgba(0,0,0,.3)" onclick="sair()">Sair</button>
 </header>
+
 <div class="wrap">
-<div class="bar"><div class="dot"></div><span class="ok" id="st">Sistema Online</span><span class="info" id="si">verificando...</span></div>
-<div class="nav">
-<button class="nb on" onclick="pg('dash',this)">Dashboard</button>
-<button class="nb" onclick="pg('prod',this)">Catalogo</button>
-<button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
-<button class="nb" onclick="pg('sobre',this)">Sobre</button>
+  <div class="bar">
+    <div class="dot"></div>
+    <span class="ok" id="st">Sistema Online</span>
+    <span class="info" id="si">verificando...</span>
+    <span style="margin-left:12px;color:#ff6500;font-size:.8rem" id="user-info"></span>
+  </div>
+
+  <div class="nav">
+    <button class="nb on" onclick="pg('dash',this)">Dashboard</button>
+    <button class="nb" onclick="pg('prod',this)">Catalogo</button>
+    <button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
+    <button class="nb" onclick="pg('ia',this)">🤖 IA Indexacao</button>
+    <button class="nb" onclick="pg('rel',this)">📊 Relatorios</button>
+    <button class="nb" onclick="pg('sobre',this)">Sobre</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="pg on" id="pg-dash">
+    <div class="cards">
+      <div class="card" onclick="pg('prod',document.querySelectorAll('.nb')[1])">
+        <div class="ci">📦</div><div class="ct">Catalogo de Produtos</div>
+        <div class="cd">Gerencie pecas automotivas.</div>
+        <div class="cnum" id="dash-total">-</div>
+      </div>
+      <div class="card" onclick="pg('cad',document.querySelectorAll('.nb')[2])">
+        <div class="ci">➕</div><div class="ct">Cadastro Universal</div>
+        <div class="cd">Cadastre novos produtos e pecas.</div>
+      </div>
+      <div class="card" onclick="pg('ia',document.querySelectorAll('.nb')[3])">
+        <div class="ci">🤖</div><div class="ct">IA de Indexacao</div>
+        <div class="cd">Motor inteligente de estoque.</div>
+      </div>
+      <div class="card" onclick="pg('rel',document.querySelectorAll('.nb')[4])">
+        <div class="ci">📊</div><div class="ct">Relatorios</div>
+        <div class="cd">Dados de estoque em tempo real.</div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2>Resumo Rapido</h2>
+      <div class="stat-grid" id="dash-stats">
+        <div class="stat-box"><div class="stat-num" id="d-total">-</div><div class="stat-lbl">Total Produtos</div></div>
+        <div class="stat-box"><div class="stat-num" id="d-ativos">-</div><div class="stat-lbl">Ativos</div></div>
+        <div class="stat-box"><div class="stat-num" id="d-semest" style="color:#ff2200">-</div><div class="stat-lbl">Sem Estoque</div></div>
+        <div class="stat-box"><div class="stat-num" id="d-valor" style="font-size:1.2rem">-</div><div class="stat-lbl">Valor em Estoque</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATALOGO -->
+  <div class="pg" id="pg-prod">
+    <div class="sec">
+      <h2>📦 Catalogo de Produtos</h2>
+      <div class="search-row">
+        <input id="busca" type="text" placeholder="Buscar ref, descricao, marca..." oninput="buscarProdutos()">
+        <select id="filtro-cat" onchange="buscarProdutos()">
+          <option value="">Todas categorias</option>
+          <option>Freios</option><option>Filtros</option><option>Motor</option>
+          <option>Suspensao</option><option>Ignicao</option><option>Eletrica</option>
+          <option>Transmissao</option><option>Outros</option>
+        </select>
+        <button class="btn" style="flex:none" onclick="pg('cad',document.querySelectorAll('.nb')[2])">+ Novo</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="tb">
+          <tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Preco</th><th>Estoque</th><th>Status</th><th>Acoes</th></tr>
+        </table>
+      </div>
+      <div id="prod-empty" style="color:#444;text-align:center;padding:28px;display:none">Nenhum produto encontrado.</div>
+    </div>
+  </div>
+
+  <!-- CADASTRO -->
+  <div class="pg" id="pg-cad">
+    <div class="sec">
+      <h2>➕ <span id="cad-titulo">Novo Cadastro Universal</span></h2>
+      <div id="al"></div>
+      <input type="hidden" id="edit-id">
+      <div class="row2">
+        <div class="fg"><label>Referencia *</label><input id="iref" type="text" placeholder="MOB-006"></div>
+        <div class="fg"><label>Categoria</label>
+          <select id="icat">
+            <option value="">Selecione...</option>
+            <option>Freios</option><option>Filtros</option><option>Motor</option>
+            <option>Suspensao</option><option>Ignicao</option><option>Eletrica</option>
+            <option>Transmissao</option><option>Outros</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>Descricao *</label><input id="idesc" type="text" placeholder="Ex: Pastilha de Freio Dianteira Honda Civic"></div>
+      <div class="row2">
+        <div class="fg"><label>Marca</label><input id="imarca" type="text" placeholder="MOBIS, Bosch, NGK..."></div>
+        <div class="fg"><label>Aplicacao</label><input id="iaplic" type="text" placeholder="Honda Civic 2018-2022"></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>Preco (R$)</label><input id="ipreco" type="number" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="fg"><label>Estoque</label><input id="iest" type="number" placeholder="0" min="0"></div>
+      </div>
+      <div class="fg"><label>Observacoes / Codigo OEM</label><textarea id="iobs" placeholder="Codigo OEM, compatibilidades, notas..."></textarea></div>
+      <div class="fg"><label>Imagem do Produto</label><input id="iimg" type="file" accept="image/*" style="color:#aaa"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-full" onclick="salvar()">💾 Salvar Produto</button>
+        <button class="btn btn-outline" style="flex:none;padding:11px 20px" onclick="limparForm()">Limpar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IA INDEXACAO -->
+  <div class="pg" id="pg-ia">
+    <div class="sec">
+      <h2>🤖 Motor de Indexacao por IA</h2>
+      <p style="color:#666;font-size:.85rem;margin-bottom:16px">Digite a descricao de um produto e a IA sugerira categoria, referencia e marca automaticamente.</p>
+      <div class="fg"><label>Descricao do Produto</label>
+        <textarea id="ia-texto" placeholder="Ex: Pastilha de freio dianteira para Honda Civic 2020, marca BOSCH..." style="min-height:100px"></textarea>
+      </div>
+      <button class="btn" onclick="indexarIA()">🔍 Indexar com IA</button>
+      <div id="ia-result" style="display:none">
+        <div class="ia-box">
+          <div class="ia-title">✅ Sugestao da IA</div>
+          <div class="ia-row"><span class="ia-label">Referencia</span><span class="ia-val" id="ia-ref">-</span></div>
+          <div class="ia-row"><span class="ia-label">Categoria</span><span class="ia-val" id="ia-cat">-</span></div>
+          <div class="ia-row"><span class="ia-label">Marca</span><span class="ia-val" id="ia-marca">-</span></div>
+          <div class="ia-row">
+            <span class="ia-label">Confianca</span>
+            <div class="conf-bar"><div class="conf-fill" id="ia-conf-bar"></div></div>
+            <span class="ia-val" id="ia-conf">-</span>
+          </div>
+          <button class="btn" style="margin-top:14px;width:auto" onclick="usarSugestaoIA()">Usar esta sugestao no Cadastro</button>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2>📋 Historico de Indexacoes</h2>
+      <div id="ia-logs" style="font-size:.82rem"></div>
+    </div>
+  </div>
+
+  <!-- RELATORIOS -->
+  <div class="pg" id="pg-rel">
+    <div class="sec">
+      <h2>📊 Relatorios e Estatisticas</h2>
+      <button class="btn" onclick="carregarRelatorio()">🔄 Atualizar Dados</button>
+    </div>
+    <div class="stat-grid" id="rel-stats" style="margin-top:0"></div>
+    <div class="row2">
+      <div class="sec" id="rel-cat">
+        <h2>Por Categoria</h2>
+        <div id="rel-cat-list"></div>
+      </div>
+      <div class="sec" id="rel-marca">
+        <h2>Top Marcas</h2>
+        <div id="rel-marca-list"></div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2>⚠️ Sem Estoque</h2>
+      <div id="rel-semest"></div>
+    </div>
+    <div class="sec">
+      <h2>🏆 Maior Estoque</h2>
+      <div id="rel-topest"></div>
+    </div>
+  </div>
+
+  <!-- SOBRE -->
+  <div class="pg" id="pg-sobre">
+    <div class="sec">
+      <h2>ℹ️ Sobre o Sistema</h2>
+      <p style="color:#777;line-height:2">
+        <strong style="color:#ff4500">Genesis Indexa 360 IA v4.0</strong><br><br>
+        Plataforma completa de catalogacao para MOBIS Pecas Automotivas.<br>
+        ✅ Banco de dados SQLite persistente<br>
+        ✅ API RESTful completa (CRUD)<br>
+        ✅ Motor de IA para indexacao automatica<br>
+        ✅ Upload de imagens de produtos<br>
+        ✅ Relatorios e estatisticas em tempo real<br>
+        ✅ Autenticacao de usuarios<br><br>
+        Versao: 4.0.0 | Servidor: Node.js + Express | DB: SQLite
+      </p>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+<footer>Genesis Indexa 360 IA v4.0 — MOBIS Pecas Automotivas 2026</footer>
+</div><!-- /app-screen -->
+
+<!-- MODAL EDITAR -->
+<div class="modal-bg" id="modal-edit">
+  <div class="modal">
+    <button class="modal-close" onclick="fecharModal()">✕</button>
+    <h3>Editar Produto</h3>
+    <div id="modal-al"></div>
+    <div class="fg"><label>Descricao</label><input id="m-desc" type="text"></div>
+    <div class="row2">
+      <div class="fg"><label>Marca</label><input id="m-marca" type="text"></div>
+      <div class="fg"><label>Categoria</label>
+        <select id="m-cat">
+          <option>Freios</option><option>Filtros</option><option>Motor</option>
+          <option>Suspensao</option><option>Ignicao</option><option>Eletrica</option>
+          <option>Transmissao</option><option>Outros</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Preco (R$)</label><input id="m-preco" type="number" step="0.01"></div>
+      <div class="fg"><label>Estoque</label><input id="m-est" type="number"></div>
+    </div>
+    <div class="fg"><label>Aplicacao</label><input id="m-aplic" type="text"></div>
+    <div class="fg"><label>Status</label>
+      <select id="m-status"><option>Ativo</option><option>Inativo</option><option>Descontinuado</option></select>
+    </div>
+    <button class="btn btn-full" onclick="salvarEdicao()">Salvar Alteracoes</button>
+  </div>
 </div>
-<div class="pg on" id="pg-dash">
-<div class="cards">
-<div class="card" onclick="pg('prod',document.querySelectorAll('.nb')[1])"><div class="ci">&#128230;</div><div class="ct">Catalogo de Produtos</div><div class="cd">Gerencie pecas automotivas.</div></div>
-<div class="card" onclick="pg('cad',document.querySelectorAll('.nb')[2])"><div class="ci">&#10133;</div><div class="ct">Cadastro Universal</div><div class="cd">Cadastre novos produtos e pecas.</div></div>
-<div class="card"><div class="ci">&#129302;</div><div class="ct">IA de Indexacao</div><div class="cd">Motor inteligente de estoque.</div></div>
-<div class="card"><div class="ci">&#128202;</div><div class="ct">Relatorios</div><div class="cd">Dados de estoque em tempo real.</div></div>
-</div>
-<div class="sec"><h2>Genesis Indexa 360 IA v4.0 - ONLINE</h2><p style="color:#777;line-height:1.8">Bem-vindo ao sistema de catalogacao de pecas automotivas MOBIS. Use o menu para navegar.</p></div>
-</div>
-<div class="pg" id="pg-prod">
-<div class="sec"><h2>Catalogo de Produtos</h2>
-<div style="display:flex;gap:10px;margin-bottom:16px">
-<input id="busca" type="text" placeholder="Buscar produto..." style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none" oninput="filtrar()">
-<button class="btn" style="width:auto;padding:9px 18px" onclick="pg('cad',document.querySelectorAll('.nb')[2])">+ Novo</button>
-</div>
-<div style="overflow-x:auto"><table id="tb">
-<tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Status</th></tr>
-<tr><td><span class="tag">MOB-001</span></td><td>Pastilha de Freio Dianteira</td><td>MOBIS</td><td>Freios</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-002</span></td><td>Filtro de Oleo Motor</td><td>MOBIS</td><td>Filtros</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-003</span></td><td>Correia Dentada Kit</td><td>MOBIS</td><td>Motor</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-004</span></td><td>Amortecedor Traseiro</td><td>MOBIS</td><td>Suspensao</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-005</span></td><td>Vela de Ignicao NGK</td><td>NGK</td><td>Ignicao</td><td><span class="tag">Ativo</span></td></tr>
-</table></div></div>
-</div>
-<div class="pg" id="pg-cad">
-<div class="sec"><h2>Novo Cadastro Universal</h2>
-<div id="al"></div>
-<div class="row2">
-<div class="fg"><label>Referencia</label><input id="iref" type="text" placeholder="MOB-006"></div>
-<div class="fg"><label>Categoria</label><select id="icat"><option value="">Selecione...</option><option>Freios</option><option>Filtros</option><option>Motor</option><option>Suspensao</option><option>Ignicao</option><option>Eletrica</option><option>Transmissao</option><option>Outros</option></select></div>
-</div>
-<div class="fg"><label>Descricao</label><input id="idesc" type="text" placeholder="Ex: Pastilha de Freio Dianteira Honda Civic"></div>
-<div class="row2">
-<div class="fg"><label>Marca</label><input id="imarca" type="text" placeholder="MOBIS, Bosch, NGK..."></div>
-<div class="fg"><label>Aplicacao</label><input id="iaplic" type="text" placeholder="Honda Civic 2018-2022"></div>
-</div>
-<div class="row2">
-<div class="fg"><label>Preco (R$)</label><input id="ipreco" type="number" placeholder="0,00" step="0.01"></div>
-<div class="fg"><label>Estoque</label><input id="iest" type="number" placeholder="0"></div>
-</div>
-<div class="fg"><label>Observacoes</label><textarea id="iobs" placeholder="Codigo OEM, compatibilidades..."></textarea></div>
-<button class="btn" onclick="salvar()">Salvar Produto</button>
-</div>
-</div>
-<div class="pg" id="pg-sobre">
-<div class="sec"><h2>Sobre o Sistema</h2><p style="color:#777;line-height:1.9">
-<strong style="color:#ff4500">Genesis Indexa 360 IA v4.0</strong><br><br>
-Plataforma de catalogacao para MOBIS Pecas Automotivas.<br><br>
-Versao: 4.0.0 | Servidor: Render.com | Tecnologia: Node.js + Express
-</p></div>
-</div>
-</div>
-<footer>Genesis Indexa 360 IA v4.0 - MOBIS Pecas Automotivas 2026</footer>
+
 <script>
-function pg(id,btn){document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+id).classList.add('on');if(btn)btn.classList.add('on');}
-async function check(){try{const r=await fetch('/api/health');const d=await r.json();document.getElementById('st').textContent='Online - '+d.sistema;document.getElementById('si').textContent='Uptime: '+d.uptime+'s';}catch(e){document.getElementById('st').textContent='Conectando...';}}
-function filtrar(){const q=document.getElementById('busca').value.toLowerCase();document.querySelectorAll('#tb tr:not(:first-child)').forEach(r=>{r.style.display=r.innerText.toLowerCase().includes(q)?'':'none';});}
-var lista=JSON.parse(localStorage.getItem('gn_prod')||'[]');
-function salvar(){const ref=document.getElementById('iref').value.trim();const desc=document.getElementById('idesc').value.trim();if(!ref||!desc){document.getElementById('al').innerHTML='<div class="al al-err">Referencia e Descricao sao obrigatorios!</div>';return;}const p={ref,desc,marca:document.getElementById('imarca').value,cat:document.getElementById('icat').value};lista.push(p);localStorage.setItem('gn_prod',JSON.stringify(lista));document.getElementById('al').innerHTML='<div class="al al-ok">Produto cadastrado!</div>';addRow(p);['iref','idesc','imarca','iaplic','ipreco','iest','iobs'].forEach(x=>document.getElementById(x).value='');document.getElementById('icat').value='';setTimeout(()=>document.getElementById('al').innerHTML='',3000);}
-function addRow(p){const tb=document.getElementById('tb');const tr=document.createElement('tr');tr.innerHTML='<td><span class="tag">'+p.ref+'</span></td><td>'+p.desc+'</td><td>'+(p.marca||'-')+'</td><td>'+(p.cat||'-')+'</td><td><span class="tag">Ativo</span></td>';tb.appendChild(tr);}
-lista.forEach(p=>addRow(p));check();setInterval(check,30000);
+// ============================================================
+// ESTADO
+// ============================================================
+let usuario = null;
+let editId = null;
+let iaSugestao = null;
+
+// ============================================================
+// AUTH
+// ============================================================
+async function fazerLogin() {
+  const email = document.getElementById('lemail').value.trim();
+  const senha = document.getElementById('lsenha').value.trim();
+  const al = document.getElementById('login-al');
+  al.innerHTML = '';
+  try {
+    const r = await fetch('/api/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email,senha})
+    });
+    const d = await r.json();
+    if (!d.ok) { al.innerHTML=`<div class="al al-err">${d.erro}</div>`; return; }
+    usuario = d.usuario;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('hidden');
+    document.getElementById('user-info').textContent = `👤 ${usuario.nome} (${usuario.role})`;
+    inicializar();
+  } catch(e) {
+    al.innerHTML = '<div class="al al-err">Erro de conexao</div>';
+  }
+}
+
+function sair() {
+  usuario = null;
+  document.getElementById('app-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+// ============================================================
+// NAVEGACAO
+// ============================================================
+function pg(id, btn) {
+  document.querySelectorAll('.pg').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(x => x.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  if (btn) btn.classList.add('on');
+  if (id === 'prod') carregarProdutos();
+  if (id === 'rel') carregarRelatorio();
+  if (id === 'ia') carregarLogsIA();
+}
+
+// ============================================================
+// HEALTH CHECK
+// ============================================================
+async function check() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    document.getElementById('st').textContent = 'Online — ' + d.sistema;
+    document.getElementById('si').textContent = `Uptime: ${d.uptime}s | ${d.total_produtos} produtos`;
+    document.getElementById('dash-total').textContent = d.total_produtos;
+  } catch(e) {
+    document.getElementById('st').textContent = 'Reconectando...';
+  }
+}
+
+// ============================================================
+// CATALOGO
+// ============================================================
+async function carregarProdutos() {
+  const q = document.getElementById('busca').value;
+  const cat = document.getElementById('filtro-cat').value;
+  let url = '/api/produtos?limit=100';
+  if (q) url += '&q=' + encodeURIComponent(q);
+  if (cat) url += '&categoria=' + encodeURIComponent(cat);
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    renderTabela(d.produtos);
+  } catch(e) {}
+}
+
+function renderTabela(produtos) {
+  const tb = document.getElementById('tb');
+  const empty = document.getElementById('prod-empty');
+  // limpar linhas antigas
+  while (tb.rows.length > 1) tb.deleteRow(1);
+  if (!produtos || !produtos.length) { empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  produtos.forEach(p => {
+    const tr = tb.insertRow();
+    const est = parseInt(p.estoque) || 0;
+    const estTag = est === 0 ? `<span class="tag tag-warn">0</span>` : `<span class="tag tag-ok">${est}</span>`;
+    const img = p.imagem ? `<img src="${p.imagem}" class="img-prev">` : '';
+    tr.innerHTML = `
+      <td><span class="tag">${p.ref}</span></td>
+      <td>${img} ${p.descricao}</td>
+      <td>${p.marca||'-'}</td>
+      <td>${p.categoria||'-'}</td>
+      <td>R$ ${parseFloat(p.preco||0).toFixed(2)}</td>
+      <td>${estTag}</td>
+      <td><span class="tag ${p.status==='Ativo'?'tag-ok':''}">${p.status||'Ativo'}</span></td>
+      <td>
+        <button class="btn btn-sm" onclick="abrirEditar(${p.id})">✏️</button>
+        <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="excluir(${p.id},'${p.ref}')">🗑️</button>
+      </td>`;
+  });
+}
+
+function buscarProdutos() { carregarProdutos(); }
+
+// ============================================================
+// CADASTRO
+// ============================================================
+function limparForm() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('cad-titulo').textContent = 'Novo Cadastro Universal';
+  ['iref','idesc','imarca','iaplic','iobs'].forEach(x => document.getElementById(x).value = '');
+  ['ipreco','iest'].forEach(x => document.getElementById(x).value = '');
+  document.getElementById('icat').value = '';
+  document.getElementById('iimg').value = '';
+  document.getElementById('al').innerHTML = '';
+}
+
+async function salvar() {
+  const ref = document.getElementById('iref').value.trim();
+  const desc = document.getElementById('idesc').value.trim();
+  if (!ref || !desc) {
+    document.getElementById('al').innerHTML = '<div class="al al-err">⚠️ Referencia e Descricao sao obrigatorios!</div>';
+    return;
+  }
+  const fd = new FormData();
+  fd.append('ref', ref);
+  fd.append('descricao', desc);
+  fd.append('marca', document.getElementById('imarca').value);
+  fd.append('categoria', document.getElementById('icat').value);
+  fd.append('aplicacao', document.getElementById('iaplic').value);
+  fd.append('preco', document.getElementById('ipreco').value || 0);
+  fd.append('estoque', document.getElementById('iest').value || 0);
+  fd.append('observacoes', document.getElementById('iobs').value);
+  const img = document.getElementById('iimg').files[0];
+  if (img) fd.append('imagem', img);
+
+  try {
+    const r = await fetch('/api/produtos', { method:'POST', body: fd });
+    const d = await r.json();
+    if (!d.ok) {
+      document.getElementById('al').innerHTML = `<div class="al al-err">⚠️ ${d.erro}</div>`;
+      return;
+    }
+    document.getElementById('al').innerHTML = '<div class="al al-ok">✅ Produto cadastrado com sucesso!</div>';
+    limparForm();
+    check();
+    setTimeout(() => document.getElementById('al').innerHTML = '', 3000);
+  } catch(e) {
+    document.getElementById('al').innerHTML = '<div class="al al-err">Erro ao salvar</div>';
+  }
+}
+
+// ============================================================
+// EDITAR
+// ============================================================
+async function abrirEditar(id) {
+  editId = id;
+  try {
+    const r = await fetch('/api/produtos/'+id);
+    const d = await r.json();
+    if (!d.ok) return;
+    const p = d.produto;
+    document.getElementById('m-desc').value = p.descricao || '';
+    document.getElementById('m-marca').value = p.marca || '';
+    document.getElementById('m-cat').value = p.categoria || 'Outros';
+    document.getElementById('m-preco').value = p.preco || 0;
+    document.getElementById('m-est').value = p.estoque || 0;
+    document.getElementById('m-aplic').value = p.aplicacao || '';
+    document.getElementById('m-status').value = p.status || 'Ativo';
+    document.getElementById('modal-al').innerHTML = '';
+    document.getElementById('modal-edit').classList.add('show');
+  } catch(e) {}
+}
+
+function fecharModal() {
+  document.getElementById('modal-edit').classList.remove('show');
+  editId = null;
+}
+
+async function salvarEdicao() {
+  if (!editId) return;
+  const fd = new FormData();
+  fd.append('descricao', document.getElementById('m-desc').value);
+  fd.append('marca', document.getElementById('m-marca').value);
+  fd.append('categoria', document.getElementById('m-cat').value);
+  fd.append('preco', document.getElementById('m-preco').value);
+  fd.append('estoque', document.getElementById('m-est').value);
+  fd.append('aplicacao', document.getElementById('m-aplic').value);
+  fd.append('status', document.getElementById('m-status').value);
+  try {
+    const r = await fetch('/api/produtos/'+editId, { method:'PUT', body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      fecharModal();
+      carregarProdutos();
+    } else {
+      document.getElementById('modal-al').innerHTML = `<div class="al al-err">${d.erro}</div>`;
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// EXCLUIR
+// ============================================================
+async function excluir(id, ref) {
+  if (!confirm(`Excluir produto ${ref}?`)) return;
+  try {
+    const r = await fetch('/api/produtos/'+id, {method:'DELETE'});
+    const d = await r.json();
+    if (d.ok) { carregarProdutos(); check(); }
+  } catch(e) {}
+}
+
+// ============================================================
+// IA DE INDEXACAO
+// ============================================================
+async function indexarIA() {
+  const texto = document.getElementById('ia-texto').value.trim();
+  if (!texto) return;
+  try {
+    const r = await fetch('/api/ia/indexar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({texto})
+    });
+    const d = await r.json();
+    if (!d.ok) return;
+    iaSugestao = d.sugestao;
+    document.getElementById('ia-ref').textContent = d.sugestao.ref;
+    document.getElementById('ia-cat').textContent = d.sugestao.categoria;
+    document.getElementById('ia-marca').textContent = d.sugestao.marca;
+    document.getElementById('ia-conf').textContent = d.sugestao.confianca + '%';
+    document.getElementById('ia-conf-bar').style.width = d.sugestao.confianca + '%';
+    document.getElementById('ia-result').style.display = 'block';
+    renderLogsIA(d.logs);
+  } catch(e) {}
+}
+
+function usarSugestaoIA() {
+  if (!iaSugestao) return;
+  document.getElementById('iref').value = iaSugestao.ref;
+  document.getElementById('icat').value = iaSugestao.categoria;
+  document.getElementById('imarca').value = iaSugestao.marca;
+  const texto = document.getElementById('ia-texto').value.trim();
+  if (texto) document.getElementById('idesc').value = texto.substring(0, 100);
+  pg('cad', document.querySelectorAll('.nb')[2]);
+}
+
+async function carregarLogsIA() {
+  try {
+    const r = await fetch('/api/ia/logs');
+    const d = await r.json();
+    renderLogsIA(d.logs);
+  } catch(e) {}
+}
+
+function renderLogsIA(logs) {
+  const el = document.getElementById('ia-logs');
+  if (!logs || !logs.length) { el.innerHTML = '<p style="color:#444">Nenhuma indexacao ainda.</p>'; return; }
+  el.innerHTML = logs.map(l => `
+    <div class="log-item">
+      <span class="log-time">${l.criado_em}</span>
+      <span class="log-ref">${l.produto_ref||'-'}</span>
+      <span class="log-acao">${l.acao}</span>
+      <span class="log-result">${l.resultado} (${Math.round((l.confianca||0)*100)}%)</span>
+    </div>`).join('');
+}
+
+// ============================================================
+// RELATORIOS
+// ============================================================
+async function carregarRelatorio() {
+  try {
+    const r = await fetch('/api/relatorios/resumo');
+    const d = await r.json();
+    if (!d.ok) return;
+
+    const s = d.resumo;
+    document.getElementById('rel-stats').innerHTML = `
+      <div class="stat-box"><div class="stat-num">${s.total}</div><div class="stat-lbl">Total Produtos</div></div>
+      <div class="stat-box"><div class="stat-num">${s.ativos}</div><div class="stat-lbl">Ativos</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#ff2200">${s.semEstoque}</div><div class="stat-lbl">Sem Estoque</div></div>
+      <div class="stat-box"><div class="stat-num" style="font-size:1rem">R$ ${parseFloat(s.valorTotal).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-lbl">Valor em Estoque</div></div>`;
+
+    // Stats do dashboard
+    document.getElementById('d-total').textContent = s.total;
+    document.getElementById('d-ativos').textContent = s.ativos;
+    document.getElementById('d-semest').textContent = s.semEstoque;
+    document.getElementById('d-valor').textContent = 'R$ ' + parseFloat(s.valorTotal).toLocaleString('pt-BR',{minimumFractionDigits:2});
+
+    document.getElementById('rel-cat-list').innerHTML = d.porCategoria.map(c =>
+      `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #222;color:#aaa">
+        <span>${c.categoria||'Sem categoria'}</span>
+        <span class="tag">${c.total}</span>
+       </div>`).join('');
+
+    document.getElementById('rel-marca-list').innerHTML = d.porMarca.map(m =>
+      `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #222;color:#aaa">
+        <span>${m.marca||'Sem marca'}</span>
+        <span class="tag">${m.total}</span>
+       </div>`).join('');
+
+    document.getElementById('rel-semest').innerHTML = d.semEstoqueList.length
+      ? `<table><tr><th>Ref</th><th>Descricao</th><th>Categoria</th></tr>` +
+        d.semEstoqueList.map(p =>
+          `<tr><td><span class="tag">${p.ref}</span></td><td>${p.descricao}</td><td>${p.categoria||'-'}</td></tr>`
+        ).join('') + '</table>'
+      : '<p style="color:#444">Todos os produtos tem estoque.</p>';
+
+    document.getElementById('rel-topest').innerHTML =
+      `<table><tr><th>Ref</th><th>Descricao</th><th>Estoque</th></tr>` +
+      d.maisEstoque.map(p =>
+        `<tr><td><span class="tag">${p.ref}</span></td><td>${p.descricao}</td><td><span class="tag tag-ok">${p.estoque}</span></td></tr>`
+      ).join('') + '</table>';
+
+  } catch(e) {}
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function inicializar() {
+  check();
+  carregarRelatorio();
+  setInterval(check, 30000);
+}
+
+// Fechar modal clicando fora
+document.getElementById('modal-edit').addEventListener('click', function(e) {
+  if (e.target === this) fecharModal();
+});
+
+// Enter no login
+document.getElementById('lsenha').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fazerLogin();
+});
 </script>
 </body>
-          </html>
+</html>
