@@ -125,6 +125,7 @@ footer{text-align:center;padding:20px;color:#333;font-size:.78rem;margin-top:24p
     <button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
     <button class="nb" onclick="pg('ia',this)">🤖 IA Indexacao</button>
     <button class="nb" onclick="pg('rel',this)">📊 Relatorios</button>
+    <button class="nb" onclick="pg('ntc',this)">🔬 NTC 4.0</button>
     <button class="nb" onclick="pg('sobre',this)">Sobre</button>
   </div>
 
@@ -272,6 +273,66 @@ footer{text-align:center;padding:20px;color:#333;font-size:.78rem;margin-top:24p
     <div class="sec">
       <h2>🏆 Maior Estoque</h2>
       <div id="rel-topest"></div>
+    </div>
+  </div>
+
+  <!-- NTC 4.0 -->
+  <div class="pg" id="pg-ntc">
+    <div class="sec">
+      <h2>🔬 Analise NTC 4.0 — Norma Tecnica de Catalogacao</h2>
+      <p style="color:#666;font-size:.85rem;margin-bottom:16px">Cole a descricao completa do produto para analise tecnica nos 12 modulos NTC 4.0.</p>
+      <div class="fg"><label>Descricao do Produto</label>
+        <textarea id="ntc-texto" placeholder="Ex: KIT DE EMBREAGEM 200MM (PLATO/DISCO/ROLAMENTO) - 6203236000 - LUK" style="min-height:120px"></textarea>
+      </div>
+      <button class="btn" onclick="analisarNTC()">🔬 Analisar NTC 4.0</button>
+    </div>
+    <div id="ntc-result" style="display:none">
+      <!-- NTC Score Banner -->
+      <div class="sec" id="ntc-banner" style="text-align:center;padding:28px">
+        <div style="font-size:.85rem;color:#aaa;margin-bottom:8px;text-transform:uppercase;letter-spacing:2px">Pontuacao NTC 4.0</div>
+        <div id="ntc-score-num" style="font-size:4rem;font-weight:900;line-height:1"></div>
+        <div id="ntc-status-badge" style="margin-top:10px;font-size:1rem;font-weight:700;padding:6px 20px;border-radius:20px;display:inline-block"></div>
+      </div>
+
+      <!-- Cards row 1: DNA + Engenharia -->
+      <div class="row2" style="margin-bottom:0">
+        <div class="sec" id="ntc-dna-card">
+          <h2>🧬 DNA do Produto</h2>
+          <div id="ntc-dna-content"></div>
+        </div>
+        <div class="sec" id="ntc-eng-card">
+          <h2>⚙️ Engenharia Tecnica</h2>
+          <div id="ntc-eng-content"></div>
+        </div>
+      </div>
+
+      <!-- PDV Card -->
+      <div class="sec">
+        <h2>🏪 PDV / Bling / SEO</h2>
+        <div id="ntc-pdv-content"></div>
+      </div>
+
+      <!-- RAST-HASH -->
+      <div class="sec" style="background:#0d0d1a;border-color:#4444aa">
+        <h2 style="color:#8888ff">🔗 RAST-HASH</h2>
+        <code id="ntc-rast" style="color:#8888ff;word-break:break-all;font-size:.85rem"></code>
+      </div>
+
+      <!-- Scorecard -->
+      <div class="sec">
+        <h2>📊 Scorecard NTC 4.0 — 12 Modulos</h2>
+        <div style="overflow-x:auto">
+          <table id="ntc-score-table">
+            <tr><th>Modulo</th><th>Descricao</th><th>Peso</th><th>Score</th><th>Contrib.</th><th>Barra</th></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- O que falta -->
+      <div class="sec" style="background:#1a0d0d;border-color:#aa4444">
+        <h2 style="color:#ff8888">⚠️ O que Falta</h2>
+        <ul id="ntc-faltando" style="list-style:none;padding:0"></ul>
+      </div>
     </div>
   </div>
 
@@ -649,6 +710,164 @@ async function carregarRelatorio() {
       ).join('') + '</table>';
 
   } catch(e) {}
+}
+
+// ============================================================
+// NTC 4.0
+// ============================================================
+const NTC_META = {
+  DNA:  { label: 'DNA do Produto',            peso: 0.25 },
+  TF:   { label: 'Ficha Tecnica',             peso: 0.15 },
+  FM:   { label: 'Fabricante / OEM',          peso: 0.10 },
+  CO:   { label: 'Codigo Identificador',      peso: 0.10 },
+  AV:   { label: 'Aplicacoes e Veiculos',     peso: 0.10 },
+  MC:   { label: 'Cadeia de Suprimentos',     peso: 0.05 },
+  EC:   { label: 'Componentes de Eng.',       peso: 0.05 },
+  BTA:  { label: 'PDV / Bling / Label',       peso: 0.05 },
+  CC:   { label: 'Codigos Comerciais',        peso: 0.05 },
+  LG:   { label: 'Logistica (Peso/Dim)',      peso: 0.05 },
+  FI:   { label: 'Fiscal (NCM/EAN)',          peso: 0.03 },
+  FP:   { label: 'Produto Final',             peso: 0.02 },
+};
+
+async function analisarNTC() {
+  const texto = document.getElementById('ntc-texto').value.trim();
+  if (!texto) return;
+  const btn = document.querySelector('#pg-ntc .btn');
+  btn.textContent = 'Analisando...';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/ia/ntc', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({texto})
+    });
+    const d = await r.json();
+    if (!d.ok) { alert('Erro: ' + d.erro); return; }
+    renderNTC(d.ntc);
+    document.getElementById('ntc-result').style.display = 'block';
+    document.getElementById('ntc-result').scrollIntoView({behavior:'smooth'});
+  } catch(e) {
+    alert('Erro de conexao');
+  } finally {
+    btn.textContent = '🔬 Analisar NTC 4.0';
+    btn.disabled = false;
+  }
+}
+
+function renderNTC(ntc) {
+  // Banner score
+  const score = ntc.ntc;
+  const scoreEl = document.getElementById('ntc-score-num');
+  const statusEl = document.getElementById('ntc-status-badge');
+  const bannerEl = document.getElementById('ntc-banner');
+  scoreEl.textContent = (score * 100).toFixed(0) + '%';
+  if (score >= 0.90) {
+    scoreEl.style.color = '#00ff88';
+    statusEl.style.background = '#00ff8820';
+    statusEl.style.color = '#00ff88';
+    statusEl.style.border = '1px solid #00ff8840';
+    bannerEl.style.borderColor = '#00ff8840';
+  } else if (score >= 0.75) {
+    scoreEl.style.color = '#ffaa00';
+    statusEl.style.background = '#ffaa0020';
+    statusEl.style.color = '#ffaa00';
+    statusEl.style.border = '1px solid #ffaa0040';
+    bannerEl.style.borderColor = '#ffaa0040';
+  } else {
+    scoreEl.style.color = '#ff4500';
+    statusEl.style.background = '#ff450020';
+    statusEl.style.color = '#ff4500';
+    statusEl.style.border = '1px solid #ff450040';
+    bannerEl.style.borderColor = '#ff450040';
+  }
+  statusEl.textContent = ntc.status;
+
+  // DNA card
+  const dna = ntc.dna;
+  const statusBadge = dna.status === 'Certificado'
+    ? '<span class="tag tag-ok">Certificado</span>'
+    : dna.status === 'Identificado'
+      ? '<span class="tag tag-warn">Identificado</span>'
+      : '<span class="tag">Nao identificado</span>';
+  document.getElementById('ntc-dna-content').innerHTML = `
+    <div class="ia-row"><span class="ia-label">Fabricante</span><span class="ia-val">${dna.fabricante || '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Grupo</span><span class="ia-val">${dna.grupo || '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Origem</span><span class="ia-val">${dna.origem || '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Codigo</span><span class="ia-val">${dna.codigo || '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Status</span>${statusBadge}</div>`;
+
+  // Engenharia card
+  const eng = ntc.engenharia;
+  const compTags = eng.componentes.length
+    ? eng.componentes.map(c => `<span class="tag tag-ok" style="margin:2px">${c}</span>`).join(' ')
+    : '<em style="color:#555">nenhum detectado</em>';
+  document.getElementById('ntc-eng-content').innerHTML = `
+    <div class="ia-row"><span class="ia-label">Componentes</span><span>${compTags}</span></div>
+    <div class="ia-row"><span class="ia-label">Diametro</span><span class="ia-val">${eng.diametro || '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Estrias</span><span class="ia-val">${eng.estrias !== null ? eng.estrias : '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Sistema</span><span class="ia-val">${eng.sistema || '<em style="color:#555">null</em>'}</span></div>
+    <div class="ia-row"><span class="ia-label">Aplicacoes</span><span class="ia-val">${ntc.aplicacoes.length ? ntc.aplicacoes.join(', ') : '<em style="color:#555">nenhuma</em>'}</span></div>`;
+
+  // PDV card
+  const pdv = ntc.pdv;
+  document.getElementById('ntc-pdv-content').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="color:#aaa;font-size:.78rem;margin-bottom:4px">CABECALHO BLING</div>
+      <div style="background:#0d0d0d;border:1px solid #333;border-radius:6px;padding:10px;font-family:monospace;font-size:.85rem;color:#00ff88">${pdv.cabecalho_bling}</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="color:#aaa;font-size:.78rem;margin-bottom:4px">FRENTE DE CAIXA / PDV</div>
+      <div style="background:#0d0d0d;border:1px solid #333;border-radius:6px;padding:10px;font-family:monospace;font-size:.85rem;color:#fff;white-space:pre-line">${pdv.frente_caixa}</div>
+    </div>
+    <div>
+      <div style="color:#aaa;font-size:.78rem;margin-bottom:6px">TAGS SEO</div>
+      <div>${pdv.tags_seo.map(t => `<span class="tag" style="margin:2px">${t}</span>`).join(' ')}</div>
+    </div>`;
+
+  // RAST-HASH
+  document.getElementById('ntc-rast').textContent = ntc.rast_hash;
+
+  // Scorecard table
+  const tb = document.getElementById('ntc-score-table');
+  while (tb.rows.length > 1) tb.deleteRow(1);
+  let totalContrib = 0;
+  for (const [mod, meta] of Object.entries(NTC_META)) {
+    const s = ntc.scores[mod] || 0;
+    const contrib = s * meta.peso;
+    totalContrib += contrib;
+    const pct = Math.round(s * 100);
+    const barColor = s >= 0.9 ? '#00ff88' : s >= 0.75 ? '#ffaa00' : '#ff4500';
+    const tr = tb.insertRow();
+    tr.innerHTML = `
+      <td><strong style="color:#ff6500">${mod}</strong></td>
+      <td style="color:#aaa">${meta.label}</td>
+      <td style="color:#777">${(meta.peso * 100).toFixed(0)}%</td>
+      <td style="color:${barColor};font-weight:700">${pct}%</td>
+      <td style="color:#777">${(contrib * 100).toFixed(1)}%</td>
+      <td style="min-width:100px">
+        <div style="height:8px;background:#111;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .5s"></div>
+        </div>
+      </td>`;
+  }
+  // Total row
+  const tfoot = tb.insertRow();
+  tfoot.style.borderTop = '2px solid #333';
+  tfoot.innerHTML = `
+    <td colspan="3" style="color:#fff;font-weight:700;padding-top:12px">TOTAL NTC</td>
+    <td style="color:${score >= 0.9 ? '#00ff88' : score >= 0.75 ? '#ffaa00' : '#ff4500'};font-size:1.1rem;font-weight:900">${(score * 100).toFixed(0)}%</td>
+    <td style="color:#fff;font-weight:700">${(totalContrib * 100).toFixed(1)}%</td>
+    <td></td>`;
+
+  // Faltando
+  const faltLi = document.getElementById('ntc-faltando');
+  if (!ntc.faltando.length) {
+    faltLi.innerHTML = '<li style="color:#00ff88">Nenhum campo obrigatorio faltando!</li>';
+  } else {
+    faltLi.innerHTML = ntc.faltando.map(f =>
+      `<li style="padding:5px 0;border-bottom:1px solid #2a1a1a;color:#ffaa00">⚠️ ${f}</li>`
+    ).join('');
+  }
 }
 
 // ============================================================
