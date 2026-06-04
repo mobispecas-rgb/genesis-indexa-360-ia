@@ -3,891 +3,1272 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Genesis Indexa 360 IA v4.0</title>
+<title>Genesis Indexa 360 IA v5.0 — MIDWAY NTC 4.0</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',Arial,sans-serif;background:#0d0d0d;color:#fff;min-height:100vh}
-header{background:linear-gradient(135deg,#ff4500,#ff6b00);padding:18px 32px;display:flex;align-items:center;gap:16px}
-header h1{font-size:1.5rem;font-weight:700}
-header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;border-radius:20px;font-size:.8rem}
-.wrap{max-width:1100px;margin:0 auto;padding:28px 20px}
-.bar{background:#1a1a1a;border:1px solid #ff4500;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.dot{width:11px;height:11px;background:#00ff88;border-radius:50%;animation:p 2s infinite;flex-shrink:0}
-@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
-.ok{color:#00ff88;font-weight:700;font-size:.9rem}
-.info{margin-left:auto;color:#666;font-size:.8rem}
-.nav{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
-.nb{padding:7px 18px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:.85rem;transition:all .2s}
-.nb:hover,.nb.on{border-color:#ff4500;color:#ff4500;background:#ff450011}
-.pg{display:none}.pg.on{display:block}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:24px}
-.card{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:20px;cursor:pointer;transition:all .3s}
-.card:hover{border-color:#ff4500;transform:translateY(-2px)}
-.ci{font-size:2rem;margin-bottom:10px}
-.ct{font-size:1rem;font-weight:700;margin-bottom:4px}
-.cd{font-size:.82rem;color:#777;line-height:1.5}
-.cnum{font-size:1.6rem;font-weight:900;color:#ff4500;margin-top:8px}
-.sec{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:22px;margin-bottom:20px}
-.sec h2{font-size:1rem;font-weight:700;margin-bottom:16px;color:#ff4500;display:flex;align-items:center;gap:8px}
-.fg{margin-bottom:14px}
-.fg label{display:block;font-size:.82rem;color:#aaa;margin-bottom:5px}
-.fg input,.fg select,.fg textarea{width:100%;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none;transition:border .2s}
-.fg input:focus,.fg select,.fg select:focus,.fg textarea:focus{border-color:#ff4500}
-.fg select option{background:#1a1a1a}
+:root{
+  --bg:#0d0d0d;--bg2:#141414;--bg3:#1a1a1a;--bg4:#222;
+  --primary:#ff4500;--primary2:#ff6b00;
+  --success:#00ff88;--warning:#ffaa00;--danger:#ff2244;--info:#00aaff;
+  --text:#e0e0e0;--text2:#aaa;--text3:#666;
+  --border:#2a2a2a;--sidebar:240px;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow:hidden}
+
+/* SIDEBAR */
+#sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto}
+.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
+.sidebar-logo .logo-title{font-size:.95rem;font-weight:900;color:var(--primary);line-height:1.2}
+.sidebar-logo .logo-sub{font-size:.65rem;color:var(--text3);margin-top:2px}
+.sidebar-logo .logo-badge{margin-top:6px;display:inline-block;background:#ff450020;color:var(--primary);border:1px solid #ff450040;padding:2px 8px;border-radius:10px;font-size:.6rem;font-weight:700}
+.nav-section{padding:8px 0}
+.nav-section-label{padding:6px 16px 4px;font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:all .15s;font-size:.82rem;color:var(--text2);border-left:3px solid transparent}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:#ff450015;color:var(--primary);border-left-color:var(--primary)}
+.nav-icon{width:18px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);font-size:.7rem;color:var(--text3)}
+.sidebar-footer .user-info{font-size:.75rem;color:var(--text2);margin-bottom:4px}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.topbar-title{font-size:1rem;font-weight:700;color:var(--text)}
+.topbar-badge{background:#ff450020;color:var(--primary);border:1px solid #ff450040;padding:2px 10px;border-radius:12px;font-size:.7rem;font-weight:700}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.pulse{width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.online-txt{font-size:.72rem;color:var(--success)}
+
+#content{flex:1;overflow-y:auto;padding:20px 24px}
+.page{display:none}
+.page.active{display:block}
+
+/* CARDS KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.kpi-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border .2s}
+.kpi-card:hover{border-color:var(--primary)}
+.kpi-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.kpi-value{font-size:2rem;font-weight:900;line-height:1}
+.kpi-sub{font-size:.7rem;color:var(--text3);margin-top:4px}
+.kpi-green .kpi-value{color:var(--success)}
+.kpi-red .kpi-value{color:var(--danger)}
+.kpi-yellow .kpi-value{color:var(--warning)}
+.kpi-blue .kpi-value{color:var(--info)}
+.kpi-orange .kpi-value{color:var(--primary)}
+
+/* SECTION / CARD */
+.sec{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px}
+.sec-title{font-size:.85rem;font-weight:700;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec-title span{font-size:.75rem;color:var(--text3);font-weight:400;margin-left:auto}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{text-align:left;padding:8px 12px;background:#111;color:var(--primary);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid #1e1e1e;color:var(--text2);vertical-align:middle}
+tr:hover td{background:#1c1c1c}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;white-space:nowrap}
+.badge-green{background:#00ff8820;color:var(--success);border:1px solid #00ff8840}
+.badge-yellow{background:#ffaa0020;color:var(--warning);border:1px solid #ffaa0040}
+.badge-red{background:#ff224420;color:var(--danger);border:1px solid #ff224440}
+.badge-blue{background:#00aaff20;color:var(--info);border:1px solid #00aaff40}
+.badge-gray{background:#33333320;color:var(--text3);border:1px solid #44444440}
+.badge-orange{background:#ff450020;color:var(--primary);border:1px solid #ff450040}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:.72rem;color:var(--text2);margin-bottom:4px}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid #333;border-radius:6px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;transition:border .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary)}
+.fg select option{background:var(--bg3)}
 .fg textarea{min-height:80px;resize:vertical}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-.btn{background:linear-gradient(135deg,#ff4500,#ff6b00);color:#fff;border:none;padding:11px 24px;border-radius:7px;font-size:.92rem;font-weight:700;cursor:pointer;transition:opacity .2s}
+
+/* BUTTONS */
+.btn{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;padding:8px 18px;border-radius:6px;font-size:.8rem;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap}
 .btn:hover{opacity:.85}
-.btn-full{width:100%}
-.btn-sm{padding:6px 14px;font-size:.78rem;border-radius:5px}
-.btn-danger{background:linear-gradient(135deg,#cc0000,#ff2200)}
-.btn-outline{background:transparent;border:1px solid #ff4500;color:#ff4500}
-table{width:100%;border-collapse:collapse;font-size:.88rem}
-th{text-align:left;padding:9px 12px;background:#111;color:#ff4500;font-size:.78rem;text-transform:uppercase;white-space:nowrap}
-td{padding:9px 12px;border-bottom:1px solid #222;color:#ccc;vertical-align:middle}
-tr:hover td{background:#1f1f1f}
-.tag{display:inline-block;background:#ff450015;color:#ff6500;border:1px solid #ff450030;padding:2px 9px;border-radius:15px;font-size:.72rem;font-weight:700}
-.tag-ok{background:#00ff8815;color:#00ff88;border-color:#00ff8830}
-.tag-warn{background:#ffaa0015;color:#ffaa00;border-color:#ffaa0030}
-.al{padding:10px 14px;border-radius:7px;margin-bottom:12px;font-size:.88rem}
-.al-ok{background:#00ff8815;border:1px solid #00ff8830;color:#00ff88}
-.al-err{background:#ff450015;border:1px solid #ff450030;color:#ff6b00}
-footer{text-align:center;padding:20px;color:#333;font-size:.78rem;margin-top:24px;border-top:1px solid #111}
-.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
-.stat-box{background:#111;border:1px solid #222;border-radius:10px;padding:16px;text-align:center}
-.stat-num{font-size:2rem;font-weight:900;color:#ff4500}
-.stat-lbl{font-size:.78rem;color:#666;margin-top:4px}
-.ia-box{background:#0d1a0d;border:1px solid #00ff8830;border-radius:10px;padding:18px;margin-top:14px}
-.ia-title{color:#00ff88;font-weight:700;margin-bottom:12px;font-size:.9rem}
-.ia-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:.85rem}
-.ia-label{color:#aaa;min-width:100px}
-.ia-val{color:#fff;font-weight:600}
-.conf-bar{flex:1;height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden}
-.conf-fill{height:100%;background:linear-gradient(90deg,#ff4500,#00ff88);border-radius:4px;transition:width .5s}
-.log-item{padding:8px 12px;border-bottom:1px solid #1a1a1a;display:flex;gap:12px;font-size:.8rem}
-.log-time{color:#444;min-width:140px}
-.log-ref{color:#ff6500;min-width:80px}
-.log-acao{color:#aaa}
-.log-result{color:#00ff88;margin-left:auto}
-.img-prev{max-width:80px;max-height:60px;border-radius:5px;object-fit:cover;border:1px solid #333}
-.search-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.search-row input,.search-row select{background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none;flex:1;min-width:140px}
-.search-row input:focus,.search-row select:focus{border-color:#ff4500}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
-.modal-bg.show{display:flex}
-.modal{background:#1a1a1a;border:1px solid #333;border-radius:14px;padding:28px;max-width:480px;width:90%;max-height:90vh;overflow-y:auto}
-.modal h3{color:#ff4500;margin-bottom:18px}
-.modal-close{float:right;background:none;border:none;color:#666;font-size:1.2rem;cursor:pointer;line-height:1}
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a0a00 0%,#0d0d0d 70%)}
-.login-box{background:#1a1a1a;border:1px solid #ff4500;border-radius:16px;padding:40px;width:380px;max-width:95vw;text-align:center}
-.login-box h2{color:#ff4500;margin-bottom:8px;font-size:1.4rem}
-.login-box p{color:#666;font-size:.85rem;margin-bottom:28px}
-.hidden{display:none}
+.btn-sm{padding:4px 10px;font-size:.72rem}
+.btn-xs{padding:3px 8px;font-size:.68rem;border-radius:4px}
+.btn-danger{background:linear-gradient(135deg,#cc0022,var(--danger))}
+.btn-outline{background:transparent;border:1px solid var(--primary);color:var(--primary)}
+.btn-outline:hover{background:#ff450015}
+.btn-success{background:linear-gradient(135deg,#00cc66,var(--success));color:#000}
+.btn-blue{background:linear-gradient(135deg,#0077cc,var(--info))}
+.btn-gray{background:linear-gradient(135deg,#333,#444)}
+
+/* NTC BAR */
+.ntc-bar-wrap{background:#111;border-radius:4px;height:6px;overflow:hidden;margin-top:4px}
+.ntc-bar{height:100%;border-radius:4px;transition:width .5s}
+
+/* SEARCH / FILTERS */
+.filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filters input,.filters select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 12px;color:var(--text);font-size:.8rem;outline:none}
+.filters input:focus,.filters select:focus{border-color:var(--primary)}
+.filters input{flex:1;min-width:160px}
+
+/* NTC INSPECTOR */
+.ntc-big{text-align:center;padding:20px;background:var(--bg2);border-radius:10px;margin-bottom:16px;border:2px solid var(--border)}
+.ntc-big .score{font-size:4rem;font-weight:900;line-height:1}
+.ntc-big .status-txt{font-size:1rem;font-weight:700;margin-top:6px}
+.ntc-big .rast{font-size:.65rem;color:var(--text3);margin-top:8px;font-family:monospace}
+.module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.module-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px}
+.module-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.module-name{font-size:.78rem;font-weight:700;color:var(--text)}
+.module-weight{font-size:.65rem;color:var(--text3)}
+.module-score{font-size:1.2rem;font-weight:900}
+.module-contrib{font-size:.65rem;color:var(--text3)}
+.evidence-list{margin-top:8px}
+.ev-item{font-size:.68rem;color:var(--success);display:flex;align-items:flex-start;gap:4px;margin-bottom:2px}
+.miss-item{font-size:.68rem;color:var(--danger);display:flex;align-items:flex-start;gap:4px;margin-bottom:2px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:640px;width:90%;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{cursor:pointer;color:var(--text3);font-size:1.2rem;line-height:1}
+.modal-close:hover{color:var(--text)}
+
+/* PDV */
+.pdv-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px}
+.pdv-ref{font-size:.7rem;color:var(--text3);margin-bottom:4px;font-family:monospace}
+.pdv-nome{font-size:1.1rem;font-weight:700;margin-bottom:8px}
+.pdv-dna{font-size:.8rem;color:var(--text2);margin-bottom:8px}
+.pdv-ntc-big{font-size:2.5rem;font-weight:900;margin-bottom:4px}
+.pdv-alert{background:#ff224415;border:1px solid #ff224440;border-radius:8px;padding:10px 14px;color:var(--danger);font-size:.8rem;margin-top:8px}
+
+/* IA ANALYZER */
+.ia-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.85rem;min-height:120px;resize:vertical;outline:none;font-family:inherit}
+.ia-textarea:focus{border-color:var(--primary)}
+.result-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+.result-card-title{font-size:.75rem;font-weight:700;color:var(--primary);margin-bottom:8px;text-transform:uppercase}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab{padding:8px 16px;font-size:.78rem;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* MISC */
+.flex{display:flex;align-items:center;gap:8px}
+.flex-wrap{flex-wrap:wrap}
+.ml-auto{margin-left:auto}
+.mt{margin-top:12px}
+.mb{margin-bottom:12px}
+.text-sm{font-size:.75rem;color:var(--text2)}
+.text-xs{font-size:.68rem;color:var(--text3)}
+.mono{font-family:monospace}
+.text-success{color:var(--success)}
+.text-danger{color:var(--danger)}
+.text-warning{color:var(--warning)}
+.empty{text-align:center;padding:40px;color:var(--text3);font-size:.85rem}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div class="login-wrap" id="login-screen">
-  <div class="login-box">
-    <div style="font-size:3rem;margin-bottom:12px">⚡</div>
-    <h2>Genesis Indexa 360 IA</h2>
-    <p>MOBIS Pecas Automotivas</p>
-    <div id="login-al"></div>
-    <div class="fg"><label>Email</label><input id="lemail" type="email" value="admin@mobis.com" placeholder="email@mobis.com"></div>
-    <div class="fg"><label>Senha</label><input id="lsenha" type="password" value="admin123" placeholder="senha"></div>
-    <button class="btn btn-full" onclick="fazerLogin()">Entrar</button>
-    <p style="color:#444;font-size:.75rem;margin-top:16px">admin@mobis.com / admin123</p>
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-title">GENESIS INDEXA</div>
+    <div class="logo-sub">360 IA + MIDWAY NTC 4.0</div>
+    <div class="logo-badge">ENTERPRISE</div>
   </div>
-</div>
-
-<!-- APP PRINCIPAL -->
-<div id="app-screen" class="hidden">
-<header>
-  <span style="font-size:1.6rem">⚡</span>
-  <h1>Genesis Indexa 360 IA v4.0</h1>
-  <span class="badge">MOBIS Pecas Automotivas</span>
-  <button class="btn btn-sm" style="margin-left:12px;background:rgba(0,0,0,.3)" onclick="sair()">Sair</button>
-</header>
-
-<div class="wrap">
-  <div class="bar">
-    <div class="dot"></div>
-    <span class="ok" id="st">Sistema Online</span>
-    <span class="info" id="si">verificando...</span>
-    <span style="margin-left:12px;color:#ff6500;font-size:.8rem" id="user-info"></span>
+  <div class="nav-section">
+    <div class="nav-section-label">Principal</div>
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">&#x1F4CA;</span> Dashboard</div>
+    <div class="nav-item" data-page="produtos"><span class="nav-icon">&#x1F4E6;</span> Produtos</div>
+    <div class="nav-item" data-page="ntc-inspector"><span class="nav-icon">&#x1F52C;</span> NTC Inspector</div>
   </div>
-
-  <div class="nav">
-    <button class="nb on" onclick="pg('dash',this)">Dashboard</button>
-    <button class="nb" onclick="pg('prod',this)">Catalogo</button>
-    <button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
-    <button class="nb" onclick="pg('ia',this)">🤖 IA Indexacao</button>
-    <button class="nb" onclick="pg('rel',this)">📊 Relatorios</button>
-    <button class="nb" onclick="pg('ntc',this)">🔬 NTC 4.0</button>
-    <button class="nb" onclick="pg('sobre',this)">Sobre</button>
+  <div class="nav-section">
+    <div class="nav-section-label">Catalogacao</div>
+    <div class="nav-item" data-page="aplicacoes"><span class="nav-icon">&#x1F697;</span> Aplicacoes Motor</div>
+    <div class="nav-item" data-page="imagens"><span class="nav-icon">&#x1F5BC;&#xFE0F;</span> Central de Imagens</div>
+    <div class="nav-item" data-page="fiscal"><span class="nav-icon">&#x1F4CB;</span> Fiscal &amp; Logistica</div>
   </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Comercial</div>
+    <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Inteligencia</div>
+    <div class="nav-item" data-page="ia-analyzer"><span class="nav-icon">&#x1F916;</span> IA + NTC Analyzer</div>
+    <div class="nav-item" data-page="relatorios"><span class="nav-icon">&#x1F4C8;</span> Relatorios</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Sistema</div>
+    <div class="nav-item" data-page="config"><span class="nav-icon">&#x2699;&#xFE0F;</span> Configuracoes</div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-info" id="sidebar-user">Administrador</div>
+    <div>MOBIS Pecas Automotivas</div>
+  </div>
+</nav>
 
-  <!-- DASHBOARD -->
-  <div class="pg on" id="pg-dash">
-    <div class="cards">
-      <div class="card" onclick="pg('prod',document.querySelectorAll('.nb')[1])">
-        <div class="ci">📦</div><div class="ct">Catalogo de Produtos</div>
-        <div class="cd">Gerencie pecas automotivas.</div>
-        <div class="cnum" id="dash-total">-</div>
-      </div>
-      <div class="card" onclick="pg('cad',document.querySelectorAll('.nb')[2])">
-        <div class="ci">➕</div><div class="ct">Cadastro Universal</div>
-        <div class="cd">Cadastre novos produtos e pecas.</div>
-      </div>
-      <div class="card" onclick="pg('ia',document.querySelectorAll('.nb')[3])">
-        <div class="ci">🤖</div><div class="ct">IA de Indexacao</div>
-        <div class="cd">Motor inteligente de estoque.</div>
-      </div>
-      <div class="card" onclick="pg('rel',document.querySelectorAll('.nb')[4])">
-        <div class="ci">📊</div><div class="ct">Relatorios</div>
-        <div class="cd">Dados de estoque em tempo real.</div>
-      </div>
-    </div>
-    <div class="sec">
-      <h2>Resumo Rapido</h2>
-      <div class="stat-grid" id="dash-stats">
-        <div class="stat-box"><div class="stat-num" id="d-total">-</div><div class="stat-lbl">Total Produtos</div></div>
-        <div class="stat-box"><div class="stat-num" id="d-ativos">-</div><div class="stat-lbl">Ativos</div></div>
-        <div class="stat-box"><div class="stat-num" id="d-semest" style="color:#ff2200">-</div><div class="stat-lbl">Sem Estoque</div></div>
-        <div class="stat-box"><div class="stat-num" id="d-valor" style="font-size:1.2rem">-</div><div class="stat-lbl">Valor em Estoque</div></div>
-      </div>
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-badge">NTC 4.0</div>
+    <div class="topbar-right">
+      <div class="pulse"></div>
+      <div class="online-txt">Online</div>
     </div>
   </div>
 
-  <!-- CATALOGO -->
-  <div class="pg" id="pg-prod">
-    <div class="sec">
-      <h2>📦 Catalogo de Produtos</h2>
-      <div class="search-row">
-        <input id="busca" type="text" placeholder="Buscar ref, descricao, marca..." oninput="buscarProdutos()">
-        <select id="filtro-cat" onchange="buscarProdutos()">
-          <option value="">Todas categorias</option>
-          <option>Freios</option><option>Filtros</option><option>Motor</option>
-          <option>Suspensao</option><option>Ignicao</option><option>Eletrica</option>
-          <option>Transmissao</option><option>Outros</option>
-        </select>
-        <button class="btn" style="flex:none" onclick="pg('cad',document.querySelectorAll('.nb')[2])">+ Novo</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table id="tb">
-          <tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Preco</th><th>Estoque</th><th>Status</th><th>Acoes</th></tr>
-        </table>
-      </div>
-      <div id="prod-empty" style="color:#444;text-align:center;padding:28px;display:none">Nenhum produto encontrado.</div>
-    </div>
-  </div>
+  <div id="content">
 
-  <!-- CADASTRO -->
-  <div class="pg" id="pg-cad">
-    <div class="sec">
-      <h2>➕ <span id="cad-titulo">Novo Cadastro Universal</span></h2>
-      <div id="al"></div>
-      <input type="hidden" id="edit-id">
-      <div class="row2">
-        <div class="fg"><label>Referencia *</label><input id="iref" type="text" placeholder="MOB-006"></div>
-        <div class="fg"><label>Categoria</label>
-          <select id="icat">
-            <option value="">Selecione...</option>
-            <option>Freios</option><option>Filtros</option><option>Motor</option>
-            <option>Suspensao</option><option>Ignicao</option><option>Eletrica</option>
-            <option>Transmissao</option><option>Outros</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg"><label>Descricao *</label><input id="idesc" type="text" placeholder="Ex: Pastilha de Freio Dianteira Honda Civic"></div>
-      <div class="row2">
-        <div class="fg"><label>Marca</label><input id="imarca" type="text" placeholder="MOBIS, Bosch, NGK..."></div>
-        <div class="fg"><label>Aplicacao</label><input id="iaplic" type="text" placeholder="Honda Civic 2018-2022"></div>
-      </div>
-      <div class="row2">
-        <div class="fg"><label>Preco (R$)</label><input id="ipreco" type="number" placeholder="0.00" step="0.01" min="0"></div>
-        <div class="fg"><label>Estoque</label><input id="iest" type="number" placeholder="0" min="0"></div>
-      </div>
-      <div class="fg"><label>Observacoes / Codigo OEM</label><textarea id="iobs" placeholder="Codigo OEM, compatibilidades, notas..."></textarea></div>
-      <div class="fg"><label>Imagem do Produto</label><input id="iimg" type="file" accept="image/*" style="color:#aaa"></div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-full" onclick="salvar()">💾 Salvar Produto</button>
-        <button class="btn btn-outline" style="flex:none;padding:11px 20px" onclick="limparForm()">Limpar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- IA INDEXACAO -->
-  <div class="pg" id="pg-ia">
-    <div class="sec">
-      <h2>🤖 Motor de Indexacao por IA</h2>
-      <p style="color:#666;font-size:.85rem;margin-bottom:16px">Digite a descricao de um produto e a IA sugerira categoria, referencia e marca automaticamente.</p>
-      <div class="fg"><label>Descricao do Produto</label>
-        <textarea id="ia-texto" placeholder="Ex: Pastilha de freio dianteira para Honda Civic 2020, marca BOSCH..." style="min-height:100px"></textarea>
-      </div>
-      <button class="btn" onclick="indexarIA()">🔍 Indexar com IA</button>
-      <div id="ia-result" style="display:none">
-        <div class="ia-box">
-          <div class="ia-title">✅ Sugestao da IA</div>
-          <div class="ia-row"><span class="ia-label">Referencia</span><span class="ia-val" id="ia-ref">-</span></div>
-          <div class="ia-row"><span class="ia-label">Categoria</span><span class="ia-val" id="ia-cat">-</span></div>
-          <div class="ia-row"><span class="ia-label">Marca</span><span class="ia-val" id="ia-marca">-</span></div>
-          <div class="ia-row">
-            <span class="ia-label">Confianca</span>
-            <div class="conf-bar"><div class="conf-fill" id="ia-conf-bar"></div></div>
-            <span class="ia-val" id="ia-conf">-</span>
-          </div>
-          <button class="btn" style="margin-top:14px;width:auto" onclick="usarSugestaoIA()">Usar esta sugestao no Cadastro</button>
-        </div>
-      </div>
-    </div>
-    <div class="sec">
-      <h2>📋 Historico de Indexacoes</h2>
-      <div id="ia-logs" style="font-size:.82rem"></div>
-    </div>
-  </div>
-
-  <!-- RELATORIOS -->
-  <div class="pg" id="pg-rel">
-    <div class="sec">
-      <h2>📊 Relatorios e Estatisticas</h2>
-      <button class="btn" onclick="carregarRelatorio()">🔄 Atualizar Dados</button>
-    </div>
-    <div class="stat-grid" id="rel-stats" style="margin-top:0"></div>
-    <div class="row2">
-      <div class="sec" id="rel-cat">
-        <h2>Por Categoria</h2>
-        <div id="rel-cat-list"></div>
-      </div>
-      <div class="sec" id="rel-marca">
-        <h2>Top Marcas</h2>
-        <div id="rel-marca-list"></div>
-      </div>
-    </div>
-    <div class="sec">
-      <h2>⚠️ Sem Estoque</h2>
-      <div id="rel-semest"></div>
-    </div>
-    <div class="sec">
-      <h2>🏆 Maior Estoque</h2>
-      <div id="rel-topest"></div>
-    </div>
-  </div>
-
-  <!-- NTC 4.0 -->
-  <div class="pg" id="pg-ntc">
-    <div class="sec">
-      <h2>🔬 Analise NTC 4.0 — Norma Tecnica de Catalogacao</h2>
-      <p style="color:#666;font-size:.85rem;margin-bottom:16px">Cole a descricao completa do produto para analise tecnica nos 12 modulos NTC 4.0.</p>
-      <div class="fg"><label>Descricao do Produto</label>
-        <textarea id="ntc-texto" placeholder="Ex: KIT DE EMBREAGEM 200MM (PLATO/DISCO/ROLAMENTO) - 6203236000 - LUK" style="min-height:120px"></textarea>
-      </div>
-      <button class="btn" onclick="analisarNTC()">🔬 Analisar NTC 4.0</button>
-    </div>
-    <div id="ntc-result" style="display:none">
-      <!-- NTC Score Banner -->
-      <div class="sec" id="ntc-banner" style="text-align:center;padding:28px">
-        <div style="font-size:.85rem;color:#aaa;margin-bottom:8px;text-transform:uppercase;letter-spacing:2px">Pontuacao NTC 4.0</div>
-        <div id="ntc-score-num" style="font-size:4rem;font-weight:900;line-height:1"></div>
-        <div id="ntc-status-badge" style="margin-top:10px;font-size:1rem;font-weight:700;padding:6px 20px;border-radius:20px;display:inline-block"></div>
-      </div>
-
-      <!-- Cards row 1: DNA + Engenharia -->
-      <div class="row2" style="margin-bottom:0">
-        <div class="sec" id="ntc-dna-card">
-          <h2>🧬 DNA do Produto</h2>
-          <div id="ntc-dna-content"></div>
-        </div>
-        <div class="sec" id="ntc-eng-card">
-          <h2>⚙️ Engenharia Tecnica</h2>
-          <div id="ntc-eng-content"></div>
-        </div>
-      </div>
-
-      <!-- PDV Card -->
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="kpi-grid" id="kpi-grid"></div>
       <div class="sec">
-        <h2>🏪 PDV / Bling / SEO</h2>
-        <div id="ntc-pdv-content"></div>
+        <div class="sec-title">Distribuicao NTC <span id="ntc-dist-total"></span></div>
+        <div id="ntc-distribution"></div>
       </div>
-
-      <!-- RAST-HASH -->
-      <div class="sec" style="background:#0d0d1a;border-color:#4444aa">
-        <h2 style="color:#8888ff">🔗 RAST-HASH</h2>
-        <code id="ntc-rast" style="color:#8888ff;word-break:break-all;font-size:.85rem"></code>
-      </div>
-
-      <!-- Scorecard -->
       <div class="sec">
-        <h2>📊 Scorecard NTC 4.0 — 12 Modulos</h2>
-        <div style="overflow-x:auto">
-          <table id="ntc-score-table">
-            <tr><th>Modulo</th><th>Descricao</th><th>Peso</th><th>Score</th><th>Contrib.</th><th>Barra</th></tr>
+        <div class="sec-title">Produtos Recentes</div>
+        <div class="tbl-wrap">
+          <table id="tbl-recentes">
+            <thead><tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>NTC Score</th><th>Status</th><th>Atualizado</th></tr></thead>
+            <tbody></tbody>
           </table>
         </div>
       </div>
+    </div>
 
-      <!-- O que falta -->
-      <div class="sec" style="background:#1a0d0d;border-color:#aa4444">
-        <h2 style="color:#ff8888">⚠️ O que Falta</h2>
-        <ul id="ntc-faltando" style="list-style:none;padding:0"></ul>
+    <!-- PRODUTOS -->
+    <div class="page" id="page-produtos">
+      <div class="sec">
+        <div class="flex mb">
+          <div class="sec-title" style="margin:0">Catalogo de Produtos</div>
+          <button class="btn btn-sm ml-auto" onclick="openModalNovoProduto()">+ Novo Produto</button>
+        </div>
+        <div class="filters">
+          <input type="text" id="prod-search" placeholder="Buscar por ref ou descricao..." oninput="debounceLoadProdutos()">
+          <select id="prod-status" onchange="loadProdutos()">
+            <option value="">Todos os Status</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Congelado">Congelado</option>
+            <option value="Pendente">Pendente</option>
+          </select>
+          <select id="prod-ntc" onchange="loadProdutos()">
+            <option value="">Todos NTC</option>
+            <option value="APROVADO">APROVADO</option>
+            <option value="PENDENTE">PENDENTE</option>
+            <option value="REPROVADO">REPROVADO</option>
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-produtos">
+            <thead><tr><th>Ref</th><th>Descricao</th><th>Fabricante</th><th>Familia</th><th>NTC Score</th><th>NTC Status</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="flex mt" style="justify-content:space-between">
+          <div class="text-xs" id="prod-count"></div>
+          <div class="flex gap-6">
+            <button class="btn btn-outline btn-sm" onclick="prodPage--; loadProdutos()">Ant</button>
+            <span class="text-xs" id="prod-page-info"></span>
+            <button class="btn btn-outline btn-sm" onclick="prodPage++; loadProdutos()">Prox</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- SOBRE -->
-  <div class="pg" id="pg-sobre">
-    <div class="sec">
-      <h2>ℹ️ Sobre o Sistema</h2>
-      <p style="color:#777;line-height:2">
-        <strong style="color:#ff4500">Genesis Indexa 360 IA v4.0</strong><br><br>
-        Plataforma completa de catalogacao para MOBIS Pecas Automotivas.<br>
-        ✅ Banco de dados SQLite persistente<br>
-        ✅ API RESTful completa (CRUD)<br>
-        ✅ Motor de IA para indexacao automatica<br>
-        ✅ Upload de imagens de produtos<br>
-        ✅ Relatorios e estatisticas em tempo real<br>
-        ✅ Autenticacao de usuarios<br><br>
-        Versao: 4.0.0 | Servidor: Node.js + Express | DB: SQLite
-      </p>
+    <!-- NTC INSPECTOR -->
+    <div class="page" id="page-ntc-inspector">
+      <div class="sec">
+        <div class="sec-title">NTC Inspector — Analise por Produto</div>
+        <div class="flex mb">
+          <select id="inspector-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+            <option value="">Selecione um produto...</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadInspector()">Analisar</button>
+          <button class="btn btn-success btn-sm" onclick="recalcNTC()">Recalcular NTC</button>
+        </div>
+      </div>
+      <div id="inspector-result"></div>
     </div>
-  </div>
 
-</div><!-- /wrap -->
-<footer>Genesis Indexa 360 IA v4.0 — MOBIS Pecas Automotivas 2026</footer>
-</div><!-- /app-screen -->
+    <!-- APLICACOES MOTOR -->
+    <div class="page" id="page-aplicacoes">
+      <div class="sec">
+        <div class="sec-title">Aplicacoes Motor</div>
+        <div class="flex mb">
+          <select id="aplic-prod-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+            <option value="">Selecione um produto...</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadAplicacoes()">Carregar</button>
+          <button class="btn btn-success btn-sm" onclick="openModalNovaAplicacao()">+ Adicionar</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-aplicacoes">
+            <thead><tr><th>Montadora</th><th>Modelo</th><th>Versao</th><th>Motor</th><th>Comb.</th><th>Ano</th><th>Acoes</th></tr></thead>
+            <tbody><tr><td colspan="7" class="empty">Selecione um produto acima</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-<!-- MODAL EDITAR -->
-<div class="modal-bg" id="modal-edit">
+    <!-- IMAGENS -->
+    <div class="page" id="page-imagens">
+      <div class="sec">
+        <div class="sec-title">Central de Imagens</div>
+        <div class="flex mb">
+          <select id="img-prod-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+            <option value="">Selecione um produto...</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadImagens()">Carregar</button>
+          <button class="btn btn-success btn-sm" onclick="openModalNovaImagem()">+ Adicionar Imagem</button>
+        </div>
+        <div id="img-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px"></div>
+      </div>
+    </div>
+
+    <!-- FISCAL & LOGISTICA -->
+    <div class="page" id="page-fiscal">
+      <div class="sec">
+        <div class="sec-title">Fiscal &amp; Logistica</div>
+        <div class="flex mb">
+          <select id="fiscal-prod-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+            <option value="">Selecione um produto...</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadFiscal()">Carregar</button>
+        </div>
+      </div>
+      <div id="fiscal-forms" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="sec">
+            <div class="sec-title">Dados Fiscais</div>
+            <div class="form-grid">
+              <div class="fg"><label>NCM</label><input id="f-ncm" placeholder="0000.00.00"></div>
+              <div class="fg"><label>CEST</label><input id="f-cest" placeholder="0000000"></div>
+              <div class="fg"><label>CFOP</label><input id="f-cfop" placeholder="5102"></div>
+              <div class="fg"><label>Origem</label>
+                <select id="f-origem">
+                  <option value="0">0 - Nacional</option>
+                  <option value="1">1 - Estrangeiro Importado</option>
+                  <option value="2">2 - Estrangeiro (interno)</option>
+                  <option value="3">3 - Nacional com +40% importado</option>
+                </select>
+              </div>
+              <div class="fg"><label>IPI (%)</label><input id="f-ipi" type="number" step="0.01" placeholder="0"></div>
+              <div class="fg"><label>ICMS (%)</label><input id="f-icms" type="number" step="0.01" placeholder="12"></div>
+              <div class="fg"><label>PIS (%)</label><input id="f-pis" type="number" step="0.01" placeholder="0.65"></div>
+              <div class="fg"><label>COFINS (%)</label><input id="f-cofins" type="number" step="0.01" placeholder="3"></div>
+            </div>
+            <button class="btn btn-sm" onclick="saveFiscal()">Salvar Fiscal</button>
+          </div>
+          <div class="sec">
+            <div class="sec-title">Logistica</div>
+            <div class="form-grid">
+              <div class="fg"><label>Peso Liq. (kg)</label><input id="l-peso-liq" type="number" step="0.01" placeholder="0.00"></div>
+              <div class="fg"><label>Peso Bruto (kg)</label><input id="l-peso-bruto" type="number" step="0.01" placeholder="0.00"></div>
+              <div class="fg"><label>Altura (cm)</label><input id="l-altura" type="number" step="0.1" placeholder="0"></div>
+              <div class="fg"><label>Largura (cm)</label><input id="l-largura" type="number" step="0.1" placeholder="0"></div>
+              <div class="fg"><label>Comprimento (cm)</label><input id="l-comp" type="number" step="0.1" placeholder="0"></div>
+              <div class="fg"><label>Volume (m3)</label><input id="l-vol" type="number" step="0.0001" placeholder="0.0000"></div>
+            </div>
+            <button class="btn btn-sm" onclick="saveLogistica()">Salvar Logistica</button>
+          </div>
+        </div>
+        <div class="sec mt">
+          <div class="sec-title">Codigos Cambiados</div>
+          <div class="flex mb">
+            <button class="btn btn-success btn-sm" onclick="openModalNovoCodigo()">+ Adicionar Codigo</button>
+          </div>
+          <div class="tbl-wrap">
+            <table id="tbl-codigos">
+              <thead><tr><th>Tipo</th><th>Codigo</th><th>Fabricante</th><th>Status</th><th>Substituicao</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PDV -->
+    <div class="page" id="page-pdv">
+      <div class="sec">
+        <div class="sec-title">Ponto de Venda — Consulta Rapida</div>
+        <div class="flex mb">
+          <input type="text" id="pdv-search" placeholder="Buscar produto por ref ou descricao..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.9rem;outline:none">
+          <button class="btn" onclick="pdvSearch()">Buscar</button>
+        </div>
+      </div>
+      <div id="pdv-results"></div>
+    </div>
+
+    <!-- IA ANALYZER -->
+    <div class="page" id="page-ia-analyzer">
+      <div class="sec">
+        <div class="sec-title">IA + NTC Analyzer 4.0 — Analise Completa de Texto</div>
+        <textarea class="ia-textarea" id="ia-input" placeholder="Cole aqui a descricao do produto. Exemplo: KIT DE EMBREAGEM 200MM (PLATO/DISCO/ROLAMENTO) - 6203236000 - LUK"></textarea>
+        <div class="flex mt">
+          <button class="btn" id="ia-btn" onclick="analisarNTC()">Analisar NTC 4.0</button>
+          <div class="text-xs ml-auto" id="ia-status"></div>
+        </div>
+      </div>
+      <div id="ia-results"></div>
+    </div>
+
+    <!-- RELATORIOS -->
+    <div class="page" id="page-relatorios">
+      <div class="kpi-grid" id="rel-kpi"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="sec">
+          <div class="sec-title">Por Status NTC</div>
+          <div id="rel-ntc"></div>
+        </div>
+        <div class="sec">
+          <div class="sec-title">Por Status do Produto</div>
+          <div id="rel-status"></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Log de IA Recente</div>
+        <div class="tbl-wrap">
+          <table id="tbl-logs">
+            <thead><tr><th>Acao</th><th>Score</th><th>Resultado</th><th>Data</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="page" id="page-config">
+      <div class="sec">
+        <div class="sec-title">Configuracoes do Sistema</div>
+        <div class="form-grid">
+          <div class="fg"><label>Versao da Plataforma</label><input value="Genesis Indexa 360 IA v5.0" readonly></div>
+          <div class="fg"><label>Motor NTC</label><input value="MIDWAY NTC 4.0" readonly></div>
+          <div class="fg"><label>Empresa</label><input value="MOBIS Pecas Automotivas" readonly></div>
+          <div class="fg"><label>Plano</label><input value="Enterprise" readonly></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Thresholds NTC</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Status</th><th>Range</th><th>Cor</th></tr></thead>
+            <tbody>
+              <tr><td><span class="badge badge-green">APROVADO</span></td><td>0.95 – 1.00</td><td>Verde</td></tr>
+              <tr><td><span class="badge badge-yellow">PENDENTE</span></td><td>0.60 – 0.94</td><td>Amarelo</td></tr>
+              <tr><td><span class="badge badge-red">REPROVADO</span></td><td>0.00 – 0.59</td><td>Vermelho</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Pesos dos Modulos NTC</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Modulo</th><th>Label</th><th>Peso</th></tr></thead>
+            <tbody id="tbl-pesos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- MODAL NOVO PRODUTO -->
+<div class="modal-overlay" id="modal-produto">
   <div class="modal">
-    <button class="modal-close" onclick="fecharModal()">✕</button>
-    <h3>Editar Produto</h3>
-    <div id="modal-al"></div>
-    <div class="fg"><label>Descricao</label><input id="m-desc" type="text"></div>
-    <div class="row2">
-      <div class="fg"><label>Marca</label><input id="m-marca" type="text"></div>
-      <div class="fg"><label>Categoria</label>
-        <select id="m-cat">
-          <option>Freios</option><option>Filtros</option><option>Motor</option>
-          <option>Suspensao</option><option>Ignicao</option><option>Eletrica</option>
-          <option>Transmissao</option><option>Outros</option>
-        </select>
+    <div class="modal-title">Novo Produto <span class="modal-close" onclick="closeModal('modal-produto')">&#x2715;</span></div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'tab-prod-basico')">Basico</div>
+      <div class="tab" onclick="switchTab(this,'tab-prod-dna')">DNA</div>
+      <div class="tab" onclick="switchTab(this,'tab-prod-fiscal')">Fiscal</div>
+    </div>
+    <div id="tab-prod-basico">
+      <div class="form-grid">
+        <div class="fg"><label>Referencia *</label><input id="np-ref" placeholder="ex: LUK-6203236"></div>
+        <div class="fg" style="grid-column:span 2"><label>Descricao *</label><input id="np-desc" placeholder="Descricao completa do produto"></div>
       </div>
     </div>
-    <div class="row2">
-      <div class="fg"><label>Preco (R$)</label><input id="m-preco" type="number" step="0.01"></div>
-      <div class="fg"><label>Estoque</label><input id="m-est" type="number"></div>
+    <div id="tab-prod-dna" style="display:none">
+      <div class="form-grid">
+        <div class="fg"><label>Fabricante</label><input id="np-fab" placeholder="ex: LUK Automotive"></div>
+        <div class="fg"><label>Marca</label><input id="np-marca" placeholder="ex: LUK"></div>
+        <div class="fg"><label>Grupo Industrial</label><input id="np-grupo" placeholder="ex: Schaeffler"></div>
+        <div class="fg"><label>Origem Pais</label><input id="np-origem" placeholder="ex: Alemanha"></div>
+        <div class="fg"><label>Codigo DNA</label><input id="np-codigo" placeholder="ex: 6203236000"></div>
+        <div class="fg"><label>Linha</label><input id="np-linha" placeholder="ex: RepSet Pro"></div>
+        <div class="fg"><label>Familia</label><input id="np-familia" placeholder="ex: Embreagem"></div>
+      </div>
     </div>
-    <div class="fg"><label>Aplicacao</label><input id="m-aplic" type="text"></div>
-    <div class="fg"><label>Status</label>
-      <select id="m-status"><option>Ativo</option><option>Inativo</option><option>Descontinuado</option></select>
+    <div id="tab-prod-fiscal" style="display:none">
+      <div class="form-grid">
+        <div class="fg"><label>NCM</label><input id="np-ncm" placeholder="0000.00.00"></div>
+        <div class="fg"><label>CEST</label><input id="np-cest"></div>
+        <div class="fg"><label>CFOP</label><input id="np-cfop" placeholder="5102"></div>
+        <div class="fg"><label>ICMS (%)</label><input id="np-icms" type="number" placeholder="12"></div>
+      </div>
     </div>
-    <button class="btn btn-full" onclick="salvarEdicao()">Salvar Alteracoes</button>
+    <div class="flex mt">
+      <button class="btn" onclick="salvarNovoProduto()">Salvar Produto</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-produto')">Cancelar</button>
+      <div id="np-status" class="text-xs ml-auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA APLICACAO -->
+<div class="modal-overlay" id="modal-aplicacao">
+  <div class="modal">
+    <div class="modal-title">Nova Aplicacao Motor <span class="modal-close" onclick="closeModal('modal-aplicacao')">&#x2715;</span></div>
+    <div class="form-grid">
+      <div class="fg"><label>Montadora</label><input id="a-montadora" placeholder="ex: Volkswagen"></div>
+      <div class="fg"><label>Modelo</label><input id="a-modelo" placeholder="ex: Golf"></div>
+      <div class="fg"><label>Versao</label><input id="a-versao" placeholder="ex: 1.6 MSI"></div>
+      <div class="fg"><label>Motor</label><input id="a-motor" placeholder="ex: 1.6"></div>
+      <div class="fg"><label>Codigo Motor</label><input id="a-cod-motor" placeholder="ex: EA211"></div>
+      <div class="fg"><label>Combustivel</label>
+        <select id="a-comb"><option value="Flex">Flex</option><option value="Gasolina">Gasolina</option><option value="Diesel">Diesel</option><option value="Eletrico">Eletrico</option></select>
+      </div>
+      <div class="fg"><label>Cilindrada</label><input id="a-cil" placeholder="ex: 1598cc"></div>
+      <div class="fg"><label>Potencia</label><input id="a-pot" placeholder="ex: 110cv"></div>
+      <div class="fg"><label>Ano Inicio</label><input id="a-ano-ini" type="number" placeholder="2018"></div>
+      <div class="fg"><label>Ano Fim</label><input id="a-ano-fim" type="number" placeholder="2023"></div>
+    </div>
+    <div class="flex mt">
+      <button class="btn" onclick="salvarAplicacao()">Salvar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-aplicacao')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA IMAGEM -->
+<div class="modal-overlay" id="modal-imagem">
+  <div class="modal">
+    <div class="modal-title">Adicionar Imagem <span class="modal-close" onclick="closeModal('modal-imagem')">&#x2715;</span></div>
+    <div class="fg"><label>Tipo</label>
+      <select id="img-tipo"><option value="Principal">Principal</option><option value="Lateral">Lateral</option><option value="Tecnica">Tecnica</option><option value="Detalhe">Detalhe</option><option value="Embalagem">Embalagem</option><option value="Aplicada">Aplicada</option></select>
+    </div>
+    <div class="fg"><label>URL da Imagem</label><input id="img-url" placeholder="https://..."></div>
+    <div class="fg"><label>Resolucao</label><input id="img-res" placeholder="ex: 800x600"></div>
+    <div class="flex mt">
+      <button class="btn" onclick="salvarImagem()">Salvar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-imagem')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO CODIGO -->
+<div class="modal-overlay" id="modal-codigo">
+  <div class="modal">
+    <div class="modal-title">Adicionar Codigo Cambiado <span class="modal-close" onclick="closeModal('modal-codigo')">&#x2715;</span></div>
+    <div class="form-grid">
+      <div class="fg"><label>Tipo</label>
+        <select id="c-tipo"><option value="OEM">OEM</option><option value="OEM_SUBSTITUIDO">OEM Substituido</option><option value="AFTERMARKET">Aftermarket</option><option value="EAN">EAN</option><option value="GTIN">GTIN</option><option value="SKU">SKU</option></select>
+      </div>
+      <div class="fg"><label>Codigo</label><input id="c-codigo" placeholder="Codigo"></div>
+      <div class="fg"><label>Fabricante</label><input id="c-fab" placeholder="Fabricante"></div>
+      <div class="fg"><label>Data Substituicao</label><input id="c-data" type="date"></div>
+    </div>
+    <div class="flex mt">
+      <button class="btn" onclick="salvarCodigo()">Salvar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-codigo')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODUTO DETALHES -->
+<div class="modal-overlay" id="modal-detalhe">
+  <div class="modal" style="max-width:780px">
+    <div class="modal-title" id="modal-detalhe-title">Produto <span class="modal-close" onclick="closeModal('modal-detalhe')">&#x2715;</span></div>
+    <div id="modal-detalhe-content"></div>
   </div>
 </div>
 
 <script>
-// ============================================================
-// ESTADO
-// ============================================================
-let usuario = null;
-let editId = null;
-let iaSugestao = null;
+// ======================================================
+// STATE
+// ======================================================
+let currentPage = 'dashboard';
+let prodPage = 1;
+let currentAplicacaoProdId = null;
+let currentFiscalProdId = null;
+let currentImagemProdId = null;
+let allProdutos = [];
 
-// ============================================================
-// AUTH
-// ============================================================
-async function fazerLogin() {
-  const email = document.getElementById('lemail').value.trim();
-  const senha = document.getElementById('lsenha').value.trim();
-  const al = document.getElementById('login-al');
-  al.innerHTML = '';
-  try {
-    const r = await fetch('/api/login', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email,senha})
-    });
-    const d = await r.json();
-    if (!d.ok) { al.innerHTML=`<div class="al al-err">${d.erro}</div>`; return; }
-    usuario = d.usuario;
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app-screen').classList.remove('hidden');
-    document.getElementById('user-info').textContent = `👤 ${usuario.nome} (${usuario.role})`;
-    inicializar();
-  } catch(e) {
-    al.innerHTML = '<div class="al al-err">Erro de conexao</div>';
-  }
-}
-
-function sair() {
-  usuario = null;
-  document.getElementById('app-screen').classList.add('hidden');
-  document.getElementById('login-screen').classList.remove('hidden');
-}
-
-// ============================================================
-// NAVEGACAO
-// ============================================================
-function pg(id, btn) {
-  document.querySelectorAll('.pg').forEach(x => x.classList.remove('on'));
-  document.querySelectorAll('.nb').forEach(x => x.classList.remove('on'));
-  document.getElementById('pg-'+id).classList.add('on');
-  if (btn) btn.classList.add('on');
-  if (id === 'prod') carregarProdutos();
-  if (id === 'rel') carregarRelatorio();
-  if (id === 'ia') carregarLogsIA();
-}
-
-// ============================================================
-// HEALTH CHECK
-// ============================================================
-async function check() {
-  try {
-    const r = await fetch('/api/health');
-    const d = await r.json();
-    document.getElementById('st').textContent = 'Online — ' + d.sistema;
-    document.getElementById('si').textContent = `Uptime: ${d.uptime}s | ${d.total_produtos} produtos`;
-    document.getElementById('dash-total').textContent = d.total_produtos;
-  } catch(e) {
-    document.getElementById('st').textContent = 'Reconectando...';
-  }
-}
-
-// ============================================================
-// CATALOGO
-// ============================================================
-async function carregarProdutos() {
-  const q = document.getElementById('busca').value;
-  const cat = document.getElementById('filtro-cat').value;
-  let url = '/api/produtos?limit=100';
-  if (q) url += '&q=' + encodeURIComponent(q);
-  if (cat) url += '&categoria=' + encodeURIComponent(cat);
-  try {
-    const r = await fetch(url);
-    const d = await r.json();
-    renderTabela(d.produtos);
-  } catch(e) {}
-}
-
-function renderTabela(produtos) {
-  const tb = document.getElementById('tb');
-  const empty = document.getElementById('prod-empty');
-  // limpar linhas antigas
-  while (tb.rows.length > 1) tb.deleteRow(1);
-  if (!produtos || !produtos.length) { empty.style.display='block'; return; }
-  empty.style.display = 'none';
-  produtos.forEach(p => {
-    const tr = tb.insertRow();
-    const est = parseInt(p.estoque) || 0;
-    const estTag = est === 0 ? `<span class="tag tag-warn">0</span>` : `<span class="tag tag-ok">${est}</span>`;
-    const img = p.imagem ? `<img src="${p.imagem}" class="img-prev">` : '';
-    tr.innerHTML = `
-      <td><span class="tag">${p.ref}</span></td>
-      <td>${img} ${p.descricao}</td>
-      <td>${p.marca||'-'}</td>
-      <td>${p.categoria||'-'}</td>
-      <td>R$ ${parseFloat(p.preco||0).toFixed(2)}</td>
-      <td>${estTag}</td>
-      <td><span class="tag ${p.status==='Ativo'?'tag-ok':''}">${p.status||'Ativo'}</span></td>
-      <td>
-        <button class="btn btn-sm" onclick="abrirEditar(${p.id})">✏️</button>
-        <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="excluir(${p.id},'${p.ref}')">🗑️</button>
-      </td>`;
-  });
-}
-
-function buscarProdutos() { carregarProdutos(); }
-
-// ============================================================
-// CADASTRO
-// ============================================================
-function limparForm() {
-  document.getElementById('edit-id').value = '';
-  document.getElementById('cad-titulo').textContent = 'Novo Cadastro Universal';
-  ['iref','idesc','imarca','iaplic','iobs'].forEach(x => document.getElementById(x).value = '');
-  ['ipreco','iest'].forEach(x => document.getElementById(x).value = '');
-  document.getElementById('icat').value = '';
-  document.getElementById('iimg').value = '';
-  document.getElementById('al').innerHTML = '';
-}
-
-async function salvar() {
-  const ref = document.getElementById('iref').value.trim();
-  const desc = document.getElementById('idesc').value.trim();
-  if (!ref || !desc) {
-    document.getElementById('al').innerHTML = '<div class="al al-err">⚠️ Referencia e Descricao sao obrigatorios!</div>';
-    return;
-  }
-  const fd = new FormData();
-  fd.append('ref', ref);
-  fd.append('descricao', desc);
-  fd.append('marca', document.getElementById('imarca').value);
-  fd.append('categoria', document.getElementById('icat').value);
-  fd.append('aplicacao', document.getElementById('iaplic').value);
-  fd.append('preco', document.getElementById('ipreco').value || 0);
-  fd.append('estoque', document.getElementById('iest').value || 0);
-  fd.append('observacoes', document.getElementById('iobs').value);
-  const img = document.getElementById('iimg').files[0];
-  if (img) fd.append('imagem', img);
-
-  try {
-    const r = await fetch('/api/produtos', { method:'POST', body: fd });
-    const d = await r.json();
-    if (!d.ok) {
-      document.getElementById('al').innerHTML = `<div class="al al-err">⚠️ ${d.erro}</div>`;
-      return;
-    }
-    document.getElementById('al').innerHTML = '<div class="al al-ok">✅ Produto cadastrado com sucesso!</div>';
-    limparForm();
-    check();
-    setTimeout(() => document.getElementById('al').innerHTML = '', 3000);
-  } catch(e) {
-    document.getElementById('al').innerHTML = '<div class="al al-err">Erro ao salvar</div>';
-  }
-}
-
-// ============================================================
-// EDITAR
-// ============================================================
-async function abrirEditar(id) {
-  editId = id;
-  try {
-    const r = await fetch('/api/produtos/'+id);
-    const d = await r.json();
-    if (!d.ok) return;
-    const p = d.produto;
-    document.getElementById('m-desc').value = p.descricao || '';
-    document.getElementById('m-marca').value = p.marca || '';
-    document.getElementById('m-cat').value = p.categoria || 'Outros';
-    document.getElementById('m-preco').value = p.preco || 0;
-    document.getElementById('m-est').value = p.estoque || 0;
-    document.getElementById('m-aplic').value = p.aplicacao || '';
-    document.getElementById('m-status').value = p.status || 'Ativo';
-    document.getElementById('modal-al').innerHTML = '';
-    document.getElementById('modal-edit').classList.add('show');
-  } catch(e) {}
-}
-
-function fecharModal() {
-  document.getElementById('modal-edit').classList.remove('show');
-  editId = null;
-}
-
-async function salvarEdicao() {
-  if (!editId) return;
-  const fd = new FormData();
-  fd.append('descricao', document.getElementById('m-desc').value);
-  fd.append('marca', document.getElementById('m-marca').value);
-  fd.append('categoria', document.getElementById('m-cat').value);
-  fd.append('preco', document.getElementById('m-preco').value);
-  fd.append('estoque', document.getElementById('m-est').value);
-  fd.append('aplicacao', document.getElementById('m-aplic').value);
-  fd.append('status', document.getElementById('m-status').value);
-  try {
-    const r = await fetch('/api/produtos/'+editId, { method:'PUT', body: fd });
-    const d = await r.json();
-    if (d.ok) {
-      fecharModal();
-      carregarProdutos();
-    } else {
-      document.getElementById('modal-al').innerHTML = `<div class="al al-err">${d.erro}</div>`;
-    }
-  } catch(e) {}
-}
-
-// ============================================================
-// EXCLUIR
-// ============================================================
-async function excluir(id, ref) {
-  if (!confirm(`Excluir produto ${ref}?`)) return;
-  try {
-    const r = await fetch('/api/produtos/'+id, {method:'DELETE'});
-    const d = await r.json();
-    if (d.ok) { carregarProdutos(); check(); }
-  } catch(e) {}
-}
-
-// ============================================================
-// IA DE INDEXACAO
-// ============================================================
-async function indexarIA() {
-  const texto = document.getElementById('ia-texto').value.trim();
-  if (!texto) return;
-  try {
-    const r = await fetch('/api/ia/indexar', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({texto})
-    });
-    const d = await r.json();
-    if (!d.ok) return;
-    iaSugestao = d.sugestao;
-    document.getElementById('ia-ref').textContent = d.sugestao.ref;
-    document.getElementById('ia-cat').textContent = d.sugestao.categoria;
-    document.getElementById('ia-marca').textContent = d.sugestao.marca;
-    document.getElementById('ia-conf').textContent = d.sugestao.confianca + '%';
-    document.getElementById('ia-conf-bar').style.width = d.sugestao.confianca + '%';
-    document.getElementById('ia-result').style.display = 'block';
-    renderLogsIA(d.logs);
-  } catch(e) {}
-}
-
-function usarSugestaoIA() {
-  if (!iaSugestao) return;
-  document.getElementById('iref').value = iaSugestao.ref;
-  document.getElementById('icat').value = iaSugestao.categoria;
-  document.getElementById('imarca').value = iaSugestao.marca;
-  const texto = document.getElementById('ia-texto').value.trim();
-  if (texto) document.getElementById('idesc').value = texto.substring(0, 100);
-  pg('cad', document.querySelectorAll('.nb')[2]);
-}
-
-async function carregarLogsIA() {
-  try {
-    const r = await fetch('/api/ia/logs');
-    const d = await r.json();
-    renderLogsIA(d.logs);
-  } catch(e) {}
-}
-
-function renderLogsIA(logs) {
-  const el = document.getElementById('ia-logs');
-  if (!logs || !logs.length) { el.innerHTML = '<p style="color:#444">Nenhuma indexacao ainda.</p>'; return; }
-  el.innerHTML = logs.map(l => `
-    <div class="log-item">
-      <span class="log-time">${l.criado_em}</span>
-      <span class="log-ref">${l.produto_ref||'-'}</span>
-      <span class="log-acao">${l.acao}</span>
-      <span class="log-result">${l.resultado} (${Math.round((l.confianca||0)*100)}%)</span>
-    </div>`).join('');
-}
-
-// ============================================================
-// RELATORIOS
-// ============================================================
-async function carregarRelatorio() {
-  try {
-    const r = await fetch('/api/relatorios/resumo');
-    const d = await r.json();
-    if (!d.ok) return;
-
-    const s = d.resumo;
-    document.getElementById('rel-stats').innerHTML = `
-      <div class="stat-box"><div class="stat-num">${s.total}</div><div class="stat-lbl">Total Produtos</div></div>
-      <div class="stat-box"><div class="stat-num">${s.ativos}</div><div class="stat-lbl">Ativos</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:#ff2200">${s.semEstoque}</div><div class="stat-lbl">Sem Estoque</div></div>
-      <div class="stat-box"><div class="stat-num" style="font-size:1rem">R$ ${parseFloat(s.valorTotal).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="stat-lbl">Valor em Estoque</div></div>`;
-
-    // Stats do dashboard
-    document.getElementById('d-total').textContent = s.total;
-    document.getElementById('d-ativos').textContent = s.ativos;
-    document.getElementById('d-semest').textContent = s.semEstoque;
-    document.getElementById('d-valor').textContent = 'R$ ' + parseFloat(s.valorTotal).toLocaleString('pt-BR',{minimumFractionDigits:2});
-
-    document.getElementById('rel-cat-list').innerHTML = d.porCategoria.map(c =>
-      `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #222;color:#aaa">
-        <span>${c.categoria||'Sem categoria'}</span>
-        <span class="tag">${c.total}</span>
-       </div>`).join('');
-
-    document.getElementById('rel-marca-list').innerHTML = d.porMarca.map(m =>
-      `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #222;color:#aaa">
-        <span>${m.marca||'Sem marca'}</span>
-        <span class="tag">${m.total}</span>
-       </div>`).join('');
-
-    document.getElementById('rel-semest').innerHTML = d.semEstoqueList.length
-      ? `<table><tr><th>Ref</th><th>Descricao</th><th>Categoria</th></tr>` +
-        d.semEstoqueList.map(p =>
-          `<tr><td><span class="tag">${p.ref}</span></td><td>${p.descricao}</td><td>${p.categoria||'-'}</td></tr>`
-        ).join('') + '</table>'
-      : '<p style="color:#444">Todos os produtos tem estoque.</p>';
-
-    document.getElementById('rel-topest').innerHTML =
-      `<table><tr><th>Ref</th><th>Descricao</th><th>Estoque</th></tr>` +
-      d.maisEstoque.map(p =>
-        `<tr><td><span class="tag">${p.ref}</span></td><td>${p.descricao}</td><td><span class="tag tag-ok">${p.estoque}</span></td></tr>`
-      ).join('') + '</table>';
-
-  } catch(e) {}
-}
-
-// ============================================================
-// NTC 4.0
-// ============================================================
-const NTC_META = {
-  DNA:  { label: 'DNA do Produto',            peso: 0.25 },
-  TF:   { label: 'Ficha Tecnica',             peso: 0.15 },
-  FM:   { label: 'Fabricante / OEM',          peso: 0.10 },
-  CO:   { label: 'Codigo Identificador',      peso: 0.10 },
-  AV:   { label: 'Aplicacoes e Veiculos',     peso: 0.10 },
-  MC:   { label: 'Cadeia de Suprimentos',     peso: 0.05 },
-  EC:   { label: 'Componentes de Eng.',       peso: 0.05 },
-  BTA:  { label: 'PDV / Bling / Label',       peso: 0.05 },
-  CC:   { label: 'Codigos Comerciais',        peso: 0.05 },
-  LG:   { label: 'Logistica (Peso/Dim)',      peso: 0.05 },
-  FI:   { label: 'Fiscal (NCM/EAN)',          peso: 0.03 },
-  FP:   { label: 'Produto Final',             peso: 0.02 },
+const NTC_WEIGHTS_LABELS = {
+    DNA: {label:'DNA do Produto', w:0.25},
+    TF: {label:'Familia Tecnica', w:0.15},
+    FM: {label:'Mapeamento Fiscal', w:0.10},
+    CO: {label:'Origem dos Codigos', w:0.10},
+    AV: {label:'Aplicacoes Veiculares', w:0.10},
+    MC: {label:'Classificacao de Mercado', w:0.05},
+    EC: {label:'Caracteristicas de Engenharia', w:0.05},
+    BTA: {label:'Avaliacao de Confianca da Marca', w:0.05},
+    CC: {label:'Codigos Cambiados', w:0.05},
+    LG: {label:'Logistica', w:0.05},
+    FI: {label:'Imagens Fiscais', w:0.03},
+    FP: {label:'Periodo Fiscal', w:0.02}
 };
 
-async function analisarNTC() {
-  const texto = document.getElementById('ntc-texto').value.trim();
-  if (!texto) return;
-  const btn = document.querySelector('#pg-ntc .btn');
-  btn.textContent = 'Analisando...';
-  btn.disabled = true;
-  try {
-    const r = await fetch('/api/ia/ntc', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({texto})
+// ======================================================
+// NAV
+// ======================================================
+document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+        const page = el.dataset.page;
+        currentPage = page;
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + page).classList.add('active');
+        document.getElementById('topbar-title').textContent = el.textContent.trim();
+        onPageActivate(page);
     });
-    const d = await r.json();
-    if (!d.ok) { alert('Erro: ' + d.erro); return; }
-    renderNTC(d.ntc);
-    document.getElementById('ntc-result').style.display = 'block';
-    document.getElementById('ntc-result').scrollIntoView({behavior:'smooth'});
-  } catch(e) {
-    alert('Erro de conexao');
-  } finally {
-    btn.textContent = '🔬 Analisar NTC 4.0';
-    btn.disabled = false;
-  }
+});
+
+function onPageActivate(page) {
+    if (page === 'dashboard') loadDashboard();
+    else if (page === 'produtos') loadProdutos();
+    else if (page === 'ntc-inspector') populateProductSelects();
+    else if (page === 'aplicacoes') populateProductSelects();
+    else if (page === 'imagens') populateProductSelects();
+    else if (page === 'fiscal') populateProductSelects();
+    else if (page === 'relatorios') loadRelatorios();
+    else if (page === 'config') loadConfig();
 }
 
-function renderNTC(ntc) {
-  // Banner score
-  const score = ntc.ntc;
-  const scoreEl = document.getElementById('ntc-score-num');
-  const statusEl = document.getElementById('ntc-status-badge');
-  const bannerEl = document.getElementById('ntc-banner');
-  scoreEl.textContent = (score * 100).toFixed(0) + '%';
-  if (score >= 0.90) {
-    scoreEl.style.color = '#00ff88';
-    statusEl.style.background = '#00ff8820';
-    statusEl.style.color = '#00ff88';
-    statusEl.style.border = '1px solid #00ff8840';
-    bannerEl.style.borderColor = '#00ff8840';
-  } else if (score >= 0.75) {
-    scoreEl.style.color = '#ffaa00';
-    statusEl.style.background = '#ffaa0020';
-    statusEl.style.color = '#ffaa00';
-    statusEl.style.border = '1px solid #ffaa0040';
-    bannerEl.style.borderColor = '#ffaa0040';
-  } else {
-    scoreEl.style.color = '#ff4500';
-    statusEl.style.background = '#ff450020';
-    statusEl.style.color = '#ff4500';
-    statusEl.style.border = '1px solid #ff450040';
-    bannerEl.style.borderColor = '#ff450040';
-  }
-  statusEl.textContent = ntc.status;
+// ======================================================
+// API HELPER
+// ======================================================
+async function api(path, opts = {}) {
+    const r = await fetch('/api' + path, {
+        headers: {'Content-Type': 'application/json'},
+        ...opts
+    });
+    return r.json();
+}
 
-  // DNA card
-  const dna = ntc.dna;
-  const statusBadge = dna.status === 'Certificado'
-    ? '<span class="tag tag-ok">Certificado</span>'
-    : dna.status === 'Identificado'
-      ? '<span class="tag tag-warn">Identificado</span>'
-      : '<span class="tag">Nao identificado</span>';
-  document.getElementById('ntc-dna-content').innerHTML = `
-    <div class="ia-row"><span class="ia-label">Fabricante</span><span class="ia-val">${dna.fabricante || '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Grupo</span><span class="ia-val">${dna.grupo || '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Origem</span><span class="ia-val">${dna.origem || '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Codigo</span><span class="ia-val">${dna.codigo || '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Status</span>${statusBadge}</div>`;
+// ======================================================
+// DASHBOARD
+// ======================================================
+async function loadDashboard() {
+    const d = await api('/dashboard');
+    const ntcPct = d.ntc_medio * 100;
+    document.getElementById('kpi-grid').innerHTML = [
+        {label:'Total Produtos', val:d.total, sub:'no catalogo', cls:'kpi-orange'},
+        {label:'NTC Medio', val:(d.ntc_medio*100).toFixed(1)+'%', sub:'score geral', cls: d.ntc_medio>=0.95?'kpi-green':d.ntc_medio>=0.6?'kpi-yellow':'kpi-red'},
+        {label:'APROVADOS', val:d.aprovados, sub:'NTC >= 0.95', cls:'kpi-green'},
+        {label:'PENDENTES', val:d.pendentes, sub:'NTC 0.60-0.94', cls:'kpi-yellow'},
+        {label:'REPROVADOS', val:d.reprovados, sub:'NTC < 0.60', cls:'kpi-red'},
+        {label:'CONGELADOS', val:d.congelados, sub:'status congelado', cls:'kpi-blue'},
+    ].map(k => `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 
-  // Engenharia card
-  const eng = ntc.engenharia;
-  const compTags = eng.componentes.length
-    ? eng.componentes.map(c => `<span class="tag tag-ok" style="margin:2px">${c}</span>`).join(' ')
-    : '<em style="color:#555">nenhum detectado</em>';
-  document.getElementById('ntc-eng-content').innerHTML = `
-    <div class="ia-row"><span class="ia-label">Componentes</span><span>${compTags}</span></div>
-    <div class="ia-row"><span class="ia-label">Diametro</span><span class="ia-val">${eng.diametro || '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Estrias</span><span class="ia-val">${eng.estrias !== null ? eng.estrias : '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Sistema</span><span class="ia-val">${eng.sistema || '<em style="color:#555">null</em>'}</span></div>
-    <div class="ia-row"><span class="ia-label">Aplicacoes</span><span class="ia-val">${ntc.aplicacoes.length ? ntc.aplicacoes.join(', ') : '<em style="color:#555">nenhuma</em>'}</span></div>`;
+    // NTC Distribution bars
+    const total = d.total || 1;
+    document.getElementById('ntc-distribution').innerHTML = [
+        {label:'APROVADO', count:d.aprovados, cls:'var(--success)'},
+        {label:'PENDENTE', count:d.pendentes, cls:'var(--warning)'},
+        {label:'REPROVADO', count:d.reprovados, cls:'var(--danger)'},
+    ].map(b => {
+        const pct = ((b.count/total)*100).toFixed(1);
+        return `<div style="margin-bottom:10px">
+            <div class="flex" style="margin-bottom:4px">
+                <span style="font-size:.75rem;color:var(--text2)">${b.label}</span>
+                <span style="margin-left:auto;font-size:.75rem;color:var(--text3)">${b.count} (${pct}%)</span>
+            </div>
+            <div class="ntc-bar-wrap"><div class="ntc-bar" style="width:${pct}%;background:${b.cls}"></div></div>
+        </div>`;
+    }).join('');
 
-  // PDV card
-  const pdv = ntc.pdv;
-  document.getElementById('ntc-pdv-content').innerHTML = `
-    <div style="margin-bottom:14px">
-      <div style="color:#aaa;font-size:.78rem;margin-bottom:4px">CABECALHO BLING</div>
-      <div style="background:#0d0d0d;border:1px solid #333;border-radius:6px;padding:10px;font-family:monospace;font-size:.85rem;color:#00ff88">${pdv.cabecalho_bling}</div>
-    </div>
-    <div style="margin-bottom:14px">
-      <div style="color:#aaa;font-size:.78rem;margin-bottom:4px">FRENTE DE CAIXA / PDV</div>
-      <div style="background:#0d0d0d;border:1px solid #333;border-radius:6px;padding:10px;font-family:monospace;font-size:.85rem;color:#fff;white-space:pre-line">${pdv.frente_caixa}</div>
-    </div>
-    <div>
-      <div style="color:#aaa;font-size:.78rem;margin-bottom:6px">TAGS SEO</div>
-      <div>${pdv.tags_seo.map(t => `<span class="tag" style="margin:2px">${t}</span>`).join(' ')}</div>
-    </div>`;
+    // Tabela recentes
+    const tbody = document.querySelector('#tbl-recentes tbody');
+    tbody.innerHTML = d.recentes.map(p => `<tr>
+        <td class="mono">${p.ref}</td>
+        <td>${p.descricao}</td>
+        <td>${p.marca || '-'}</td>
+        <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td class="text-xs">${(p.atualizado_em||'').substring(0,16)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto</td></tr>';
+}
 
-  // RAST-HASH
-  document.getElementById('ntc-rast').textContent = ntc.rast_hash;
+// ======================================================
+// PRODUTOS
+// ======================================================
+let prodDebounce;
+function debounceLoadProdutos() {
+    clearTimeout(prodDebounce);
+    prodDebounce = setTimeout(loadProdutos, 400);
+}
 
-  // Scorecard table
-  const tb = document.getElementById('ntc-score-table');
-  while (tb.rows.length > 1) tb.deleteRow(1);
-  let totalContrib = 0;
-  for (const [mod, meta] of Object.entries(NTC_META)) {
-    const s = ntc.scores[mod] || 0;
-    const contrib = s * meta.peso;
-    totalContrib += contrib;
-    const pct = Math.round(s * 100);
-    const barColor = s >= 0.9 ? '#00ff88' : s >= 0.75 ? '#ffaa00' : '#ff4500';
-    const tr = tb.insertRow();
-    tr.innerHTML = `
-      <td><strong style="color:#ff6500">${mod}</strong></td>
-      <td style="color:#aaa">${meta.label}</td>
-      <td style="color:#777">${(meta.peso * 100).toFixed(0)}%</td>
-      <td style="color:${barColor};font-weight:700">${pct}%</td>
-      <td style="color:#777">${(contrib * 100).toFixed(1)}%</td>
-      <td style="min-width:100px">
-        <div style="height:8px;background:#111;border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .5s"></div>
+async function loadProdutos() {
+    const search = document.getElementById('prod-search').value;
+    const status = document.getElementById('prod-status').value;
+    const ntc = document.getElementById('prod-ntc').value;
+    if (prodPage < 1) prodPage = 1;
+    const d = await api('/produtos?search=' + encodeURIComponent(search) + '&status=' + status + '&ntc_status=' + ntc + '&page=' + prodPage + '&limit=20');
+    allProdutos = d.data;
+    const totalPages = Math.ceil(d.total / 20) || 1;
+    document.getElementById('prod-count').textContent = d.total + ' produto(s) encontrado(s)';
+    document.getElementById('prod-page-info').textContent = 'Pag. ' + prodPage + ' / ' + totalPages;
+    if (prodPage >= totalPages) prodPage = totalPages;
+    const tbody = document.querySelector('#tbl-produtos tbody');
+    tbody.innerHTML = d.data.map(p => `<tr>
+        <td class="mono">${p.ref}</td>
+        <td>${p.descricao}</td>
+        <td>${p.fabricante || '-'}</td>
+        <td>${p.familia || '-'}</td>
+        <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
+        <td>${ntcStatusBadge(p.ntc_status)}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td>
+            <div class="flex">
+                <button class="btn btn-blue btn-xs" onclick="verProduto(${p.id})">Ver</button>
+                ${p.status === 'Congelado'
+                    ? '<button class="btn btn-success btn-xs" onclick="descongelar('+p.id+')">Descongelar</button>'
+                    : '<button class="btn btn-gray btn-xs" onclick="congelar('+p.id+')">Congelar</button>'}
+                <button class="btn btn-danger btn-xs" onclick="deletarProduto(${p.id}, \'${p.ref}\')">Del</button>
+            </div>
+        </td>
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhum produto encontrado</td></tr>';
+}
+
+async function verProduto(id) {
+    const p = await api('/produtos/' + id);
+    document.getElementById('modal-detalhe-title').innerHTML = 'Produto: ' + p.ref + ' <span class="modal-close" onclick="closeModal(\'modal-detalhe\')">&#x2715;</span>';
+    const dna = p.dna || {};
+    const fis = p.fiscal || {};
+    const log = p.logistica || {};
+    document.getElementById('modal-detalhe-content').innerHTML = `
+        <div class="flex mb" style="gap:12px">
+            ${ntcBadge(p.ntc_score, p.ntc_status, true)}
+            ${statusBadge(p.status)}
         </div>
-      </td>`;
-  }
-  // Total row
-  const tfoot = tb.insertRow();
-  tfoot.style.borderTop = '2px solid #333';
-  tfoot.innerHTML = `
-    <td colspan="3" style="color:#fff;font-weight:700;padding-top:12px">TOTAL NTC</td>
-    <td style="color:${score >= 0.9 ? '#00ff88' : score >= 0.75 ? '#ffaa00' : '#ff4500'};font-size:1.1rem;font-weight:900">${(score * 100).toFixed(0)}%</td>
-    <td style="color:#fff;font-weight:700">${(totalContrib * 100).toFixed(1)}%</td>
-    <td></td>`;
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="result-card">
+                <div class="result-card-title">DNA</div>
+                ${row2('Fabricante', dna.fabricante)}
+                ${row2('Grupo', dna.grupo_industrial)}
+                ${row2('Marca', dna.marca)}
+                ${row2('Origem', dna.origem_pais)}
+                ${row2('Codigo DNA', dna.codigo_dna)}
+                ${row2('Linha', dna.linha)}
+                ${row2('Familia', dna.familia)}
+            </div>
+            <div class="result-card">
+                <div class="result-card-title">Fiscal</div>
+                ${row2('NCM', fis.ncm)}
+                ${row2('CEST', fis.cest)}
+                ${row2('CFOP', fis.cfop)}
+                ${row2('Origem', fis.origem)}
+                ${row2('IPI', fis.ipi != null ? fis.ipi + '%' : null)}
+                ${row2('ICMS', fis.icms != null ? fis.icms + '%' : null)}
+            </div>
+            <div class="result-card">
+                <div class="result-card-title">Logistica</div>
+                ${row2('Peso Liq', log.peso_liq ? log.peso_liq + ' kg' : null)}
+                ${row2('Peso Bruto', log.peso_bruto ? log.peso_bruto + ' kg' : null)}
+                ${row2('Altura', log.altura ? log.altura + ' cm' : null)}
+                ${row2('Largura', log.largura ? log.largura + ' cm' : null)}
+                ${row2('Comprimento', log.comprimento ? log.comprimento + ' cm' : null)}
+            </div>
+            <div class="result-card">
+                <div class="result-card-title">Codigos (${p.codigos.length})</div>
+                ${p.codigos.length ? p.codigos.map(c=>`<div class="text-sm" style="margin-bottom:4px"><span class="badge badge-blue">${c.tipo||'?'}</span> <span class="mono">${c.codigo||''}</span></div>`).join('') : '<div class="text-xs">Nenhum codigo cambiado</div>'}
+            </div>
+        </div>
+        <div class="result-card mt">
+            <div class="result-card-title">Aplicacoes Motor (${p.aplicacoes.length})</div>
+            ${p.aplicacoes.length ? `<div class="tbl-wrap"><table><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Ano</th></tr></thead><tbody>${p.aplicacoes.map(a=>`<tr><td>${a.montadora||'-'}</td><td>${a.modelo||'-'}</td><td>${a.motor||'-'}</td><td>${a.ano_ini||'?'} - ${a.ano_fim||'?'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="text-xs">Nenhuma aplicacao</div>'}
+        </div>
+        ${p.rast ? `<div class="text-xs mono" style="margin-top:8px;color:var(--text3)">RAST: ${p.rast.hash} | ${p.rast.gerado_em}</div>` : ''}
+    `;
+    openModal('modal-detalhe');
+}
 
-  // Faltando
-  const faltLi = document.getElementById('ntc-faltando');
-  if (!ntc.faltando.length) {
-    faltLi.innerHTML = '<li style="color:#00ff88">Nenhum campo obrigatorio faltando!</li>';
-  } else {
-    faltLi.innerHTML = ntc.faltando.map(f =>
-      `<li style="padding:5px 0;border-bottom:1px solid #2a1a1a;color:#ffaa00">⚠️ ${f}</li>`
+function row2(label, val) {
+    return `<div style="display:flex;gap:8px;margin-bottom:3px;font-size:.75rem"><span style="color:var(--text3);min-width:80px">${label}:</span><span style="color:${val?'var(--text)':'var(--text3)'}">${val != null ? val : '—'}</span></div>`;
+}
+
+async function congelar(id) {
+    if (!confirm('Congelar produto?')) return;
+    await api('/produtos/' + id + '/congelar', {method:'POST'});
+    loadProdutos();
+}
+async function descongelar(id) {
+    await api('/produtos/' + id + '/descongelar', {method:'POST'});
+    loadProdutos();
+}
+async function deletarProduto(id, ref) {
+    if (!confirm('Deletar produto ' + ref + '?')) return;
+    await api('/produtos/' + id, {method:'DELETE'});
+    loadProdutos();
+}
+
+function openModalNovoProduto() {
+    openModal('modal-produto');
+}
+
+async function salvarNovoProduto() {
+    const ref = document.getElementById('np-ref').value.trim();
+    const descricao = document.getElementById('np-desc').value.trim();
+    if (!ref || !descricao) { document.getElementById('np-status').textContent = 'Ref e descricao sao obrigatorios'; return; }
+    document.getElementById('np-status').textContent = 'Salvando...';
+    const payload = {
+        ref, descricao,
+        dna: {
+            fabricante: document.getElementById('np-fab').value||null,
+            marca: document.getElementById('np-marca').value||null,
+            grupo_industrial: document.getElementById('np-grupo').value||null,
+            origem_pais: document.getElementById('np-origem').value||null,
+            codigo_dna: document.getElementById('np-codigo').value||null,
+            linha: document.getElementById('np-linha').value||null,
+            familia: document.getElementById('np-familia').value||null,
+        },
+        fiscal: {
+            ncm: document.getElementById('np-ncm').value||null,
+            cest: document.getElementById('np-cest').value||null,
+            cfop: document.getElementById('np-cfop').value||null,
+            icms: parseFloat(document.getElementById('np-icms').value)||0,
+        }
+    };
+    const r = await api('/produtos', {method:'POST', body:JSON.stringify(payload)});
+    if (r.success) {
+        closeModal('modal-produto');
+        loadProdutos();
+        document.getElementById('np-ref').value = '';
+        document.getElementById('np-desc').value = '';
+    } else {
+        document.getElementById('np-status').textContent = r.error || 'Erro';
+    }
+}
+
+// ======================================================
+// NTC INSPECTOR
+// ======================================================
+async function populateProductSelects() {
+    const d = await api('/produtos?limit=200');
+    const options = d.data.map(p => `<option value="${p.id}">${p.ref} — ${p.descricao.substring(0,50)}</option>`).join('');
+    ['inspector-select','aplic-prod-select','img-prod-select','fiscal-prod-select'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<option value="">Selecione...</option>' + options;
+    });
+}
+
+async function loadInspector() {
+    const id = document.getElementById('inspector-select').value;
+    if (!id) return;
+    const r = await api('/produtos/' + id + '/ntc');
+    renderNTCResult(document.getElementById('inspector-result'), r.ntc, r.produto);
+}
+
+async function recalcNTC() {
+    const id = document.getElementById('inspector-select').value;
+    if (!id) return;
+    const r = await api('/produtos/' + id + '/ntc/recalcular', {method:'POST'});
+    if (r.success) {
+        renderNTCResult(document.getElementById('inspector-result'), r.ntc, null);
+    }
+}
+
+function renderNTCResult(container, ntc, produto) {
+    const scoreColor = ntc.status === 'APROVADO' ? 'var(--success)' : ntc.status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+    const allMissing = Object.values(ntc.modules).flatMap(m => m.missing);
+    container.innerHTML = `
+        <div class="ntc-big">
+            <div class="score" style="color:${scoreColor}">${(ntc.score*100).toFixed(1)}%</div>
+            <div class="status-txt" style="color:${scoreColor}">${ntc.status}</div>
+            <div class="rast">${ntc.rast_hash}</div>
+            ${produto ? '<div style="font-size:.75rem;color:var(--text2);margin-top:6px">'+produto.descricao+'</div>' : ''}
+        </div>
+        ${allMissing.length ? `<div class="sec" style="border-color:var(--danger)20">
+            <div class="sec-title" style="color:var(--danger)">O que falta (${allMissing.length} itens)</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px">
+                ${allMissing.map(m=>`<div class="miss-item"><span style="color:var(--danger)">&#x2716;</span> ${m}</div>`).join('')}
+            </div>
+        </div>` : ''}
+        <div class="module-grid">
+            ${Object.entries(ntc.modules).map(([key, mod]) => {
+                const col = mod.score >= 0.95 ? 'var(--success)' : mod.score >= 0.6 ? 'var(--warning)' : 'var(--danger)';
+                return `<div class="module-card">
+                    <div class="module-header">
+                        <div>
+                            <span class="module-name">${key}</span>
+                            <span style="font-size:.65rem;color:var(--text3);margin-left:6px">${mod.label}</span>
+                        </div>
+                        <div style="text-align:right">
+                            <div class="module-score" style="color:${col}">${(mod.score*100).toFixed(0)}%</div>
+                            <div class="module-contrib">+${(mod.contribuicao*100).toFixed(2)}% (w:${(mod.weight*100).toFixed(0)}%)</div>
+                        </div>
+                    </div>
+                    <div class="ntc-bar-wrap"><div class="ntc-bar" style="width:${mod.score*100}%;background:${col}"></div></div>
+                    <div class="evidence-list">
+                        ${mod.evidence.map(e=>`<div class="ev-item"><span style="color:var(--success)">&#x2714;</span> ${e}</div>`).join('')}
+                        ${mod.missing.map(m=>`<div class="miss-item"><span>&#x2716;</span> ${m}</div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+    `;
+}
+
+// ======================================================
+// APLICACOES
+// ======================================================
+async function loadAplicacoes() {
+    currentAplicacaoProdId = document.getElementById('aplic-prod-select').value;
+    if (!currentAplicacaoProdId) return;
+    const data = await api('/produtos/' + currentAplicacaoProdId + '/aplicacoes');
+    const tbody = document.querySelector('#tbl-aplicacoes tbody');
+    tbody.innerHTML = data.map(a => `<tr>
+        <td>${a.montadora||'-'}</td>
+        <td>${a.modelo||'-'}</td>
+        <td>${a.versao||'-'}</td>
+        <td>${a.motor||'-'} ${a.combustivel||''}</td>
+        <td>${a.combustivel||'-'}</td>
+        <td>${a.ano_ini||'?'} - ${a.ano_fim||'?'}</td>
+        <td><button class="btn btn-danger btn-xs" onclick="deletarAplicacao(${a.id})">Del</button></td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhuma aplicacao</td></tr>';
+}
+
+function openModalNovaAplicacao() {
+    if (!currentAplicacaoProdId) { alert('Selecione um produto primeiro'); return; }
+    openModal('modal-aplicacao');
+}
+
+async function salvarAplicacao() {
+    const r = await api('/produtos/' + currentAplicacaoProdId + '/aplicacoes', {
+        method: 'POST',
+        body: JSON.stringify({
+            montadora: document.getElementById('a-montadora').value||null,
+            modelo: document.getElementById('a-modelo').value||null,
+            versao: document.getElementById('a-versao').value||null,
+            motor: document.getElementById('a-motor').value||null,
+            codigo_motor: document.getElementById('a-cod-motor').value||null,
+            combustivel: document.getElementById('a-comb').value||null,
+            cilindrada: document.getElementById('a-cil').value||null,
+            potencia: document.getElementById('a-pot').value||null,
+            ano_ini: parseInt(document.getElementById('a-ano-ini').value)||null,
+            ano_fim: parseInt(document.getElementById('a-ano-fim').value)||null,
+        })
+    });
+    if (r.success) { closeModal('modal-aplicacao'); loadAplicacoes(); }
+}
+
+async function deletarAplicacao(id) {
+    if (!confirm('Deletar aplicacao?')) return;
+    await api('/aplicacoes/' + id, {method:'DELETE'});
+    loadAplicacoes();
+}
+
+// ======================================================
+// IMAGENS
+// ======================================================
+async function loadImagens() {
+    currentImagemProdId = document.getElementById('img-prod-select').value;
+    if (!currentImagemProdId) return;
+    const data = await api('/produtos/' + currentImagemProdId + '/imagens');
+    const gallery = document.getElementById('img-gallery');
+    gallery.innerHTML = data.map(img => `
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px">${img.tipo||'?'} | ${img.status||'?'}</div>
+            ${img.url.startsWith('/uploads/') || img.url.startsWith('http') ? `<img src="${img.url}" style="width:100%;max-height:100px;object-fit:contain;border-radius:4px;background:#111" onerror="this.style.display='none'">` : ''}
+            <div class="mono" style="font-size:.6rem;color:var(--text3);margin-top:6px;word-break:break-all">${img.url.substring(0,40)}</div>
+            <button class="btn btn-danger btn-xs mt" onclick="deletarImagem(${img.id})">Deletar</button>
+        </div>
+    `).join('') || '<div class="empty">Nenhuma imagem</div>';
+}
+
+function openModalNovaImagem() {
+    if (!currentImagemProdId) { alert('Selecione um produto primeiro'); return; }
+    openModal('modal-imagem');
+}
+
+async function salvarImagem() {
+    const url = document.getElementById('img-url').value.trim();
+    if (!url) { alert('URL obrigatoria'); return; }
+    const r = await api('/produtos/' + currentImagemProdId + '/imagens', {
+        method: 'POST',
+        body: JSON.stringify({ url, tipo: document.getElementById('img-tipo').value, resolucao: document.getElementById('img-res').value||null })
+    });
+    if (r.success) { closeModal('modal-imagem'); loadImagens(); }
+}
+
+async function deletarImagem(id) {
+    if (!confirm('Deletar imagem?')) return;
+    await api('/imagens/' + id, {method:'DELETE'});
+    loadImagens();
+}
+
+// ======================================================
+// FISCAL & LOGISTICA
+// ======================================================
+async function loadFiscal() {
+    currentFiscalProdId = document.getElementById('fiscal-prod-select').value;
+    if (!currentFiscalProdId) return;
+    document.getElementById('fiscal-forms').style.display = 'block';
+    const [fis, log, cod] = await Promise.all([
+        api('/produtos/' + currentFiscalProdId + '/fiscal'),
+        api('/produtos/' + currentFiscalProdId + '/logistica'),
+        api('/produtos/' + currentFiscalProdId + '/codigos'),
+    ]);
+    document.getElementById('f-ncm').value = fis.ncm || '';
+    document.getElementById('f-cest').value = fis.cest || '';
+    document.getElementById('f-cfop').value = fis.cfop || '';
+    document.getElementById('f-origem').value = fis.origem || '0';
+    document.getElementById('f-ipi').value = fis.ipi || '';
+    document.getElementById('f-icms').value = fis.icms || '';
+    document.getElementById('f-pis').value = fis.pis || '';
+    document.getElementById('f-cofins').value = fis.cofins || '';
+    document.getElementById('l-peso-liq').value = log.peso_liq || '';
+    document.getElementById('l-peso-bruto').value = log.peso_bruto || '';
+    document.getElementById('l-altura').value = log.altura || '';
+    document.getElementById('l-largura').value = log.largura || '';
+    document.getElementById('l-comp').value = log.comprimento || '';
+    document.getElementById('l-vol').value = log.volume || '';
+    const tbody = document.querySelector('#tbl-codigos tbody');
+    tbody.innerHTML = cod.map(c => `<tr>
+        <td><span class="badge badge-blue">${c.tipo||'?'}</span></td>
+        <td class="mono">${c.codigo||''}</td>
+        <td>${c.fabricante||'-'}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${c.data_substituicao||'-'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhum codigo</td></tr>';
+}
+
+async function saveFiscal() {
+    if (!currentFiscalProdId) return;
+    await api('/produtos/' + currentFiscalProdId + '/fiscal', {
+        method: 'PUT',
+        body: JSON.stringify({
+            ncm: document.getElementById('f-ncm').value||null,
+            cest: document.getElementById('f-cest').value||null,
+            cfop: document.getElementById('f-cfop').value||null,
+            origem: document.getElementById('f-origem').value||null,
+            ipi: parseFloat(document.getElementById('f-ipi').value)||0,
+            icms: parseFloat(document.getElementById('f-icms').value)||0,
+            pis: parseFloat(document.getElementById('f-pis').value)||0,
+            cofins: parseFloat(document.getElementById('f-cofins').value)||0,
+        })
+    });
+    alert('Fiscal salvo!');
+}
+
+async function saveLogistica() {
+    if (!currentFiscalProdId) return;
+    await api('/produtos/' + currentFiscalProdId + '/logistica', {
+        method: 'PUT',
+        body: JSON.stringify({
+            peso_liq: parseFloat(document.getElementById('l-peso-liq').value)||null,
+            peso_bruto: parseFloat(document.getElementById('l-peso-bruto').value)||null,
+            altura: parseFloat(document.getElementById('l-altura').value)||null,
+            largura: parseFloat(document.getElementById('l-largura').value)||null,
+            comprimento: parseFloat(document.getElementById('l-comp').value)||null,
+            volume: parseFloat(document.getElementById('l-vol').value)||null,
+        })
+    });
+    alert('Logistica salva!');
+}
+
+function openModalNovoCodigo() {
+    if (!currentFiscalProdId) { alert('Selecione um produto primeiro'); return; }
+    openModal('modal-codigo');
+}
+
+async function salvarCodigo() {
+    await api('/produtos/' + currentFiscalProdId + '/codigos', {
+        method: 'POST',
+        body: JSON.stringify({
+            tipo: document.getElementById('c-tipo').value,
+            codigo: document.getElementById('c-codigo').value||null,
+            fabricante: document.getElementById('c-fab').value||null,
+            data_substituicao: document.getElementById('c-data').value||null,
+        })
+    });
+    closeModal('modal-codigo');
+    loadFiscal();
+}
+
+// ======================================================
+// PDV
+// ======================================================
+async function pdvSearch() {
+    const search = document.getElementById('pdv-search').value.trim();
+    if (!search) return;
+    const d = await api('/produtos?search=' + encodeURIComponent(search) + '&limit=10');
+    const container = document.getElementById('pdv-results');
+    if (!d.data.length) { container.innerHTML = '<div class="empty">Nenhum produto encontrado</div>'; return; }
+    container.innerHTML = await Promise.all(d.data.map(async p => {
+        const full = await api('/produtos/' + p.id);
+        const dna = full.dna || {};
+        const aplic = full.aplicacoes || [];
+        const isLow = p.ntc_score < 0.60;
+        const scoreColor = p.ntc_status === 'APROVADO' ? 'var(--success)' : p.ntc_status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+        return `<div class="pdv-card">
+            <div class="pdv-ref">${p.ref}</div>
+            <div class="pdv-nome">${p.descricao}</div>
+            <div class="pdv-dna">${dna.fabricante||''} ${dna.grupo_industrial ? '('+dna.grupo_industrial+')' : ''} ${dna.origem_pais ? '| '+dna.origem_pais : ''}</div>
+            ${aplic.length ? '<div class="text-sm">'+aplic.slice(0,3).map(a=>`${a.montadora||''} ${a.modelo||''} ${a.ano_ini||''}-${a.ano_fim||''}`).join(' | ')+'</div>' : ''}
+            <div class="flex mt" style="align-items:flex-end;gap:16px">
+                <div>
+                    <div class="pdv-ntc-big" style="color:${scoreColor}">${(p.ntc_score*100).toFixed(1)}%</div>
+                    <div>${ntcStatusBadge(p.ntc_status)}</div>
+                </div>
+                <div>${statusBadge(p.status)}</div>
+            </div>
+            ${isLow ? '<div class="pdv-alert">ATENCAO: NTC Score abaixo do minimo (0.60). Produto necessita revisao antes da venda.</div>' : ''}
+        </div>`;
+    })).then(r => r.join(''));
+}
+
+// ======================================================
+// IA ANALYZER
+// ======================================================
+async function analisarNTC() {
+    const texto = document.getElementById('ia-input').value.trim();
+    if (!texto) { alert('Insira um texto para analisar'); return; }
+    document.getElementById('ia-status').innerHTML = '<span class="spinner"></span> Analisando...';
+    document.getElementById('ia-btn').disabled = true;
+    const r = await api('/ia/ntc', {method:'POST', body:JSON.stringify({texto})});
+    document.getElementById('ia-status').textContent = 'Analise concluida';
+    document.getElementById('ia-btn').disabled = false;
+    const dna = r.dna;
+    const eng = r.engenharia;
+    const scoreColor = r.status === 'APROVADO' ? 'var(--success)' : r.status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+    document.getElementById('ia-results').innerHTML = `
+        <div class="ntc-big" style="margin-bottom:16px">
+            <div class="score" style="color:${scoreColor}">${(r.score*100).toFixed(1)}%</div>
+            <div class="status-txt" style="color:${scoreColor}">NTC ${r.status}</div>
+            <div class="rast">${r.rast_hash}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px">
+            <div class="result-card">
+                <div class="result-card-title">DNA Detectado</div>
+                ${row2('Marca', dna.marca)}
+                ${row2('Fabricante', dna.fabricante)}
+                ${row2('Grupo', dna.grupo_industrial)}
+                ${row2('Origem', dna.origem_pais)}
+                ${row2('Tier', dna.tier)}
+                ${row2('Codigo', dna.codigo_dna)}
+                ${row2('Familia', dna.familia)}
+            </div>
+            <div class="result-card">
+                <div class="result-card-title">Engenharia</div>
+                ${row2('Categoria', eng.categoria)}
+                ${row2('Diametro', eng.diametro)}
+                ${row2('Estrias', eng.estrias)}
+                ${row2('Componentes', eng.componentes.length ? eng.componentes.join(', ') : null)}
+            </div>
+        </div>
+        <div id="ia-ntc-modules"></div>
+    `;
+    renderNTCResult(document.getElementById('ia-ntc-modules'), r, null);
+}
+
+// ======================================================
+// RELATORIOS
+// ======================================================
+async function loadRelatorios() {
+    const [dash, rel] = await Promise.all([api('/dashboard'), api('/relatorios/resumo')]);
+    document.getElementById('rel-kpi').innerHTML = [
+        {label:'Total', val:dash.total, cls:'kpi-orange'},
+        {label:'NTC Medio', val:(dash.ntc_medio*100).toFixed(1)+'%', cls:'kpi-blue'},
+        {label:'Aprovados', val:dash.aprovados, cls:'kpi-green'},
+        {label:'Pendentes', val:dash.pendentes, cls:'kpi-yellow'},
+        {label:'Reprovados', val:dash.reprovados, cls:'kpi-red'},
+    ].map(k=>`<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div></div>`).join('');
+
+    document.getElementById('rel-ntc').innerHTML = rel.por_ntc.map(n => {
+        const col = n.ntc_status === 'APROVADO' ? 'var(--success)' : n.ntc_status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+        const pct = dash.total ? ((n.total/dash.total)*100).toFixed(1) : 0;
+        return `<div style="margin-bottom:10px">
+            <div class="flex" style="margin-bottom:4px">
+                <span style="font-size:.78rem;color:${col}">${n.ntc_status}</span>
+                <span style="margin-left:auto;font-size:.75rem">${n.total} (${pct}%) | media: ${(n.media*100).toFixed(1)}%</span>
+            </div>
+            <div class="ntc-bar-wrap"><div class="ntc-bar" style="width:${pct}%;background:${col}"></div></div>
+        </div>`;
+    }).join('') || '<div class="empty">Sem dados</div>';
+
+    document.getElementById('rel-status').innerHTML = rel.por_status.map(s => {
+        const pct = dash.total ? ((s.total/dash.total)*100).toFixed(1) : 0;
+        return `<div style="margin-bottom:10px">
+            <div class="flex" style="margin-bottom:4px">
+                <span style="font-size:.78rem">${s.status}</span>
+                <span style="margin-left:auto;font-size:.75rem">${s.total} (${pct}%)</span>
+            </div>
+            <div class="ntc-bar-wrap"><div class="ntc-bar" style="width:${pct}%;background:var(--primary)"></div></div>
+        </div>`;
+    }).join('') || '<div class="empty">Sem dados</div>';
+
+    document.querySelector('#tbl-logs tbody').innerHTML = rel.logs_ia.map(l => `<tr>
+        <td>${l.acao||'-'}</td>
+        <td>${l.confianca != null ? (l.confianca*100).toFixed(1)+'%' : '-'}</td>
+        <td class="mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${(l.resultado||'').substring(0,80)}</td>
+        <td class="text-xs">${(l.criado_em||'').substring(0,16)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty">Nenhum log</td></tr>';
+}
+
+// ======================================================
+// CONFIG
+// ======================================================
+function loadConfig() {
+    document.getElementById('tbl-pesos').innerHTML = Object.entries(NTC_WEIGHTS_LABELS).map(([k, v]) =>
+        `<tr><td class="mono">${k}</td><td>${v.label}</td><td>${(v.w*100).toFixed(0)}%</td></tr>`
     ).join('');
-  }
 }
 
-// ============================================================
+// ======================================================
+// HELPERS
+// ======================================================
+function ntcBadge(score, status, large) {
+    const cls = status === 'APROVADO' ? 'badge-green' : status === 'PENDENTE' ? 'badge-yellow' : 'badge-red';
+    const pct = score != null ? (score*100).toFixed(1)+'%' : '?';
+    const sz = large ? 'font-size:.9rem;padding:4px 14px' : '';
+    return `<span class="badge ${cls}" style="${sz}">${pct} ${status||'?'}</span>`;
+}
+function ntcStatusBadge(status) {
+    const cls = status === 'APROVADO' ? 'badge-green' : status === 'PENDENTE' ? 'badge-yellow' : 'badge-red';
+    return `<span class="badge ${cls}">${status||'?'}</span>`;
+}
+function statusBadge(status) {
+    const cls = status === 'Ativo' ? 'badge-green' : status === 'Congelado' ? 'badge-blue' : 'badge-gray';
+    return `<span class="badge ${cls}">${status||'?'}</span>`;
+}
+
+// ======================================================
+// MODAL / TAB
+// ======================================================
+function openModal(id) {
+    document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+function switchTab(el, showId) {
+    const modal = el.closest('.modal');
+    modal.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    const tabIds = ['tab-prod-basico','tab-prod-dna','tab-prod-fiscal'];
+    tabIds.forEach(id => {
+        const el2 = document.getElementById(id);
+        if (el2) el2.style.display = id === showId ? 'block' : 'none';
+    });
+}
+
+// ======================================================
 // INIT
-// ============================================================
-function inicializar() {
-  check();
-  carregarRelatorio();
-  setInterval(check, 30000);
-}
-
-// Fechar modal clicando fora
-document.getElementById('modal-edit').addEventListener('click', function(e) {
-  if (e.target === this) fecharModal();
-});
-
-// Enter no login
-document.getElementById('lsenha').addEventListener('keydown', e => {
-  if (e.key === 'Enter') fazerLogin();
-});
+// ======================================================
+loadDashboard();
 </script>
 </body>
 </html>
