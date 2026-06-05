@@ -395,12 +395,6 @@ function detectCategoria(text) {
     }
     return 'Geral';
 }
-    ];
-    for (const [k, v] of map) {
-        if (lower.includes(k)) return v;
-    }
-    return 'Geral';
-}
 
 function calcNTC(text, extraData = {}) {
     const brandInfo = detectBrand(text);
@@ -1481,10 +1475,12 @@ app.post('/api/produtos/:id/publicar', async (req, res) => {
 // -----------------------------------------------------------
 // CATALOGO IMPORT — CSV / Excel / PDF / Web Scraper
 // -----------------------------------------------------------
-const XLSX = require('xlsx');
-const { parse: csvParse } = require('csv-parse/sync');
-const pdfParse = require('pdf-parse');
-const cheerio = require('cheerio');
+// Lazy-load libs pesadas — nao bloqueiam o startup
+let _XLSX, _csvParse, _pdfParse, _cheerio;
+const getXLSX     = () => _XLSX     || (_XLSX     = require('xlsx'));
+const getCsvParse = () => _csvParse  || (_csvParse  = require('csv-parse/sync').parse);
+const getPdfParse = () => _pdfParse  || (_pdfParse  = require('pdf-parse'));
+const getCheerio  = () => _cheerio   || (_cheerio   = require('cheerio'));
 
 const uploadCatalogo = multer({
     storage: multer.memoryStorage(),
@@ -1570,7 +1566,7 @@ async function salvarLinha(linha, empresaId) {
 app.post('/api/catalogo/importar/csv', uploadCatalogo.single('arquivo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Arquivo obrigatorio' });
     try {
-        const rows = csvParse(req.file.buffer, {
+        const rows = getCsvParse()(req.file.buffer, {
             columns: true, skip_empty_lines: true, trim: true,
             relax_quotes: true, relax_column_count: true
         });
@@ -1589,9 +1585,9 @@ app.post('/api/catalogo/importar/csv', uploadCatalogo.single('arquivo'), async (
 app.post('/api/catalogo/importar/excel', uploadCatalogo.single('arquivo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Arquivo obrigatorio' });
     try {
-        const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const wb = getXLSX().read(req.file.buffer, { type: 'buffer' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        const rows = getXLSX().utils.sheet_to_json(ws, { defval: '' });
         const resultados = [];
         for (const row of rows) {
             const linha = normalizarLinha(row);
@@ -1607,7 +1603,7 @@ app.post('/api/catalogo/importar/excel', uploadCatalogo.single('arquivo'), async
 app.post('/api/catalogo/importar/pdf', uploadCatalogo.single('arquivo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Arquivo obrigatorio' });
     try {
-        const data = await pdfParse(req.file.buffer);
+        const data = await getPdfParse()(req.file.buffer);
         const texto = data.text;
         // Ask Claude Haiku to extract structured product list from PDF text
         const systemPrompt = `Voce e um especialista em catalogo de autopecas. Extraia todos os produtos encontrados no texto e retorne SOMENTE um JSON array valido:
@@ -1643,7 +1639,7 @@ app.post('/api/catalogo/scraper', async (req, res) => {
             'User-Agent': 'Mozilla/5.0 (compatible; GenesisBot/1.0; +https://genesis360.io)'
         });
         if (r.status !== 200) return res.status(400).json({ error: 'HTTP ' + r.status });
-        const $ = cheerio.load(r.body);
+        const $ = getCheerio().load(r.body);
 
         let produtos = [];
 
@@ -1751,16 +1747,16 @@ app.get('/api/catalogo/template/csv', (req, res) => {
 
 // Template download — Excel modelo
 app.get('/api/catalogo/template/excel', (req, res) => {
-    const wb = XLSX.utils.book_new();
+    const wb = getXLSX().utils.book_new();
     const data = [
         ['ref','descricao','marca','oem','ncm','peso','aplicacoes','grupo','origem'],
         ['LUK-6203236','KIT DE EMBREAGEM 200MM','LUK','6203236000','8708.93.00',3.758,'Corsa 1.0/Celta/Prisma','Schaeffler','Alemanha'],
         ['BOC-0986494131','PASTILHA DE FREIO DIANTEIRA','Bosch','0986494131','8708.30.11',0.8,'Gol/Saveiro/Parati','Bosch','Brasil'],
     ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
+    const ws = getXLSX().utils.aoa_to_sheet(data);
     ws['!cols'] = [{wch:18},{wch:40},{wch:12},{wch:16},{wch:12},{wch:8},{wch:35},{wch:14},{wch:10}];
-    XLSX.utils.book_append_sheet(wb, ws, 'Catalogo');
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    getXLSX().utils.book_append_sheet(wb, ws, 'Catalogo');
+    const buf = getXLSX().write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=template_catalogo.xlsx');
     res.send(buf);
@@ -1772,4 +1768,16 @@ app.get('/api/catalogo/template/excel', (req, res) => {
 app.listen(PORT, () => {
     console.log('GENESIS INDEXA 360 IA v5.0 rodando na porta ' + PORT);
     console.log('Health: http://localhost:' + PORT + '/api/health');
+
+    // Keep-alive: ping proprio servidor a cada 14 min para evitar cold start no Render
+    const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+    if (process.env.NODE_ENV === 'production') {
+        setInterval(() => {
+            const urlObj = new URL(APP_URL + '/api/health');
+            const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
+            mod.get(APP_URL + '/api/health', (r) => {
+                console.log('[keep-alive] ping ' + r.statusCode);
+            }).on('error', () => {});
+        }, 14 * 60 * 1000);
+    }
 });
