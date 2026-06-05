@@ -1047,85 +1047,6 @@ app.post('/api/produtos/:id/importar-imagem-web', async (req, res) => {
 });
 
 // -----------------------------------------------------------
-// CLAUDE HAIKU — VOZ DO LOJISTA
-// -----------------------------------------------------------
-async function callClaude(systemPrompt, userPrompt) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return { error: 'ANTHROPIC_API_KEY nao configurada. Adicione no painel de Configuracoes.' };
-    return new Promise((resolve) => {
-        const body = JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 600,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: userPrompt }]
-        });
-        const req = https.request({
-            hostname: 'api.anthropic.com',
-            path: '/v1/messages',
-            method: 'POST',
-            headers: {
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json',
-                'content-length': Buffer.byteLength(body)
-            },
-            timeout: 25000
-        }, (res) => {
-            let data = '';
-            res.on('data', c => data += c);
-            res.on('end', () => {
-                try {
-                    const r = JSON.parse(data);
-                    if (r.content && r.content[0]) resolve({ text: r.content[0].text, model: r.model });
-                    else resolve({ error: r.error?.message || 'Resposta invalida da API' });
-                } catch(e) { resolve({ error: 'Parse error: ' + e.message }); }
-            });
-        });
-        req.on('error', e => resolve({ error: e.message }));
-        req.on('timeout', () => { req.destroy(); resolve({ error: 'Timeout na API Claude' }); });
-        req.write(body);
-        req.end();
-    });
-}
-
-const VOZ_PROMPTS = {
-    tecnico: {
-        system: 'Voce e um redator tecnico especialista em autopecas automotivas brasileiro. Escreva descricoes tecnicas precisas, com especificacoes de engenharia, materiais, pressoes, torques, compatibilidades. Tom profissional. Sem emojis. Maximo 5 linhas.',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nFabricante: ${dna?.fabricante||'?'}\nCodigo OEM: ${dna?.codigo_dna||p.ref}\nOrigem: ${dna?.origem_pais||'?'}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).join(', ')||'Consultar catalogo'}\n\nGere uma descricao tecnica completa para este produto.`
-    },
-    comercial: {
-        system: 'Voce e um copywriter comercial especialista em e-commerce de autopecas brasileiro. Escreva descricoes persuasivas, destacando qualidade OEM, garantia, origem. Tom confiante e vendedor. Maximo 5 linhas.',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).join(', ')||'Consultar catalogo'}\n\nGere uma descricao comercial persuasiva para venda online.`
-    },
-    seo: {
-        system: 'Voce e um especialista em SEO para e-commerce de autopecas. Gere: 1 TITULO (max 70 chars), 1 META DESCRIPTION (max 160 chars), 5 PALAVRAS-CHAVE separadas por virgula. Formato: TITULO: ...\nMETA: ...\nKEYWORDS: ...',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nCodigo: ${dna?.codigo_dna||p.ref}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,3).join(', ')||'multi-veiculo'}`
-    },
-    whatsapp: {
-        system: 'Voce e um vendedor de autopecas brasileiro que atende via WhatsApp. Escreva mensagens amigaveis, diretas, com preco e disponibilidade. Use emojis com moderacao. Maximo 4 linhas.',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nCodigo OEM: ${dna?.codigo_dna||p.ref}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,3).join(', ')||'consultar catalogo'}\n\nGere uma mensagem de WhatsApp para responder cliente perguntando por esta peca.`
-    },
-    pmax: {
-        system: 'Voce e um especialista em Google Ads Performance Max para autopecas. Gere: 1 HEADLINE (max 30 chars), 1 DESCRICAO (max 90 chars), 1 CALLOUT (max 25 chars). Formato: HEADLINE: ...\nDESCRICAO: ...\nCALLOUT: ...',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,2).join(', ')||'multi-veiculo'}`
-    }
-};
-
-app.post('/api/ia/voz', async (req, res) => {
-    const { produto_id, perfil } = req.body;
-    if (!produto_id || !perfil) return res.status(400).json({ error: 'produto_id e perfil obrigatorios' });
-    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(produto_id);
-    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
-    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produto_id);
-    const aplic = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(produto_id);
-    const vp = VOZ_PROMPTS[perfil];
-    if (!vp) return res.status(400).json({ error: 'Perfil invalido: ' + perfil });
-    const result = await callClaude(vp.system, vp.user(p, dna, aplic));
-    db.prepare("INSERT INTO logs_ia (produto_ref,acao,resultado,confianca) VALUES (?,?,?,?)").run(p.ref, 'VOZ_'+perfil.toUpperCase(), result.text||result.error, result.error ? 0 : 0.9);
-    res.json(result);
-});
-
-// -----------------------------------------------------------
 // ENRIQUECIMENTO COMPLETO — MOTOR iRollo
 // -----------------------------------------------------------
 app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
@@ -1238,24 +1159,24 @@ async function callClaude(systemPrompt, userPrompt) {
 
 const VOZ_PROMPTS = {
     tecnico: {
-        system: 'Voce e um redator tecnico especialista em autopecas automotivas brasileiro. Escreva descricoes tecnicas precisas, com especificacoes de engenharia, materiais, pressoes, torques, compatibilidades. Tom profissional. Sem emojis. Maximo 5 linhas.',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nFabricante: ${dna?.fabricante||'?'}\nCodigo OEM: ${dna?.codigo_dna||p.ref}\nOrigem: ${dna?.origem_pais||'?'}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).join(', ')||'Consultar catalogo'}\n\nGere uma descricao tecnica completa para este produto.`
-    },
-    comercial: {
-        system: 'Voce e um copywriter comercial especialista em e-commerce de autopecas brasileiro. Escreva descricoes persuasivas, destacando qualidade OEM, garantia, origem. Tom confiante e vendedor. Maximo 5 linhas.',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).join(', ')||'Consultar catalogo'}\n\nGere uma descricao comercial persuasiva para venda online.`
+        system: `Voce e um engenheiro redator especialista em autopecas OEM brasileiro. REGRAS: 1) Linha 1 com codigo OEM completo. 2) Especificar material SAE/ABNT quando disponivel. 3) Incluir NTC score e status. 4) Listar compatibilidades com ano e motor. 5) Tom de laudo tecnico sem emojis. Maximo 8 linhas. PROIBIDO inventar OEM, aplicacoes ou especificacoes.`,
+        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nOEM: ${dna?.codigo_dna||p.ref}\nMARCA/FABRICANTE: ${dna?.marca||'?'} / ${dna?.fabricante||'?'}\nGRUPO INDUSTRIAL: ${dna?.grupo_industrial||'?'}\nORIGEM: ${dna?.origem_pais||'?'}\nNCM: ${fiscal?.ncm||'nao informado'}\nNTC: score=${ntc?.score||'?'} status=${ntc?.status||'?'} (TF:${ntc?.modules?.TF||'?'} FM:${ntc?.modules?.FM||'?'} CO:${ntc?.modules?.CO||'?'} AV:${ntc?.modules?.AV||'?'})\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo+(a.ano_ini?' '+a.ano_ini:'')).join(' | ')||'Consultar catalogo'}\n\nGere descricao tecnica no formato LAUDO — codigo OEM na primeira linha, grupo industrial, materiais, NTC status e compatibilidades.`
     },
     seo: {
-        system: 'Voce e um especialista em SEO para e-commerce de autopecas. Gere: 1 TITULO (max 70 chars), 1 META DESCRIPTION (max 160 chars), 5 PALAVRAS-CHAVE separadas por virgula. Formato: TITULO: ...\nMETA: ...\nKEYWORDS: ...',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nCodigo: ${dna?.codigo_dna||p.ref}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,3).join(', ')||'multi-veiculo'}`
+        system: `Voce e um especialista SEO para e-commerce de autopecas com foco em CPC alto. FORMATO OBRIGATORIO:\nTITULO: [max 70 chars — marca+OEM+modelo]\nMETA: [max 160 chars — OEM+garantia+CTA]\nH1: [variacao do titulo]\nSLUG: [kebab-case]\nKEYWORDS: [8-12 termos long-tail transacionais com OEM+modelo+ano para CPC alto]`,
+        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nMARCA: ${dna?.marca||'?'}\nOEM: ${dna?.codigo_dna||p.ref}\nNCM: ${fiscal?.ncm||'nao informado'}\nNTC: ${ntc?.status||'?'} (${ntc?.score||'?'})\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo+(a.ano_ini?' '+a.ano_ini:'')).slice(0,5).join(', ')||'multi-veiculo'}\n\nGere SEO completo com keywords de alto CPC para Google Shopping e busca organica.`
+    },
+    comercial: {
+        system: `Voce e um copywriter de alta conversao para autopecas OEM. ESTRUTURA: 1) Abrir com BENEFICIO principal. 2) Autoridade OEM com grupo industrial. 3) NTC como prova de qualidade. 4) Urgencia real. 5) Garantia clara. Tom confiante. Maximo 6 linhas. PROIBIDO inventar certificacoes inexistentes.`,
+        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nMARCA: ${dna?.marca||'?'}\nGRUPO INDUSTRIAL: ${dna?.grupo_industrial||'?'}\nOEM: ${dna?.codigo_dna||p.ref}\nNTC: ${ntc?.status||'?'} score ${ntc?.score||'?'}\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,4).join(', ')||'Consultar catalogo'}\n\nGere descricao comercial de alta conversao destacando qualidade OEM e NTC.`
     },
     whatsapp: {
-        system: 'Voce e um vendedor de autopecas brasileiro que atende via WhatsApp. Escreva mensagens amigaveis, diretas, com preco e disponibilidade. Use emojis com moderacao. Maximo 4 linhas.',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nCodigo OEM: ${dna?.codigo_dna||p.ref}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,3).join(', ')||'consultar catalogo'}\n\nGere uma mensagem de WhatsApp para responder cliente perguntando por esta peca.`
+        system: `Voce e um vendedor expert de autopecas OEM via WhatsApp. REGRAS: 1) Confirmar OEM + compatibilidade primeiro. 2) Qualidade OEM = mesma peca da fabrica. 3) Prazo realista + garantia. 4) CTA claro. 5) Max 2-3 emojis. Maximo 5 linhas.`,
+        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nOEM: ${dna?.codigo_dna||p.ref}\nMARCA: ${dna?.marca||'?'}\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo+(a.ano_ini?' '+a.ano_ini:'')).slice(0,3).join(', ')||'consultar catalogo'}\nNTC: ${ntc?.status||'?'}\n\nGere mensagem WhatsApp confirmando OEM e compatibilidade.`
     },
     pmax: {
-        system: 'Voce e um especialista em Google Ads Performance Max para autopecas. Gere: 1 HEADLINE (max 30 chars), 1 DESCRICAO (max 90 chars), 1 CALLOUT (max 25 chars). Formato: HEADLINE: ...\nDESCRICAO: ...\nCALLOUT: ...',
-        user: (p, dna, aplic) => `Produto: ${p.descricao}\nMarca: ${dna?.marca||'?'}\nAplicacoes: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,2).join(', ')||'multi-veiculo'}`
+        system: `Voce e um especialista Google Ads Performance Max para autopecas OEM. FORMATO OBRIGATORIO:\nH1: [max 30 chars]\nH2: [max 30 chars]\nH3: [max 30 chars]\nD1: [max 90 chars — OEM+aplicacao]\nD2: [max 90 chars — beneficio+CTA]\nCALLOUT: [max 25 chars]\nSITELINK: [max 25 chars]`,
+        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nMARCA: ${dna?.marca||'?'}\nOEM: ${dna?.codigo_dna||p.ref}\nNTC: ${ntc?.status||'?'}\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,2).join(', ')||'multi-veiculo'}\n\nGere assets P-Max completos para Google Ads.`
     }
 };
 
@@ -1266,9 +1187,16 @@ app.post('/api/ia/voz', async (req, res) => {
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produto_id);
     const aplic = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(produto_id);
+    const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(produto_id);
+    const nctTF = dna && dna.codigo_dna ? 0.82 : (dna && dna.marca ? 0.50 : 0.10);
+    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
+    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
+    const nctAV = aplic.length >= 3 ? 1.00 : (aplic.length > 0 ? aplic.length * 0.25 : 0.00);
+    const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
+    const ntc = { score: ntcScore, status: ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO', modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } };
     const vp = VOZ_PROMPTS[perfil];
     if (!vp) return res.status(400).json({ error: 'Perfil invalido: ' + perfil });
-    const result = await callClaude(vp.system, vp.user(p, dna, aplic));
+    const result = await callClaude(vp.system, vp.user(p, dna, aplic, ntc, fiscal));
     db.prepare("INSERT INTO logs_ia (produto_ref,acao,resultado,confianca) VALUES (?,?,?,?)").run(p.ref, 'VOZ_'+perfil.toUpperCase(), result.text||result.error, result.error ? 0 : 0.9);
     res.json(result);
 });
