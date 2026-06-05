@@ -770,6 +770,7 @@ tr:hover td{background:#1c1c1c}
           </select>
           <button class="btn" onclick="loadEnriquecimento()">&#x26A1; Carregar</button>
           <button class="btn btn-blue" id="btn-enriquecer-web" onclick="enriquecerWeb()" style="background:linear-gradient(135deg,#1a6fff,#0040cc)">&#x1F310; ENRIQUECER DNA NA WEB</button>
+          <button class="btn" onclick="limparEnriquecimentoWeb()" style="background:#c0392b;color:#fff" title="Remove aplicacoes e imagens Web-Auto incorretas">&#x1F5D1; Limpar Web</button>
         </div>
       </div>
       <div id="enr-body" style="display:none">
@@ -3578,6 +3579,19 @@ async function enriquecerWeb() {
         if (st) st.innerHTML = `<span style="color:var(--success)">&#x2714; Enriquecido! NTC: ${(d.nct.score*100).toFixed(1)}% ${d.nct.status} | ${d.aplicacoes?.length||0} aplic | ${d.imagens?.length||0} imgs | ${d.codigos?.length||0} codigos</span>`;
     } else {
         if (st) st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${d.error || 'Erro ao enriquecer'}</span>`;
+    }
+}
+
+// Limpar dados de enriquecimento web incorretos (aplicacoes + imagens Web-Auto)
+async function limparEnriquecimentoWeb() {
+    if (!currentEnrId) { alert('Carregue um produto primeiro'); return; }
+    if (!confirm('Remover TODAS as aplicacoes e imagens Web-Auto deste produto? (Fiscal e logistica sao preservados)')) return;
+    const d = await api('/produtos/' + currentEnrId + '/enriquecimento-web', { method: 'DELETE' });
+    if (d.success) {
+        alert('Dados web removidos. Recarregando...');
+        loadEnriquecimento();
+    } else {
+        alert('Erro: ' + (d.error || 'desconhecido'));
     }
 }
 
