@@ -1345,6 +1345,140 @@ app.put('/api/produtos/:id/wix', (req, res) => {
 });
 
 // -----------------------------------------------------------
+// PREPARAR PUBLICACAO — imagem + descricao para todos os canais
+// -----------------------------------------------------------
+app.post('/api/produtos/:id/preparar-publicacao', async (req, res) => {
+    const id = req.params.id;
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+
+    const dna    = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+    const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
+    const aplic  = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
+    let   imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
+
+    // 1. BUSCAR IMAGENS se nenhuma existir
+    if (!imagens.length) {
+        const marca = dna?.marca || '';
+        const oem   = dna?.codigo_dna || p.ref.replace(/^[A-Z]+-/i, '');
+        const imgs  = await searchBingImages(`${marca} ${oem} ${p.descricao} autopeca foto real`);
+        const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
+        for (let i = 0; i < Math.min(imgs.length, 6); i++) {
+            db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)")
+                .run(id, slots[i], imgs[i], 'Auto-Pub', 'Aprovada');
+        }
+        imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
+    }
+
+    // 2. NTC para contexto
+    const nctTF = dna?.codigo_dna ? 0.97 : (dna?.marca ? 0.70 : 0.10);
+    const nctFM = p.descricao?.length > 20 ? 0.85 : 0.30;
+    const nctCO = fiscal?.ncm ? 1.00 : 0.00;
+    const nctAV = aplic.length >= 5 ? 1.00 : aplic.length >= 3 ? 0.80 : aplic.length > 0 ? aplic.length * 0.20 : 0.00;
+    const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
+    const ntc = { score: ntcScore, status: ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO', modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } };
+
+    // 3. GERAR DESCRICOES com Claude Haiku para todos os canais
+    const perfis = ['comercial', 'seo', 'tecnico', 'whatsapp', 'pmax'];
+    const descricoes = {};
+    for (const perfil of perfis) {
+        const vp = VOZ_PROMPTS[perfil];
+        if (!vp) continue;
+        const r = await callClaude(vp.system, vp.user(p, dna, aplic, ntc, fiscal));
+        descricoes[perfil] = r.text || null;
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    // 4. MONTAR PACOTE DE PUBLICACAO
+    const imgPrincipal = imagens.find(i => i.tipo === 'Principal') || imagens[0];
+    const oem = dna?.codigo_dna || p.ref;
+    const marca = dna?.marca || '';
+
+    const pacote = {
+        produto: { id: p.id, ref: p.ref, descricao: p.descricao, status: p.status },
+        dna, fiscal, ntc,
+        imagens,
+        descricoes,
+        // Pacote Wix Stores
+        wix: {
+            name: p.descricao.substring(0, 100),
+            description: descricoes.comercial || p.descricao,
+            slug: p.ref.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            media: imagens.slice(0, 6).map(i => ({ url: i.url, mediaType: 'image' })),
+            sku: p.ref,
+            brand: marca,
+            customFields: [
+                { name: 'OEM', value: oem },
+                { name: 'NCM', value: fiscal?.ncm || '' },
+                { name: 'NTC Score', value: String((ntcScore*100).toFixed(1)) + '%' },
+                { name: 'NTC Status', value: ntc.status },
+                { name: 'Grupo Industrial', value: dna?.grupo_industrial || '' },
+                { name: 'Aplicacoes', value: aplic.slice(0,5).map(a => `${a.montadora} ${a.modelo}`).join(', ') },
+            ]
+        },
+        // Pacote Bling ERP
+        bling: {
+            descricao: p.descricao,
+            descricaoComplementar: descricoes.tecnico || '',
+            codigo: p.ref,
+            marca,
+            ncm: fiscal?.ncm || '',
+            origem: fiscal?.origem || '0',
+            peso: null,
+            imagemURL: imgPrincipal?.url || null,
+            situacao: 'Ativo',
+        },
+        // Pacote Google Shopping / Merchant Center
+        google_shopping: {
+            id: p.ref,
+            title: descricoes.seo ? (descricoes.seo.match(/TITULO:\s*(.+)/i)?.[1]?.trim() || p.descricao) : p.descricao,
+            description: descricoes.comercial || p.descricao,
+            brand: marca,
+            mpn: oem,
+            gtin: fiscal?.cest || null,
+            condition: 'new',
+            availability: 'in_stock',
+            image_link: imgPrincipal?.url || null,
+            additional_image_link: imagens.slice(1, 5).map(i => i.url).join(','),
+            google_product_category: '8 > 916', // Vehicles > Auto Parts
+        },
+        // Pacote Google Ads P-Max
+        google_ads: descricoes.pmax || null,
+        // Pacote WhatsApp
+        whatsapp: descricoes.whatsapp || null,
+    };
+
+    // 5. Salvar descricao comercial no log
+    db.prepare("INSERT INTO logs_ia (produto_ref,acao,resultado,confianca) VALUES (?,?,?,?)").run(
+        p.ref, 'PREPARAR_PUBLICACAO', JSON.stringify({ imagens: imagens.length, descricoes: Object.keys(descricoes) }), 0.95
+    );
+
+    res.json({ success: true, pacote });
+});
+
+// Publicar produto em todos os canais sincronizados
+app.post('/api/produtos/:id/publicar', async (req, res) => {
+    const id = req.params.id;
+    const { canais = ['wix', 'bling', 'google_shopping'] } = req.body;
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    if (p.status !== 'Congelado') return res.status(400).json({ error: 'Produto deve estar Congelado para publicar' });
+
+    const resultados = {};
+    for (const canal of canais) {
+        if (canal === 'wix') {
+            resultados.wix = { status: 'pendente', mensagem: 'Wix: necessita MCP connection ativa' };
+        } else if (canal === 'bling') {
+            resultados.bling = { status: 'pendente', mensagem: 'Bling: necessita API Key configurada' };
+        } else if (canal === 'google_shopping') {
+            resultados.google_shopping = { status: 'pendente', mensagem: 'Google Merchant: necessita conta configurada' };
+        }
+    }
+
+    res.json({ success: true, produto: { ref: p.ref, descricao: p.descricao }, canais: resultados });
+});
+
+// -----------------------------------------------------------
 // CATALOGO IMPORT — CSV / Excel / PDF / Web Scraper
 // -----------------------------------------------------------
 const XLSX = require('xlsx');
