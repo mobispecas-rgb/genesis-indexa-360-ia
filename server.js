@@ -200,6 +200,11 @@ CREATE TABLE IF NOT EXISTS logs_ia (
 // Add wix_id column if not exists (migration)
 try { db.exec("ALTER TABLE produtos ADD COLUMN wix_id TEXT"); } catch(e) { /* already exists */ }
 
+// Multi-empresa migrations
+['produtos','dna','dados_fiscais','logistica','imagens','historico_ntc','codigos_cambiados','aplicacoes_motor'].forEach(t => {
+    try { db.exec(`ALTER TABLE ${t} ADD COLUMN empresa_id INTEGER DEFAULT 1`); } catch(e) {}
+});
+
 // Bling OAuth2 token storage table
 db.exec(`
 CREATE TABLE IF NOT EXISTS bling_config (
@@ -2028,6 +2033,81 @@ app.get('/api/catalogo/template/excel', (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=template_catalogo.xlsx');
     res.send(buf);
+});
+
+// -----------------------------------------------------------
+// MULTI-EMPRESA
+// -----------------------------------------------------------
+app.get('/api/empresas', (req, res) => {
+    res.json(db.prepare('SELECT id, nome, cnpj, plano FROM empresas').all());
+});
+
+// -----------------------------------------------------------
+// MARKETPLACE READY
+// -----------------------------------------------------------
+app.get('/api/marketplace/pacote/:id', (req, res) => {
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(req.params.id) || {};
+    const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(req.params.id) || {};
+    const log = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(req.params.id) || {};
+    const aplic = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=? LIMIT 10').all(req.params.id);
+    const imgs = db.prepare("SELECT * FROM imagens WHERE produto_id=? AND status != 'Reprovada' ORDER BY tipo").all(req.params.id);
+
+    res.json({
+        mercado_livre: {
+            title: p.descricao,
+            category_id: null,
+            price: p.preco_venda || 0,
+            currency_id: 'BRL',
+            available_quantity: 1,
+            condition: 'new',
+            pictures: imgs.slice(0,6).map(i => ({ source: i.url })),
+            attributes: [
+                { id: 'BRAND', value_name: dna.marca || null },
+                { id: 'MODEL', value_name: aplic[0]?.modelo || null },
+                { id: 'PART_NUMBER', value_name: p.ref },
+                { id: 'EAN', value_name: null },
+            ].filter(a => a.value_name),
+            description: { plain_text: p.descricao },
+        },
+        amazon: {
+            item_name: p.descricao,
+            brand_name: dna.marca || dna.fabricante,
+            part_number: p.ref,
+            standard_price: p.preco_venda || 0,
+            quantity: 1,
+            product_description: p.descricao,
+            bullet_point: aplic.slice(0,5).map(a => `${a.montadora} ${a.modelo} ${a.ano_ini||''}-${a.ano_fim||''}`).join('; ') || null,
+            main_image_url: imgs[0]?.url || null,
+        },
+        shopee: {
+            item_name: p.descricao,
+            description: p.descricao,
+            price: p.preco_venda || 0,
+            stock: 1,
+            images: imgs.slice(0,9).map(i => i.url),
+            brand: dna.marca || null,
+            weight: log.peso_liq ? log.peso_liq * 1000 : null,
+            dimension: log.comprimento ? { length: log.comprimento, width: log.largura || 0, height: log.altura || 0 } : null,
+        },
+        magalu: {
+            nome: p.descricao,
+            sku: p.ref,
+            preco: p.preco_venda || 0,
+            marca: dna.marca || null,
+            ncm: fiscal.ncm || null,
+            peso: log.peso_liq || null,
+            imagens: imgs.slice(0,5).map(i => i.url),
+            aplicacoes: aplic.slice(0,5).map(a => `${a.montadora} ${a.modelo} ${a.ano_ini||'?'}-${a.ano_fim||'?'}`),
+        },
+        status: {
+            pronto_ml: !!(p.descricao && imgs.length > 0 && p.preco_venda),
+            pronto_amazon: !!(p.descricao && imgs.length > 0 && dna.marca),
+            pronto_shopee: !!(p.descricao && imgs.length > 0 && p.preco_venda),
+            pronto_magalu: !!(p.descricao && fiscal.ncm && imgs.length > 0),
+        }
+    });
 });
 
 // -----------------------------------------------------------
