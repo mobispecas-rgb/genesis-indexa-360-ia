@@ -1082,7 +1082,7 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     ]);
 
     // Additional search with just OEM code for better results
-    const ddg2 = await searchDuckDuckGo(oem + ' correia V-Belt aplicação motor');
+    const ddg2 = await searchDuckDuckGo(oem + ' autopeca especificacao tecnica');
     const contextoWeb = [ddg?.abstract, ddg2?.abstract].filter(Boolean).join(' | ') || 'sem resultado';
 
     const contexto = `Produto: ${p.descricao}
@@ -1204,6 +1204,22 @@ REGRAS ABSOLUTAS:
         especificacoes: parsed.especificacoes || {},
         descricao_tecnica: parsed.descricao_tecnica || null
     });
+});
+
+// -----------------------------------------------------------
+// LIMPAR ENRIQUECIMENTO WEB — remove dados incorretos gravados por IA
+// -----------------------------------------------------------
+app.delete('/api/produtos/:id/enriquecimento-web', (req, res) => {
+    const id = req.params.id;
+    const p = db.prepare('SELECT id FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    db.transaction(() => {
+        db.prepare("DELETE FROM aplicacoes_motor WHERE produto_id=?").run(id);
+        db.prepare("DELETE FROM codigos_cambiados WHERE produto_id=?").run(id);
+        db.prepare("DELETE FROM imagens WHERE produto_id=? AND origem='Web-Auto'").run(id);
+        // Nao apaga fiscal/logistica pois podem ter sido preenchidos manualmente
+    })();
+    res.json({ success: true, msg: 'Dados de enriquecimento web removidos. Fiscal e logistica preservados.' });
 });
 
 // -----------------------------------------------------------
