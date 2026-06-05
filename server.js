@@ -966,30 +966,33 @@ async function searchOpenParts(codigo, marca) {
 
 // Bing image search scraper (server-side, no CORS issue)
 async function searchBingImages(query) {
-    try {
-        const q = encodeURIComponent(query + ' peca automotiva');
-        const r = await httpGet(
-            `https://www.bing.com/images/search?q=${q}&form=HDRSC2&first=1&mmasync=1`,
-            { 'Accept-Language': 'pt-BR,pt;q=0.9', 'Referer': 'https://www.bing.com/' }
-        );
-        // Extract image URLs from response
-        const imgUrls = [];
-        const matches = r.body.matchAll(/murl&quot;:&quot;(https?:\/\/[^&"]+\.(?:jpg|jpeg|png|webp))&quot;/gi);
-        for (const m of matches) {
-            if (imgUrls.length >= 8) break;
-            const url = m[1].replace(/&amp;/g, '&');
-            if (!imgUrls.includes(url)) imgUrls.push(url);
-        }
-        // fallback: extract from murl json
-        if (!imgUrls.length) {
-            const matches2 = r.body.matchAll(/"murl":"(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
-            for (const m of matches2) {
-                if (imgUrls.length >= 8) break;
-                imgUrls.push(m[1]);
+    const imgUrls = [];
+    // Multiple query variations for better coverage
+    const queries = [query, query + ' fundo branco produto', query + ' autoparts photo'];
+    for (const q of queries) {
+        try {
+            const encoded = encodeURIComponent(q);
+            const r = await httpGet(
+                `https://www.bing.com/images/search?q=${encoded}&form=HDRSC2&first=1&mmasync=1`,
+                { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'Mozilla/5.0 (compatible; Genesis/5.0)', 'Referer': 'https://www.bing.com/' }
+            );
+            const matches = r.body.matchAll(/murl&quot;:&quot;(https?:\/\/[^&"]+\.(?:jpg|jpeg|png|webp))&quot;/gi);
+            for (const m of matches) {
+                if (imgUrls.length >= 10) break;
+                const url = m[1].replace(/&amp;/g, '&');
+                if (!imgUrls.includes(url)) imgUrls.push(url);
             }
-        }
-        return imgUrls;
-    } catch (e) { return []; }
+            if (!imgUrls.length) {
+                const matches2 = r.body.matchAll(/"murl":"(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
+                for (const m of matches2) {
+                    if (imgUrls.length >= 10) break;
+                    if (!imgUrls.includes(m[1])) imgUrls.push(m[1]);
+                }
+            }
+            if (imgUrls.length >= 4) break; // enough from first query
+        } catch (e) { /* continue */ }
+    }
+    return imgUrls;
 }
 
 app.get('/api/produtos/:id/busca-web', async (req, res) => {
@@ -1065,29 +1068,54 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
 
-    const oem = dna?.codigo_dna || p.ref.replace(/^[A-Z]+-/i, '');
-    const marca = dna?.marca || '';
-    const searchQuery = `${marca} ${oem} ${p.descricao}`.trim();
-    const imgQuery = `${marca} ${oem} autopeca foto produto real`;
+    const oem = dna?.codigo_dna || p.ref;
+    const marca = dna?.marca || dna?.fabricante || '';
+
+    // Build rich search queries — include OEM code + part type
+    const descTipo = p.descricao.split(' ').slice(0,4).join(' ');
+    const searchQuery = `${oem} ${descTipo} autopeça aplicação veicular`.trim();
+    const imgQuery = `"${oem}" ${descTipo} autopeça foto produto`;
 
     const [ddg, imgUrls] = await Promise.all([
         searchDuckDuckGo(searchQuery),
         searchBingImages(imgQuery)
     ]);
 
-    const contexto = `Produto: ${p.descricao}\nReferencia: ${p.ref}\nMarca: ${marca}\nCodigo OEM: ${oem}\nResumo web: ${ddg?.abstract || 'sem resultado'}`.trim();
+    // Additional search with just OEM code for better results
+    const ddg2 = await searchDuckDuckGo(oem + ' correia V-Belt aplicação motor');
+    const contextoWeb = [ddg?.abstract, ddg2?.abstract].filter(Boolean).join(' | ') || 'sem resultado';
 
-    const systemPrompt = `Voce e um especialista em autopecas automotivas brasileiro. Analise o produto e retorne SOMENTE um JSON valido (sem markdown, sem texto extra) com esta estrutura exata:
-{"aplicacoes":[{"montadora":"","modelo":"","versao":"","motor":"","cilindrada":"","combustivel":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0,"peso_bruto":0,"altura":0,"largura":0,"comprimento":0},"fiscal":{"ncm":"","cest":""},"especificacoes":{"diametro":"","estrias":0,"material":"","componentes":""},"descricao_tecnica":""}
-REGRAS: Use null para campos sem evidencia — NUNCA invente dados. Preencha apenas com certeza. NCM formato 0000.00.00. Pesos em kg. Dimensoes em cm. Anos como inteiros.`;
+    const contexto = `Produto: ${p.descricao}
+Referencia/OEM: ${oem}
+Fabricante/Marca: ${marca || 'desconhecido'}
+Contexto web encontrado: ${contextoWeb}`;
 
-    const userPrompt = `Extraia e estruture os dados deste produto de autopecas:\n\n${contexto}`;
+    const systemPrompt = `Voce e um especialista em autopecas automotivas brasileiro.
+TAREFA: Analise o produto e retorne SOMENTE JSON valido (sem markdown, sem texto antes ou depois).
+
+ESTRUTURA EXATA — nao altere os nomes dos campos:
+{"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
+
+REGRAS ABSOLUTAS:
+- Use null para QUALQUER campo sem evidencia documental clara no contexto fornecido
+- NUNCA invente montadora, modelo, motor, ano, fabricante, NCM, peso ou dimensao
+- NUNCA use nomes de empresas inventados ou nao mencionados no contexto
+- Se o contexto web for "sem resultado" ou insuficiente: retorne todos os campos como null
+- NCM somente se tiver certeza absoluta (formato 0000.00.00)
+- aplicacoes: somente veiculos com montadora+modelo+ano CONFIRMADOS na web
+- descricao_tecnica: descreva APENAS o que esta no nome/referencia do produto — sem inventar`;
+
+    const userPrompt = `Extraia dados reais deste produto de autopecas:\n\n${contexto}`;
     const claudeResult = await callClaude(systemPrompt, userPrompt);
 
     let parsed = null;
     try {
-        const jsonText = (claudeResult.text || '').replace(/```json|```/g, '').trim();
-        parsed = JSON.parse(jsonText);
+        let jsonText = (claudeResult.text || '').trim();
+        // Remove markdown fences
+        jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        // Extract first JSON object found (handles extra text before/after)
+        const match = jsonText.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
     } catch (e) { parsed = null; }
 
     if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
@@ -1127,13 +1155,20 @@ REGRAS: Use null para campos sem evidencia — NUNCA invente dados. Preencha ape
             if (existF) db.prepare("UPDATE dados_fiscais SET ncm=COALESCE(?,ncm),cest=COALESCE(?,cest) WHERE produto_id=?").run(F.ncm||null,F.cest||null,id);
             else db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem) VALUES (?,?,?,?)").run(id,F.ncm||null,F.cest||null,'0');
         }
-        // IMAGENS WEB
+        // IMAGENS WEB — salvar com status Pendente para revisao humana
         const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
         const existImgs = new Set(db.prepare('SELECT url FROM imagens WHERE produto_id=?').all(id).map(i => i.url));
         let si = 0;
-        for (const url of imgUrls.slice(0, 6)) {
+        // Filtrar URLs claramente invalidas
+        const validUrls = imgUrls.filter(url =>
+            url && url.startsWith('http') &&
+            !url.includes('logo') && !url.includes('favicon') &&
+            !url.includes('banner') && !url.includes('avatar')
+        );
+        for (const url of validUrls.slice(0, 6)) {
             if (!existImgs.has(url)) {
-                db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(id, slots[si%slots.length], url, 'Web-Auto', 'Aprovada');
+                // Status Pendente — precisa aprovacao humana pois busca web pode trazer imagem errada
+                db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(id, slots[si%slots.length], url, 'Web-Auto', 'Pendente');
                 existImgs.add(url);
             }
             si++;
