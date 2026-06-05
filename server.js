@@ -1047,6 +1047,121 @@ app.post('/api/produtos/:id/importar-imagem-web', async (req, res) => {
 });
 
 // -----------------------------------------------------------
+// ENRIQUECIMENTO WEB AUTOMATICO — busca DNA + imagens + dados
+// -----------------------------------------------------------
+app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
+    const id = req.params.id;
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+
+    const oem = dna?.codigo_dna || p.ref.replace(/^[A-Z]+-/i, '');
+    const marca = dna?.marca || '';
+    const searchQuery = `${marca} ${oem} ${p.descricao}`.trim();
+    const imgQuery = `${marca} ${oem} autopeca foto produto real`;
+
+    const [ddg, imgUrls] = await Promise.all([
+        searchDuckDuckGo(searchQuery),
+        searchBingImages(imgQuery)
+    ]);
+
+    const contexto = `Produto: ${p.descricao}\nReferencia: ${p.ref}\nMarca: ${marca}\nCodigo OEM: ${oem}\nResumo web: ${ddg?.abstract || 'sem resultado'}`.trim();
+
+    const systemPrompt = `Voce e um especialista em autopecas automotivas brasileiro. Analise o produto e retorne SOMENTE um JSON valido (sem markdown, sem texto extra) com esta estrutura exata:
+{"aplicacoes":[{"montadora":"","modelo":"","versao":"","motor":"","cilindrada":"","combustivel":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0,"peso_bruto":0,"altura":0,"largura":0,"comprimento":0},"fiscal":{"ncm":"","cest":""},"especificacoes":{"diametro":"","estrias":0,"material":"","componentes":""},"descricao_tecnica":""}
+REGRAS: Use null para campos sem evidencia — NUNCA invente dados. Preencha apenas com certeza. NCM formato 0000.00.00. Pesos em kg. Dimensoes em cm. Anos como inteiros.`;
+
+    const userPrompt = `Extraia e estruture os dados deste produto de autopecas:\n\n${contexto}`;
+    const claudeResult = await callClaude(systemPrompt, userPrompt);
+
+    let parsed = null;
+    try {
+        const jsonText = (claudeResult.text || '').replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(jsonText);
+    } catch (e) { parsed = null; }
+
+    if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
+
+    const txResult = db.transaction(() => {
+        // APLICACOES
+        if (Array.isArray(parsed.aplicacoes)) {
+            const existSet = new Set(db.prepare('SELECT montadora||"|"||modelo||"|"||COALESCE(ano_ini,"") as k FROM aplicacoes_motor WHERE produto_id=?').all(id).map(r => r.k));
+            for (const a of parsed.aplicacoes) {
+                if (!a.montadora || !a.modelo) continue;
+                const k = `${a.montadora}|${a.modelo}|${a.ano_ini||''}`;
+                if (existSet.has(k)) continue;
+                db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo,versao,motor,cilindrada,combustivel,ano_ini,ano_fim) VALUES (?,?,?,?,?,?,?,?,?)").run(id, a.montadora, a.modelo, a.versao||null, a.motor||null, a.cilindrada||null, a.combustivel||null, a.ano_ini||null, a.ano_fim||null);
+                existSet.add(k);
+            }
+        }
+        // CODIGOS CAMBIADOS
+        if (Array.isArray(parsed.codigos_cambiados)) {
+            const existCod = new Set(db.prepare('SELECT codigo FROM codigos_cambiados WHERE produto_id=?').all(id).map(c => c.codigo));
+            for (const c of parsed.codigos_cambiados) {
+                if (!c.codigo || existCod.has(c.codigo)) continue;
+                db.prepare("INSERT INTO codigos_cambiados (produto_id,tipo,codigo,fabricante,status) VALUES (?,?,?,?,?)").run(id, c.tipo||'OEM', c.codigo, c.fabricante||null, 'Ativo');
+                existCod.add(c.codigo);
+            }
+        }
+        // LOGISTICA
+        if (parsed.logistica) {
+            const L = parsed.logistica;
+            const existL = db.prepare('SELECT id FROM logistica WHERE produto_id=?').get(id);
+            if (existL) db.prepare("UPDATE logistica SET peso_liq=COALESCE(?,peso_liq),peso_bruto=COALESCE(?,peso_bruto),altura=COALESCE(?,altura),largura=COALESCE(?,largura),comprimento=COALESCE(?,comprimento) WHERE produto_id=?").run(L.peso_liq||null,L.peso_bruto||null,L.altura||null,L.largura||null,L.comprimento||null,id);
+            else if (L.peso_liq||L.altura) db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento) VALUES (?,?,?,?,?,?)").run(id,L.peso_liq||null,L.peso_bruto||null,L.altura||null,L.largura||null,L.comprimento||null);
+        }
+        // FISCAL
+        if (parsed.fiscal?.ncm || parsed.fiscal?.cest) {
+            const F = parsed.fiscal;
+            const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(id);
+            if (existF) db.prepare("UPDATE dados_fiscais SET ncm=COALESCE(?,ncm),cest=COALESCE(?,cest) WHERE produto_id=?").run(F.ncm||null,F.cest||null,id);
+            else db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem) VALUES (?,?,?,?)").run(id,F.ncm||null,F.cest||null,'0');
+        }
+        // IMAGENS WEB
+        const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
+        const existImgs = new Set(db.prepare('SELECT url FROM imagens WHERE produto_id=?').all(id).map(i => i.url));
+        let si = 0;
+        for (const url of imgUrls.slice(0, 6)) {
+            if (!existImgs.has(url)) {
+                db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(id, slots[si%slots.length], url, 'Web-Auto', 'Aprovada');
+                existImgs.add(url);
+            }
+            si++;
+        }
+        // RECALCULAR NTC
+        const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+        const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
+        const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
+        const imgsU = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
+        const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca ? 0.70 : 0.10);
+        const nctFM = p.descricao?.length > 20 ? (parsed.especificacoes?.diametro ? 1.00 : 0.85) : 0.30;
+        const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
+        const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
+        const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
+        const ntcStatus = ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
+        db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,atualizado_em=datetime('now','localtime') WHERE id=?").run(ntcScore, ntcStatus, id);
+        db.prepare("INSERT INTO historico_ntc (produto_id,status_anterior,status_novo,alteracao) VALUES (?,?,?,?)").run(id, p.ntc_status, ntcStatus, `Web-Auto: ${aplicU.length} aplic, ${imgsU.length} imgs`);
+        return {
+            nct: { score: ntcScore, status: ntcStatus, modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } },
+            aplicacoes: db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id),
+            codigos: db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id),
+            imagens: db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id),
+            logistica: db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(id) || {},
+            fiscal: db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id) || {}
+        };
+    })();
+
+    res.json({
+        success: true,
+        produto: db.prepare('SELECT * FROM produtos WHERE id=?').get(id),
+        dna: db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id) || {},
+        ...txResult,
+        especificacoes: parsed.especificacoes || {},
+        descricao_tecnica: parsed.descricao_tecnica || null
+    });
+});
+
+// -----------------------------------------------------------
 // ENRIQUECIMENTO COMPLETO — MOTOR iRollo
 // -----------------------------------------------------------
 app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
@@ -1199,75 +1314,6 @@ app.post('/api/ia/voz', async (req, res) => {
     const result = await callClaude(vp.system, vp.user(p, dna, aplic, ntc, fiscal));
     db.prepare("INSERT INTO logs_ia (produto_ref,acao,resultado,confianca) VALUES (?,?,?,?)").run(p.ref, 'VOZ_'+perfil.toUpperCase(), result.text||result.error, result.error ? 0 : 0.9);
     res.json(result);
-});
-
-// -----------------------------------------------------------
-// ENRIQUECIMENTO COMPLETO — MOTOR iRollo
-// -----------------------------------------------------------
-app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
-    const id = req.params.id;
-    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
-    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
-    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
-    const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
-    const logistica = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(id);
-    const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
-    const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id);
-    const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
-    const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 5').all(id);
-
-    // NCT simplified 4-module
-    const nctTF = dna && dna.codigo_dna ? 0.82 : (dna && dna.marca ? 0.50 : 0.10);
-    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
-    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
-    const nctAV = aplicacoes.length >= 3 ? 1.00 : (aplicacoes.length > 0 ? aplicacoes.length * 0.25 : 0.00);
-    const nctScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
-    const nctStatus = nctScore >= 0.95 ? 'APROVADO' : nctScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
-
-    // Image quality check
-    const imgQuality = {
-        total: imagens.length,
-        slots: ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'].map(slot => ({
-            slot,
-            imagem: imagens.find(i => i.tipo === slot) || null
-        })),
-        googleShopping: {
-            fundo_branco: imagens.some(i => i.tipo === 'Principal'),
-            produto_real: imagens.length > 0,
-            min_1000px: false, // can't verify without image analysis
-            sem_watermark: true,
-            sem_texto: true,
-            aprovado: imagens.some(i => i.tipo === 'Principal') && imagens.length > 0
-        }
-    };
-
-    res.json({
-        produto: p, dna: dna||{}, fiscal: fiscal||{}, logistica: logistica||{},
-        aplicacoes, codigos, imagens,
-        nct: { score: nctScore, status: nctStatus, modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } },
-        imgQuality, historico,
-        wix_id: p.wix_id,
-        rast_hash: p.rast_hash || 'RAST-' + crypto.createHash('sha256').update(p.ref+p.descricao).digest('hex').substring(0,16).toUpperCase()
-    });
-});
-
-// CONGELAR E INDEXAR — freeze + mark synced
-app.post('/api/produtos/:id/indexar', (req, res) => {
-    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
-    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
-    db.prepare("UPDATE produtos SET status='Congelado', atualizado_em=datetime('now','localtime') WHERE id=?").run(req.params.id);
-    db.prepare("INSERT INTO historico_ntc (produto_id,status_anterior,status_novo,alteracao) VALUES (?,?,?,?)").run(req.params.id, p.status, 'Congelado', 'Congelado e Indexado — Bling + Wix + Google Shopping');
-    res.json({ success: true, plataformas: ['Bling', 'Wix', 'Google Shopping', 'Google Ads'], status: 'Congelado' });
-});
-
-// CONGELADOS
-app.get('/api/congelados', (req, res) => {
-    const rows = db.prepare("SELECT p.*, d.marca, d.fabricante, d.familia FROM produtos p LEFT JOIN dna d ON d.produto_id=p.id WHERE p.status='Congelado' ORDER BY p.atualizado_em DESC").all();
-    rows.forEach(r => {
-        const img = db.prepare("SELECT url FROM imagens WHERE produto_id=? LIMIT 1").get(r.id);
-        r.imagem_principal = img ? img.url : null;
-    });
-    res.json({ total: rows.length, data: rows });
 });
 
 // -----------------------------------------------------------
