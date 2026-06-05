@@ -180,6 +180,24 @@ tr:hover td{background:#1c1c1c}
 .pdv-dna{font-size:.8rem;color:var(--text2);margin-bottom:8px}
 .pdv-ntc-big{font-size:2.5rem;font-weight:900;margin-bottom:4px}
 .pdv-alert{background:#ff224415;border:1px solid #ff224440;border-radius:8px;padding:10px 14px;color:var(--danger);font-size:.8rem;margin-top:8px}
+.pdv-risk-ok{background:rgba(0,200,100,.1);border:1px solid rgba(0,200,100,.3);border-radius:8px;padding:10px 14px;color:#00c864;font-size:.9rem;font-weight:700;margin-top:10px}
+.pdv-risk-warn{background:rgba(255,180,0,.1);border:1px solid rgba(255,180,0,.35);border-radius:8px;padding:10px 14px;color:#ffb400;font-size:.9rem;font-weight:700;margin-top:10px}
+.pdv-risk-danger{background:rgba(255,34,68,.1);border:1px solid rgba(255,34,68,.35);border-radius:8px;padding:10px 14px;color:#ff2244;font-size:.9rem;font-weight:700;margin-top:10px}
+.pdv-dna-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin:10px 0;font-size:.8rem}
+.pdv-dna-grid b{color:var(--text3);font-weight:600}
+.pdv-card-v2{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px;display:flex;gap:18px;align-items:flex-start}
+.pdv-card-v2-body{flex:1;min-width:0}
+.pdv-aplic-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:8px}
+.pdv-aplic-table th{background:var(--bg);padding:5px 8px;text-align:left;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)}
+.pdv-aplic-table td{padding:4px 8px;border-bottom:1px solid var(--border2,#2a2a2a)}
+/* Marketplace */
+.mkt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}
+.mkt-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px}
+.mkt-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.mkt-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff}
+.mkt-badge-ok{background:#00c86422;border:1px solid #00c86440;color:#00c864;border-radius:20px;padding:2px 10px;font-size:.72rem;font-weight:700}
+.mkt-badge-pend{background:#ffb40022;border:1px solid #ffb40040;color:#ffb400;border-radius:20px;padding:2px 10px;font-size:.72rem;font-weight:700}
+.mkt-json-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.72rem;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow:auto;margin-top:12px;color:var(--text2)}
 
 /* IA ANALYZER */
 .ia-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.85rem;min-height:120px;resize:vertical;outline:none;font-family:inherit}
@@ -370,6 +388,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="catalogo"><span class="nav-icon">&#x1F4E5;</span> Importar Catalogo</div>
     <div class="nav-item" data-page="bling"><span class="nav-icon">&#x1F4CB;</span> Bling ERP v3</div>
     <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
+    <div class="nav-item" data-page="marketplace"><span class="nav-icon">&#x1F6D2;</span> Marketplace</div>
     <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
   </div>
   <div class="nav-section">
@@ -1085,14 +1104,14 @@ tr:hover td{background:#1c1c1c}
 
     <!-- PDV -->
     <div class="page" id="page-pdv">
-      <div class="sec">
-        <div class="sec-title">Ponto de Venda — Consulta Rapida</div>
-        <div class="flex mb">
-          <input type="text" id="pdv-search" placeholder="Buscar produto por ref ou descricao..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.9rem;outline:none">
-          <button class="btn" onclick="pdvSearch()">Buscar</button>
+      <div class="sec" style="max-width:700px;margin:0 auto">
+        <div class="sec-title">&#x1F3EA; PDV — Consulta Rapida de Produto</div>
+        <div class="flex mb" style="gap:8px">
+          <input type="text" id="pdv-search" placeholder="Buscar por Ref, Nome ou OEM..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.95rem;outline:none" onkeydown="if(event.key==='Enter')loadPDV(this.value)">
+          <button class="btn" onclick="loadPDV(document.getElementById('pdv-search').value)">&#x1F50D; Buscar</button>
         </div>
       </div>
-      <div id="pdv-results"></div>
+      <div id="pdv-results" style="max-width:700px;margin:0 auto"></div>
     </div>
 
     <!-- IA ANALYZER -->
@@ -1359,6 +1378,27 @@ tr:hover td{background:#1c1c1c}
           enriquecidos, classificados e indexados pelo Genesis Indexa 360 IA.
         </div>
       </div>
+    </div>
+
+    <!-- MARKETPLACE READY -->
+    <div class="page" id="page-marketplace">
+      <div class="irollo-header">
+        <div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Conectores Desacoplados</div>
+          <div style="font-size:1rem;font-weight:900;color:var(--primary)">&#x1F6D2; Marketplace Ready</div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">ML · Amazon · Shopee · Magalu — Pacote estruturado por produto</div>
+        </div>
+        <div class="irollo-status ml-auto"><div class="dot"></div> ESTRUTURADOR ON</div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Selecionar Produto</div>
+        <div class="flex mb" style="gap:8px">
+          <select id="mkt-produto-sel" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem"><option value="">-- Selecione um produto --</option></select>
+          <button class="btn" onclick="loadMarketplacePacote()">&#x1F4E6; Gerar Pacote</button>
+        </div>
+        <div style="font-size:.75rem;color:var(--text3)">&#x26A0;&#xFE0F; Conectores em desenvolvimento. Pacote estruturado pronto para integracao via API.</div>
+      </div>
+      <div id="mkt-results"></div>
     </div>
 
     <!-- WIX STORES -->
@@ -1645,6 +1685,8 @@ function onPageActivate(page) {
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
+    else if (page === 'pdv') { document.getElementById('pdv-results').innerHTML = ''; }
+    else if (page === 'marketplace') { populateMarketplaceSelect(); }
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -2709,40 +2751,105 @@ async function salvarCodigo() {
 // ======================================================
 // PDV
 // ======================================================
-async function pdvSearch() {
-    const search = document.getElementById('pdv-search').value.trim();
-    if (!search) return;
-    const d = await api('/produtos?search=' + encodeURIComponent(search) + '&limit=10');
+async function pdvSearch() { loadPDV(document.getElementById('pdv-search').value.trim()); }
+
+async function loadPDV(query) {
+    if (!query) return;
     const container = document.getElementById('pdv-results');
-    if (!d.data.length) { container.innerHTML = '<div class="empty">Nenhum produto encontrado</div>'; return; }
-    container.innerHTML = await Promise.all(d.data.map(async p => {
-        const full = await api('/produtos/' + p.id);
-        const dna = full.dna || {};
-        const aplic = full.aplicacoes || [];
-        const isLow = p.ntc_score < 0.60;
-        const scoreColor = p.ntc_status === 'APROVADO' ? 'var(--success)' : p.ntc_status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
-        const pdvImgs = full.imagens || [];
-        const pdvImg = pdvImgs.find(i => i.tipo === 'Principal') || pdvImgs[0];
-        const pdvImgHtml = pdvImg
-            ? `<img src="${pdvImg.url}" class="img-thumb-lg" style="display:block;margin:0 auto 14px" onerror="this.outerHTML='<div class=\'img-slot-placeholder img-thumb-lg\' style=\'margin:0 auto 14px\'>&#x1F4F7;</div>'">`
-            : `<div class="img-slot-placeholder img-thumb-lg" style="margin:0 auto 14px;font-size:3rem">&#x1F4F7;</div>`;
-        return `<div class="pdv-card">
-            ${pdvImgHtml}
-            <div class="pdv-ref">${p.ref}</div>
+    container.innerHTML = '<div class="empty"><span class="spinner"></span> Buscando...</div>';
+    const d = await api('/produtos?search=' + encodeURIComponent(query) + '&limit=1');
+    if (!d.data || !d.data.length) { container.innerHTML = '<div class="empty">Nenhum produto encontrado para "' + query + '"</div>'; return; }
+    const p = d.data[0];
+    const full = await api('/produtos/' + p.id);
+    const dna = full.dna || {};
+    const aplic = full.aplicacoes || [];
+    const fiscal = full.fiscal || {};
+    const pdvImgs = full.imagens || [];
+    const pdvImg = pdvImgs.find(i => i.tipo === 'Principal') || pdvImgs[0];
+    const score = p.ntc_score || 0;
+    const scoreColor = score >= 0.95 ? '#00c864' : score >= 0.60 ? '#ffb400' : '#ff2244';
+    const riskClass = score >= 0.95 ? 'pdv-risk-ok' : score >= 0.60 ? 'pdv-risk-warn' : 'pdv-risk-danger';
+    const riskMsg = score >= 0.95 ? '&#x2705; Produto Certificado NTC APROVADO' : score >= 0.60 ? '&#x26A0;&#xFE0F; Verificar antes de vender — NTC PENDENTE' : '&#x26A0;&#xFE0F; RISCO DE APLICACAO — NTC REPROVADO';
+    const pdvImgHtml = pdvImg
+        ? `<img src="${pdvImg.url}" style="width:120px;height:120px;object-fit:contain;border-radius:8px;border:1px solid var(--border);flex-shrink:0" onerror="this.outerHTML='<div style=\'width:120px;height:120px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0\'>&#x1F4F7;</div>'">`
+        : `<div style="width:120px;height:120px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0">&#x1F4F7;</div>`;
+    const aplicRows = aplic.slice(0,8).map(a => `<tr><td>${a.montadora||'-'}</td><td>${a.modelo||'-'}</td><td>${a.motor||'-'}</td><td>${a.ano_ini||'?'}-${a.ano_fim||'?'}</td></tr>`).join('');
+    container.innerHTML = `<div class="pdv-card-v2">
+        ${pdvImgHtml}
+        <div class="pdv-card-v2-body">
             <div class="pdv-nome">${p.descricao}</div>
-            <div class="pdv-dna">${dna.fabricante||''} ${dna.grupo_industrial ? '('+dna.grupo_industrial+')' : ''} ${dna.origem_pais ? '| '+dna.origem_pais : ''}</div>
-            ${aplic.length ? '<div class="text-sm">'+aplic.slice(0,3).map(a=>`${a.montadora||''} ${a.modelo||''} ${a.ano_ini||''}-${a.ano_fim||''}`).join(' | ')+'</div>' : ''}
-            <div class="flex mt" style="align-items:flex-end;gap:16px">
-                <div>
-                    <div class="pdv-ntc-big" style="color:${scoreColor}">${(p.ntc_score*100).toFixed(1)}%</div>
-                    <div><span class="ntc-${p.ntc_status||'REPROVADO'}">${p.ntc_status||'?'}</span></div>
-                </div>
-                <div>${statusBadge(p.status)}</div>
-                <button class="btn btn-success btn-sm ml-auto" onclick="enriquecerProduto(${p.id})">Enriquecer NTC</button>
+            <div class="pdv-ref">${p.ref}</div>
+            <div style="margin:8px 0;display:flex;align-items:center;gap:12px">
+                <span style="font-size:2rem;font-weight:900;color:${scoreColor}">${(score*100).toFixed(1)}%</span>
+                <span class="ntc-${p.ntc_status||'REPROVADO'}" style="font-size:.9rem">${p.ntc_status||'?'}</span>
             </div>
-            ${isLow ? '<div class="pdv-alert">ATENCAO: NTC Score abaixo do minimo (0.60). Produto necessita revisao antes da venda.</div>' : ''}
+            <div class="${riskClass}">${riskMsg}</div>
+            <div class="pdv-dna-grid">
+                <div><b>Fabricante</b><br>${dna.fabricante||'-'}</div>
+                <div><b>Marca</b><br>${dna.marca||'-'}</div>
+                <div><b>Familia</b><br>${dna.familia||'-'}</div>
+                <div><b>Codigo DNA</b><br>${dna.codigo_dna||'-'}</div>
+            </div>
+            ${aplic.length ? `<table class="pdv-aplic-table"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th></tr></thead><tbody>${aplicRows}</tbody></table>` : ''}
+            <div style="margin-top:10px;font-size:.8rem;color:var(--text2)">NCM: <b>${fiscal.ncm||'-'}</b></div>
+            <div style="margin-top:6px">
+                <button class="btn btn-success btn-sm" onclick="enriquecerProduto(${p.id})">&#x2728; Enriquecer no iRollo</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ======================================================
+// MARKETPLACE READY
+// ======================================================
+async function populateMarketplaceSelect() {
+    const sel = document.getElementById('mkt-produto-sel');
+    if (sel.options.length > 1) return;
+    const d = await api('/produtos?limit=200');
+    (d.data || []).forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id;
+        o.textContent = `[${p.ref}] ${p.descricao}`;
+        sel.appendChild(o);
+    });
+}
+
+async function loadMarketplacePacote() {
+    const sel = document.getElementById('mkt-produto-sel');
+    const id = sel.value;
+    if (!id) { alert('Selecione um produto primeiro'); return; }
+    const container = document.getElementById('mkt-results');
+    container.innerHTML = '<div class="empty"><span class="spinner"></span> Gerando pacote...</div>';
+    const pkg = await api('/marketplace/pacote/' + id);
+    if (pkg.error) { container.innerHTML = `<div class="empty">${pkg.error}</div>`; return; }
+    const s = pkg.status || {};
+    const channels = [
+        { key:'mercado_livre', label:'Mercado Livre', color:'#ffe600', bg:'#ffe60022', icon:'ML', pronto: s.pronto_ml },
+        { key:'amazon',        label:'Amazon',        color:'#ff9900', bg:'#ff990022', icon:'AM', pronto: s.pronto_amazon },
+        { key:'shopee',        label:'Shopee',        color:'#ee4d2d', bg:'#ee4d2d22', icon:'SH', pronto: s.pronto_shopee },
+        { key:'magalu',        label:'Magalu',        color:'#0086cc', bg:'#0086cc22', icon:'MG', pronto: s.pronto_magalu },
+    ];
+    const cards = channels.map(ch => {
+        const badge = ch.pronto
+            ? `<span class="mkt-badge-ok">&#x2705; Pronto</span>`
+            : `<span class="mkt-badge-pend">&#x23F3; Pendente</span>`;
+        return `<div class="mkt-card">
+            <div class="mkt-card-header">
+                <div class="mkt-logo" style="background:${ch.color};color:#222">${ch.icon}</div>
+                <div style="flex:1"><div style="font-weight:700;font-size:.9rem">${ch.label}</div>${badge}</div>
+            </div>
+            <div style="font-size:.75rem;color:var(--text2);margin-bottom:6px">${ch.pronto ? 'Todos os campos obrigatorios preenchidos.' : 'Verifique: imagens, preco, marca ou NCM.'}</div>
         </div>`;
-    })).then(r => r.join(''));
+    }).join('');
+    const jsonToggleId = 'mkt-json-' + id;
+    container.innerHTML = `
+        <div class="mkt-grid">${cards}</div>
+        <div class="sec" style="margin-top:16px">
+            <div class="sec-title" style="cursor:pointer" onclick="document.getElementById('${jsonToggleId}').style.display=document.getElementById('${jsonToggleId}').style.display==='none'?'block':'none'">&#x1F4C4; Ver JSON do Pacote &#x25BC;</div>
+            <div id="${jsonToggleId}" style="display:none"><div class="mkt-json-block">${JSON.stringify(pkg, null, 2)}</div></div>
+        </div>
+        <div style="font-size:.72rem;color:var(--text3);margin-top:8px;padding:0 4px">Conectores em desenvolvimento. Pacote estruturado pronto para integracao via API.</div>
+    `;
 }
 
 // ======================================================
