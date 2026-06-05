@@ -153,6 +153,22 @@ tr:hover td{background:#1c1c1c}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 
+/* IMAGE SLOT / THUMBNAIL */
+.img-thumb{width:30px;height:30px;border-radius:4px;object-fit:contain;background:#111;border:1px solid #2a2a2a;vertical-align:middle}
+.img-thumb-lg{width:200px;height:200px;border-radius:8px;object-fit:contain;background:#111;border:1px solid #2a2a2a}
+.img-thumb-md{width:80px;height:80px;border-radius:6px;object-fit:contain;background:#111;border:1px solid #2a2a2a}
+.img-slot-placeholder{display:inline-flex;align-items:center;justify-content:center;color:#444;font-size:1rem;background:#111;border:1px dashed #333;border-radius:4px}
+/* NTC ENRICHMENT BADGES */
+.ntc-APROVADO{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840;display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;white-space:nowrap}
+.ntc-PENDENTE{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040;display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;white-space:nowrap}
+.ntc-REPROVADO{background:#ff220020;color:#ff2200;border:1px solid #ff220040;display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;white-space:nowrap}
+/* IMAGE GALLERY SLOTS */
+.img-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.img-slot-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.img-slot-card .slot-label{font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700;text-transform:uppercase}
+.img-slot-card .slot-img-wrap{height:100px;display:flex;align-items:center;justify-content:center;border-radius:4px;overflow:hidden;background:#0d0d0d;border:1px dashed #2a2a2a;margin-bottom:6px}
+.img-slot-card .slot-img-wrap img{max-width:100%;max-height:100%;object-fit:contain}
+.img-slot-card .slot-placeholder{color:#333;font-size:2rem}
 /* MISC */
 .flex{display:flex;align-items:center;gap:8px}
 .flex-wrap{flex-wrap:wrap}
@@ -234,7 +250,7 @@ tr:hover td{background:#1c1c1c}
         <div class="sec-title">Produtos Recentes</div>
         <div class="tbl-wrap">
           <table id="tbl-recentes">
-            <thead><tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>NTC Score</th><th>Status</th><th>Atualizado</th></tr></thead>
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Marca</th><th>NTC Score</th><th>Enriquecimento</th><th>Status</th><th>Atualizado</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -265,7 +281,7 @@ tr:hover td{background:#1c1c1c}
         </div>
         <div class="tbl-wrap">
           <table id="tbl-produtos">
-            <thead><tr><th>Ref</th><th>Descricao</th><th>Fabricante</th><th>Familia</th><th>NTC Score</th><th>NTC Status</th><th>Status</th><th>Acoes</th></tr></thead>
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Fabricante</th><th>Familia</th><th>NTC Score</th><th>NTC Status</th><th>Status</th><th>Acoes</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -306,6 +322,7 @@ tr:hover td{background:#1c1c1c}
           <button class="btn btn-sm" onclick="loadAplicacoes()">Carregar</button>
           <button class="btn btn-success btn-sm" onclick="openModalNovaAplicacao()">+ Adicionar</button>
         </div>
+        <div id="aplic-prod-header"></div>
         <div class="tbl-wrap">
           <table id="tbl-aplicacoes">
             <thead><tr><th>Montadora</th><th>Modelo</th><th>Versao</th><th>Motor</th><th>Comb.</th><th>Ano</th><th>Acoes</th></tr></thead>
@@ -324,9 +341,10 @@ tr:hover td{background:#1c1c1c}
             <option value="">Selecione um produto...</option>
           </select>
           <button class="btn btn-sm" onclick="loadImagens()">Carregar</button>
-          <button class="btn btn-success btn-sm" onclick="openModalNovaImagem()">+ Adicionar Imagem</button>
+          <button class="btn btn-success btn-sm" onclick="openModalNovaImagem()">+ Upload Imagem</button>
         </div>
-        <div id="img-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px"></div>
+        <div id="img-prod-header" style="display:none;margin-bottom:14px"></div>
+        <div id="img-gallery" class="img-slot-grid"></div>
       </div>
     </div>
 
@@ -487,6 +505,7 @@ tr:hover td{background:#1c1c1c}
       <div class="tab active" onclick="switchTab(this,'tab-prod-basico')">Basico</div>
       <div class="tab" onclick="switchTab(this,'tab-prod-dna')">DNA</div>
       <div class="tab" onclick="switchTab(this,'tab-prod-fiscal')">Fiscal</div>
+      <div class="tab" onclick="switchTab(this,'tab-prod-imagem')">Imagem</div>
     </div>
     <div id="tab-prod-basico">
       <div class="form-grid">
@@ -512,6 +531,13 @@ tr:hover td{background:#1c1c1c}
         <div class="fg"><label>CFOP</label><input id="np-cfop" placeholder="5102"></div>
         <div class="fg"><label>ICMS (%)</label><input id="np-icms" type="number" placeholder="12"></div>
       </div>
+    </div>
+    <div id="tab-prod-imagem" style="display:none">
+      <div class="fg"><label>Imagem Principal (upload apos salvar produto)</label>
+        <input type="file" id="np-img-file" accept="image/*" style="background:var(--bg);border:1px solid #333;border-radius:6px;padding:6px;color:var(--text);width:100%">
+      </div>
+      <div class="fg"><label>— ou — URL da Imagem</label><input id="np-img-url" placeholder="https://..."></div>
+      <div class="text-xs" style="color:var(--text3)">A imagem sera vinculada automaticamente apos salvar o produto.</div>
     </div>
     <div class="flex mt">
       <button class="btn" onclick="salvarNovoProduto()">Salvar Produto</button>
@@ -553,11 +579,13 @@ tr:hover td{background:#1c1c1c}
     <div class="fg"><label>Tipo</label>
       <select id="img-tipo"><option value="Principal">Principal</option><option value="Lateral">Lateral</option><option value="Tecnica">Tecnica</option><option value="Detalhe">Detalhe</option><option value="Embalagem">Embalagem</option><option value="Aplicada">Aplicada</option></select>
     </div>
-    <div class="fg"><label>URL da Imagem</label><input id="img-url" placeholder="https://..."></div>
+    <div class="fg"><label>Upload de Arquivo</label><input type="file" id="img-file" accept="image/*" style="background:var(--bg);border:1px solid #333;border-radius:6px;padding:6px;color:var(--text);width:100%"></div>
+    <div class="fg"><label>— ou — URL da Imagem</label><input id="img-url" placeholder="https://..."></div>
     <div class="fg"><label>Resolucao</label><input id="img-res" placeholder="ex: 800x600"></div>
     <div class="flex mt">
       <button class="btn" onclick="salvarImagem()">Salvar</button>
       <button class="btn btn-outline" onclick="closeModal('modal-imagem')">Cancelar</button>
+      <div id="img-upload-status" class="text-xs ml-auto"></div>
     </div>
   </div>
 </div>
@@ -688,13 +716,15 @@ async function loadDashboard() {
     // Tabela recentes
     const tbody = document.querySelector('#tbl-recentes tbody');
     tbody.innerHTML = d.recentes.map(p => `<tr>
+        <td>${imgThumb(p.imagem_principal, 30)}</td>
         <td class="mono">${p.ref}</td>
         <td>${p.descricao}</td>
         <td>${p.marca || '-'}</td>
         <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
+        <td><span class="ntc-${p.ntc_status||'REPROVADO'}">${(p.ntc_score*100).toFixed(1)}% ${p.ntc_status||'?'}</span></td>
         <td>${statusBadge(p.status)}</td>
         <td class="text-xs">${(p.atualizado_em||'').substring(0,16)}</td>
-    </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhum produto</td></tr>';
 }
 
 // ======================================================
@@ -719,23 +749,25 @@ async function loadProdutos() {
     if (prodPage >= totalPages) prodPage = totalPages;
     const tbody = document.querySelector('#tbl-produtos tbody');
     tbody.innerHTML = d.data.map(p => `<tr>
+        <td>${imgThumb(p.imagem_principal, 40)}</td>
         <td class="mono">${p.ref}</td>
         <td>${p.descricao}</td>
         <td>${p.fabricante || '-'}</td>
         <td>${p.familia || '-'}</td>
         <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
-        <td>${ntcStatusBadge(p.ntc_status)}</td>
+        <td><span class="ntc-${p.ntc_status||'REPROVADO'}">${p.ntc_status||'?'}</span></td>
         <td>${statusBadge(p.status)}</td>
         <td>
             <div class="flex">
                 <button class="btn btn-blue btn-xs" onclick="verProduto(${p.id})">Ver</button>
+                <button class="btn btn-success btn-xs" onclick="enriquecerProduto(${p.id})" title="Recalcular NTC">Enriquecer</button>
                 ${p.status === 'Congelado'
                     ? '<button class="btn btn-success btn-xs" onclick="descongelar('+p.id+')">Descongelar</button>'
                     : '<button class="btn btn-gray btn-xs" onclick="congelar('+p.id+')">Congelar</button>'}
                 <button class="btn btn-danger btn-xs" onclick="deletarProduto(${p.id}, \'${p.ref}\')">Del</button>
             </div>
         </td>
-    </tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhum produto encontrado</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="9" class="empty">Nenhum produto encontrado</td></tr>';
 }
 
 async function verProduto(id) {
@@ -839,10 +871,25 @@ async function salvarNovoProduto() {
     };
     const r = await api('/produtos', {method:'POST', body:JSON.stringify(payload)});
     if (r.success) {
+        const pid = r.id;
+        // Upload image if provided
+        const imgFile = document.getElementById('np-img-file');
+        const imgUrl = document.getElementById('np-img-url').value.trim();
+        if (imgFile && imgFile.files && imgFile.files[0]) {
+            const fd = new FormData();
+            fd.append('imagem', imgFile.files[0]);
+            fd.append('tipo', 'Principal');
+            await fetch('/api/produtos/' + pid + '/imagens', {method:'POST', body:fd});
+        } else if (imgUrl) {
+            await api('/produtos/' + pid + '/imagens', {method:'POST', body:JSON.stringify({url:imgUrl, tipo:'Principal'})});
+        }
+        // Auto-trigger NTC recalculation
+        document.getElementById('np-status').textContent = 'Recalculando NTC...';
+        await api('/produtos/' + pid + '/ntc/recalcular', {method:'POST'});
         closeModal('modal-produto');
         loadProdutos();
-        document.getElementById('np-ref').value = '';
-        document.getElementById('np-desc').value = '';
+        ['np-ref','np-desc','np-img-url'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+        if (imgFile) imgFile.value = '';
     } else {
         document.getElementById('np-status').textContent = r.error || 'Erro';
     }
@@ -863,8 +910,15 @@ async function populateProductSelects() {
 async function loadInspector() {
     const id = document.getElementById('inspector-select').value;
     if (!id) return;
-    const r = await api('/produtos/' + id + '/ntc');
-    renderNTCResult(document.getElementById('inspector-result'), r.ntc, r.produto);
+    const [r, imgs] = await Promise.all([
+        api('/produtos/' + id + '/ntc'),
+        api('/produtos/' + id + '/imagens')
+    ]);
+    const principalImg = imgs.find(i => i.tipo === 'Principal') || imgs[0];
+    const imgHtml = principalImg
+        ? `<img src="${principalImg.url}" class="img-thumb-md" style="display:block;margin:0 auto 12px" onerror="this.style.display='none'">`
+        : `<div class="img-slot-placeholder img-thumb-md" style="margin:0 auto 12px">&#x1F4F7;</div>`;
+    renderNTCResult(document.getElementById('inspector-result'), r.ntc, r.produto, imgHtml);
 }
 
 async function recalcNTC() {
@@ -876,11 +930,12 @@ async function recalcNTC() {
     }
 }
 
-function renderNTCResult(container, ntc, produto) {
+function renderNTCResult(container, ntc, produto, extraHtml='') {
     const scoreColor = ntc.status === 'APROVADO' ? 'var(--success)' : ntc.status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
     const allMissing = Object.values(ntc.modules).flatMap(m => m.missing);
     container.innerHTML = `
         <div class="ntc-big">
+            ${extraHtml}
             <div class="score" style="color:${scoreColor}">${(ntc.score*100).toFixed(1)}%</div>
             <div class="status-txt" style="color:${scoreColor}">${ntc.status}</div>
             <div class="rast">${ntc.rast_hash}</div>
@@ -923,7 +978,18 @@ function renderNTCResult(container, ntc, produto) {
 async function loadAplicacoes() {
     currentAplicacaoProdId = document.getElementById('aplic-prod-select').value;
     if (!currentAplicacaoProdId) return;
-    const data = await api('/produtos/' + currentAplicacaoProdId + '/aplicacoes');
+    const [data, prodData] = await Promise.all([
+        api('/produtos/' + currentAplicacaoProdId + '/aplicacoes'),
+        api('/produtos/' + currentAplicacaoProdId)
+    ]);
+    // Show product header with thumbnail
+    const imgs = prodData.imagens || [];
+    const hImg = imgs.find(i => i.tipo === 'Principal') || imgs[0];
+    const hImgHtml = hImg
+        ? `<img src="${hImg.url}" style="width:50px;height:50px;object-fit:contain;border-radius:6px;border:1px solid #333;background:#111" onerror="this.style.display='none'">`
+        : `<div style="width:50px;height:50px;border:1px dashed #333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#444;font-size:1.5rem">&#x1F4F7;</div>`;
+    const apHdr = document.getElementById('aplic-prod-header');
+    if (apHdr) apHdr.innerHTML = `<div class="flex mb" style="gap:10px;align-items:center">${hImgHtml}<div><div style="font-size:.8rem;color:var(--text2)">${prodData.ref||''}</div><div style="font-size:.75rem;color:var(--text3)">${(prodData.descricao||'').substring(0,60)}</div><div><span class="ntc-${prodData.ntc_status||'REPROVADO'}">${(prodData.ntc_score*100).toFixed(1)}% ${prodData.ntc_status||'?'}</span></div></div></div>`;
     const tbody = document.querySelector('#tbl-aplicacoes tbody');
     tbody.innerHTML = data.map(a => `<tr>
         <td>${a.montadora||'-'}</td>
@@ -969,19 +1035,53 @@ async function deletarAplicacao(id) {
 // ======================================================
 // IMAGENS
 // ======================================================
+const IMG_SLOT_TYPES = ['Principal', 'Lateral', 'Tecnica', 'Detalhe', 'Embalagem', 'Aplicada'];
+
 async function loadImagens() {
     currentImagemProdId = document.getElementById('img-prod-select').value;
     if (!currentImagemProdId) return;
-    const data = await api('/produtos/' + currentImagemProdId + '/imagens');
+    const [data, prodData] = await Promise.all([
+        api('/produtos/' + currentImagemProdId + '/imagens'),
+        api('/produtos/' + currentImagemProdId)
+    ]);
+    // Show product header
+    const hdr = document.getElementById('img-prod-header');
+    hdr.style.display = 'block';
+    const principalImg = data.find(i => i.tipo === 'Principal') || data[0];
+    hdr.innerHTML = `<div class="flex" style="gap:12px;align-items:center;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+        ${principalImg ? `<img src="${principalImg.url}" style="width:60px;height:60px;object-fit:contain;border-radius:6px;border:1px solid #333;background:#111" onerror="this.style.display='none'">` : `<div style="width:60px;height:60px;border:1px dashed #333;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#444;font-size:1.5rem">&#x1F4F7;</div>`}
+        <div><div style="font-size:.85rem;font-weight:700">${prodData.ref||''}</div><div style="font-size:.75rem;color:var(--text3)">${(prodData.descricao||'').substring(0,70)}</div>
+        <span class="ntc-${prodData.ntc_status||'REPROVADO'}" style="margin-top:4px;display:inline-block">${(prodData.ntc_score*100).toFixed(1)}% ${prodData.ntc_status||'?'}</span></div>
+        <button class="btn btn-success btn-sm ml-auto" onclick="enriquecerProduto(${prodData.id})">Enriquecer NTC</button>
+    </div>`;
+    // 6-slot gallery
     const gallery = document.getElementById('img-gallery');
-    gallery.innerHTML = data.map(img => `
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
-            <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px">${img.tipo||'?'} | ${img.status||'?'}</div>
-            ${img.url.startsWith('/uploads/') || img.url.startsWith('http') ? `<img src="${img.url}" style="width:100%;max-height:100px;object-fit:contain;border-radius:4px;background:#111" onerror="this.style.display='none'">` : ''}
-            <div class="mono" style="font-size:.6rem;color:var(--text3);margin-top:6px;word-break:break-all">${img.url.substring(0,40)}</div>
+    gallery.innerHTML = IMG_SLOT_TYPES.map(tipo => {
+        const img = data.find(i => i.tipo === tipo);
+        return `<div class="img-slot-card">
+            <div class="slot-label">${tipo}</div>
+            <div class="slot-img-wrap">
+                ${img ? `<img src="${img.url}" onerror="this.outerHTML='<span style=color:#444>&#x1F4F7;</span>'">` : `<span class="slot-placeholder">&#x1F4F7;</span>`}
+            </div>
+            ${img ? `<div class="mono" style="font-size:.6rem;color:var(--text3);word-break:break-all;margin-bottom:4px">${img.url.substring(0,35)}</div>
+            <span class="badge badge-${img.status==='Aprovado'?'green':'gray'}">${img.status||'?'}</span>
+            <div><button class="btn btn-danger btn-xs mt" onclick="deletarImagem(${img.id})">Deletar</button></div>` : `<div><button class="btn btn-outline btn-xs" onclick="abrirUploadSlot('${tipo}')">Upload</button></div>`}
+        </div>`;
+    }).join('');
+    // Also show any extra images beyond the 6 slots
+    const extras = data.filter(i => !IMG_SLOT_TYPES.includes(i.tipo));
+    if (extras.length) {
+        gallery.innerHTML += extras.map(img => `<div class="img-slot-card">
+            <div class="slot-label">${img.tipo||'Outro'}</div>
+            <div class="slot-img-wrap"><img src="${img.url}" onerror="this.outerHTML='<span style=color:#444>&#x1F4F7;</span>'"></div>
             <button class="btn btn-danger btn-xs mt" onclick="deletarImagem(${img.id})">Deletar</button>
-        </div>
-    `).join('') || '<div class="empty">Nenhuma imagem</div>';
+        </div>`).join('');
+    }
+}
+
+function abrirUploadSlot(tipo) {
+    document.getElementById('img-tipo').value = tipo;
+    openModalNovaImagem();
 }
 
 function openModalNovaImagem() {
@@ -990,13 +1090,29 @@ function openModalNovaImagem() {
 }
 
 async function salvarImagem() {
+    const fileInput = document.getElementById('img-file');
     const url = document.getElementById('img-url').value.trim();
-    if (!url) { alert('URL obrigatoria'); return; }
-    const r = await api('/produtos/' + currentImagemProdId + '/imagens', {
-        method: 'POST',
-        body: JSON.stringify({ url, tipo: document.getElementById('img-tipo').value, resolucao: document.getElementById('img-res').value||null })
-    });
-    if (r.success) { closeModal('modal-imagem'); loadImagens(); }
+    const tipo = document.getElementById('img-tipo').value;
+    const resolucao = document.getElementById('img-res').value||null;
+    const statusEl = document.getElementById('img-upload-status');
+    statusEl.textContent = 'Salvando...';
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        const fd = new FormData();
+        fd.append('imagem', fileInput.files[0]);
+        fd.append('tipo', tipo);
+        if (resolucao) fd.append('resolucao', resolucao);
+        const resp = await fetch('/api/produtos/' + currentImagemProdId + '/imagens', {method:'POST', body:fd});
+        const r = await resp.json();
+        if (r.success) { closeModal('modal-imagem'); fileInput.value=''; document.getElementById('img-url').value=''; statusEl.textContent=''; loadImagens(); }
+        else { statusEl.textContent = r.error || 'Erro'; }
+    } else if (url) {
+        const r = await api('/produtos/' + currentImagemProdId + '/imagens', {
+            method: 'POST',
+            body: JSON.stringify({ url, tipo, resolucao })
+        });
+        if (r.success) { closeModal('modal-imagem'); document.getElementById('img-url').value=''; statusEl.textContent=''; loadImagens(); }
+        else { statusEl.textContent = r.error || 'Erro'; }
+    } else { statusEl.textContent = 'Arquivo ou URL obrigatorio'; }
 }
 
 async function deletarImagem(id) {
@@ -1109,7 +1225,13 @@ async function pdvSearch() {
         const aplic = full.aplicacoes || [];
         const isLow = p.ntc_score < 0.60;
         const scoreColor = p.ntc_status === 'APROVADO' ? 'var(--success)' : p.ntc_status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+        const pdvImgs = full.imagens || [];
+        const pdvImg = pdvImgs.find(i => i.tipo === 'Principal') || pdvImgs[0];
+        const pdvImgHtml = pdvImg
+            ? `<img src="${pdvImg.url}" class="img-thumb-lg" style="display:block;margin:0 auto 14px" onerror="this.outerHTML='<div class=\'img-slot-placeholder img-thumb-lg\' style=\'margin:0 auto 14px\'>&#x1F4F7;</div>'">`
+            : `<div class="img-slot-placeholder img-thumb-lg" style="margin:0 auto 14px;font-size:3rem">&#x1F4F7;</div>`;
         return `<div class="pdv-card">
+            ${pdvImgHtml}
             <div class="pdv-ref">${p.ref}</div>
             <div class="pdv-nome">${p.descricao}</div>
             <div class="pdv-dna">${dna.fabricante||''} ${dna.grupo_industrial ? '('+dna.grupo_industrial+')' : ''} ${dna.origem_pais ? '| '+dna.origem_pais : ''}</div>
@@ -1117,9 +1239,10 @@ async function pdvSearch() {
             <div class="flex mt" style="align-items:flex-end;gap:16px">
                 <div>
                     <div class="pdv-ntc-big" style="color:${scoreColor}">${(p.ntc_score*100).toFixed(1)}%</div>
-                    <div>${ntcStatusBadge(p.ntc_status)}</div>
+                    <div><span class="ntc-${p.ntc_status||'REPROVADO'}">${p.ntc_status||'?'}</span></div>
                 </div>
                 <div>${statusBadge(p.status)}</div>
+                <button class="btn btn-success btn-sm ml-auto" onclick="enriquecerProduto(${p.id})">Enriquecer NTC</button>
             </div>
             ${isLow ? '<div class="pdv-alert">ATENCAO: NTC Score abaixo do minimo (0.60). Produto necessita revisao antes da venda.</div>' : ''}
         </div>`;
@@ -1168,6 +1291,47 @@ async function analisarNTC() {
         <div id="ia-ntc-modules"></div>
     `;
     renderNTCResult(document.getElementById('ia-ntc-modules'), r, null);
+    // Image upload section after analysis
+    document.getElementById('ia-results').insertAdjacentHTML('beforeend', `
+        <div class="sec" style="margin-top:16px;border-color:#ff450040">
+            <div class="sec-title" style="color:var(--warning)">&#x1F4F7; Adicionar Imagem ao Produto (opcional)</div>
+            <div style="font-size:.75rem;color:var(--text3);margin-bottom:10px">Se este produto existir no catalogo, voce pode adicionar/vincular uma imagem agora.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+                <div class="fg" style="margin:0"><label>Produto (ID ou Ref)</label><input id="ia-img-prod-id" placeholder="ID do produto..."></div>
+                <div class="fg" style="margin:0"><label>Tipo</label>
+                    <select id="ia-img-tipo" style="width:100%;background:var(--bg);border:1px solid #333;border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+                        <option>Principal</option><option>Lateral</option><option>Tecnica</option><option>Detalhe</option><option>Embalagem</option><option>Aplicada</option>
+                    </select>
+                </div>
+                <div class="fg" style="margin:0"><label>Arquivo de Imagem</label><input type="file" id="ia-img-file" accept="image/*" style="background:var(--bg);border:1px solid #333;border-radius:6px;padding:6px;color:var(--text);width:100%"></div>
+                <button class="btn btn-sm" onclick="uploadIaImagem()">Upload</button>
+            </div>
+            <div id="ia-img-status" class="text-xs mt"></div>
+        </div>
+    `);
+}
+
+async function uploadIaImagem() {
+    const prodId = document.getElementById('ia-img-prod-id').value.trim();
+    const tipo = document.getElementById('ia-img-tipo').value;
+    const fileInput = document.getElementById('ia-img-file');
+    const statusEl = document.getElementById('ia-img-status');
+    if (!prodId) { statusEl.textContent = 'Informe o ID do produto'; return; }
+    if (!fileInput.files || !fileInput.files[0]) { statusEl.textContent = 'Selecione um arquivo'; return; }
+    statusEl.textContent = 'Enviando...';
+    const fd = new FormData();
+    fd.append('imagem', fileInput.files[0]);
+    fd.append('tipo', tipo);
+    const resp = await fetch('/api/produtos/' + prodId + '/imagens', {method:'POST', body:fd});
+    const r = await resp.json();
+    if (r.success) {
+        statusEl.innerHTML = '<span style="color:var(--success)">Imagem enviada! URL: ' + r.url + '</span>';
+        // Auto-trigger NTC recalculation
+        await api('/produtos/' + prodId + '/ntc/recalcular', {method:'POST'});
+        statusEl.innerHTML += ' <span style="color:var(--success)"> NTC recalculado!</span>';
+    } else {
+        statusEl.textContent = r.error || 'Erro ao enviar';
+    }
 }
 
 // ======================================================
@@ -1224,8 +1388,31 @@ function loadConfig() {
 }
 
 // ======================================================
+// ENRICHMENT
+// ======================================================
+async function enriquecerProduto(id) {
+    const r = await api('/produtos/' + id + '/ntc/recalcular', {method:'POST'});
+    if (r.success) {
+        const s = r.ntc.status;
+        const pct = (r.ntc.score*100).toFixed(1);
+        alert('NTC Recalculado!\n\nScore: ' + pct + '%\nStatus: ' + s);
+        // Refresh current page
+        if (currentPage === 'produtos') loadProdutos();
+        else if (currentPage === 'dashboard') loadDashboard();
+        else if (currentPage === 'ntc-inspector') loadInspector();
+        else if (currentPage === 'imagens') loadImagens();
+    }
+}
+
+// ======================================================
 // HELPERS
 // ======================================================
+function imgThumb(url, size) {
+    size = size || 30;
+    if (!url) return `<div style="width:${size}px;height:${size}px;border:1px dashed #333;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#444;font-size:${Math.round(size*0.5)}px;vertical-align:middle">&#x1F4F7;</div>`;
+    return `<img src="${url}" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:4px;background:#111;border:1px solid #2a2a2a;vertical-align:middle" onerror="this.outerHTML='<div style=width:${size}px;height:${size}px;border:1px dashed #333;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#444>&#x1F4F7;</div>'">`;
+}
+
 function ntcBadge(score, status, large) {
     const cls = status === 'APROVADO' ? 'badge-green' : status === 'PENDENTE' ? 'badge-yellow' : 'badge-red';
     const pct = score != null ? (score*100).toFixed(1)+'%' : '?';
@@ -1258,7 +1445,7 @@ function switchTab(el, showId) {
     const modal = el.closest('.modal');
     modal.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
-    const tabIds = ['tab-prod-basico','tab-prod-dna','tab-prod-fiscal'];
+    const tabIds = ['tab-prod-basico','tab-prod-dna','tab-prod-fiscal','tab-prod-imagem'];
     tabIds.forEach(id => {
         const el2 = document.getElementById(id);
         if (el2) el2.style.display = id === showId ? 'block' : 'none';
