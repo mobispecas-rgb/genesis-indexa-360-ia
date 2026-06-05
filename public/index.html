@@ -314,6 +314,10 @@ tr:hover td{background:#1c1c1c}
 .voz-tab{padding:8px 14px;font-size:.75rem;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;min-height:38px;display:flex;align-items:center}
 .voz-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 .voz-output{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:.84rem;color:var(--text);min-height:80px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.inp-sm{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.8rem;outline:none;box-sizing:border-box}
+.inp-sm:focus{border-color:var(--primary)}
+.font-mono{font-family:monospace}
+#prod-detail-panel{padding-bottom:40px}
 .indexar-btn{width:100%;padding:16px;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#ff4500,#ff8800);border:none;border-radius:10px;color:#fff;cursor:pointer;transition:opacity .2s;letter-spacing:.05em;margin-top:4px}
 .indexar-btn:hover{opacity:.85}
 .indexar-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -411,38 +415,274 @@ tr:hover td{background:#1c1c1c}
 
     <!-- PRODUTOS -->
     <div class="page" id="page-produtos">
-      <div class="sec">
-        <div class="flex mb">
-          <div class="sec-title" style="margin:0">Catalogo de Produtos</div>
-          <button class="btn btn-sm ml-auto" onclick="openModalNovoProduto()">+ Novo Produto</button>
+      <!-- LIST PANEL -->
+      <div id="prod-list-panel">
+        <div class="sec">
+          <div class="flex mb">
+            <div class="sec-title" style="margin:0">&#x1F4E6; Catalogo de Produtos</div>
+            <button class="btn btn-sm ml-auto" onclick="openModalNovoProduto()">+ Novo Produto</button>
+          </div>
+          <div class="filters">
+            <input type="text" id="prod-search" placeholder="Buscar por ref ou descricao..." oninput="debounceLoadProdutos()">
+            <select id="prod-status" onchange="loadProdutos()">
+              <option value="">Todos os Status</option>
+              <option value="Ativo">Ativo</option>
+              <option value="Congelado">Congelado</option>
+              <option value="Pendente">Pendente</option>
+            </select>
+            <select id="prod-ntc" onchange="loadProdutos()">
+              <option value="">Todos NTC</option>
+              <option value="APROVADO">APROVADO</option>
+              <option value="PENDENTE">PENDENTE</option>
+              <option value="REPROVADO">REPROVADO</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table id="tbl-produtos">
+              <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Fabricante</th><th>NTC</th><th>Status</th><th>Acoes</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="flex mt" style="justify-content:space-between">
+            <div class="text-xs" id="prod-count"></div>
+            <div class="flex gap-6">
+              <button class="btn btn-outline btn-sm" onclick="prodPage--; loadProdutos()">Ant</button>
+              <span class="text-xs" id="prod-page-info"></span>
+              <button class="btn btn-outline btn-sm" onclick="prodPage++; loadProdutos()">Prox</button>
+            </div>
+          </div>
         </div>
-        <div class="filters">
-          <input type="text" id="prod-search" placeholder="Buscar por ref ou descricao..." oninput="debounceLoadProdutos()">
-          <select id="prod-status" onchange="loadProdutos()">
-            <option value="">Todos os Status</option>
-            <option value="Ativo">Ativo</option>
-            <option value="Congelado">Congelado</option>
-            <option value="Pendente">Pendente</option>
-          </select>
-          <select id="prod-ntc" onchange="loadProdutos()">
-            <option value="">Todos NTC</option>
-            <option value="APROVADO">APROVADO</option>
-            <option value="PENDENTE">PENDENTE</option>
-            <option value="REPROVADO">REPROVADO</option>
-          </select>
+      </div>
+
+      <!-- DETAIL PANEL (Rollon model: cabeçote + gavetas editáveis) -->
+      <div id="prod-detail-panel" style="display:none">
+        <!-- Cabeçote -->
+        <div class="irollo-header">
+          <div>
+            <button class="btn btn-gray btn-sm" onclick="fecharDetalhe()" style="margin-bottom:6px">&#x2190; Voltar ao Catalogo</button>
+            <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Genesis Indexa 360 IA — Ficha do Produto</div>
+            <div style="font-size:1rem;font-weight:900;color:var(--primary)" id="dprod-titulo">—</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:2px" id="dprod-subtitulo">Ref: — | Fabricante: —</div>
+          </div>
+          <div id="dprod-status-badge" class="ml-auto"></div>
         </div>
-        <div class="tbl-wrap">
-          <table id="tbl-produtos">
-            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Fabricante</th><th>Familia</th><th>NTC Score</th><th>NTC Status</th><th>Status</th><th>Acoes</th></tr></thead>
-            <tbody></tbody>
-          </table>
+
+        <!-- Pipeline -->
+        <div class="pipeline-steps" id="dprod-pipeline">
+          <div class="pipeline-step" id="dprod-pip-1"><div class="pip-num">1</div><div><div class="pip-label">ENRIQUECER</div><div class="pip-sub">DNA + Imagens</div></div></div>
+          <div class="pip-arrow">&#x2192;</div>
+          <div class="pipeline-step" id="dprod-pip-2"><div class="pip-num">2</div><div><div class="pip-label">APROVAR</div><div class="pip-sub">NTC &#x2265; 95%</div></div></div>
+          <div class="pip-arrow">&#x2192;</div>
+          <div class="pipeline-step" id="dprod-pip-3"><div class="pip-num">3</div><div><div class="pip-label">SINCRONIZAR</div><div class="pip-sub">Wix / Bling / Google</div></div></div>
         </div>
-        <div class="flex mt" style="justify-content:space-between">
-          <div class="text-xs" id="prod-count"></div>
-          <div class="flex gap-6">
-            <button class="btn btn-outline btn-sm" onclick="prodPage--; loadProdutos()">Ant</button>
-            <span class="text-xs" id="prod-page-info"></span>
-            <button class="btn btn-outline btn-sm" onclick="prodPage++; loadProdutos()">Prox</button>
+
+        <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
+          <!-- LEFT: NTC Card + Ações -->
+          <div>
+            <!-- NTC Card -->
+            <div class="nct-card" id="dprod-nct-card">
+              <div style="font-size:.7rem;color:var(--text3);margin-bottom:6px">Motor NTC 4.0 — Genesis iRollo</div>
+              <div class="nct-score-big" id="dprod-nct-score">—</div>
+              <div class="nct-status-big" id="dprod-nct-status"></div>
+              <div class="nct-modules" id="dprod-nct-modules"></div>
+              <div class="rast-box" style="margin-top:10px">
+                <span style="font-size:.65rem;color:var(--text3)">RAST-HASH</span>
+                <span class="rast-hash" id="dprod-rast" style="font-size:.6rem">—</span>
+              </div>
+            </div>
+            <!-- Ações -->
+            <div class="sec" style="margin-top:10px">
+              <div class="sec-title">&#x26A1; Acoes</div>
+              <div style="display:grid;gap:8px">
+                <button class="btn btn-blue" onclick="dprodEnriquecerWeb()" id="dprod-btn-web">&#x1F310; ENRIQUECER DNA NA WEB</button>
+                <div id="dprod-web-status" class="text-xs"></div>
+                <div id="dprod-ntc-hint" style="font-size:.72rem;text-align:center"></div>
+                <button class="indexar-btn" id="dprod-btn-congelar" onclick="dprodCongelar()" disabled>&#x1F512; CONGELAR — NTC insuficiente</button>
+                <div id="dprod-indexar-status" class="text-xs" style="text-align:center"></div>
+              </div>
+            </div>
+            <!-- Historico NTC -->
+            <div id="dprod-historico"></div>
+          </div>
+
+          <!-- RIGHT: Gavetas editáveis -->
+          <div id="dprod-gavetas-wrap">
+            <!-- Gaveta DNA -->
+            <div class="gaveta open" id="dprod-gav-dna">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F9EC; DNA do Produto
+                <span class="badge badge-blue gaveta-status ml-auto" id="dprod-dna-badge">—</span>
+                <span class="gaveta-chevron">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
+                  <div class="fg"><label>Referencia (SKU)</label><input id="dp-ref" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Descricao</label><input id="dp-desc" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Fabricante</label><input id="dp-fab" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Marca</label><input id="dp-marca" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Familia</label><input id="dp-familia" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Grupo Industrial</label><input id="dp-grupo" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Linha</label><input id="dp-linha" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Origem / Pais</label><input id="dp-origem" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>Codigo DNA (OEM principal)</label><input id="dp-codigo-dna" type="text" class="inp-sm font-mono"></div>
+                  <div class="fg"><label>EAN / GTIN</label><input id="dp-ean" type="text" class="inp-sm font-mono"></div>
+                  <div class="fg"><label>Preco Custo (R$)</label><input id="dp-preco-custo" type="number" step="0.01" class="inp-sm"></div>
+                  <div class="fg"><label>Preco Venda (R$)</label><input id="dp-preco-venda" type="number" step="0.01" class="inp-sm"></div>
+                </div>
+                <button class="btn btn-sm" style="margin-top:10px" onclick="dprodSalvarDNA()">&#x1F4BE; Salvar DNA</button>
+                <span id="dp-dna-st" class="text-xs" style="margin-left:8px"></span>
+              </div>
+            </div>
+
+            <!-- Gaveta Aplicações Veiculares -->
+            <div class="gaveta open" id="dprod-gav-av">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F697; Aplicacoes Veiculares
+                <span class="badge gaveta-status ml-auto" id="dprod-av-badge">0</span>
+                <span class="gaveta-chevron">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body">
+                <div id="dprod-av-table"></div>
+                <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-top:10px;border:1px solid var(--border)">
+                  <div style="font-size:.7rem;color:var(--text3);margin-bottom:8px;font-weight:700">+ Adicionar Aplicacao</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:.78rem">
+                    <div class="fg"><label>Montadora</label><input id="av-montadora" type="text" class="inp-sm" placeholder="ex: FIAT"></div>
+                    <div class="fg"><label>Modelo</label><input id="av-modelo" type="text" class="inp-sm" placeholder="ex: PALIO"></div>
+                    <div class="fg"><label>Motor</label><input id="av-motor" type="text" class="inp-sm" placeholder="ex: 1.0 8V"></div>
+                    <div class="fg"><label>Versao</label><input id="av-versao" type="text" class="inp-sm"></div>
+                    <div class="fg"><label>Ano Ini</label><input id="av-ano-ini" type="number" class="inp-sm" placeholder="2010"></div>
+                    <div class="fg"><label>Ano Fim</label><input id="av-ano-fim" type="number" class="inp-sm" placeholder="2020"></div>
+                    <div class="fg" style="grid-column:span 2"><label>Observacao</label><input id="av-obs" type="text" class="inp-sm"></div>
+                  </div>
+                  <button class="btn btn-sm" onclick="dprodAddAplicacao()">+ Adicionar</button>
+                  <span id="dp-av-st" class="text-xs" style="margin-left:8px"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gaveta Códigos OEM -->
+            <div class="gaveta open" id="dprod-gav-cod">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F4CB; Codigos OEM + Cambiados
+                <span class="badge gaveta-status ml-auto" id="dprod-cod-badge">0</span>
+                <span class="gaveta-chevron">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body">
+                <div id="dprod-cod-list"></div>
+                <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-top:10px;border:1px solid var(--border)">
+                  <div style="font-size:.7rem;color:var(--text3);margin-bottom:8px;font-weight:700">+ Adicionar Codigo</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:.78rem">
+                    <div class="fg"><label>Codigo</label><input id="cod-codigo" type="text" class="inp-sm font-mono" placeholder="ex: LUK-6203236"></div>
+                    <div class="fg"><label>Tipo</label>
+                      <select id="cod-tipo" class="inp-sm"><option>OEM</option><option>CAMBIADO</option><option>EAN</option><option>SKU_DIST</option><option>MOTOR</option></select>
+                    </div>
+                    <div class="fg"><label>Fabricante</label><input id="cod-fab" type="text" class="inp-sm" placeholder="ex: LUK"></div>
+                  </div>
+                  <button class="btn btn-sm" onclick="dprodAddCodigo()">+ Adicionar</button>
+                  <span id="dp-cod-st" class="text-xs" style="margin-left:8px"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gaveta Fiscal -->
+            <div class="gaveta open" id="dprod-gav-fis">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F4CA; Dados Fiscais NCM + CEST
+                <span class="badge gaveta-status ml-auto" id="dprod-fis-badge">—</span>
+                <span class="gaveta-chevron">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.82rem">
+                  <div class="fg"><label>NCM</label><input id="dp-ncm" type="text" class="inp-sm font-mono" placeholder="ex: 8708.99.90"></div>
+                  <div class="fg"><label>CEST</label><input id="dp-cest" type="text" class="inp-sm font-mono"></div>
+                  <div class="fg"><label>CFOP</label><input id="dp-cfop" type="text" class="inp-sm font-mono"></div>
+                  <div class="fg"><label>Origem (0-8)</label><input id="dp-orig-fis" type="text" class="inp-sm"></div>
+                  <div class="fg"><label>IPI (%)</label><input id="dp-ipi" type="number" step="0.01" class="inp-sm"></div>
+                  <div class="fg"><label>ICMS (%)</label><input id="dp-icms" type="number" step="0.01" class="inp-sm"></div>
+                  <div class="fg"><label>PIS (%)</label><input id="dp-pis" type="number" step="0.01" class="inp-sm"></div>
+                  <div class="fg"><label>COFINS (%)</label><input id="dp-cofins" type="number" step="0.01" class="inp-sm"></div>
+                </div>
+                <button class="btn btn-sm" style="margin-top:10px" onclick="dprodSalvarFiscal()">&#x1F4BE; Salvar Fiscal</button>
+                <span id="dp-fis-st" class="text-xs" style="margin-left:8px"></span>
+              </div>
+            </div>
+
+            <!-- Gaveta Logística -->
+            <div class="gaveta open" id="dprod-gav-log">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F4E6; Logistica + Pesos + Dimensoes
+                <span class="badge gaveta-status ml-auto" id="dprod-log-badge">—</span>
+                <span class="gaveta-chevron">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.82rem">
+                  <div class="fg"><label>Peso Liq (kg)</label><input id="dp-peso-liq" type="number" step="0.001" class="inp-sm"></div>
+                  <div class="fg"><label>Peso Bruto (kg)</label><input id="dp-peso-bruto" type="number" step="0.001" class="inp-sm"></div>
+                  <div class="fg"><label>Comprimento (cm)</label><input id="dp-comp" type="number" step="0.1" class="inp-sm"></div>
+                  <div class="fg"><label>Largura (cm)</label><input id="dp-larg" type="number" step="0.1" class="inp-sm"></div>
+                  <div class="fg"><label>Altura (cm)</label><input id="dp-alt" type="number" step="0.1" class="inp-sm"></div>
+                  <div class="fg"><label>Volume (m3)</label><input id="dp-vol" type="number" step="0.0001" class="inp-sm"></div>
+                </div>
+                <button class="btn btn-sm" style="margin-top:10px" onclick="dprodSalvarLog()">&#x1F4BE; Salvar Logistica</button>
+                <span id="dp-log-st" class="text-xs" style="margin-left:8px"></span>
+              </div>
+            </div>
+
+            <!-- Gaveta Imagens -->
+            <div class="gaveta open" id="dprod-gav-img">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F5BC; Imagens — Google Shopping
+                <span class="badge gaveta-status ml-auto" id="dprod-img-badge">0</span>
+                <span class="gaveta-chevron">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body">
+                <div id="dprod-img-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
+                <div class="fg" style="margin-bottom:8px">
+                  <label>Importar imagem por URL</label>
+                  <div class="flex" style="gap:6px;margin-top:4px">
+                    <input type="text" id="dprod-img-url" placeholder="https://..." class="inp-sm" style="flex:1">
+                    <button class="btn btn-sm" onclick="dprodImportUrl()">&#x2B07; Importar</button>
+                    <button class="btn btn-blue btn-sm" onclick="dprodBuscaWeb()">&#x1F50D; Web</button>
+                  </div>
+                </div>
+                <div id="dprod-img-st" class="text-xs"></div>
+              </div>
+            </div>
+
+            <!-- Gaveta Integrações -->
+            <div class="gaveta open" id="dprod-gav-int">
+              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
+                <span class="gaveta-icon">&#x25BC;</span>&#x1F4E4; Integracoes — Bling / Wix / Google
+                <span class="gaveta-chevron ml-auto">&#x25B2;</span>
+              </div>
+              <div class="gaveta-body" id="dprod-int-body"></div>
+            </div>
+
+            <!-- SYNC PANEL -->
+            <div id="dprod-sync-panel" style="display:none">
+              <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2744;&#xFE0F; Produto Congelado — Pacote de publicacao pronto</div>
+              <div id="dprod-pub-loading" style="text-align:center;padding:20px"><div class="spinner"></div></div>
+              <div id="dprod-pub-pacote" style="display:none">
+                <div style="display:grid;grid-template-columns:140px 1fr;gap:12px;margin-bottom:14px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
+                  <div>
+                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">IMAGEM PRINCIPAL</div>
+                    <div id="dprod-pub-img" style="width:130px;height:130px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#333;font-size:2rem">&#x1F4F7;</div>
+                  </div>
+                  <div>
+                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">DESCRICAO COMERCIAL</div>
+                    <div id="dprod-pub-desc" style="font-size:.76rem;color:var(--text);line-height:1.5;max-height:120px;overflow:auto;white-space:pre-wrap"></div>
+                  </div>
+                </div>
+                <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700">SINCRONIZAR NOS CANAIS</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <button class="btn" style="background:#0055a5;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('bling')"><div>&#x1F4CB; Bling ERP</div><div style="font-size:.58rem;opacity:.75">Cadastro + imagem + descricao PDV</div></button>
+                  <button class="btn" style="background:#00b0f0;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('wix')"><div>&#x1F310; Wix Stores</div><div style="font-size:.58rem;opacity:.75">Produto + fotos + descricao site</div></button>
+                  <button class="btn" style="background:#4285F4;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('google_shopping')"><div>&#x1F6D2; Google Shopping</div><div style="font-size:.58rem;opacity:.75">Feed + imagem + titulo SEO</div></button>
+                  <button class="btn" style="background:#EA4335;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('google_ads')"><div>&#x1F4E2; Google Ads P-Max</div><div style="font-size:.58rem;opacity:.75">H1/H2/D1/D2/Callout prontos</div></button>
+                </div>
+                <div id="dprod-sinc-st" class="text-xs" style="margin-top:8px;text-align:center"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1362,80 +1602,433 @@ async function loadProdutos() {
     document.getElementById('prod-page-info').textContent = 'Pag. ' + prodPage + ' / ' + totalPages;
     if (prodPage >= totalPages) prodPage = totalPages;
     const tbody = document.querySelector('#tbl-produtos tbody');
-    tbody.innerHTML = d.data.map(p => `<tr>
+    tbody.innerHTML = d.data.map(p => `<tr style="cursor:pointer" onclick="verProduto(${p.id})">
         <td>${imgThumb(p.imagem_principal, 40)}</td>
-        <td class="mono">${p.ref}</td>
-        <td>${p.descricao}</td>
+        <td class="mono" style="font-weight:700">${p.ref}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.descricao}</td>
         <td>${p.fabricante || '-'}</td>
-        <td>${p.familia || '-'}</td>
         <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
-        <td><span class="ntc-${p.ntc_status||'REPROVADO'}">${p.ntc_status||'?'}</span></td>
         <td>${statusBadge(p.status)}</td>
-        <td>
+        <td onclick="event.stopPropagation()">
             <div class="flex">
-                <button class="btn btn-blue btn-xs" onclick="verProduto(${p.id})">Ver</button>
-                <button class="btn btn-success btn-xs" onclick="enriquecerProduto(${p.id})" title="Abrir no iRollo">&#x2728; iRollo</button>
-                <button class="btn btn-xs" style="background:linear-gradient(135deg,#0077cc,#00aaff)" onclick="abrirBuscaWeb(${p.id},'${p.ref.replace(/'/g,"\\'")}')">&#x1F50D; Web</button>
-                ${p.status === 'Congelado'
-                    ? '<button class="btn btn-success btn-xs" onclick="descongelar('+p.id+')">Descongelar</button>'
-                    : '<button class="btn btn-gray btn-xs" onclick="congelar('+p.id+')">Congelar</button>'}
-                <button class="btn btn-danger btn-xs" onclick="deletarProduto(${p.id}, \'${p.ref}\')">Del</button>
+                <button class="btn btn-blue btn-xs" onclick="verProduto(${p.id})">&#x270F; Editar</button>
+                <button class="btn btn-success btn-xs" onclick="enriquecerProduto(${p.id})" title="iRollo">&#x2728;</button>
+                <button class="btn btn-danger btn-xs" onclick="deletarProduto(${p.id}, '${p.ref.replace(/'/g,"\\'")}')">&#x1F5D1;</button>
             </div>
         </td>
-    </tr>`).join('') || '<tr><td colspan="9" class="empty">Nenhum produto encontrado</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="7" class="empty">Nenhum produto encontrado. Clique em "+ Novo Produto" para comecar.</td></tr>';
+}
+
+// ======================================================
+// PRODUTO DETALHE — Rollon model (cabeçote + gavetas)
+// ======================================================
+let dprodId = null;
+let dprodData = null;
+
+function fecharDetalhe() {
+    document.getElementById('prod-list-panel').style.display = '';
+    document.getElementById('prod-detail-panel').style.display = 'none';
+    dprodId = null; dprodData = null;
+    loadProdutos();
 }
 
 async function verProduto(id) {
+    dprodId = id;
+    document.getElementById('prod-list-panel').style.display = 'none';
+    document.getElementById('prod-detail-panel').style.display = 'block';
+    document.getElementById('dprod-titulo').textContent = 'Carregando...';
     const p = await api('/produtos/' + id);
-    document.getElementById('modal-detalhe-title').innerHTML = 'Produto: ' + p.ref + ' <span class="modal-close" onclick="closeModal(\'modal-detalhe\')">&#x2715;</span>';
+    dprodData = p;
+    dprodRenderDetalhe(p);
+}
+
+function dprodRenderDetalhe(p) {
     const dna = p.dna || {};
     const fis = p.fiscal || {};
     const log = p.logistica || {};
-    document.getElementById('modal-detalhe-content').innerHTML = `
-        <div class="flex mb" style="gap:12px">
-            ${ntcBadge(p.ntc_score, p.ntc_status, true)}
-            ${statusBadge(p.status)}
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="result-card">
-                <div class="result-card-title">DNA</div>
-                ${row2('Fabricante', dna.fabricante)}
-                ${row2('Grupo', dna.grupo_industrial)}
-                ${row2('Marca', dna.marca)}
-                ${row2('Origem', dna.origem_pais)}
-                ${row2('Codigo DNA', dna.codigo_dna)}
-                ${row2('Linha', dna.linha)}
-                ${row2('Familia', dna.familia)}
-            </div>
-            <div class="result-card">
-                <div class="result-card-title">Fiscal</div>
-                ${row2('NCM', fis.ncm)}
-                ${row2('CEST', fis.cest)}
-                ${row2('CFOP', fis.cfop)}
-                ${row2('Origem', fis.origem)}
-                ${row2('IPI', fis.ipi != null ? fis.ipi + '%' : null)}
-                ${row2('ICMS', fis.icms != null ? fis.icms + '%' : null)}
-            </div>
-            <div class="result-card">
-                <div class="result-card-title">Logistica</div>
-                ${row2('Peso Liq', log.peso_liq ? log.peso_liq + ' kg' : null)}
-                ${row2('Peso Bruto', log.peso_bruto ? log.peso_bruto + ' kg' : null)}
-                ${row2('Altura', log.altura ? log.altura + ' cm' : null)}
-                ${row2('Largura', log.largura ? log.largura + ' cm' : null)}
-                ${row2('Comprimento', log.comprimento ? log.comprimento + ' cm' : null)}
-            </div>
-            <div class="result-card">
-                <div class="result-card-title">Codigos (${p.codigos.length})</div>
-                ${p.codigos.length ? p.codigos.map(c=>`<div class="text-sm" style="margin-bottom:4px"><span class="badge badge-blue">${c.tipo||'?'}</span> <span class="mono">${c.codigo||''}</span></div>`).join('') : '<div class="text-xs">Nenhum codigo cambiado</div>'}
-            </div>
-        </div>
-        <div class="result-card mt">
-            <div class="result-card-title">Aplicacoes Motor (${p.aplicacoes.length})</div>
-            ${p.aplicacoes.length ? `<div class="tbl-wrap"><table><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Ano</th></tr></thead><tbody>${p.aplicacoes.map(a=>`<tr><td>${a.montadora||'-'}</td><td>${a.modelo||'-'}</td><td>${a.motor||'-'}</td><td>${a.ano_ini||'?'} - ${a.ano_fim||'?'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="text-xs">Nenhuma aplicacao</div>'}
-        </div>
-        ${p.rast ? `<div class="text-xs mono" style="margin-top:8px;color:var(--text3)">RAST: ${p.rast.hash} | ${p.rast.gerado_em}</div>` : ''}
-    `;
-    openModal('modal-detalhe');
+    const aplic = p.aplicacoes || [];
+    const codigos = p.codigos || [];
+    const imagens = p.imagens || [];
+    const nct = p.nct || {};
+
+    // Cabeçote
+    document.getElementById('dprod-titulo').textContent = p.descricao || p.ref;
+    document.getElementById('dprod-subtitulo').textContent = 'Ref: ' + p.ref + ' | Fabricante: ' + (dna.fabricante || p.fabricante || '—');
+    document.getElementById('dprod-status-badge').innerHTML = statusBadge(p.status);
+
+    // NTC Card
+    const score = nct.score || p.ntc_score || 0;
+    const pct = (score * 100).toFixed(1);
+    document.getElementById('dprod-nct-score').textContent = pct + '%';
+    document.getElementById('dprod-nct-status').textContent = nct.status || p.ntc_status || 'REPROVADO';
+    document.getElementById('dprod-nct-status').className = 'nct-status-big ntc-' + (nct.status || p.ntc_status || 'REPROVADO');
+    document.getElementById('dprod-rast').textContent = p.rast ? p.rast.hash.substring(0,20) + '...' : '—';
+
+    // NTC modules
+    const mods = nct.modules || {};
+    document.getElementById('dprod-nct-modules').innerHTML = `
+        <div class="nct-module"><div class="nct-mod-label">TF 50%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.tf||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.tf||0)*100).toFixed(0)}%</div></div>
+        <div class="nct-module"><div class="nct-mod-label">FM 20%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.fm||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.fm||0)*100).toFixed(0)}%</div></div>
+        <div class="nct-module"><div class="nct-mod-label">CO 20%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.co||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.co||0)*100).toFixed(0)}%</div></div>
+        <div class="nct-module"><div class="nct-mod-label">AV 10%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.av||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.av||0)*100).toFixed(0)}%</div></div>`;
+
+    // Pipeline
+    dprodUpdatePipeline(score, p.status);
+
+    // Fill DNA fields
+    document.getElementById('dp-ref').value = p.ref || '';
+    document.getElementById('dp-desc').value = p.descricao || '';
+    document.getElementById('dp-fab').value = dna.fabricante || p.fabricante || '';
+    document.getElementById('dp-marca').value = dna.marca || '';
+    document.getElementById('dp-familia').value = dna.familia || p.familia || '';
+    document.getElementById('dp-grupo').value = dna.grupo_industrial || '';
+    document.getElementById('dp-linha').value = dna.linha || '';
+    document.getElementById('dp-origem').value = dna.origem_pais || '';
+    document.getElementById('dp-codigo-dna').value = dna.codigo_dna || '';
+    document.getElementById('dp-ean').value = dna.ean || p.ean || '';
+    document.getElementById('dp-preco-custo').value = p.preco_custo || '';
+    document.getElementById('dp-preco-venda').value = p.preco_venda || '';
+    const dnaBadge = document.getElementById('dprod-dna-badge');
+    const dnaFields = [dna.fabricante, dna.marca, dna.familia, dna.codigo_dna];
+    const dnaFilled = dnaFields.filter(Boolean).length;
+    dnaBadge.textContent = dnaFilled + '/4';
+    dnaBadge.className = 'badge ' + (dnaFilled >= 3 ? 'badge-green' : dnaFilled > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto';
+
+    // Fill Fiscal fields
+    document.getElementById('dp-ncm').value = fis.ncm || '';
+    document.getElementById('dp-cest').value = fis.cest || '';
+    document.getElementById('dp-cfop').value = fis.cfop || '';
+    document.getElementById('dp-orig-fis').value = fis.origem || '';
+    document.getElementById('dp-ipi').value = fis.ipi != null ? fis.ipi : '';
+    document.getElementById('dp-icms').value = fis.icms != null ? fis.icms : '';
+    document.getElementById('dp-pis').value = fis.pis != null ? fis.pis : '';
+    document.getElementById('dp-cofins').value = fis.cofins != null ? fis.cofins : '';
+    const fisBadge = document.getElementById('dprod-fis-badge');
+    fisBadge.textContent = fis.ncm ? 'NCM OK' : 'Sem NCM';
+    fisBadge.className = 'badge ' + (fis.ncm ? 'badge-green' : 'badge-red') + ' gaveta-status ml-auto';
+
+    // Fill Logística fields
+    document.getElementById('dp-peso-liq').value = log.peso_liq || '';
+    document.getElementById('dp-peso-bruto').value = log.peso_bruto || '';
+    document.getElementById('dp-comp').value = log.comprimento || '';
+    document.getElementById('dp-larg').value = log.largura || '';
+    document.getElementById('dp-alt').value = log.altura || '';
+    document.getElementById('dp-vol').value = log.volume || '';
+    const logBadge = document.getElementById('dprod-log-badge');
+    logBadge.textContent = log.peso_liq ? 'OK' : '—';
+    logBadge.className = 'badge ' + (log.peso_liq ? 'badge-green' : 'badge-yellow') + ' gaveta-status ml-auto';
+
+    // Aplicações table
+    dprodRenderAplicacoes(aplic);
+
+    // Códigos
+    dprodRenderCodigos(codigos);
+
+    // Imagens
+    dprodRenderImagens(imagens);
+
+    // Integrações
+    document.getElementById('dprod-int-body').innerHTML = `<div class="flex flex-wrap" style="gap:8px">
+        <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Bling ERP</div><span class="badge badge-yellow">Aguardando API Key</span></div>
+        <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Wix Stores</div>${p.wix_id ? `<span class="badge badge-green">&#x2714; Sincronizado</span>` : '<span class="badge badge-yellow">Nao sincronizado</span>'}</div>
+        <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Google Shopping</div><span class="badge ${imagens.length > 0 ? 'badge-green' : 'badge-red'}">${imagens.length > 0 ? '&#x2714; Pronto' : '&#x26A0; Sem imagem'}</span></div>
+    </div>`;
+
+    // Historico NTC
+    const histEl = document.getElementById('dprod-historico');
+    if (histEl && p.historico && p.historico.length) {
+        histEl.innerHTML = `<div class="sec" style="margin-top:10px"><div class="sec-title">Historico NTC (${p.historico.length})</div>` +
+            p.historico.slice(0,5).map(h => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.68rem">
+                <span style="color:${h.status_novo==='APROVADO'?'var(--success)':h.status_novo==='PENDENTE'?'var(--warning)':'var(--danger)'};font-weight:900">${((h.ntc_novo||0)*100).toFixed(1)}%</span>
+                <span class="badge ${h.status_novo==='APROVADO'?'badge-green':h.status_novo==='PENDENTE'?'badge-yellow':'badge-red'}" style="font-size:.58rem">${h.status_novo||'—'}</span>
+                <span style="color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.alteracao||''}</span>
+                <span style="color:var(--text3)">${(h.criado_em||'').substring(5,16)}</span>
+            </div>`).join('') + '</div>';
+    } else if (histEl) {
+        histEl.innerHTML = '';
+    }
+}
+
+function dprodUpdatePipeline(score, status) {
+    const p1 = document.getElementById('dprod-pip-1');
+    const p2 = document.getElementById('dprod-pip-2');
+    const p3 = document.getElementById('dprod-pip-3');
+    const btn = document.getElementById('dprod-btn-congelar');
+    const hint = document.getElementById('dprod-ntc-hint');
+    const syncPanel = document.getElementById('dprod-sync-panel');
+    const pct = (score * 100).toFixed(1);
+    const isCongelado = status === 'Congelado';
+    if (isCongelado) {
+        p1.className = 'pipeline-step done'; p2.className = 'pipeline-step done'; p3.className = 'pipeline-step active';
+        btn.style.display = 'none';
+        hint.innerHTML = '<span style="color:var(--success)">&#x2744; Produto Congelado — Pronto para sincronizar</span>';
+        syncPanel.style.display = 'block';
+        dprodPrepararPublicacao();
+    } else if (score >= 0.95) {
+        p1.className = 'pipeline-step done'; p2.className = 'pipeline-step active'; p3.className = 'pipeline-step';
+        btn.style.display = ''; btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#00c864,#007a3d)';
+        btn.innerHTML = '&#x2744;&#xFE0F; CONGELAR E INDEXAR — ' + pct + '% APROVADO';
+        hint.innerHTML = '<span style="color:var(--success)">&#x2714; NTC APROVADO ' + pct + '%</span>';
+        syncPanel.style.display = 'none';
+    } else if (score >= 0.80) {
+        p1.className = 'pipeline-step active'; p2.className = 'pipeline-step'; p3.className = 'pipeline-step';
+        btn.style.display = ''; btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#f0a500,#b87200)';
+        btn.innerHTML = '&#x26A0; CONGELAR (' + pct + '%) — Enriquecer mais recomendado';
+        hint.innerHTML = '<span style="color:var(--warning)">NTC ' + pct + '% PENDENTE</span>';
+        syncPanel.style.display = 'none';
+    } else {
+        p1.className = 'pipeline-step active'; p2.className = 'pipeline-step'; p3.className = 'pipeline-step';
+        btn.style.display = ''; btn.disabled = true; btn.style.background = '';
+        btn.innerHTML = '&#x1F512; CONGELAR — NTC ' + pct + '% (minimo 80%)';
+        hint.innerHTML = '<span style="color:var(--danger)">&#x26A0; NTC ' + pct + '% REPROVADO — use ENRIQUECER NA WEB</span>';
+        syncPanel.style.display = 'none';
+    }
+}
+
+function dprodRenderAplicacoes(aplic) {
+    const badge = document.getElementById('dprod-av-badge');
+    badge.textContent = aplic.length;
+    badge.className = 'badge ' + (aplic.length >= 3 ? 'badge-green' : aplic.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto';
+    document.getElementById('dprod-av-table').innerHTML = aplic.length
+        ? `<div class="tbl-wrap"><table style="font-size:.75rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th><th></th></tr></thead><tbody>` +
+          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||a.cilindrada||'—'}</td><td>${a.ano_ini||'?'}–${a.ano_fim||'?'}</td><td><button class="btn btn-danger btn-xs" onclick="dprodDelAplic(${a.id})">&#x1F5D1;</button></td></tr>`).join('') +
+          '</tbody></table></div>'
+        : '<div class="empty" style="font-size:.78rem">Nenhuma aplicacao. Adicione manualmente ou use ENRIQUECER NA WEB.</div>';
+}
+
+function dprodRenderCodigos(codigos) {
+    const badge = document.getElementById('dprod-cod-badge');
+    badge.textContent = codigos.length;
+    badge.className = 'badge ' + (codigos.length > 0 ? 'badge-green' : 'badge-yellow') + ' gaveta-status ml-auto';
+    document.getElementById('dprod-cod-list').innerHTML = codigos.length
+        ? codigos.map(c => `<div style="background:var(--bg);border-radius:6px;padding:7px 12px;border:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+            <span class="badge badge-blue" style="font-size:.62rem">${c.tipo||'OEM'}</span>
+            <span style="font-family:monospace;font-size:.85rem;flex:1">${c.codigo}</span>
+            <span style="font-size:.65rem;color:var(--text3)">${c.fabricante||''}</span>
+            <button class="btn btn-danger btn-xs" onclick="dprodDelCodigo(${c.id})">&#x1F5D1;</button>
+          </div>`).join('')
+        : '<div class="empty" style="font-size:.78rem">Nenhum codigo. Adicione OEM ou use ENRIQUECER NA WEB.</div>';
+}
+
+function dprodRenderImagens(imagens) {
+    const badge = document.getElementById('dprod-img-badge');
+    badge.textContent = imagens.length;
+    badge.className = 'badge ' + (imagens.length >= 3 ? 'badge-green' : imagens.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto';
+    document.getElementById('dprod-img-grid').innerHTML = imagens.length
+        ? imagens.map(img => `<div style="border-radius:6px;overflow:hidden;background:#0d0d0d;border:1px solid var(--border);aspect-ratio:1;position:relative">
+            <img src="${img.url}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.opacity='.2'">
+            <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.75);font-size:.55rem;color:#aaa;padding:2px 5px;text-align:center">${img.tipo||'IMG'}</div>
+          </div>`).join('')
+        : '<div class="empty" style="font-size:.78rem;grid-column:span 3">Nenhuma imagem. Cole URL abaixo ou use ENRIQUECER NA WEB.</div>';
+}
+
+async function dprodSalvarDNA() {
+    if (!dprodId) return;
+    const st = document.getElementById('dp-dna-st');
+    st.textContent = 'Salvando...';
+    const ref = document.getElementById('dp-ref').value.trim();
+    const descricao = document.getElementById('dp-desc').value.trim();
+    if (ref) await api('/produtos/' + dprodId, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ descricao: descricao || undefined }) });
+    await api('/produtos/' + dprodId + '/dna', {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+            fabricante: document.getElementById('dp-fab').value || null,
+            marca: document.getElementById('dp-marca').value || null,
+            familia: document.getElementById('dp-familia').value || null,
+            grupo_industrial: document.getElementById('dp-grupo').value || null,
+            linha: document.getElementById('dp-linha').value || null,
+            origem_pais: document.getElementById('dp-origem').value || null,
+            codigo_dna: document.getElementById('dp-codigo-dna').value || null,
+            ean: document.getElementById('dp-ean').value || null,
+        })
+    });
+    st.innerHTML = '<span style="color:var(--success)">&#x2714; Salvo!</span>';
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderDetalhe(p);
+}
+
+async function dprodSalvarFiscal() {
+    if (!dprodId) return;
+    const st = document.getElementById('dp-fis-st');
+    st.textContent = 'Salvando...';
+    await api('/produtos/' + dprodId + '/fiscal', {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+            ncm: document.getElementById('dp-ncm').value || null,
+            cest: document.getElementById('dp-cest').value || null,
+            cfop: document.getElementById('dp-cfop').value || null,
+            origem: document.getElementById('dp-orig-fis').value || null,
+            ipi: document.getElementById('dp-ipi').value !== '' ? parseFloat(document.getElementById('dp-ipi').value) : null,
+            icms: document.getElementById('dp-icms').value !== '' ? parseFloat(document.getElementById('dp-icms').value) : null,
+            pis: document.getElementById('dp-pis').value !== '' ? parseFloat(document.getElementById('dp-pis').value) : null,
+            cofins: document.getElementById('dp-cofins').value !== '' ? parseFloat(document.getElementById('dp-cofins').value) : null,
+        })
+    });
+    st.innerHTML = '<span style="color:var(--success)">&#x2714; Salvo!</span>';
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderDetalhe(p);
+}
+
+async function dprodSalvarLog() {
+    if (!dprodId) return;
+    const st = document.getElementById('dp-log-st');
+    st.textContent = 'Salvando...';
+    await api('/produtos/' + dprodId + '/logistica', {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+            peso_liq: document.getElementById('dp-peso-liq').value !== '' ? parseFloat(document.getElementById('dp-peso-liq').value) : null,
+            peso_bruto: document.getElementById('dp-peso-bruto').value !== '' ? parseFloat(document.getElementById('dp-peso-bruto').value) : null,
+            comprimento: document.getElementById('dp-comp').value !== '' ? parseFloat(document.getElementById('dp-comp').value) : null,
+            largura: document.getElementById('dp-larg').value !== '' ? parseFloat(document.getElementById('dp-larg').value) : null,
+            altura: document.getElementById('dp-alt').value !== '' ? parseFloat(document.getElementById('dp-alt').value) : null,
+            volume: document.getElementById('dp-vol').value !== '' ? parseFloat(document.getElementById('dp-vol').value) : null,
+        })
+    });
+    st.innerHTML = '<span style="color:var(--success)">&#x2714; Salvo!</span>';
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderDetalhe(p);
+}
+
+async function dprodAddAplicacao() {
+    if (!dprodId) return;
+    const st = document.getElementById('dp-av-st');
+    const montadora = document.getElementById('av-montadora').value.trim();
+    const modelo = document.getElementById('av-modelo').value.trim();
+    if (!montadora || !modelo) { st.textContent = 'Montadora e modelo obrigatorios'; return; }
+    st.textContent = 'Salvando...';
+    await api('/produtos/' + dprodId + '/aplicacoes', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+            montadora, modelo,
+            motor: document.getElementById('av-motor').value || null,
+            versao: document.getElementById('av-versao').value || null,
+            ano_ini: document.getElementById('av-ano-ini').value ? parseInt(document.getElementById('av-ano-ini').value) : null,
+            ano_fim: document.getElementById('av-ano-fim').value ? parseInt(document.getElementById('av-ano-fim').value) : null,
+            observacao: document.getElementById('av-obs').value || null,
+        })
+    });
+    ['av-montadora','av-modelo','av-motor','av-versao','av-ano-ini','av-ano-fim','av-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    st.innerHTML = '<span style="color:var(--success)">&#x2714; Adicionado!</span>';
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderAplicacoes(p.aplicacoes || []);
+}
+
+async function dprodDelAplic(aplicId) {
+    if (!confirm('Remover aplicacao?')) return;
+    await api('/aplicacoes/' + aplicId, { method: 'DELETE' });
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderAplicacoes(p.aplicacoes || []);
+}
+
+async function dprodAddCodigo() {
+    if (!dprodId) return;
+    const st = document.getElementById('dp-cod-st');
+    const codigo = document.getElementById('cod-codigo').value.trim();
+    if (!codigo) { st.textContent = 'Codigo obrigatorio'; return; }
+    st.textContent = 'Salvando...';
+    await api('/produtos/' + dprodId + '/codigos', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+            codigo,
+            tipo: document.getElementById('cod-tipo').value,
+            fabricante: document.getElementById('cod-fab').value || null,
+        })
+    });
+    document.getElementById('cod-codigo').value = '';
+    document.getElementById('cod-fab').value = '';
+    st.innerHTML = '<span style="color:var(--success)">&#x2714; Adicionado!</span>';
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderCodigos(p.codigos || []);
+}
+
+async function dprodDelCodigo(codId) {
+    if (!confirm('Remover codigo?')) return;
+    await api('/codigos/' + codId, { method: 'DELETE' });
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderCodigos(p.codigos || []);
+}
+
+async function dprodImportUrl() {
+    if (!dprodId) return;
+    const url = document.getElementById('dprod-img-url').value.trim();
+    if (!url) return;
+    const st = document.getElementById('dprod-img-st');
+    st.textContent = 'Importando...';
+    const r = await api('/produtos/' + dprodId + '/imagens', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ url, tipo: 'Principal', origem: 'manual' })
+    });
+    document.getElementById('dprod-img-url').value = '';
+    st.innerHTML = r.success ? '<span style="color:var(--success)">&#x2714; Importado!</span>' : '<span style="color:var(--danger)">Erro</span>';
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderImagens(p.imagens || []);
+}
+
+async function dprodBuscaWeb() {
+    if (!dprodId || !dprodData) return;
+    abrirBuscaWeb(dprodId, dprodData.ref);
+}
+
+async function dprodEnriquecerWeb() {
+    if (!dprodId) return;
+    const btn = document.getElementById('dprod-btn-web');
+    const st = document.getElementById('dprod-web-status');
+    btn.disabled = true; btn.textContent = 'Buscando...';
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Triangulando + Claude Haiku...';
+    const d = await api('/produtos/' + dprodId + '/enriquecer-web', { method: 'POST' });
+    btn.disabled = false; btn.innerHTML = '&#x1F310; ENRIQUECER DNA NA WEB';
+    if (d.success) {
+        st.innerHTML = `<span style="color:var(--success)">&#x2714; NTC: ${(d.nct.score*100).toFixed(1)}% | ${d.aplicacoes?.length||0} aplic | ${d.imagens?.length||0} imgs</span>`;
+        const p = await api('/produtos/' + dprodId);
+        dprodData = p; dprodRenderDetalhe(p);
+    } else {
+        st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${d.error||'Erro'}</span>`;
+    }
+}
+
+async function dprodCongelar() {
+    if (!dprodId) return;
+    const st = document.getElementById('dprod-indexar-status');
+    const score = dprodData?.nct?.score || dprodData?.ntc_score || 0;
+    if (score < 0.80) { st.innerHTML = '<span style="color:var(--danger)">NTC insuficiente (minimo 80%)</span>'; return; }
+    if (!confirm('Congelar este produto? Ele sera marcado como pronto para publicacao.')) return;
+    st.textContent = 'Congelando...';
+    const r = await api('/produtos/' + dprodId + '/indexar', { method: 'POST' });
+    if (r.success) {
+        st.innerHTML = '<span style="color:var(--success)">&#x2744; Congelado!</span>';
+        const p = await api('/produtos/' + dprodId);
+        dprodData = p; dprodRenderDetalhe(p);
+    } else {
+        st.innerHTML = `<span style="color:var(--danger)">${r.error||'Erro'}</span>`;
+    }
+}
+
+let dprodPubPacote = null;
+async function dprodPrepararPublicacao() {
+    if (!dprodId) return;
+    document.getElementById('dprod-pub-loading').style.display = 'block';
+    document.getElementById('dprod-pub-pacote').style.display = 'none';
+    const r = await api('/produtos/' + dprodId + '/preparar-publicacao', { method: 'POST' });
+    document.getElementById('dprod-pub-loading').style.display = 'none';
+    if (r.wix || r.bling || r.descricoes) {
+        dprodPubPacote = r;
+        document.getElementById('dprod-pub-pacote').style.display = 'block';
+        const imgs = dprodData?.imagens || [];
+        if (imgs.length > 0) {
+            document.getElementById('dprod-pub-img').innerHTML = `<img src="${imgs[0].url}" style="width:100%;height:100%;object-fit:contain">`;
+        }
+        document.getElementById('dprod-pub-desc').textContent = r.descricoes?.comercial || r.descricoes?.seo || '—';
+    }
+}
+
+async function dprodSincronizar(canal) {
+    if (!dprodId) return;
+    const st = document.getElementById('dprod-sinc-st');
+    st.textContent = 'Sincronizando ' + canal + '...';
+    const r = await api('/produtos/' + dprodId + '/sincronizar/' + canal, { method: 'POST' });
+    st.innerHTML = r.success
+        ? `<span style="color:var(--success)">&#x2714; Sincronizado em ${canal}!</span>`
+        : `<span style="color:var(--danger)">&#x26A0; ${r.error||'Erro'}</span>`;
 }
 
 function row2(label, val) {
