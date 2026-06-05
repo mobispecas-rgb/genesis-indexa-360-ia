@@ -180,24 +180,6 @@ tr:hover td{background:#1c1c1c}
 .pdv-dna{font-size:.8rem;color:var(--text2);margin-bottom:8px}
 .pdv-ntc-big{font-size:2.5rem;font-weight:900;margin-bottom:4px}
 .pdv-alert{background:#ff224415;border:1px solid #ff224440;border-radius:8px;padding:10px 14px;color:var(--danger);font-size:.8rem;margin-top:8px}
-.pdv-risk-ok{background:rgba(0,200,100,.1);border:1px solid rgba(0,200,100,.3);border-radius:8px;padding:10px 14px;color:#00c864;font-size:.9rem;font-weight:700;margin-top:10px}
-.pdv-risk-warn{background:rgba(255,180,0,.1);border:1px solid rgba(255,180,0,.35);border-radius:8px;padding:10px 14px;color:#ffb400;font-size:.9rem;font-weight:700;margin-top:10px}
-.pdv-risk-danger{background:rgba(255,34,68,.1);border:1px solid rgba(255,34,68,.35);border-radius:8px;padding:10px 14px;color:#ff2244;font-size:.9rem;font-weight:700;margin-top:10px}
-.pdv-dna-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin:10px 0;font-size:.8rem}
-.pdv-dna-grid b{color:var(--text3);font-weight:600}
-.pdv-card-v2{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px;display:flex;gap:18px;align-items:flex-start}
-.pdv-card-v2-body{flex:1;min-width:0}
-.pdv-aplic-table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:8px}
-.pdv-aplic-table th{background:var(--bg);padding:5px 8px;text-align:left;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)}
-.pdv-aplic-table td{padding:4px 8px;border-bottom:1px solid var(--border2,#2a2a2a)}
-/* Marketplace */
-.mkt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}
-.mkt-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px}
-.mkt-card-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.mkt-logo{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff}
-.mkt-badge-ok{background:#00c86422;border:1px solid #00c86440;color:#00c864;border-radius:20px;padding:2px 10px;font-size:.72rem;font-weight:700}
-.mkt-badge-pend{background:#ffb40022;border:1px solid #ffb40040;color:#ffb400;border-radius:20px;padding:2px 10px;font-size:.72rem;font-weight:700}
-.mkt-json-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.72rem;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow:auto;margin-top:12px;color:var(--text2)}
 
 /* IA ANALYZER */
 .ia-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.85rem;min-height:120px;resize:vertical;outline:none;font-family:inherit}
@@ -386,9 +368,7 @@ tr:hover td{background:#1c1c1c}
   <div class="nav-section">
     <div class="nav-section-label">Integracao</div>
     <div class="nav-item" data-page="catalogo"><span class="nav-icon">&#x1F4E5;</span> Importar Catalogo</div>
-    <div class="nav-item" data-page="bling"><span class="nav-icon">&#x1F4CB;</span> Bling ERP v3</div>
     <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
-    <div class="nav-item" data-page="marketplace"><span class="nav-icon">&#x1F6D2;</span> Marketplace</div>
     <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
   </div>
   <div class="nav-section">
@@ -935,57 +915,31 @@ tr:hover td{background:#1c1c1c}
 
     <!-- CONGELADOS -->
     <div class="page" id="page-congelados">
-      <!-- KPI Header -->
-      <div class="kpi-grid" id="congelados-kpi-header" style="margin-bottom:16px"></div>
-      <!-- Product Cards Grid -->
-      <div id="congelados-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
-      <!-- Empty State -->
-      <div id="congelados-empty" style="display:none;text-align:center;padding:60px 20px">
-        <div style="font-size:3rem;margin-bottom:12px">&#x2744;&#xFE0F;</div>
-        <div style="font-size:1.1rem;font-weight:700;color:var(--text2);margin-bottom:8px">Nenhum produto congelado ainda</div>
-        <div style="font-size:.82rem;color:var(--text3)">Enriqueca e congele produtos para sincronizar com Bling, Wix e Google Shopping.</div>
+      <div class="kpi-grid" id="congelados-kpi"></div>
+      <div class="sec">
+        <div class="sec-title">&#x2744;&#xFE0F; Produtos Congelados &amp; Indexados</div>
+        <div class="tbl-wrap">
+          <table id="tbl-congelados">
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Marca</th><th>NTC</th><th>Wix</th><th>Atualizado</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <!-- NTC INSPECTOR -->
     <div class="page" id="page-ntc-inspector">
-      <!-- Dashboard Header -->
-      <div class="sec" style="margin-bottom:14px">
-        <div class="flex" style="gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="inspector-select" style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+      <div class="sec">
+        <div class="sec-title">NTC Inspector — Analise por Produto</div>
+        <div class="flex mb">
+          <select id="inspector-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
             <option value="">Selecione um produto...</option>
           </select>
-          <button class="btn btn-sm" onclick="loadInspector()">&#x1F50D; Analisar</button>
-          <button class="btn btn-success btn-sm" onclick="recalcNTC()">&#x21BA; Recalcular NTC</button>
+          <button class="btn btn-sm" onclick="loadInspector()">Analisar</button>
+          <button class="btn btn-success btn-sm" onclick="recalcNTC()">Recalcular NTC</button>
         </div>
       </div>
-      <!-- Overall Score Dashboard -->
-      <div id="ntc-dashboard" style="display:none;margin-bottom:16px">
-        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px">
-          <div id="ntc-thumb-wrap"></div>
-          <div>
-            <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
-              <div id="ntc-big-score" style="font-size:3.5rem;font-weight:900;line-height:1"></div>
-              <div>
-                <div id="ntc-status-badge" style="font-size:.9rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block"></div>
-                <div id="ntc-prod-name" style="font-size:.75rem;color:var(--text3);margin-top:4px"></div>
-              </div>
-            </div>
-            <div style="margin-top:12px;background:var(--bg);border-radius:6px;height:12px;overflow:hidden">
-              <div id="ntc-overall-bar" style="height:100%;border-radius:6px;transition:width .4s"></div>
-            </div>
-            <div id="ntc-rast" style="font-size:.65rem;color:var(--text3);margin-top:6px;font-family:monospace"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn btn-blue btn-sm" onclick="enriquecerProdutoInspector()">&#x1F310; Enriquecer na Web</button>
-            <button class="btn btn-sm" onclick="irParaGavetas()">&#x1F5C4; Ir para Gavetas</button>
-          </div>
-        </div>
-      </div>
-      <!-- Pendencias Summary -->
-      <div id="ntc-pendencias-section" style="display:none;margin-bottom:16px"></div>
-      <!-- Modules Grid -->
-      <div id="inspector-result" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+      <div id="inspector-result"></div>
     </div>
 
     <!-- APLICACOES MOTOR -->
@@ -1011,33 +965,19 @@ tr:hover td{background:#1c1c1c}
 
     <!-- IMAGENS -->
     <div class="page" id="page-imagens">
-      <!-- Header -->
-      <div class="sec" style="margin-bottom:14px">
-        <div class="sec-title">&#x1F4F7; Central de Imagens — Image Hunter NTC</div>
-        <div class="flex" style="gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="img-prod-select" style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
+      <div class="sec">
+        <div class="sec-title">Central de Imagens</div>
+        <div class="flex mb">
+          <select id="img-prod-select" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
             <option value="">Selecione um produto...</option>
           </select>
           <button class="btn btn-sm" onclick="loadImagens()">Carregar</button>
           <button class="btn btn-success btn-sm" onclick="openModalNovaImagem()">+ Upload</button>
-          <button class="btn btn-blue btn-sm" id="btn-busca-web-img" onclick="imageHunterBuscar()" style="display:none">&#x1F50D; Image Hunter — Buscar Web</button>
-          <button class="btn btn-sm" id="btn-importar-url-img" onclick="openImportUrlImagem()" style="display:none">+ Importar URL</button>
+          <button class="btn btn-blue btn-sm" id="btn-busca-web-img" onclick="buscarWebImagens()" style="display:none">&#x1F50D; Buscar Web</button>
         </div>
-        <div id="img-prod-header" style="display:none;margin-top:12px"></div>
-        <!-- FI Summary -->
-        <div id="img-fi-summary" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;display:none">
-          <span style="font-size:.8rem;color:var(--text3)">&#x1F4CA; Score FI Medio: </span>
-          <span id="img-fi-avg" style="font-weight:700;color:var(--primary)"></span>
-          <span style="margin:0 10px;color:var(--border)">|</span>
-          <span style="font-size:.8rem;color:var(--text3)">Total: </span>
-          <span id="img-fi-total" style="font-weight:700"></span>
-          <span style="margin:0 10px;color:var(--border)">|</span>
-          <span style="font-size:.8rem;color:var(--text3)">Aprovadas: </span>
-          <span id="img-fi-aprovadas" style="font-weight:700;color:var(--success)"></span>
-        </div>
+        <div id="img-prod-header" style="display:none;margin-bottom:14px"></div>
+        <div id="img-gallery" class="img-slot-grid"></div>
       </div>
-      <!-- 6-slot gallery -->
-      <div id="img-gallery" class="img-slot-grid"></div>
     </div>
 
     <!-- FISCAL & LOGISTICA -->
@@ -1104,14 +1044,14 @@ tr:hover td{background:#1c1c1c}
 
     <!-- PDV -->
     <div class="page" id="page-pdv">
-      <div class="sec" style="max-width:700px;margin:0 auto">
-        <div class="sec-title">&#x1F3EA; PDV — Consulta Rapida de Produto</div>
-        <div class="flex mb" style="gap:8px">
-          <input type="text" id="pdv-search" placeholder="Buscar por Ref, Nome ou OEM..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.95rem;outline:none" onkeydown="if(event.key==='Enter')loadPDV(this.value)">
-          <button class="btn" onclick="loadPDV(document.getElementById('pdv-search').value)">&#x1F50D; Buscar</button>
+      <div class="sec">
+        <div class="sec-title">Ponto de Venda — Consulta Rapida</div>
+        <div class="flex mb">
+          <input type="text" id="pdv-search" placeholder="Buscar produto por ref ou descricao..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.9rem;outline:none">
+          <button class="btn" onclick="pdvSearch()">Buscar</button>
         </div>
       </div>
-      <div id="pdv-results" style="max-width:700px;margin:0 auto"></div>
+      <div id="pdv-results"></div>
     </div>
 
     <!-- IA ANALYZER -->
@@ -1295,110 +1235,6 @@ tr:hover td{background:#1c1c1c}
           <div id="cat-lote-status" class="text-xs" style="margin-top:10px"></div>
         </div>
       </div>
-    </div>
-
-    <!-- BLING ERP v3 -->
-    <div class="page" id="page-bling">
-      <!-- Status header -->
-      <div class="irollo-header">
-        <div>
-          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Integracao Oficial</div>
-          <div style="font-size:1rem;font-weight:900;color:#0055a5">&#x1F4CB; Bling ERP v3</div>
-          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">OAuth2 Authorization Code · Refresh Token · API REST v3</div>
-        </div>
-        <div id="bling-status-badge" class="ml-auto"></div>
-      </div>
-
-      <!-- KPIs -->
-      <div class="kpi-grid" id="bling-kpi-grid"></div>
-
-      <!-- OAuth2 Config -->
-      <div class="sec">
-        <div class="sec-title">&#x1F511; Configuracao OAuth2</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="fg">
-            <label>Client ID <span style="font-size:.65rem;color:var(--text3)">(App Bling Developer)</span></label>
-            <input id="bling-client-id" type="text" class="inp-sm" placeholder="Cole aqui o Client ID do seu App Bling">
-          </div>
-          <div class="fg">
-            <label>Client Secret</label>
-            <input id="bling-client-secret" type="password" class="inp-sm" placeholder="Cole aqui o Client Secret">
-          </div>
-        </div>
-        <div class="flex" style="gap:8px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="blingConfig()">&#x1F4BE; Salvar Credenciais</button>
-          <button class="btn btn-sm" style="background:#0055a5" onclick="blingConectar()">&#x1F517; Conectar via OAuth2</button>
-          <button class="btn btn-gray btn-sm" onclick="blingRefresh()">&#x1F504; Renovar Token</button>
-          <button class="btn btn-outline btn-sm" onclick="loadBlingStatus()">&#x1F50D; Verificar Status</button>
-        </div>
-        <div id="bling-config-st" class="text-xs" style="margin-top:8px"></div>
-
-        <!-- Status card -->
-        <div id="bling-conn-card" style="display:none;margin-top:14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
-          <div style="font-size:.75rem;font-weight:700;margin-bottom:10px;color:var(--text3)">STATUS DA CONEXAO</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;font-size:.78rem" id="bling-conn-info"></div>
-        </div>
-
-        <!-- OAuth2 Flow Guide -->
-        <div style="margin-top:16px;background:rgba(0,85,165,.08);border:1px solid rgba(0,85,165,.2);border-radius:10px;padding:14px;font-size:.78rem;color:var(--text2)">
-          <div style="font-weight:700;margin-bottom:8px;color:#4a9fff">&#x2139;&#xFE0F; Como configurar o Bling ERP v3</div>
-          <ol style="margin:0;padding-left:18px;line-height:2">
-            <li>Acesse <b>developer.bling.com.br</b> e crie um App</li>
-            <li>Defina a Redirect URI como: <code id="bling-redirect-uri" style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:.72rem">—</code></li>
-            <li>Copie o <b>Client ID</b> e <b>Client Secret</b> para os campos acima</li>
-            <li>Clique em <b>"Salvar Credenciais"</b> e depois <b>"Conectar via OAuth2"</b></li>
-            <li>Autorize o acesso na janela do Bling que abrir</li>
-          </ol>
-        </div>
-      </div>
-
-      <!-- Produtos para sincronizar -->
-      <div class="sec">
-        <div class="sec-title">&#x1F4E4; Sincronizar Produtos Congelados</div>
-        <div class="flex mb" style="gap:8px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="loadBlingProdutos()">&#x1F504; Carregar Congelados</button>
-          <button class="btn btn-sm" style="background:#0055a5" onclick="blingEnviarTodos()">&#x1F680; Enviar Todos ao Bling</button>
-        </div>
-        <div id="bling-prod-st" class="text-xs" style="margin-bottom:10px"></div>
-        <div class="tbl-wrap">
-          <table id="tbl-bling-prod">
-            <thead><tr><th>Ref</th><th>Descricao</th><th>NTC</th><th>Status Bling</th><th>Acoes</th></tr></thead>
-            <tbody><tr><td colspan="5" class="empty">Clique em "Carregar Congelados" para ver os produtos prontos para sincronizar.</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Webhook / XML monitor placeholder -->
-      <div class="sec">
-        <div class="sec-title">&#x1F4E1; XML Monitor — Auto Import (Fase 2)</div>
-        <div style="background:var(--bg2);border-radius:8px;padding:16px;font-size:.78rem;color:var(--text3);text-align:center">
-          <div style="font-size:1.5rem;margin-bottom:8px">&#x1F6A7;</div>
-          Monitoramento automatico de XML do Bling em desenvolvimento.<br>
-          Quando ativado, novos produtos importados via XML serao automaticamente<br>
-          enriquecidos, classificados e indexados pelo Genesis Indexa 360 IA.
-        </div>
-      </div>
-    </div>
-
-    <!-- MARKETPLACE READY -->
-    <div class="page" id="page-marketplace">
-      <div class="irollo-header">
-        <div>
-          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Conectores Desacoplados</div>
-          <div style="font-size:1rem;font-weight:900;color:var(--primary)">&#x1F6D2; Marketplace Ready</div>
-          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">ML · Amazon · Shopee · Magalu — Pacote estruturado por produto</div>
-        </div>
-        <div class="irollo-status ml-auto"><div class="dot"></div> ESTRUTURADOR ON</div>
-      </div>
-      <div class="sec">
-        <div class="sec-title">Selecionar Produto</div>
-        <div class="flex mb" style="gap:8px">
-          <select id="mkt-produto-sel" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.9rem"><option value="">-- Selecione um produto --</option></select>
-          <button class="btn" onclick="loadMarketplacePacote()">&#x1F4E6; Gerar Pacote</button>
-        </div>
-        <div style="font-size:.75rem;color:var(--text3)">&#x26A0;&#xFE0F; Conectores em desenvolvimento. Pacote estruturado pronto para integracao via API.</div>
-      </div>
-      <div id="mkt-results"></div>
     </div>
 
     <!-- WIX STORES -->
@@ -1678,15 +1514,12 @@ function onPageActivate(page) {
     else if (page === 'imagens') populateProductSelects();
     else if (page === 'fiscal') populateProductSelects();
     else if (page === 'relatorios') loadRelatorios();
-    else if (page === 'bling') loadBlingStatus();
     else if (page === 'wix') loadWixStatus();
     else if (page === 'config') loadConfig();
     else if (page === 'enriquecimento') populateProductSelects();
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
-    else if (page === 'pdv') { document.getElementById('pdv-results').innerHTML = ''; }
-    else if (page === 'marketplace') { populateMarketplaceSelect(); }
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -2192,10 +2025,9 @@ async function dprodSincronizar(canal) {
     if (!dprodId) return;
     const st = document.getElementById('dprod-sinc-st');
     st.textContent = 'Sincronizando ' + canal + '...';
-    const endpoint = canal === 'bling' ? '/bling/sincronizar/' + dprodId : '/produtos/' + dprodId + '/sincronizar/' + canal;
-    const r = await api(endpoint, { method: 'POST' });
+    const r = await api('/produtos/' + dprodId + '/sincronizar/' + canal, { method: 'POST' });
     st.innerHTML = r.success
-        ? `<span style="color:var(--success)">&#x2714; Sincronizado em ${canal}!${r.bling_id ? ' Bling ID: ' + r.bling_id : ''}</span>`
+        ? `<span style="color:var(--success)">&#x2714; Sincronizado em ${canal}!</span>`
         : `<span style="color:var(--danger)">&#x26A0; ${r.error||'Erro'}</span>`;
 }
 
@@ -2290,9 +2122,11 @@ async function loadInspector() {
         api('/produtos/' + id + '/ntc'),
         api('/produtos/' + id + '/imagens')
     ]);
-    // Attach images to produto for thumbnail
-    if (r.produto) r.produto.imagens = imgs;
-    renderNTCInspectorDashboard(r.ntc, r.produto);
+    const principalImg = imgs.find(i => i.tipo === 'Principal') || imgs[0];
+    const imgHtml = principalImg
+        ? `<img src="${principalImg.url}" class="img-thumb-md" style="display:block;margin:0 auto 12px" onerror="this.style.display='none'">`
+        : `<div class="img-slot-placeholder img-thumb-md" style="margin:0 auto 12px">&#x1F4F7;</div>`;
+    renderNTCResult(document.getElementById('inspector-result'), r.ntc, r.produto, imgHtml);
 }
 
 async function recalcNTC() {
@@ -2300,13 +2134,11 @@ async function recalcNTC() {
     if (!id) return;
     const r = await api('/produtos/' + id + '/ntc/recalcular', {method:'POST'});
     if (r.success) {
-        // Reload full inspector to get produto data too
-        await loadInspector();
+        renderNTCResult(document.getElementById('inspector-result'), r.ntc, null);
     }
 }
 
 function renderNTCResult(container, ntc, produto, extraHtml='') {
-    // Used by iRollo and other inline callers — render compact module cards
     const scoreColor = ntc.status === 'APROVADO' ? 'var(--success)' : ntc.status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
     const allMissing = Object.values(ntc.modules).flatMap(m => m.missing);
     container.innerHTML = `
@@ -2326,7 +2158,6 @@ function renderNTCResult(container, ntc, produto, extraHtml='') {
         <div class="module-grid">
             ${Object.entries(ntc.modules).map(([key, mod]) => {
                 const col = mod.score >= 0.95 ? 'var(--success)' : mod.score >= 0.6 ? 'var(--warning)' : 'var(--danger)';
-                const icon = mod.score >= 0.95 ? '&#x2705;' : mod.score >= 0.6 ? '&#x26A0;&#xFE0F;' : '&#x274C;';
                 return `<div class="module-card">
                     <div class="module-header">
                         <div>
@@ -2334,111 +2165,19 @@ function renderNTCResult(container, ntc, produto, extraHtml='') {
                             <span style="font-size:.65rem;color:var(--text3);margin-left:6px">${mod.label}</span>
                         </div>
                         <div style="text-align:right">
-                            <span style="font-size:.9rem">${icon}</span>
                             <div class="module-score" style="color:${col}">${(mod.score*100).toFixed(0)}%</div>
-                            <div class="module-contrib">+${(mod.contribuicao*100).toFixed(2)}% / peso:${(mod.weight*100).toFixed(0)}%</div>
+                            <div class="module-contrib">+${(mod.contribuicao*100).toFixed(2)}% (w:${(mod.weight*100).toFixed(0)}%)</div>
                         </div>
                     </div>
                     <div class="ntc-bar-wrap"><div class="ntc-bar" style="width:${mod.score*100}%;background:${col}"></div></div>
                     <div class="evidence-list">
                         ${mod.evidence.map(e=>`<div class="ev-item"><span style="color:var(--success)">&#x2714;</span> ${e}</div>`).join('')}
-                        ${mod.missing.map(m=>`<div class="miss-item"><span style="color:var(--danger)">&#x2716;</span> ${m}</div>`).join('')}
+                        ${mod.missing.map(m=>`<div class="miss-item"><span>&#x2716;</span> ${m}</div>`).join('')}
                     </div>
                 </div>`;
             }).join('')}
         </div>
     `;
-}
-
-function renderNTCInspectorDashboard(ntc, produto) {
-    // Full exclusive dashboard for NTC Inspector page
-    const scoreColor = ntc.status === 'APROVADO' ? 'var(--success)' : ntc.status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
-    const statusBg = ntc.status === 'APROVADO' ? 'rgba(34,197,94,.15)' : ntc.status === 'PENDENTE' ? 'rgba(251,191,36,.15)' : 'rgba(239,68,68,.15)';
-    const scorePct = (ntc.score * 100).toFixed(1);
-    const allMissing = Object.values(ntc.modules).flatMap(m => m.missing.map(txt => ({ mod: m.label || '', txt })));
-
-    // Overall dashboard
-    const dashboard = document.getElementById('ntc-dashboard');
-    dashboard.style.display = 'block';
-
-    // Thumbnail
-    const thumbWrap = document.getElementById('ntc-thumb-wrap');
-    if (produto && produto.imagens && produto.imagens.length) {
-        const pImg = produto.imagens.find(i => i.tipo === 'Principal') || produto.imagens[0];
-        thumbWrap.innerHTML = `<img src="${pImg.url}" style="width:80px;height:80px;object-fit:contain;border-radius:8px;border:1px solid var(--border);background:#111" onerror="this.outerHTML='<div style=width:80px;height:80px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:2rem>&#x1F4F7;</div>'">`;
-    } else {
-        thumbWrap.innerHTML = `<div style="width:80px;height:80px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:2rem">&#x1F4F7;</div>`;
-    }
-
-    document.getElementById('ntc-big-score').textContent = scorePct + '%';
-    document.getElementById('ntc-big-score').style.color = scoreColor;
-    document.getElementById('ntc-status-badge').textContent = ntc.status;
-    document.getElementById('ntc-status-badge').style.color = scoreColor;
-    document.getElementById('ntc-status-badge').style.background = statusBg;
-    document.getElementById('ntc-prod-name').textContent = produto ? (produto.ref || '') + ' — ' + (produto.descricao || '').substring(0, 60) : '';
-    const bar = document.getElementById('ntc-overall-bar');
-    bar.style.width = scorePct + '%';
-    bar.style.background = scoreColor;
-    document.getElementById('ntc-rast').textContent = 'RAST-HASH: ' + ntc.rast_hash;
-
-    // Pendencias
-    const pendSec = document.getElementById('ntc-pendencias-section');
-    if (allMissing.length) {
-        pendSec.style.display = 'block';
-        pendSec.innerHTML = `<div class="sec" style="border-color:rgba(239,68,68,.3)">
-            <div class="sec-title" style="color:var(--danger)">&#x26A0; Pendencias (${allMissing.length} itens)</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">
-                ${allMissing.map(m=>`<div class="miss-item"><span style="color:var(--danger)">&#x2716;</span> <span style="color:var(--text3);font-size:.65rem">[${m.mod}]</span> ${m.txt}</div>`).join('')}
-            </div>
-        </div>`;
-    } else {
-        pendSec.style.display = 'none';
-        pendSec.innerHTML = '';
-    }
-
-    // Modules grid
-    const result = document.getElementById('inspector-result');
-    result.innerHTML = Object.entries(ntc.modules).map(([key, mod]) => {
-        const col = mod.score >= 0.95 ? 'var(--success)' : mod.score >= 0.6 ? 'var(--warning)' : 'var(--danger)';
-        const icon = mod.score >= 0.95 ? '&#x2705;' : mod.score >= 0.6 ? '&#x26A0;&#xFE0F;' : '&#x274C;';
-        const pct = (mod.score * 100).toFixed(0);
-        return `<div class="module-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-                <div>
-                    <div style="font-size:1rem;font-weight:800;color:var(--primary)">${key}</div>
-                    <div style="font-size:.68rem;color:var(--text3)">${mod.label || ''}</div>
-                </div>
-                <div style="text-align:right">
-                    <span style="font-size:1rem">${icon}</span>
-                    <div style="font-size:1.4rem;font-weight:900;color:${col};line-height:1.1">${pct}%</div>
-                    <div style="font-size:.62rem;color:var(--text3)">+${(mod.contribuicao*100).toFixed(2)}% / peso:${(mod.weight*100).toFixed(0)}%</div>
-                </div>
-            </div>
-            <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px">
-                <div style="width:${pct}%;height:100%;background:${col};border-radius:4px"></div>
-            </div>
-            <div style="font-size:.7rem;max-height:100px;overflow-y:auto">
-                ${mod.evidence.map(e=>`<div style="color:var(--success);margin-bottom:2px">&#x2714; ${e}</div>`).join('')}
-                ${mod.missing.map(m=>`<div style="color:var(--danger);margin-bottom:2px">&#x2716; ${m}</div>`).join('')}
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function enriquecerProdutoInspector() {
-    const id = document.getElementById('inspector-select').value;
-    if (id) irParaEnriquecimento(id);
-}
-
-function irParaGavetas() {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const nav = document.querySelector('[data-page="congelados"]');
-    if (nav) { nav.classList.add('active'); }
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const pg = document.getElementById('page-congelados');
-    if (pg) { pg.classList.add('active'); }
-    currentPage = 'congelados';
-    loadCongelados();
 }
 
 // ======================================================
@@ -2513,43 +2252,11 @@ function buscarWebImagens() {
     abrirBuscaWeb(currentImagemProdId, ref);
 }
 
-function calcFiScore(img) {
-    if (!img) return 0;
-    let s = 0;
-    if (img.url) s += 40;
-    if (img.resolucao && /\d+[x\xd7 _]\d+/i.test(img.resolucao)) s += 30;
-    if (img.status === 'Aprovado' || img.status === 'Aprovada') s += 30;
-    else if (img.status === 'Pendente') s += 10;
-    return s;
-}
-async function imageHunterBuscar() {
-    if (!currentImagemProdId) return;
-    const btn2 = document.getElementById('btn-busca-web-img');
-    if (btn2) { btn2.disabled = true; btn2.textContent = 'Buscando...'; }
-    try { await api('/produtos/' + currentImagemProdId + '/enriquecer-web', {method:'POST'}); } catch(e) {}
-    if (btn2) { btn2.disabled = false; btn2.innerHTML = '&#x1F50D; Image Hunter — Buscar Web'; }
-    loadImagens();
-}
-function openImportUrlImagem() {
-    if (!currentImagemProdId) { alert('Selecione um produto primeiro'); return; }
-    document.getElementById('img-tipo').value = 'Principal';
-    openModal('modal-imagem');
-}
-async function atualizarStatusImagem(imgId, status) {
-    try { await fetch('/api/imagens/' + imgId + '/status', {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})}); } catch(e) {}
-    loadImagens();
-}
-async function reindexarImagem(imgId) {
-    try { await fetch('/api/imagens/' + imgId + '/status', {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'Pendente'})}); } catch(e) {}
-    loadImagens();
-}
 async function loadImagens() {
     currentImagemProdId = document.getElementById('img-prod-select').value;
     if (!currentImagemProdId) return;
     const btn = document.getElementById('btn-busca-web-img');
     if (btn) btn.style.display = 'inline-block';
-    const btnUrl = document.getElementById('btn-importar-url-img');
-    if (btnUrl) btnUrl.style.display = 'inline-block';
     const [data, prodData] = await Promise.all([
         api('/produtos/' + currentImagemProdId + '/imagens'),
         api('/produtos/' + currentImagemProdId)
@@ -2564,49 +2271,21 @@ async function loadImagens() {
         <span class="ntc-${prodData.ntc_status||'REPROVADO'}" style="margin-top:4px;display:inline-block">${(prodData.ntc_score*100).toFixed(1)}% ${prodData.ntc_status||'?'}</span></div>
         <button class="btn btn-success btn-sm ml-auto" onclick="enriquecerProduto(${prodData.id})">Enriquecer NTC</button>
     </div>`;
-    // FI Summary
-    const aprovadas = data.filter(i => i.status === 'Aprovado' || i.status === 'Aprovada').length;
-    const fiScores = data.map(i => calcFiScore(i));
-    const fiAvg = fiScores.length ? Math.round(fiScores.reduce((a,b)=>a+b,0)/fiScores.length) : 0;
-    const fiSummary = document.getElementById('img-fi-summary');
-    if (fiSummary) {
-        fiSummary.style.display = 'block';
-        document.getElementById('img-fi-avg').textContent = fiAvg + '%';
-        document.getElementById('img-fi-total').textContent = data.length;
-        document.getElementById('img-fi-aprovadas').textContent = aprovadas;
-    }
-    // 6-slot gallery with FI score and action buttons
+    // 6-slot gallery
     const gallery = document.getElementById('img-gallery');
     gallery.innerHTML = IMG_SLOT_TYPES.map(tipo => {
         const img = data.find(i => i.tipo === tipo);
-        const fi = calcFiScore(img);
-        const fiColor = fi >= 80 ? 'var(--success)' : fi >= 40 ? 'var(--warning)' : 'var(--danger)';
-        const statusLabel = img ? (img.status || 'Pendente') : '—';
-        const statusCls = (img && (img.status === 'Aprovado' || img.status === 'Aprovada')) ? 'badge-green' : (img && img.status === 'Reprovado') ? 'badge-red' : 'badge-gray';
-        let origem = '—';
-        if (img && img.url) { try { origem = new URL(img.url).hostname || 'Upload'; } catch(e2) { origem = 'Upload'; } }
-        return `<div class="img-slot-card" style="padding:10px">
+        return `<div class="img-slot-card">
             <div class="slot-label">${tipo}</div>
             <div class="slot-img-wrap">
                 ${img ? `<img src="${img.url}" onerror="this.outerHTML='<span style=color:#444>&#x1F4F7;</span>'">` : `<span class="slot-placeholder">&#x1F4F7;</span>`}
             </div>
-            <div style="margin:5px 0 3px;display:flex;align-items:center;gap:4px">
-                <span style="font-size:.62rem;font-weight:700;color:${fiColor};white-space:nowrap">FI ${fi}%</span>
-                <div style="flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden"><div style="width:${fi}%;height:100%;background:${fiColor};border-radius:2px"></div></div>
-            </div>
-            <div style="font-size:.58rem;color:var(--text3);margin-bottom:2px">Origem: ${origem}</div>
-            <div style="font-size:.58rem;color:var(--text3);margin-bottom:4px">Res: ${(img && img.resolucao)||'—'}</div>
-            <div style="margin-bottom:5px"><span class="badge ${statusCls}" style="font-size:.58rem">${statusLabel}</span></div>
-            ${img ? `<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center">
-                <button class="btn btn-xs btn-outline" title="Trocar" onclick="abrirUploadSlot('${tipo}')">&#x1F504;</button>
-                <button class="btn btn-xs btn-danger" title="Excluir" onclick="deletarImagem(${img.id})">&#x1F5D1;</button>
-                <button class="btn btn-xs btn-success" title="Aprovar" onclick="atualizarStatusImagem(${img.id},'Aprovado')">&#x2705;</button>
-                <button class="btn btn-xs btn-danger" title="Reprovar" onclick="atualizarStatusImagem(${img.id},'Reprovado')">&#x274C;</button>
-                <button class="btn btn-xs btn-blue" title="Reindexar" onclick="reindexarImagem(${img.id})">&#x1F501;</button>
-            </div>` : `<div><button class="btn btn-outline btn-xs" onclick="abrirUploadSlot('${tipo}')">Upload</button></div>`}
+            ${img ? `<div class="mono" style="font-size:.6rem;color:var(--text3);word-break:break-all;margin-bottom:4px">${img.url.substring(0,35)}</div>
+            <span class="badge badge-${img.status==='Aprovado'?'green':'gray'}">${img.status||'?'}</span>
+            <div><button class="btn btn-danger btn-xs mt" onclick="deletarImagem(${img.id})">Deletar</button></div>` : `<div><button class="btn btn-outline btn-xs" onclick="abrirUploadSlot('${tipo}')">Upload</button></div>`}
         </div>`;
     }).join('');
-    // Extra images beyond 6 slots
+    // Also show any extra images beyond the 6 slots
     const extras = data.filter(i => !IMG_SLOT_TYPES.includes(i.tipo));
     if (extras.length) {
         gallery.innerHTML += extras.map(img => `<div class="img-slot-card">
@@ -2751,105 +2430,40 @@ async function salvarCodigo() {
 // ======================================================
 // PDV
 // ======================================================
-async function pdvSearch() { loadPDV(document.getElementById('pdv-search').value.trim()); }
-
-async function loadPDV(query) {
-    if (!query) return;
+async function pdvSearch() {
+    const search = document.getElementById('pdv-search').value.trim();
+    if (!search) return;
+    const d = await api('/produtos?search=' + encodeURIComponent(search) + '&limit=10');
     const container = document.getElementById('pdv-results');
-    container.innerHTML = '<div class="empty"><span class="spinner"></span> Buscando...</div>';
-    const d = await api('/produtos?search=' + encodeURIComponent(query) + '&limit=1');
-    if (!d.data || !d.data.length) { container.innerHTML = '<div class="empty">Nenhum produto encontrado para "' + query + '"</div>'; return; }
-    const p = d.data[0];
-    const full = await api('/produtos/' + p.id);
-    const dna = full.dna || {};
-    const aplic = full.aplicacoes || [];
-    const fiscal = full.fiscal || {};
-    const pdvImgs = full.imagens || [];
-    const pdvImg = pdvImgs.find(i => i.tipo === 'Principal') || pdvImgs[0];
-    const score = p.ntc_score || 0;
-    const scoreColor = score >= 0.95 ? '#00c864' : score >= 0.60 ? '#ffb400' : '#ff2244';
-    const riskClass = score >= 0.95 ? 'pdv-risk-ok' : score >= 0.60 ? 'pdv-risk-warn' : 'pdv-risk-danger';
-    const riskMsg = score >= 0.95 ? '&#x2705; Produto Certificado NTC APROVADO' : score >= 0.60 ? '&#x26A0;&#xFE0F; Verificar antes de vender — NTC PENDENTE' : '&#x26A0;&#xFE0F; RISCO DE APLICACAO — NTC REPROVADO';
-    const pdvImgHtml = pdvImg
-        ? `<img src="${pdvImg.url}" style="width:120px;height:120px;object-fit:contain;border-radius:8px;border:1px solid var(--border);flex-shrink:0" onerror="this.outerHTML='<div style=\'width:120px;height:120px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0\'>&#x1F4F7;</div>'">`
-        : `<div style="width:120px;height:120px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0">&#x1F4F7;</div>`;
-    const aplicRows = aplic.slice(0,8).map(a => `<tr><td>${a.montadora||'-'}</td><td>${a.modelo||'-'}</td><td>${a.motor||'-'}</td><td>${a.ano_ini||'?'}-${a.ano_fim||'?'}</td></tr>`).join('');
-    container.innerHTML = `<div class="pdv-card-v2">
-        ${pdvImgHtml}
-        <div class="pdv-card-v2-body">
-            <div class="pdv-nome">${p.descricao}</div>
+    if (!d.data.length) { container.innerHTML = '<div class="empty">Nenhum produto encontrado</div>'; return; }
+    container.innerHTML = await Promise.all(d.data.map(async p => {
+        const full = await api('/produtos/' + p.id);
+        const dna = full.dna || {};
+        const aplic = full.aplicacoes || [];
+        const isLow = p.ntc_score < 0.60;
+        const scoreColor = p.ntc_status === 'APROVADO' ? 'var(--success)' : p.ntc_status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+        const pdvImgs = full.imagens || [];
+        const pdvImg = pdvImgs.find(i => i.tipo === 'Principal') || pdvImgs[0];
+        const pdvImgHtml = pdvImg
+            ? `<img src="${pdvImg.url}" class="img-thumb-lg" style="display:block;margin:0 auto 14px" onerror="this.outerHTML='<div class=\'img-slot-placeholder img-thumb-lg\' style=\'margin:0 auto 14px\'>&#x1F4F7;</div>'">`
+            : `<div class="img-slot-placeholder img-thumb-lg" style="margin:0 auto 14px;font-size:3rem">&#x1F4F7;</div>`;
+        return `<div class="pdv-card">
+            ${pdvImgHtml}
             <div class="pdv-ref">${p.ref}</div>
-            <div style="margin:8px 0;display:flex;align-items:center;gap:12px">
-                <span style="font-size:2rem;font-weight:900;color:${scoreColor}">${(score*100).toFixed(1)}%</span>
-                <span class="ntc-${p.ntc_status||'REPROVADO'}" style="font-size:.9rem">${p.ntc_status||'?'}</span>
+            <div class="pdv-nome">${p.descricao}</div>
+            <div class="pdv-dna">${dna.fabricante||''} ${dna.grupo_industrial ? '('+dna.grupo_industrial+')' : ''} ${dna.origem_pais ? '| '+dna.origem_pais : ''}</div>
+            ${aplic.length ? '<div class="text-sm">'+aplic.slice(0,3).map(a=>`${a.montadora||''} ${a.modelo||''} ${a.ano_ini||''}-${a.ano_fim||''}`).join(' | ')+'</div>' : ''}
+            <div class="flex mt" style="align-items:flex-end;gap:16px">
+                <div>
+                    <div class="pdv-ntc-big" style="color:${scoreColor}">${(p.ntc_score*100).toFixed(1)}%</div>
+                    <div><span class="ntc-${p.ntc_status||'REPROVADO'}">${p.ntc_status||'?'}</span></div>
+                </div>
+                <div>${statusBadge(p.status)}</div>
+                <button class="btn btn-success btn-sm ml-auto" onclick="enriquecerProduto(${p.id})">Enriquecer NTC</button>
             </div>
-            <div class="${riskClass}">${riskMsg}</div>
-            <div class="pdv-dna-grid">
-                <div><b>Fabricante</b><br>${dna.fabricante||'-'}</div>
-                <div><b>Marca</b><br>${dna.marca||'-'}</div>
-                <div><b>Familia</b><br>${dna.familia||'-'}</div>
-                <div><b>Codigo DNA</b><br>${dna.codigo_dna||'-'}</div>
-            </div>
-            ${aplic.length ? `<table class="pdv-aplic-table"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th></tr></thead><tbody>${aplicRows}</tbody></table>` : ''}
-            <div style="margin-top:10px;font-size:.8rem;color:var(--text2)">NCM: <b>${fiscal.ncm||'-'}</b></div>
-            <div style="margin-top:6px">
-                <button class="btn btn-success btn-sm" onclick="enriquecerProduto(${p.id})">&#x2728; Enriquecer no iRollo</button>
-            </div>
-        </div>
-    </div>`;
-}
-
-// ======================================================
-// MARKETPLACE READY
-// ======================================================
-async function populateMarketplaceSelect() {
-    const sel = document.getElementById('mkt-produto-sel');
-    if (sel.options.length > 1) return;
-    const d = await api('/produtos?limit=200');
-    (d.data || []).forEach(p => {
-        const o = document.createElement('option');
-        o.value = p.id;
-        o.textContent = `[${p.ref}] ${p.descricao}`;
-        sel.appendChild(o);
-    });
-}
-
-async function loadMarketplacePacote() {
-    const sel = document.getElementById('mkt-produto-sel');
-    const id = sel.value;
-    if (!id) { alert('Selecione um produto primeiro'); return; }
-    const container = document.getElementById('mkt-results');
-    container.innerHTML = '<div class="empty"><span class="spinner"></span> Gerando pacote...</div>';
-    const pkg = await api('/marketplace/pacote/' + id);
-    if (pkg.error) { container.innerHTML = `<div class="empty">${pkg.error}</div>`; return; }
-    const s = pkg.status || {};
-    const channels = [
-        { key:'mercado_livre', label:'Mercado Livre', color:'#ffe600', bg:'#ffe60022', icon:'ML', pronto: s.pronto_ml },
-        { key:'amazon',        label:'Amazon',        color:'#ff9900', bg:'#ff990022', icon:'AM', pronto: s.pronto_amazon },
-        { key:'shopee',        label:'Shopee',        color:'#ee4d2d', bg:'#ee4d2d22', icon:'SH', pronto: s.pronto_shopee },
-        { key:'magalu',        label:'Magalu',        color:'#0086cc', bg:'#0086cc22', icon:'MG', pronto: s.pronto_magalu },
-    ];
-    const cards = channels.map(ch => {
-        const badge = ch.pronto
-            ? `<span class="mkt-badge-ok">&#x2705; Pronto</span>`
-            : `<span class="mkt-badge-pend">&#x23F3; Pendente</span>`;
-        return `<div class="mkt-card">
-            <div class="mkt-card-header">
-                <div class="mkt-logo" style="background:${ch.color};color:#222">${ch.icon}</div>
-                <div style="flex:1"><div style="font-weight:700;font-size:.9rem">${ch.label}</div>${badge}</div>
-            </div>
-            <div style="font-size:.75rem;color:var(--text2);margin-bottom:6px">${ch.pronto ? 'Todos os campos obrigatorios preenchidos.' : 'Verifique: imagens, preco, marca ou NCM.'}</div>
+            ${isLow ? '<div class="pdv-alert">ATENCAO: NTC Score abaixo do minimo (0.60). Produto necessita revisao antes da venda.</div>' : ''}
         </div>`;
-    }).join('');
-    const jsonToggleId = 'mkt-json-' + id;
-    container.innerHTML = `
-        <div class="mkt-grid">${cards}</div>
-        <div class="sec" style="margin-top:16px">
-            <div class="sec-title" style="cursor:pointer" onclick="document.getElementById('${jsonToggleId}').style.display=document.getElementById('${jsonToggleId}').style.display==='none'?'block':'none'">&#x1F4C4; Ver JSON do Pacote &#x25BC;</div>
-            <div id="${jsonToggleId}" style="display:none"><div class="mkt-json-block">${JSON.stringify(pkg, null, 2)}</div></div>
-        </div>
-        <div style="font-size:.72rem;color:var(--text3);margin-top:8px;padding:0 4px">Conectores em desenvolvimento. Pacote estruturado pronto para integracao via API.</div>
-    `;
+    })).then(r => r.join(''));
 }
 
 // ======================================================
@@ -3603,130 +3217,6 @@ function cancelarBuscaWeb() {
 }
 
 // ======================================================
-// ======================================================
-// BLING ERP v3 — OAuth2 + Sincronizacao
-// ======================================================
-async function loadBlingStatus() {
-    const d = await api('/bling/status');
-    const badge = document.getElementById('bling-status-badge');
-    badge.innerHTML = d.conectado && !d.expirado
-        ? '<span class="badge badge-green" style="font-size:.8rem">&#x2714; CONECTADO</span>'
-        : d.conectado && d.expirado
-        ? '<span class="badge badge-yellow" style="font-size:.8rem">&#x26A0; TOKEN EXPIRADO</span>'
-        : '<span class="badge badge-red" style="font-size:.8rem">&#x26A0; DESCONECTADO</span>';
-
-    // KPIs
-    document.getElementById('bling-kpi-grid').innerHTML = [
-        { label: 'Status', val: d.conectado ? (d.expirado ? 'Expirado' : 'Online') : 'Offline', sub: 'conexao Bling', cls: d.conectado && !d.expirado ? 'kpi-green' : 'kpi-red' },
-        { label: 'Refresh Token', val: d.tem_refresh ? '&#x2714;' : '&#x2716;', sub: 'renovacao auto', cls: d.tem_refresh ? 'kpi-green' : 'kpi-yellow' },
-        { label: 'Expira em', val: d.expires_em ? new Date(d.expires_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—', sub: d.expires_em ? new Date(d.expires_em).toLocaleDateString('pt-BR') : 'nao configurado', cls: 'kpi-blue' },
-    ].map(k => `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
-
-    // Preencher campos se já configurado
-    if (d.client_id) {
-        document.getElementById('bling-client-id').value = d.client_id;
-        document.getElementById('bling-client-id').setAttribute('readonly', true);
-    }
-
-    // Status card
-    const card = document.getElementById('bling-conn-card');
-    const info = document.getElementById('bling-conn-info');
-    if (d.client_id) {
-        card.style.display = 'block';
-        info.innerHTML = [
-            ['Client ID', d.client_id],
-            ['Scope', d.scope || '—'],
-            ['Atualizado', d.atualizado_em ? d.atualizado_em.substring(0,16) : '—'],
-            ['Refresh Token', d.tem_refresh ? '&#x2714; Disponivel' : '&#x2716; Ausente'],
-        ].map(([k, v]) => `<div style="background:var(--bg);border-radius:6px;padding:8px 10px"><div style="font-size:.6rem;color:var(--text3)">${k}</div><div style="font-size:.78rem">${v}</div></div>`).join('');
-    }
-
-    // Redirect URI
-    const origin = window.location.origin;
-    const uriEl = document.getElementById('bling-redirect-uri');
-    if (uriEl) uriEl.textContent = origin + '/api/bling/callback';
-}
-
-async function blingConfig() {
-    const st = document.getElementById('bling-config-st');
-    const client_id = document.getElementById('bling-client-id').value.trim();
-    const client_secret = document.getElementById('bling-client-secret').value.trim();
-    if (!client_id || !client_secret) { st.textContent = 'Preencha Client ID e Client Secret'; return; }
-    st.textContent = 'Salvando...';
-    const r = await api('/bling/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ client_id, client_secret }) });
-    st.innerHTML = r.success ? '<span style="color:var(--success)">&#x2714; Credenciais salvas! Agora clique em "Conectar via OAuth2".</span>' : `<span style="color:var(--danger)">${r.error}</span>`;
-    if (r.success) loadBlingStatus();
-}
-
-async function blingConectar() {
-    const st = document.getElementById('bling-config-st');
-    st.textContent = 'Obtendo URL de autorizacao...';
-    const r = await api('/bling/auth-url');
-    if (r.error) { st.innerHTML = `<span style="color:var(--danger)">${r.error}</span>`; return; }
-    st.innerHTML = '<span style="color:var(--warning)">&#x23F3; Aguardando autorizacao na janela do Bling...</span>';
-    const w = window.open(r.url, 'BlingOAuth', 'width=700,height=600,scrollbars=yes');
-    const timer = setInterval(() => {
-        if (w && w.closed) {
-            clearInterval(timer);
-            st.innerHTML = '<span style="color:var(--success)">Janela fechada. Verificando conexao...</span>';
-            setTimeout(() => loadBlingStatus(), 1500);
-        }
-    }, 500);
-}
-
-async function blingRefresh() {
-    const st = document.getElementById('bling-config-st');
-    st.textContent = 'Renovando token...';
-    const r = await api('/bling/refresh', { method: 'POST' });
-    st.innerHTML = r.success ? '<span style="color:var(--success)">&#x2714; Token renovado!</span>' : `<span style="color:var(--danger)">${r.error}</span>`;
-    if (r.success) loadBlingStatus();
-}
-
-async function loadBlingProdutos() {
-    const st = document.getElementById('bling-prod-st');
-    st.textContent = 'Carregando produtos congelados...';
-    const d = await api('/congelados');
-    const tbody = document.querySelector('#tbl-bling-prod tbody');
-    const lista = d.data || [];
-    if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum produto congelado ainda. Congele produtos no iRollo primeiro.</td></tr>';
-        st.textContent = '';
-        return;
-    }
-    st.innerHTML = `<span style="color:var(--success)">${lista.length} produto(s) congelado(s) prontos para sincronizar</span>`;
-    tbody.innerHTML = lista.map(p => `<tr>
-        <td class="mono" style="font-weight:700">${p.ref}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.descricao}</td>
-        <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
-        <td id="bling-sync-st-${p.id}"><span class="badge badge-yellow">Pronto</span></td>
-        <td>
-          <button class="btn btn-sm" style="background:#0055a5" onclick="blingSincronizar(${p.id})">
-            &#x1F4CB; Enviar ao Bling
-          </button>
-        </td>
-    </tr>`).join('');
-}
-
-async function blingSincronizar(id) {
-    const stEl = document.getElementById('bling-sync-st-' + id);
-    if (stEl) stEl.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div>';
-    const r = await api('/bling/sincronizar/' + id, { method: 'POST' });
-    if (stEl) stEl.innerHTML = r.success
-        ? `<span class="badge badge-green">&#x2714; Bling #${r.bling_id||'OK'}</span>`
-        : `<span class="badge badge-red" title="${r.error}">&#x26A0; Erro</span>`;
-}
-
-async function blingEnviarTodos() {
-    const linhas = document.querySelectorAll('#tbl-bling-prod tbody tr[id]');
-    // Extract IDs from status cells
-    const ids = [...document.querySelectorAll('[id^="bling-sync-st-"]')].map(el => el.id.replace('bling-sync-st-',''));
-    for (const id of ids) {
-        await blingSincronizar(id);
-        await new Promise(r => setTimeout(r, 300));
-    }
-}
-
-// ======================================================
 // WIX STORES
 // ======================================================
 async function loadWixStatus() {
@@ -3964,26 +3454,92 @@ function renderGavetas(d) {
             : '<div class="empty" style="font-size:.78rem">Nenhuma imagem. Use ENRIQUECER NA WEB para buscar imagens reais.</div>',
             imagens.length >= 3 ? 'badge-green' : imagens.length > 0 ? 'badge-yellow' : 'badge-red'),
 
-        // Gaveta 6: Integracoes
-        buildGaveta('INT', '&#x1F4E4; Integracoes — Bling / Wix / G.Shopping / G.Ads', null,
-            `<div class="flex flex-wrap" style="gap:8px">
-                <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center">
-                    <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Bling ERP</div>
-                    <span class="badge badge-yellow">Aguardando API Key</span>
+        // Gaveta 6: Bling ERP Cabeçote
+        buildGaveta('BLING', '&#x1F4CB; Cabeçote ERP — Bling v3', null,
+            `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
+                ${[
+                    ['Produto', d.produto?.descricao||''],
+                    ['Codigo / SKU', d.dna?.codigo_dna||d.produto?.ref||''],
+                    ['Codigo de barras', d.dna?.ean||'—'],
+                    ['NCM', d.fiscal?.ncm||'—'],
+                    ['Origem', d.fiscal?.origem!=null ? d.fiscal.origem+' — Nacional' : '—'],
+                    ['Unidade', 'UN'],
+                    ['Categoria', d.dna?.familia ? d.dna.familia : '—'],
+                    ['Peso bruto (kg)', d.logistica?.peso_bruto||'—'],
+                    ['Preco de venda', d.produto?.preco_venda ? 'R$ '+d.produto.preco_venda : 'R$ —'],
+                    ['Aplicacao', d.aplicacoes?.length ? d.aplicacoes.map(a=>`${a.montadora||''} ${a.modelo||''} (${a.ano_ini||'?'}-${a.ano_fim||'?'} ${a.motor||''})`).slice(0,2).join(' / ') : '—'],
+                ].map(([k,v])=>`<div style="background:var(--bg);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">
+                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${k}</div>
+                    <div style="color:var(--text)">${v||'—'}</div>
+                </div>`).join('')}
+            </div>
+            <div style="background:var(--bg);border-radius:6px;padding:10px;border:1px solid var(--border);margin-bottom:12px">
+                <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px">Descricao</div>
+                <div id="gav-bling-desc" style="font-size:.75rem;color:var(--text);line-height:1.5;white-space:pre-wrap;max-height:80px;overflow:auto">${d.produto?.descricao||'—'}</div>
+            </div>
+            <button class="btn" style="background:#0055a5;width:100%" onclick="sincronizar('bling')">&#x1F4CB; Enviar para Bling ERP</button>
+            <div id="gav-bling-st" class="text-xs" style="margin-top:6px;text-align:center"></div>`, null),
+
+        // Gaveta 7: Wix Cabeçote
+        buildGaveta('WIX', '&#x26AB; Cabeçote Wix Studio', null,
+            `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
+                ${[
+                    ['Nome produto', d.produto?.descricao||''],
+                    ['SKU', d.dna?.codigo_dna||d.produto?.ref||''],
+                    ['Colecao', d.dna?.familia||'—'],
+                    ['Tags', d.dna?.codigo_dna ? [d.dna.codigo_dna, d.dna.marca||'', d.dna.familia||''].filter(Boolean).join(', ') : '—'],
+                    ['SEO Title', (d.produto?.descricao||'').substring(0,70)],
+                    ['Meta description', (d.produto?.descricao||'').substring(0,160)],
+                    ['Preco', d.produto?.preco_venda ? 'R$ '+d.produto.preco_venda : 'R$ —'],
+                    ['IMG principal', imagens.length ? 'IMG 1 — URL: '+imagens[0].url.substring(0,30)+'...' : '— sem imagem —'],
+                    ['Galeria', imagens.length + ' imagem(ns) cadastrada(s)'],
+                ].map(([k,v])=>`<div style="background:var(--bg);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">
+                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${k}</div>
+                    <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px" title="${v}">${v||'—'}</div>
+                </div>`).join('')}
+            </div>
+            <button class="btn" style="background:#00b0f0;width:100%" onclick="sincronizar('wix')">&#x1F310; Sincronizar Wix Studio</button>
+            <div id="gav-wix-st" class="text-xs" style="margin-top:6px;text-align:center"></div>`, null),
+
+        // Gaveta 8: Google Shopping
+        buildGaveta('GSHOP', '&#x1F6D2; Google Shopping — Merchant Center', null,
+            `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem;margin-bottom:12px">
+                ${[
+                    ['title', (d.dna?.marca||d.dna?.codigo_dna||d.produto?.ref||'')+ ' ' +(d.produto?.descricao||'').substring(0,60)],
+                    ['description', (d.produto?.descricao||'').substring(0,140)],
+                    ['brand', d.dna?.marca||d.dna?.fabricante||'nao identificado'],
+                    ['mpn', d.dna?.codigo_dna||d.produto?.ref||''],
+                    ['condition', 'new'],
+                    ['availability', 'in_stock'],
+                    ['price', (d.produto?.preco_venda||0)+' BRL'],
+                    ['google_product_category', '2530'],
+                    ['image_link', imagens.length ? imagens[0].url : 'sem imagem — necessario'],
+                ].map(([k,v])=>`<div style="background:var(--bg);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">
+                    <div style="font-size:.6rem;color:#4285F4;margin-bottom:2px;font-family:monospace">${k}</div>
+                    <div style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;font-size:.75rem" title="${v}">${v||'—'}</div>
+                </div>`).join('')}
+            </div>
+            <div style="background:rgba(66,133,244,.08);border:1px solid rgba(66,133,244,.2);border-radius:8px;padding:10px;font-size:.72rem;color:var(--text3)">${imagens.length === 0 ? '&#x26A0; Imagem obrigatoria para Google Shopping — adicione ao menos 1 imagem real.' : '&#x2714; '+imagens.length+' imagem(ns) prontas para o feed.'}</div>
+            <button class="btn" style="background:#4285F4;width:100%;margin-top:10px" onclick="sincronizar('google_shopping')">&#x1F6D2; Enviar para Google Shopping</button>`, null),
+
+        // Gaveta 9: Google Ads P-Max
+        buildGaveta('PMAX', '&#x1F4E2; Google Ads — Performance Max', null,
+            `<div style="font-size:.75rem;color:var(--text3);margin-bottom:10px">Gere o perfil de voz <b>P-Max</b> acima para preencher os assets automaticamente.</div>
+            <div id="gav-pmax-preview" style="display:grid;gap:6px;font-size:.78rem">
+                <div style="background:var(--bg);border-radius:6px;padding:8px 12px;border:1px solid var(--border)">
+                    <span style="font-size:.6rem;color:#EA4335">H1 (30 chars)</span><br>
+                    <span id="gav-pmax-h1" style="color:var(--text)">— Gere P-Max na aba Voz do Lojista</span>
                 </div>
-                <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center">
-                    <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Wix Stores</div>
-                    ${enrData.wix_id ? `<span class="badge badge-green">&#x2714; Sincronizado</span><div class="mono" style="font-size:.6rem;margin-top:4px">${enrData.wix_id.substring(0,12)}...</div>` : '<span class="badge badge-yellow">Nao sincronizado</span>'}
+                <div style="background:var(--bg);border-radius:6px;padding:8px 12px;border:1px solid var(--border)">
+                    <span style="font-size:.6rem;color:#EA4335">D1 (90 chars)</span><br>
+                    <span id="gav-pmax-d1" style="color:var(--text)">—</span>
                 </div>
-                <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center">
-                    <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Google Shopping</div>
-                    <span class="badge ${imagens.length > 0 ? 'badge-green' : 'badge-red'}">${imagens.length > 0 ? '&#x2714; Pronto' : '&#x26A0; Sem imagem'}</span>
+                <div style="background:var(--bg);border-radius:6px;padding:8px 12px;border:1px solid var(--border)">
+                    <span style="font-size:.6rem;color:#EA4335">D2 (90 chars)</span><br>
+                    <span id="gav-pmax-d2" style="color:var(--text)">—</span>
                 </div>
-                <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center">
-                    <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Google Ads P-Max</div>
-                    <span class="badge badge-yellow">Gerar vozes</span>
-                </div>
-            </div>`, null),
+            </div>
+            <button class="btn" style="background:#EA4335;width:100%;margin-top:10px" onclick="sincronizar('google_ads')">&#x1F4E2; Copiar Assets P-Max</button>`, null),
     ].join('');
 
     document.getElementById('enr-gavetas').innerHTML = gavetasHtml;
@@ -4160,12 +3716,7 @@ async function sincronizar(plataforma) {
         if (txt) { navigator.clipboard.writeText(txt); st.innerHTML = '<span style="color:var(--success)">&#x2714; Mensagem WhatsApp copiada para area de transferencia!</span>'; }
         else st.innerHTML = '<span style="color:var(--warning)">Gere o pacote de publicacao primeiro</span>';
     } else if (plataforma === 'bling') {
-        if (!currentEnrId) return;
-        st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px;margin-right:6px"></div> Enviando ao Bling ERP v3...';
-        const r = await api('/bling/sincronizar/' + currentEnrId, { method: 'POST' });
-        st.innerHTML = r.success
-            ? `<span style="color:var(--success)">&#x2714; Bling ERP — sincronizado! ID: ${r.bling_id || 'OK'}</span>`
-            : `<span style="color:var(--danger)">&#x26A0; Bling: ${r.error || 'Erro'}. <a href="#" onclick="navigate('bling')" style="color:var(--primary)">Configurar OAuth2</a></span>`;
+        st.innerHTML = `<span style="color:var(--warning)">&#x1F4CB; Bling ERP — pacote pronto (ref: ${pubPacote?.bling?.codigo||'?'}, imagem: ${pubPacote?.bling?.imagemURL ? 'sim' : 'nao'}). Informe a API Key do Bling para enviar.</span>`;
     } else if (plataforma === 'google_shopping') {
         st.innerHTML = `<span style="color:var(--warning)">&#x1F6D2; Google Shopping — feed preparado com imagem e titulo SEO. Configure Google Merchant Center para enviar.</span>`;
     } else if (plataforma === 'google_ads') {
@@ -4297,70 +3848,15 @@ async function loadAprovacao() {
 
 async function loadCongelados() {
     const d = await api('/congelados');
-    const lista = d.data || [];
-    // KPI Header
-    const kpiEl = document.getElementById('congelados-kpi-header');
-    if (kpiEl) {
-        const ntcMedio = lista.length ? Math.round(lista.reduce((a,p)=>a+(p.ntc_score||0),0)/lista.length*100) : 0;
-        const sincWix = lista.filter(p => p.wix_id).length;
-        const prontos = lista.filter(p => p.ntc_status === 'APROVADO').length;
-        kpiEl.innerHTML = [
-            {label:'Total Congelados', val:lista.length, cls:'kpi-blue'},
-            {label:'Sincronizados Wix', val:sincWix, cls:'kpi-green'},
-            {label:'NTC Medio', val:ntcMedio+'%', cls:'kpi-yellow'},
-            {label:'Prontos para Publicar', val:prontos, cls:'kpi-purple'},
-        ].map(k=>`<div class="kpi-card ${k.cls}"><div class="kpi-val">${k.val}</div><div class="kpi-lbl">${k.label}</div></div>`).join('');
-    }
-    // Cards Grid
-    const cardsEl = document.getElementById('congelados-cards');
-    const emptyEl = document.getElementById('congelados-empty');
-    if (!lista.length) {
-        if (cardsEl) cardsEl.innerHTML = '';
-        if (emptyEl) emptyEl.style.display = 'block';
-        return;
-    }
-    if (emptyEl) emptyEl.style.display = 'none';
-    if (cardsEl) cardsEl.innerHTML = lista.map(p => {
-        const nc = p.ntc_status === 'APROVADO' ? 'var(--success)' : p.ntc_status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
-        const wixBadge = p.wix_id ? '<span class="badge badge-green" style="font-size:.58rem">Wix &#x2714;</span>' : '<span class="badge badge-gray" style="font-size:.58rem">Wix —</span>';
-        const blingBadge = p.bling_id ? '<span class="badge badge-blue" style="font-size:.58rem">Bling &#x2714;</span>' : '<span class="badge badge-gray" style="font-size:.58rem">Bling —</span>';
-        const dataCongelado = (p.atualizado_em||'').substring(0,10);
-        const imgHtml = p.imagem_principal
-            ? `<img src="${p.imagem_principal}" style="width:56px;height:56px;object-fit:contain;border-radius:6px;border:1px solid var(--border);background:#0d0d0d;flex-shrink:0" onerror="this.style.display='none'">`
-            : `<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:1.5rem;flex-shrink:0">&#x1F4F7;</div>`;
-        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
-            <div style="display:flex;gap:12px;align-items:flex-start">
-                ${imgHtml}
-                <div style="flex:1;min-width:0">
-                    <div style="font-size:.75rem;font-weight:700;color:var(--primary);font-family:monospace">${p.ref}</div>
-                    <div style="font-size:.75rem;color:var(--text2);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.descricao||''}">${(p.descricao||'').substring(0,55)}</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-                        <span style="font-size:.78rem;font-weight:800;color:${nc}">${((p.ntc_score||0)*100).toFixed(1)}%</span>
-                        <span style="font-size:.65rem;font-weight:700;color:${nc}">${p.ntc_status||'—'}</span>
-                        ${wixBadge} ${blingBadge}
-                    </div>
-                    <div style="font-size:.6rem;color:var(--text3);margin-top:3px">&#x2744; Congelado: ${dataCongelado||'—'}</div>
-                </div>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:5px">
-                <button class="btn btn-xs btn-outline" onclick="descongelarCard(${p.id})">&#x2744;&#x2192;&#x1F513; Descongelar</button>
-                <button class="btn btn-xs btn-success" onclick="irParaEnriquecimento(${p.id})">&#x2728; Reenriquecer</button>
-                <button class="btn btn-xs btn-blue" onclick="reindexarCard(${p.id})">&#x1F501; Reindexar</button>
-                <button class="btn btn-xs" onclick="irParaEnriquecimento(${p.id})">&#x1F4CB; Publicar</button>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-async function descongelarCard(id) {
-    if (!confirm('Descongelar este produto?')) return;
-    await api('/produtos/' + id + '/descongelar', {method:'POST'});
-    loadCongelados();
-}
-
-async function reindexarCard(id) {
-    const r = await api('/produtos/' + id + '/indexar', {method:'POST', body:JSON.stringify({force:true})});
-    if (r.success || r.error) { alert(r.error || 'Reindexado com sucesso!'); loadCongelados(); }
+    const tbody = document.querySelector('#tbl-congelados tbody');
+    tbody.innerHTML = (d.data || []).map(p => `<tr>
+        <td>${imgThumb(p.imagem_principal, 36)}</td>
+        <td class="mono">${p.ref}</td>
+        <td>${p.descricao.substring(0,50)}</td>
+        <td>${p.marca||'—'}</td>
+        <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
+        <td><span class="badge badge-blue">Congelado</span></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto congelado ainda.</td></tr>';
 }
 
 async function irParaEnriquecimento(id) {
