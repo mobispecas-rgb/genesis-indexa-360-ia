@@ -1174,7 +1174,7 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
-    const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 5').all(id);
+    const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 20').all(id);
 
     // NCT simplified 4-module
     const nctTF = dna && dna.codigo_dna ? 0.82 : (dna && dna.marca ? 0.50 : 0.10);
@@ -1215,9 +1215,13 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
 app.post('/api/produtos/:id/indexar', (req, res) => {
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    const force = req.body && req.body.force === true;
+    if (!force && p.ntc_score < 0.80) {
+        return res.status(400).json({ error: 'NTC insuficiente para congelar', ntc_score: p.ntc_score, ntc_status: p.ntc_status, minimo: 0.80 });
+    }
     db.prepare("UPDATE produtos SET status='Congelado', atualizado_em=datetime('now','localtime') WHERE id=?").run(req.params.id);
-    db.prepare("INSERT INTO historico_ntc (produto_id,status_anterior,status_novo,alteracao) VALUES (?,?,?,?)").run(req.params.id, p.status, 'Congelado', 'Congelado e Indexado — Bling + Wix + Google Shopping');
-    res.json({ success: true, plataformas: ['Bling', 'Wix', 'Google Shopping', 'Google Ads'], status: 'Congelado' });
+    db.prepare("INSERT INTO historico_ntc (produto_id,status_anterior,status_novo,ntc_anterior,ntc_novo,alteracao) VALUES (?,?,?,?,?,?)").run(req.params.id, p.ntc_status, 'CONGELADO', p.ntc_score, p.ntc_score, 'Congelado e Indexado — Bling + Wix + Google Shopping');
+    res.json({ success: true, plataformas: ['Bling', 'Wix', 'Google Shopping', 'Google Ads'], status: 'Congelado', ntc_score: p.ntc_score });
 });
 
 // CONGELADOS
