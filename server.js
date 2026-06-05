@@ -200,259 +200,6 @@ CREATE TABLE IF NOT EXISTS logs_ia (
 // Add wix_id column if not exists (migration)
 try { db.exec("ALTER TABLE produtos ADD COLUMN wix_id TEXT"); } catch(e) { /* already exists */ }
 
-// Multi-empresa migrations
-['produtos','dna','dados_fiscais','logistica','imagens','historico_ntc','codigos_cambiados','aplicacoes_motor'].forEach(t => {
-    try { db.exec(`ALTER TABLE ${t} ADD COLUMN empresa_id INTEGER DEFAULT 1`); } catch(e) {}
-});
-
-// Bling OAuth2 token storage table
-db.exec(`
-CREATE TABLE IF NOT EXISTS bling_config (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  empresa_id INTEGER DEFAULT 1,
-  client_id TEXT,
-  client_secret TEXT,
-  access_token TEXT,
-  refresh_token TEXT,
-  token_type TEXT DEFAULT 'Bearer',
-  expires_at INTEGER,
-  scope TEXT,
-  atualizado_em TEXT DEFAULT (datetime('now','localtime'))
-);
-`);
-
-// -----------------------------------------------------------
-// BLING ERP v3 — OAuth2 + REST API
-// -----------------------------------------------------------
-const BLING_BASE = 'https://www.bling.com.br/Api/v3';
-const BLING_AUTH_URL = 'https://www.bling.com.br/Api/v3/oauth/authorize';
-const BLING_TOKEN_URL = 'https://www.bling.com.br/Api/v3/oauth/token';
-
-function getBlingConfig(empresaId = 1) {
-    return db.prepare('SELECT * FROM bling_config WHERE empresa_id=? ORDER BY id DESC LIMIT 1').get(empresaId) || null;
-}
-
-async function blingRefreshToken(config) {
-    if (!config || !config.refresh_token) throw new Error('Refresh token nao disponivel');
-    const creds = Buffer.from(config.client_id + ':' + config.client_secret).toString('base64');
-    const body = 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(config.refresh_token);
-    const resp = await httpPostForm(BLING_TOKEN_URL, body, {
-        'Authorization': 'Basic ' + creds,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-    });
-    const data = JSON.parse(resp);
-    if (data.error) throw new Error(data.error_description || data.error);
-    const expiresAt = Date.now() + (data.expires_in || 21600) * 1000;
-    db.prepare(`UPDATE bling_config SET access_token=?, refresh_token=COALESCE(?,refresh_token),
-        expires_at=?, atualizado_em=datetime('now','localtime') WHERE id=?`
-    ).run(data.access_token, data.refresh_token || null, expiresAt, config.id);
-    return { ...config, access_token: data.access_token, expires_at: expiresAt };
-}
-
-async function blingRequest(method, path, body = null, empresaId = 1) {
-    let config = getBlingConfig(empresaId);
-    if (!config || !config.access_token) throw new Error('Bling nao configurado. Configure o OAuth2 em Integracoes.');
-    if (config.expires_at && Date.now() > config.expires_at - 60000) {
-        config = await blingRefreshToken(config);
-    }
-    const opts = {
-        'Authorization': 'Bearer ' + config.access_token,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    };
-    return JSON.parse(await (body
-        ? httpPostJson(BLING_BASE + path, JSON.stringify(body), opts, method)
-        : httpGet(BLING_BASE + path, opts)));
-}
-
-function httpPostForm(url, body, headers = {}) {
-    return new Promise((resolve, reject) => {
-        const urlObj = new URL(url);
-        const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
-        const buf = Buffer.from(body, 'utf8');
-        const req = mod.request({
-            hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search,
-            method: 'POST', headers: { ...headers, 'Content-Length': buf.length }
-        }, res => {
-            let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d));
-        });
-        req.on('error', reject); req.write(buf); req.end();
-    });
-}
-
-function httpPostJson(url, body, headers = {}, method = 'POST') {
-    return new Promise((resolve, reject) => {
-        const urlObj = new URL(url);
-        const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
-        const buf = Buffer.from(body, 'utf8');
-        const req = mod.request({
-            hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search,
-            method, headers: { ...headers, 'Content-Length': buf.length }
-        }, res => {
-            let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d));
-        });
-        req.on('error', reject); req.write(buf); req.end();
-    });
-}
-
-// Status da integração Bling
-app.get('/api/bling/status', (req, res) => {
-    const config = getBlingConfig();
-    if (!config || !config.client_id) return res.json({ conectado: false, mensagem: 'Nao configurado' });
-    const expirado = config.expires_at && Date.now() > config.expires_at;
-    res.json({
-        conectado: !!config.access_token,
-        expirado,
-        client_id: config.client_id,
-        scope: config.scope,
-        atualizado_em: config.atualizado_em,
-        expires_em: config.expires_at ? new Date(config.expires_at).toISOString() : null,
-        tem_refresh: !!config.refresh_token,
-    });
-});
-
-// Salvar Client ID e Secret (sem redirecionar ainda)
-app.post('/api/bling/config', (req, res) => {
-    const { client_id, client_secret } = req.body;
-    if (!client_id || !client_secret) return res.status(400).json({ error: 'client_id e client_secret obrigatorios' });
-    const existing = getBlingConfig();
-    if (existing) {
-        db.prepare("UPDATE bling_config SET client_id=?, client_secret=?, atualizado_em=datetime('now','localtime') WHERE id=?").run(client_id, client_secret, existing.id);
-    } else {
-        db.prepare("INSERT INTO bling_config (empresa_id, client_id, client_secret) VALUES (?,?,?)").run(1, client_id, client_secret);
-    }
-    res.json({ success: true });
-});
-
-// Gerar URL de autorização OAuth2
-app.get('/api/bling/auth-url', (req, res) => {
-    const config = getBlingConfig();
-    if (!config || !config.client_id) return res.status(400).json({ error: 'Configure client_id primeiro' });
-    const appUrl = process.env.APP_URL || ('http://localhost:' + PORT);
-    const redirectUri = appUrl + '/api/bling/callback';
-    const url = BLING_AUTH_URL + '?response_type=code&client_id=' + encodeURIComponent(config.client_id) + '&redirect_uri=' + encodeURIComponent(redirectUri);
-    res.json({ url, redirect_uri: redirectUri });
-});
-
-// OAuth2 callback — troca code por access_token
-app.get('/api/bling/callback', async (req, res) => {
-    const { code, error } = req.query;
-    if (error) return res.send('<h2>Erro Bling OAuth: ' + error + '</h2>');
-    if (!code) return res.send('<h2>Codigo ausente</h2>');
-    try {
-        const config = getBlingConfig();
-        if (!config) return res.send('<h2>Bling nao configurado</h2>');
-        const appUrl = process.env.APP_URL || ('http://localhost:' + PORT);
-        const redirectUri = appUrl + '/api/bling/callback';
-        const creds = Buffer.from(config.client_id + ':' + config.client_secret).toString('base64');
-        const body = 'grant_type=authorization_code&code=' + encodeURIComponent(code) + '&redirect_uri=' + encodeURIComponent(redirectUri);
-        const resp = await httpPostForm(BLING_TOKEN_URL, body, {
-            'Authorization': 'Basic ' + creds,
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json'
-        });
-        const data = JSON.parse(resp);
-        if (data.error) return res.send('<h2>Erro: ' + (data.error_description || data.error) + '</h2>');
-        const expiresAt = Date.now() + (data.expires_in || 21600) * 1000;
-        db.prepare(`UPDATE bling_config SET access_token=?, refresh_token=?, token_type=?, expires_at=?, scope=?,
-            atualizado_em=datetime('now','localtime') WHERE id=?`
-        ).run(data.access_token, data.refresh_token || null, data.token_type || 'Bearer', expiresAt, data.scope || null, config.id);
-        res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bling Conectado</title>
-        <style>body{font-family:sans-serif;background:#0a0a0a;color:#eee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-        .box{background:#111;border:1px solid #222;border-radius:12px;padding:40px;text-align:center;max-width:420px}
-        h2{color:#00e676;margin:0 0 12px}p{color:#888;font-size:.9rem}a{color:#5a4bff;text-decoration:none}
-        </style></head><body><div class="box">
-        <h2>✅ Bling ERP v3 Conectado!</h2>
-        <p>Access Token recebido e salvo com sucesso.<br>Refresh Token: ${data.refresh_token ? '✔ disponível' : '✗ não retornado'}.</p>
-        <p>Feche esta janela e volte ao Genesis Indexa 360 IA.</p>
-        <p><a href="javascript:window.close()">Fechar</a></p>
-        </div></body></html>`);
-    } catch (err) {
-        res.send('<h2>Erro: ' + err.message + '</h2>');
-    }
-});
-
-// Refresh manual do token
-app.post('/api/bling/refresh', async (req, res) => {
-    try {
-        const config = getBlingConfig();
-        await blingRefreshToken(config);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-// Sincronizar produto com Bling ERP v3
-app.post('/api/bling/sincronizar/:id', async (req, res) => {
-    try {
-        const produto = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
-        if (!produto) return res.status(404).json({ error: 'Produto nao encontrado' });
-        if (produto.status !== 'Congelado') return res.status(400).json({ error: 'Produto nao congelado' });
-
-        const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(req.params.id) || {};
-        const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(req.params.id) || {};
-        const log = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(req.params.id) || {};
-        const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=? AND status != "Reprovada" ORDER BY tipo').all(req.params.id);
-
-        const payload = {
-            nome: produto.descricao,
-            codigo: produto.ref,
-            preco: produto.preco_venda || 0,
-            precoCusto: produto.preco_custo || 0,
-            situacao: produto.status === 'Congelado' ? 'A' : 'I',
-            unidade: 'UN',
-            marca: dna.marca || '',
-            ...(fiscal.ncm ? { tributacao: { ncm: fiscal.ncm.replace(/\./g,'') } } : {}),
-            ...(log.peso_liq ? { pesoLiquido: log.peso_liq, pesoBruto: log.peso_bruto || log.peso_liq } : {}),
-            ...(log.largura ? { largura: log.largura, altura: log.altura || 0, comprimento: log.comprimento || 0 } : {}),
-            ...(imagens.length ? { imagensProduto: imagens.slice(0,5).map((img, i) => ({ url: img.url, principal: i === 0 })) } : {}),
-        };
-
-        // Verificar se produto já existe no Bling
-        let blingId = produto.bling_id || null;
-        if (blingId) {
-            await blingRequest('PUT', '/produtos/' + blingId, payload);
-        } else {
-            const resp = await blingRequest('POST', '/produtos', payload);
-            blingId = resp?.data?.id || null;
-            if (blingId) {
-                try { db.exec("ALTER TABLE produtos ADD COLUMN bling_id TEXT"); } catch(e) {}
-                db.prepare("UPDATE produtos SET bling_id=? WHERE id=?").run(String(blingId), req.params.id);
-            }
-        }
-
-        db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(
-            req.params.id, produto.ntc_score, produto.ntc_score, produto.status, produto.status, 'Sincronizado Bling ERP v3'
-        );
-
-        res.json({ success: true, bling_id: blingId, mensagem: 'Produto sincronizado no Bling ERP v3' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Buscar produto no Bling por código
-app.get('/api/bling/produto/:codigo', async (req, res) => {
-    try {
-        const data = await blingRequest('GET', '/produtos?codigo=' + encodeURIComponent(req.params.codigo));
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Listar produtos do Bling
-app.get('/api/bling/produtos', async (req, res) => {
-    try {
-        const data = await blingRequest('GET', '/produtos?pagina=1&limite=50');
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // -----------------------------------------------------------
 // SEED DATA
 // -----------------------------------------------------------
@@ -1062,10 +809,6 @@ app.put('/api/imagens/:id/status', (req, res) => {
     db.prepare("UPDATE imagens SET status=? WHERE id=?").run(req.body.status, req.params.id);
     res.json({ success: true });
 });
-app.patch('/api/imagens/:id/status', (req, res) => {
-    db.prepare("UPDATE imagens SET status=? WHERE id=?").run(req.body.status, req.params.id);
-    res.json({ success: true });
-});
 
 // -----------------------------------------------------------
 // NTC ENGINE ROUTES
@@ -1545,24 +1288,102 @@ async function callClaude(systemPrompt, userPrompt) {
 
 const VOZ_PROMPTS = {
     tecnico: {
-        system: `Voce e um engenheiro redator especialista em autopecas OEM brasileiro. REGRAS: 1) Linha 1 com codigo OEM completo. 2) Especificar material SAE/ABNT quando disponivel. 3) Incluir NTC score e status. 4) Listar compatibilidades com ano e motor. 5) Tom de laudo tecnico sem emojis. Maximo 8 linhas. PROIBIDO inventar OEM, aplicacoes ou especificacoes.`,
-        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nOEM: ${dna?.codigo_dna||p.ref}\nMARCA/FABRICANTE: ${dna?.marca||'?'} / ${dna?.fabricante||'?'}\nGRUPO INDUSTRIAL: ${dna?.grupo_industrial||'?'}\nORIGEM: ${dna?.origem_pais||'?'}\nNCM: ${fiscal?.ncm||'nao informado'}\nNTC: score=${ntc?.score||'?'} status=${ntc?.status||'?'} (TF:${ntc?.modules?.TF||'?'} FM:${ntc?.modules?.FM||'?'} CO:${ntc?.modules?.CO||'?'} AV:${ntc?.modules?.AV||'?'})\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo+(a.ano_ini?' '+a.ano_ini:'')).join(' | ')||'Consultar catalogo'}\n\nGere descricao tecnica no formato LAUDO — codigo OEM na primeira linha, grupo industrial, materiais, NTC status e compatibilidades.`
+        system: `Voce e um engenheiro redator especialista em autopecas OEM brasileiro.
+REGRAS ABSOLUTAS:
+- Use APENAS os dados fornecidos no prompt. NUNCA invente fabricante, marca, nome de empresa, grupo industrial, OEM, aplicacao ou especificacao tecnica.
+- Se fabricante/marca for "?" ou ausente: escreva "fabricante nao identificado" — NUNCA substitua por nome inventado.
+- Se nao houver aplicacoes: escreva "consultar catalogo" — NUNCA invente modelos de veiculos.
+- Linha 1: codigo OEM real (se disponivel) + descricao do produto.
+- Especifique material SAE/ABNT somente se informado nos dados.
+- Inclua NTC score e status conforme fornecido.
+- Tom de laudo tecnico, sem emojis. Maximo 8 linhas.`,
+        user: (p, dna, aplic, ntc, fiscal) => `DADOS REAIS DO PRODUTO (use apenas estes — nao invente):
+DESCRICAO: ${p.descricao}
+OEM/REF: ${dna?.codigo_dna || p.ref || 'nao informado'}
+FABRICANTE: ${dna?.fabricante || 'nao identificado'}
+MARCA: ${dna?.marca || 'nao identificada'}
+GRUPO INDUSTRIAL: ${dna?.grupo_industrial || 'nao informado'}
+ORIGEM: ${dna?.origem_pais || 'nao informada'}
+NCM: ${fiscal?.ncm || 'nao informado'}
+NTC: score=${((ntc?.score||0)*100).toFixed(1)}% status=${ntc?.status||'REPROVADO'}
+APLICACOES REAIS: ${aplic.length ? aplic.map(a=>`${a.montadora||''} ${a.modelo||''} ${a.motor||''} ${a.ano_ini||''}${a.ano_fim?'-'+a.ano_fim:''}`).join(' | ') : 'nao cadastradas'}
+
+Gere descricao tecnica formato LAUDO usando SOMENTE os dados acima.`
     },
     seo: {
-        system: `Voce e um especialista SEO para e-commerce de autopecas com foco em CPC alto. FORMATO OBRIGATORIO:\nTITULO: [max 70 chars — marca+OEM+modelo]\nMETA: [max 160 chars — OEM+garantia+CTA]\nH1: [variacao do titulo]\nSLUG: [kebab-case]\nKEYWORDS: [8-12 termos long-tail transacionais com OEM+modelo+ano para CPC alto]`,
-        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nMARCA: ${dna?.marca||'?'}\nOEM: ${dna?.codigo_dna||p.ref}\nNCM: ${fiscal?.ncm||'nao informado'}\nNTC: ${ntc?.status||'?'} (${ntc?.score||'?'})\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo+(a.ano_ini?' '+a.ano_ini:'')).slice(0,5).join(', ')||'multi-veiculo'}\n\nGere SEO completo com keywords de alto CPC para Google Shopping e busca organica.`
+        system: `Voce e um especialista SEO para e-commerce de autopecas com foco em CPC alto.
+REGRAS ABSOLUTAS:
+- Use APENAS os dados fornecidos. NUNCA invente marca, fabricante, OEM, modelo de veiculo ou especificacao.
+- Se marca for ausente: use o codigo OEM/ref como identificador. Nao crie nome de empresa.
+- FORMATO OBRIGATORIO:
+TITULO: [max 70 chars — ref+produto+modelo se disponivel]
+META: [max 160 chars — ref+compatibilidade+CTA]
+H1: [variacao do titulo]
+SLUG: [kebab-case com ref real]
+KEYWORDS: [8-12 termos long-tail com ref+modelo+ano — CPC alto]`,
+        user: (p, dna, aplic, ntc, fiscal) => `DADOS REAIS (use apenas estes):
+DESCRICAO: ${p.descricao}
+REF/OEM: ${dna?.codigo_dna || p.ref || 'nao informado'}
+MARCA: ${dna?.marca || 'nao identificada'}
+NCM: ${fiscal?.ncm || 'nao informado'}
+NTC: ${ntc?.status||'REPROVADO'} (${((ntc?.score||0)*100).toFixed(1)}%)
+APLICACOES: ${aplic.length ? aplic.map(a=>`${a.montadora||''} ${a.modelo||''} ${a.ano_ini||''}${a.ano_fim?'-'+a.ano_fim:''}`).slice(0,5).join(', ') : 'nao cadastradas'}
+
+Gere SEO completo com keywords de alto CPC usando SOMENTE estes dados.`
     },
     comercial: {
-        system: `Voce e um copywriter de alta conversao para autopecas OEM. ESTRUTURA: 1) Abrir com BENEFICIO principal. 2) Autoridade OEM com grupo industrial. 3) NTC como prova de qualidade. 4) Urgencia real. 5) Garantia clara. Tom confiante. Maximo 6 linhas. PROIBIDO inventar certificacoes inexistentes.`,
-        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nMARCA: ${dna?.marca||'?'}\nGRUPO INDUSTRIAL: ${dna?.grupo_industrial||'?'}\nOEM: ${dna?.codigo_dna||p.ref}\nNTC: ${ntc?.status||'?'} score ${ntc?.score||'?'}\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,4).join(', ')||'Consultar catalogo'}\n\nGere descricao comercial de alta conversao destacando qualidade OEM e NTC.`
+        system: `Voce e um copywriter de alta conversao para autopecas.
+REGRAS ABSOLUTAS:
+- Use APENAS os dados reais fornecidos. NUNCA invente certificacoes, grupos industriais ou nomes de empresa.
+- Se marca/fabricante for ausente: mencione o codigo de referencia ou omita — NUNCA substitua por nome inventado.
+- Estrutura: 1) Beneficio principal. 2) Qualidade com dados reais. 3) NTC como prova. 4) Compatibilidade real. 5) Garantia. Maximo 6 linhas.`,
+        user: (p, dna, aplic, ntc, fiscal) => `DADOS REAIS (use apenas estes):
+DESCRICAO: ${p.descricao}
+OEM/REF: ${dna?.codigo_dna || p.ref || 'nao informado'}
+FABRICANTE: ${dna?.fabricante || 'nao identificado'}
+MARCA: ${dna?.marca || 'nao identificada'}
+GRUPO: ${dna?.grupo_industrial || 'nao informado'}
+NTC: ${ntc?.status||'REPROVADO'} score ${((ntc?.score||0)*100).toFixed(1)}%
+APLICACOES: ${aplic.length ? aplic.map(a=>`${a.montadora||''} ${a.modelo||''}`).slice(0,4).join(', ') : 'consultar catalogo'}
+
+Gere descricao comercial usando SOMENTE os dados acima.`
     },
     whatsapp: {
-        system: `Voce e um vendedor expert de autopecas OEM via WhatsApp. REGRAS: 1) Confirmar OEM + compatibilidade primeiro. 2) Qualidade OEM = mesma peca da fabrica. 3) Prazo realista + garantia. 4) CTA claro. 5) Max 2-3 emojis. Maximo 5 linhas.`,
-        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nOEM: ${dna?.codigo_dna||p.ref}\nMARCA: ${dna?.marca||'?'}\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo+(a.ano_ini?' '+a.ano_ini:'')).slice(0,3).join(', ')||'consultar catalogo'}\nNTC: ${ntc?.status||'?'}\n\nGere mensagem WhatsApp confirmando OEM e compatibilidade.`
+        system: `Voce e um vendedor expert de autopecas via WhatsApp.
+REGRAS ABSOLUTAS:
+- Use APENAS os dados fornecidos. NUNCA invente marca, fabricante ou compatibilidade.
+- Se marca for ausente: use a referencia/OEM. Nao invente nome de empresa.
+- Confirme OEM + compatibilidade real. Prazo realista. CTA claro. Max 2-3 emojis. 5 linhas.`,
+        user: (p, dna, aplic, ntc, fiscal) => `DADOS REAIS:
+DESCRICAO: ${p.descricao}
+OEM/REF: ${dna?.codigo_dna || p.ref || 'nao informado'}
+MARCA: ${dna?.marca || 'nao identificada'}
+APLICACOES: ${aplic.length ? aplic.map(a=>`${a.montadora||''} ${a.modelo||''} ${a.ano_ini||''}${a.ano_fim?'-'+a.ano_fim:''}`).slice(0,3).join(', ') : 'consultar catalogo'}
+NTC: ${ntc?.status||'REPROVADO'}
+
+Gere mensagem WhatsApp com dados REAIS acima.`
     },
     pmax: {
-        system: `Voce e um especialista Google Ads Performance Max para autopecas OEM. FORMATO OBRIGATORIO:\nH1: [max 30 chars]\nH2: [max 30 chars]\nH3: [max 30 chars]\nD1: [max 90 chars — OEM+aplicacao]\nD2: [max 90 chars — beneficio+CTA]\nCALLOUT: [max 25 chars]\nSITELINK: [max 25 chars]`,
-        user: (p, dna, aplic, ntc, fiscal) => `PRODUTO: ${p.descricao}\nMARCA: ${dna?.marca||'?'}\nOEM: ${dna?.codigo_dna||p.ref}\nNTC: ${ntc?.status||'?'}\nAPLICAСОЕС: ${aplic.map(a=>a.montadora+' '+a.modelo).slice(0,2).join(', ')||'multi-veiculo'}\n\nGere assets P-Max completos para Google Ads.`
+        system: `Voce e um especialista Google Ads Performance Max para autopecas.
+REGRAS ABSOLUTAS:
+- Use APENAS os dados reais. NUNCA invente marca, fabricante ou aplicacao.
+- Se marca ausente: use REF/OEM como identificador.
+- FORMATO OBRIGATORIO:
+H1: [max 30 chars]
+H2: [max 30 chars]
+H3: [max 30 chars]
+D1: [max 90 chars — ref+compatibilidade real]
+D2: [max 90 chars — beneficio+CTA]
+CALLOUT: [max 25 chars]
+SITELINK: [max 25 chars]`,
+        user: (p, dna, aplic, ntc, fiscal) => `DADOS REAIS:
+DESCRICAO: ${p.descricao}
+REF/OEM: ${dna?.codigo_dna || p.ref || 'nao informado'}
+MARCA: ${dna?.marca || 'nao identificada'}
+NTC: ${ntc?.status||'REPROVADO'}
+APLICACOES: ${aplic.length ? aplic.map(a=>`${a.montadora||''} ${a.modelo||''}`).slice(0,2).join(', ') : 'consultar catalogo'}
+
+Gere assets P-Max com dados REAIS acima.`
     }
 };
 
@@ -2033,81 +1854,6 @@ app.get('/api/catalogo/template/excel', (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=template_catalogo.xlsx');
     res.send(buf);
-});
-
-// -----------------------------------------------------------
-// MULTI-EMPRESA
-// -----------------------------------------------------------
-app.get('/api/empresas', (req, res) => {
-    res.json(db.prepare('SELECT id, nome, cnpj, plano FROM empresas').all());
-});
-
-// -----------------------------------------------------------
-// MARKETPLACE READY
-// -----------------------------------------------------------
-app.get('/api/marketplace/pacote/:id', (req, res) => {
-    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
-    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
-    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(req.params.id) || {};
-    const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(req.params.id) || {};
-    const log = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(req.params.id) || {};
-    const aplic = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=? LIMIT 10').all(req.params.id);
-    const imgs = db.prepare("SELECT * FROM imagens WHERE produto_id=? AND status != 'Reprovada' ORDER BY tipo").all(req.params.id);
-
-    res.json({
-        mercado_livre: {
-            title: p.descricao,
-            category_id: null,
-            price: p.preco_venda || 0,
-            currency_id: 'BRL',
-            available_quantity: 1,
-            condition: 'new',
-            pictures: imgs.slice(0,6).map(i => ({ source: i.url })),
-            attributes: [
-                { id: 'BRAND', value_name: dna.marca || null },
-                { id: 'MODEL', value_name: aplic[0]?.modelo || null },
-                { id: 'PART_NUMBER', value_name: p.ref },
-                { id: 'EAN', value_name: null },
-            ].filter(a => a.value_name),
-            description: { plain_text: p.descricao },
-        },
-        amazon: {
-            item_name: p.descricao,
-            brand_name: dna.marca || dna.fabricante,
-            part_number: p.ref,
-            standard_price: p.preco_venda || 0,
-            quantity: 1,
-            product_description: p.descricao,
-            bullet_point: aplic.slice(0,5).map(a => `${a.montadora} ${a.modelo} ${a.ano_ini||''}-${a.ano_fim||''}`).join('; ') || null,
-            main_image_url: imgs[0]?.url || null,
-        },
-        shopee: {
-            item_name: p.descricao,
-            description: p.descricao,
-            price: p.preco_venda || 0,
-            stock: 1,
-            images: imgs.slice(0,9).map(i => i.url),
-            brand: dna.marca || null,
-            weight: log.peso_liq ? log.peso_liq * 1000 : null,
-            dimension: log.comprimento ? { length: log.comprimento, width: log.largura || 0, height: log.altura || 0 } : null,
-        },
-        magalu: {
-            nome: p.descricao,
-            sku: p.ref,
-            preco: p.preco_venda || 0,
-            marca: dna.marca || null,
-            ncm: fiscal.ncm || null,
-            peso: log.peso_liq || null,
-            imagens: imgs.slice(0,5).map(i => i.url),
-            aplicacoes: aplic.slice(0,5).map(a => `${a.montadora} ${a.modelo} ${a.ano_ini||'?'}-${a.ano_fim||'?'}`),
-        },
-        status: {
-            pronto_ml: !!(p.descricao && imgs.length > 0 && p.preco_venda),
-            pronto_amazon: !!(p.descricao && imgs.length > 0 && dna.marca),
-            pronto_shopee: !!(p.descricao && imgs.length > 0 && p.preco_venda),
-            pronto_magalu: !!(p.descricao && fiscal.ncm && imgs.length > 0),
-        }
-    });
 });
 
 // -----------------------------------------------------------
