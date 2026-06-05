@@ -247,55 +247,18 @@ tr:hover td{background:#1c1c1c}
 .link-btn{display:block;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:.75rem;text-decoration:none;text-align:center;transition:border .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .link-btn:hover{border-color:var(--primary);color:var(--primary)}
 
-/* ENRIQUECIMENTO iROLLO */
-.irollo-header{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.irollo-status{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--success)}
-.irollo-status .dot{width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
-.nct-card{background:var(--bg2);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px;text-align:center}
-.nct-score-big{font-size:3.5rem;font-weight:900;line-height:1}
-.nct-status-big{font-size:1rem;font-weight:700;margin-top:4px}
-.nct-modules{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
-.nct-module{background:var(--bg3);border-radius:8px;padding:12px;text-align:left}
-.nct-mod-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.nct-mod-label{font-size:.72rem;font-weight:700;color:var(--text2)}
-.nct-mod-pct{font-size:.65rem;color:var(--text3)}
-.nct-mod-score{font-size:1.3rem;font-weight:900}
-.rast-box{background:#0d0d0d;border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:monospace;font-size:.75rem;color:var(--text3);display:flex;align-items:center;justify-content:space-between;margin-top:10px}
-.rast-hash{color:var(--primary);font-size:.8rem}
-.gaveta{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
-.gaveta-header{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;user-select:none;transition:background .15s}
-.gaveta-header:hover{background:var(--bg3)}
-.gaveta-icon{font-size:.85rem}
-.gaveta-status{margin-left:auto;font-size:.68rem}
-.gaveta-body{padding:14px 16px;border-top:1px solid var(--border);display:none}
-.gaveta.open .gaveta-body{display:block}
-.gaveta.open .gaveta-chevron{transform:rotate(180deg)}
-.gaveta-chevron{transition:transform .2s;font-size:.7rem;color:var(--text3)}
-.img-slot-6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-@media(max-width:600px){.img-slot-6{grid-template-columns:repeat(2,1fr)}.nct-modules{grid-template-columns:1fr}}
-.img-slot-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:1;position:relative;cursor:pointer;transition:border .2s}
-.img-slot-item:hover{border-color:var(--primary)}
-.img-slot-item.has-img{border-color:#333}
-.img-slot-item img{width:100%;height:100%;object-fit:contain;background:#0d0d0d}
-.img-slot-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);font-size:.6rem;color:#aaa;padding:3px 6px;text-align:center;font-weight:700}
-.img-slot-num{position:absolute;top:5px;left:8px;font-size:.7rem;font-weight:900;color:var(--primary)}
-.img-slot-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#333;font-size:1.5rem;gap:4px}
-.img-slot-empty span{font-size:.6rem;color:#444}
-.gs-checks{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.72rem;margin-top:8px}
-.gs-check{display:flex;align-items:center;gap:5px}
-.gs-check.ok{color:var(--success)}
-.gs-check.fail{color:var(--danger)}
-.voz-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.voz-tab{padding:8px 14px;font-size:.75rem;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;min-height:38px;display:flex;align-items:center}
-.voz-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
-.voz-output{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:.84rem;color:var(--text);min-height:80px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
-.indexar-btn{width:100%;padding:16px;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#ff4500,#ff8800);border:none;border-radius:10px;color:#fff;cursor:pointer;transition:opacity .2s;letter-spacing:.05em;margin-top:4px}
-.indexar-btn:hover{opacity:.85}
-.indexar-btn:disabled{opacity:.5;cursor:not-allowed}
-.platform-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem}
-.platform-row:last-child{border-bottom:none}
-.platform-name{flex:1;font-weight:600}
-.platform-status{font-size:.72rem}
+/* PIPELINE iROLLO */
+.pipeline-steps{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;flex-wrap:wrap}
+.pipeline-step{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);opacity:.35;transition:.3s}
+.pipeline-step.active{opacity:1;border-color:var(--primary);background:rgba(90,75,255,.12)}
+.pipeline-step.done{opacity:1;border-color:var(--success);background:rgba(0,200,100,.10)}
+.pip-num{width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:900}
+.pipeline-step.active .pip-num{background:var(--primary);color:#fff}
+.pipeline-step.done .pip-num{background:var(--success);color:#000}
+.pip-label{font-size:.7rem;font-weight:700;letter-spacing:.04em}
+.pip-arrow{color:var(--text3);font-size:1.1rem;flex-shrink:0}
+#enr-sync-panel{background:var(--bg2);border:1px solid var(--success);border-radius:10px;padding:14px;margin-top:10px}
+.indexar-btn:disabled{background:#2a2a2a!important;color:#555!important;cursor:not-allowed}
 
 /* ENRIQUECIMENTO iROLLO */
 .irollo-header{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
@@ -347,21 +310,7 @@ tr:hover td{background:#1c1c1c}
 .platform-name{flex:1;font-weight:600}
 .platform-status{font-size:.72rem}
 
-/* MISC */
-.flex{display:flex;align-items:center;gap:8px}
-.flex-wrap{flex-wrap:wrap}
-.ml-auto{margin-left:auto}
-.mt{margin-top:12px}
-.mb{margin-bottom:12px}
-.text-sm{font-size:.75rem;color:var(--text2)}
-.text-xs{font-size:.68rem;color:var(--text3)}
-.mono{font-family:monospace}
-.text-success{color:var(--success)}
-.text-danger{color:var(--danger)}
-.text-warning{color:var(--warning)}
-.empty{text-align:center;padding:40px;color:var(--text3);font-size:.85rem}
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+
 </style>
 </head>
 <body>
@@ -540,6 +489,25 @@ tr:hover td{background:#1c1c1c}
         </div>
         <div class="irollo-status ml-auto"><div class="dot"></div> MOTOR ON</div>
       </div>
+
+      <!-- PIPELINE INDICATOR -->
+      <div class="pipeline-steps" id="enr-pipeline">
+        <div class="pipeline-step" id="pip-step-1">
+          <div class="pip-num">1</div>
+          <div><div class="pip-label">ENRIQUECER</div><div class="pip-sub">Buscar DNA + Imagens</div></div>
+        </div>
+        <div class="pip-arrow">&#x2192;</div>
+        <div class="pipeline-step" id="pip-step-2">
+          <div class="pip-num">2</div>
+          <div><div class="pip-label">APROVAR</div><div class="pip-sub">NTC &#x2265; 95%</div></div>
+        </div>
+        <div class="pip-arrow">&#x2192;</div>
+        <div class="pipeline-step" id="pip-step-3">
+          <div class="pip-num">3</div>
+          <div><div class="pip-label">SINCRONIZAR</div><div class="pip-sub">Wix / Bling / Google</div></div>
+        </div>
+      </div>
+
       <!-- Product selector -->
       <div class="sec">
         <div class="sec-title">Selecionar Produto</div>
@@ -615,11 +583,34 @@ tr:hover td{background:#1c1c1c}
               <div id="enr-gavetas"></div>
             </div>
             <!-- INDEXAR -->
-            <button class="indexar-btn" id="btn-indexar" onclick="congelarIndexar()">
-              &#x2744;&#xFE0F; CONGELAR E INDEXAR — Bling + Wix + Google Shopping
-            </button>
+            <!-- FREEZE ZONE -->
+            <div id="enr-freeze-zone">
+              <div id="enr-ntc-hint" style="font-size:.72rem;text-align:center;margin-bottom:6px"></div>
+              <button class="indexar-btn" id="btn-indexar" onclick="congelarIndexar()" disabled>
+                &#x1F512; CONGELAR — NTC insuficiente
+              </button>
+              <div id="indexar-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+            </div>
+
+            <!-- SYNC PANEL — aparece apos congelar -->
+            <div id="enr-sync-panel" style="display:none">
+              <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2714; Produto Congelado — Selecione os canais de sincronizacao:</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <button class="btn" style="background:#0055a5;font-size:.78rem" onclick="sincronizar('bling')">&#x1F4CB; Bling ERP</button>
+                <button class="btn" style="background:#00b0f0;font-size:.78rem" onclick="sincronizar('wix')">&#x1F310; Wix Stores</button>
+                <button class="btn" style="background:#4285F4;font-size:.78rem" onclick="sincronizar('google_shopping')">&#x1F6D2; Google Shopping</button>
+                <button class="btn" style="background:#EA4335;font-size:.78rem" onclick="sincronizar('google_ads')">&#x1F4E2; Google Ads P-Max</button>
+              </div>
+              <div id="sync-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+              <div style="margin-top:8px;text-align:center">
+                <button class="btn btn-gray btn-sm" onclick="reabrirEnriquecimento()" style="font-size:.7rem">&#x1F504; Enriquecer Novamente</button>
+              </div>
+            </div>
+
+            <!-- HISTORICO NTC -->
+            <div id="enr-historico" style="margin-top:10px"></div>
+
             <div id="enriquecer-web-status" class="text-xs" style="margin-top:6px;text-align:center"></div>
-            <div id="indexar-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
           </div>
         </div>
       </div>
@@ -1192,7 +1183,7 @@ async function loadProdutos() {
         <td>
             <div class="flex">
                 <button class="btn btn-blue btn-xs" onclick="verProduto(${p.id})">Ver</button>
-                <button class="btn btn-success btn-xs" onclick="enriquecerProduto(${p.id})" title="Recalcular NTC">Enriquecer</button>
+                <button class="btn btn-success btn-xs" onclick="enriquecerProduto(${p.id})" title="Abrir no iRollo">&#x2728; iRollo</button>
                 <button class="btn btn-xs" style="background:linear-gradient(135deg,#0077cc,#00aaff)" onclick="abrirBuscaWeb(${p.id},'${p.ref.replace(/'/g,"\\'")}')">&#x1F50D; Web</button>
                 ${p.status === 'Congelado'
                     ? '<button class="btn btn-success btn-xs" onclick="descongelar('+p.id+')">Descongelar</button>'
@@ -1833,17 +1824,7 @@ function loadConfig() {
 // ENRICHMENT
 // ======================================================
 async function enriquecerProduto(id) {
-    const r = await api('/produtos/' + id + '/ntc/recalcular', {method:'POST'});
-    if (r.success) {
-        const s = r.ntc.status;
-        const pct = (r.ntc.score*100).toFixed(1);
-        alert('NTC Recalculado!\n\nScore: ' + pct + '%\nStatus: ' + s);
-        // Refresh current page
-        if (currentPage === 'produtos') loadProdutos();
-        else if (currentPage === 'dashboard') loadDashboard();
-        else if (currentPage === 'ntc-inspector') loadInspector();
-        else if (currentPage === 'imagens') loadImagens();
-    }
+    await irParaEnriquecimento(id);
 }
 
 // ======================================================
@@ -2591,6 +2572,10 @@ function renderEnriquecimento(d) {
 
     // Gavetas
     renderGavetas(d);
+
+    // Pipeline + historico
+    updatePipelineState(d.nct?.score || 0, d.produto?.status);
+    renderHistoricoNTC(d.historico || []);
 }
 
 function renderEnrImagens(imagens) {
@@ -2746,6 +2731,96 @@ async function enriquecerWeb() {
     }
 }
 
+// Pipeline state machine
+function updatePipelineState(nctScore, produtoStatus) {
+    const s1 = document.getElementById('pip-step-1');
+    const s2 = document.getElementById('pip-step-2');
+    const s3 = document.getElementById('pip-step-3');
+    const btn = document.getElementById('btn-indexar');
+    const hint = document.getElementById('enr-ntc-hint');
+    const freezeZone = document.getElementById('enr-freeze-zone');
+    const syncPanel = document.getElementById('enr-sync-panel');
+    if (!s1) return;
+
+    const score = nctScore || 0;
+    const pct = (score * 100).toFixed(1);
+    const isCongelado = produtoStatus === 'Congelado';
+
+    if (isCongelado) {
+        if (s1) s1.className = 'pipeline-step done';
+        if (s2) s2.className = 'pipeline-step done';
+        if (s3) s3.className = 'pipeline-step active';
+        if (freezeZone) freezeZone.style.display = 'none';
+        if (syncPanel) syncPanel.style.display = 'block';
+    } else if (score >= 0.95) {
+        if (s1) s1.className = 'pipeline-step done';
+        if (s2) s2.className = 'pipeline-step active';
+        if (s3) s3.className = 'pipeline-step';
+        if (freezeZone) freezeZone.style.display = 'block';
+        if (syncPanel) syncPanel.style.display = 'none';
+        if (btn) { btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#00c864,#007a3d)'; btn.innerHTML = '&#x2744;&#xFE0F; CONGELAR E INDEXAR — ' + pct + '% APROVADO'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--success)">&#x2714; NTC APROVADO ' + pct + '% — pronto para congelar e sincronizar</span>';
+    } else if (score >= 0.80) {
+        if (s1) s1.className = 'pipeline-step active';
+        if (s2) s2.className = 'pipeline-step';
+        if (s3) s3.className = 'pipeline-step';
+        if (freezeZone) freezeZone.style.display = 'block';
+        if (syncPanel) syncPanel.style.display = 'none';
+        if (btn) { btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#f0a500,#b87200)'; btn.innerHTML = '&#x26A0;&#xFE0F; CONGELAR MESMO ASSIM (' + pct + '%) — Enriquecer mais recomendado'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--warning)">NTC ' + pct + '% PENDENTE — enriqueça novamente para atingir 95% APROVADO</span>';
+    } else {
+        if (s1) s1.className = 'pipeline-step active';
+        if (s2) s2.className = 'pipeline-step';
+        if (s3) s3.className = 'pipeline-step';
+        if (freezeZone) freezeZone.style.display = 'block';
+        if (syncPanel) syncPanel.style.display = 'none';
+        if (btn) { btn.disabled = true; btn.style.background = ''; btn.innerHTML = '&#x1F512; CONGELAR — NTC ' + pct + '% (minimo 80%)'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--danger)">&#x26A0; NTC ' + pct + '% REPROVADO — clique em ENRIQUECER DNA NA WEB para melhorar</span>';
+    }
+}
+
+function renderHistoricoNTC(historico) {
+    const el = document.getElementById('enr-historico');
+    if (!el || !historico || !historico.length) { if (el) el.innerHTML = ''; return; }
+    el.innerHTML = `<div style="font-size:.68rem;color:var(--text3);margin-bottom:4px;margin-top:4px">Historico de enriquecimentos (${historico.length} ciclos)</div>` +
+        `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">` +
+        historico.map((h, i) => {
+            const ntcNew = h.ntc_novo != null ? (h.ntc_novo*100).toFixed(1)+'%' : '—';
+            const col = h.status_novo === 'APROVADO' || h.status_novo === 'CONGELADO' ? 'var(--success)' : h.status_novo === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:.68rem;${i===0?'background:rgba(90,75,255,.06)':''}">
+                <span style="color:var(--text3);min-width:16px;font-weight:700">#${historico.length - i}</span>
+                <span style="color:${col};font-weight:900;min-width:42px">${ntcNew}</span>
+                <span class="badge ${h.status_novo==='APROVADO'||h.status_novo==='CONGELADO'?'badge-green':h.status_novo==='PENDENTE'?'badge-yellow':'badge-red'}" style="font-size:.58rem;padding:1px 6px">${h.status_novo||'—'}</span>
+                <span style="color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.alteracao||''}</span>
+                <span style="color:var(--text3);white-space:nowrap">${(h.criado_em||'').substring(5,16)}</span>
+            </div>`;
+        }).join('') + '</div>';
+}
+
+async function sincronizar(plataforma) {
+    if (!currentEnrId) return;
+    const st = document.getElementById('sync-status');
+    const nomes = { bling:'Bling ERP', wix:'Wix Stores', google_shopping:'Google Shopping', google_ads:'Google Ads P-Max' };
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px;margin-right:6px"></div> Sincronizando com ' + (nomes[plataforma]||plataforma) + '...';
+    if (plataforma === 'wix') {
+        const r = await api('/produtos/' + currentEnrId + '/wix', { method: 'PUT' });
+        st.innerHTML = r.success
+            ? `<span style="color:var(--success)">&#x2714; Wix Stores sincronizado! ID: ${r.wix_id || '—'}</span>`
+            : `<span style="color:var(--danger)">Wix: ${r.error || 'Erro'}</span>`;
+    } else {
+        await new Promise(r => setTimeout(r, 1000));
+        st.innerHTML = `<span style="color:var(--warning)">&#x26A0; ${nomes[plataforma]} — aguardando credenciais de API</span>`;
+    }
+}
+
+function reabrirEnriquecimento() {
+    const syncPanel = document.getElementById('enr-sync-panel');
+    const freezeZone = document.getElementById('enr-freeze-zone');
+    if (syncPanel) syncPanel.style.display = 'none';
+    if (freezeZone) freezeZone.style.display = 'block';
+    enriquecerWeb();
+}
+
 // Voz do Lojista
 function switchVoz(el, perfil) {
     document.querySelectorAll('.voz-tab').forEach(t => t.classList.remove('active'));
@@ -2793,6 +2868,11 @@ function copiarRast() {
 
 async function congelarIndexar() {
     if (!currentEnrId) { alert('Carregue um produto primeiro'); return; }
+    const nctScore = enrData?.nct?.score || 0;
+    if (nctScore < 0.80) {
+        alert('NTC Score ' + (nctScore*100).toFixed(1) + '% — minimo 80% para congelar.\n\nClique em ENRIQUECER DNA NA WEB para melhorar o score.');
+        return;
+    }
     const btn = document.getElementById('btn-indexar');
     const st = document.getElementById('indexar-status');
     btn.disabled = true;
