@@ -734,6 +734,22 @@ app.post('/api/produtos/:id/codigos', (req, res) => {
     res.status(201).json({ success: true, id: r.lastInsertRowid });
 });
 
+app.delete('/api/codigos/:id', (req, res) => {
+    db.prepare('DELETE FROM codigos_cambiados WHERE id=?').run(req.params.id);
+    res.json({ success: true });
+});
+
+app.post('/api/produtos/:id/sincronizar/:canal', (req, res) => {
+    const { id, canal } = req.params;
+    const produto = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!produto) return res.status(404).json({ error: 'Produto nao encontrado' });
+    if (produto.status !== 'Congelado') return res.status(400).json({ error: 'Produto nao congelado. Congele antes de sincronizar.' });
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(
+        id, produto.ntc_score, produto.ntc_score, produto.status, produto.status, 'Sincronizado em ' + canal
+    );
+    res.json({ success: true, canal, message: 'Produto enviado para ' + canal + ' (integração pendente de API Key)' });
+});
+
 // -----------------------------------------------------------
 // FISCAL
 // -----------------------------------------------------------
