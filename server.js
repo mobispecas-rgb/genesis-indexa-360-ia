@@ -200,6 +200,254 @@ CREATE TABLE IF NOT EXISTS logs_ia (
 // Add wix_id column if not exists (migration)
 try { db.exec("ALTER TABLE produtos ADD COLUMN wix_id TEXT"); } catch(e) { /* already exists */ }
 
+// Bling OAuth2 token storage table
+db.exec(`
+CREATE TABLE IF NOT EXISTS bling_config (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  empresa_id INTEGER DEFAULT 1,
+  client_id TEXT,
+  client_secret TEXT,
+  access_token TEXT,
+  refresh_token TEXT,
+  token_type TEXT DEFAULT 'Bearer',
+  expires_at INTEGER,
+  scope TEXT,
+  atualizado_em TEXT DEFAULT (datetime('now','localtime'))
+);
+`);
+
+// -----------------------------------------------------------
+// BLING ERP v3 — OAuth2 + REST API
+// -----------------------------------------------------------
+const BLING_BASE = 'https://www.bling.com.br/Api/v3';
+const BLING_AUTH_URL = 'https://www.bling.com.br/Api/v3/oauth/authorize';
+const BLING_TOKEN_URL = 'https://www.bling.com.br/Api/v3/oauth/token';
+
+function getBlingConfig(empresaId = 1) {
+    return db.prepare('SELECT * FROM bling_config WHERE empresa_id=? ORDER BY id DESC LIMIT 1').get(empresaId) || null;
+}
+
+async function blingRefreshToken(config) {
+    if (!config || !config.refresh_token) throw new Error('Refresh token nao disponivel');
+    const creds = Buffer.from(config.client_id + ':' + config.client_secret).toString('base64');
+    const body = 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(config.refresh_token);
+    const resp = await httpPostForm(BLING_TOKEN_URL, body, {
+        'Authorization': 'Basic ' + creds,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+    });
+    const data = JSON.parse(resp);
+    if (data.error) throw new Error(data.error_description || data.error);
+    const expiresAt = Date.now() + (data.expires_in || 21600) * 1000;
+    db.prepare(`UPDATE bling_config SET access_token=?, refresh_token=COALESCE(?,refresh_token),
+        expires_at=?, atualizado_em=datetime('now','localtime') WHERE id=?`
+    ).run(data.access_token, data.refresh_token || null, expiresAt, config.id);
+    return { ...config, access_token: data.access_token, expires_at: expiresAt };
+}
+
+async function blingRequest(method, path, body = null, empresaId = 1) {
+    let config = getBlingConfig(empresaId);
+    if (!config || !config.access_token) throw new Error('Bling nao configurado. Configure o OAuth2 em Integracoes.');
+    if (config.expires_at && Date.now() > config.expires_at - 60000) {
+        config = await blingRefreshToken(config);
+    }
+    const opts = {
+        'Authorization': 'Bearer ' + config.access_token,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    };
+    return JSON.parse(await (body
+        ? httpPostJson(BLING_BASE + path, JSON.stringify(body), opts, method)
+        : httpGet(BLING_BASE + path, opts)));
+}
+
+function httpPostForm(url, body, headers = {}) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
+        const buf = Buffer.from(body, 'utf8');
+        const req = mod.request({
+            hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search,
+            method: 'POST', headers: { ...headers, 'Content-Length': buf.length }
+        }, res => {
+            let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d));
+        });
+        req.on('error', reject); req.write(buf); req.end();
+    });
+}
+
+function httpPostJson(url, body, headers = {}, method = 'POST') {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
+        const buf = Buffer.from(body, 'utf8');
+        const req = mod.request({
+            hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search,
+            method, headers: { ...headers, 'Content-Length': buf.length }
+        }, res => {
+            let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d));
+        });
+        req.on('error', reject); req.write(buf); req.end();
+    });
+}
+
+// Status da integração Bling
+app.get('/api/bling/status', (req, res) => {
+    const config = getBlingConfig();
+    if (!config || !config.client_id) return res.json({ conectado: false, mensagem: 'Nao configurado' });
+    const expirado = config.expires_at && Date.now() > config.expires_at;
+    res.json({
+        conectado: !!config.access_token,
+        expirado,
+        client_id: config.client_id,
+        scope: config.scope,
+        atualizado_em: config.atualizado_em,
+        expires_em: config.expires_at ? new Date(config.expires_at).toISOString() : null,
+        tem_refresh: !!config.refresh_token,
+    });
+});
+
+// Salvar Client ID e Secret (sem redirecionar ainda)
+app.post('/api/bling/config', (req, res) => {
+    const { client_id, client_secret } = req.body;
+    if (!client_id || !client_secret) return res.status(400).json({ error: 'client_id e client_secret obrigatorios' });
+    const existing = getBlingConfig();
+    if (existing) {
+        db.prepare("UPDATE bling_config SET client_id=?, client_secret=?, atualizado_em=datetime('now','localtime') WHERE id=?").run(client_id, client_secret, existing.id);
+    } else {
+        db.prepare("INSERT INTO bling_config (empresa_id, client_id, client_secret) VALUES (?,?,?)").run(1, client_id, client_secret);
+    }
+    res.json({ success: true });
+});
+
+// Gerar URL de autorização OAuth2
+app.get('/api/bling/auth-url', (req, res) => {
+    const config = getBlingConfig();
+    if (!config || !config.client_id) return res.status(400).json({ error: 'Configure client_id primeiro' });
+    const appUrl = process.env.APP_URL || ('http://localhost:' + PORT);
+    const redirectUri = appUrl + '/api/bling/callback';
+    const url = BLING_AUTH_URL + '?response_type=code&client_id=' + encodeURIComponent(config.client_id) + '&redirect_uri=' + encodeURIComponent(redirectUri);
+    res.json({ url, redirect_uri: redirectUri });
+});
+
+// OAuth2 callback — troca code por access_token
+app.get('/api/bling/callback', async (req, res) => {
+    const { code, error } = req.query;
+    if (error) return res.send('<h2>Erro Bling OAuth: ' + error + '</h2>');
+    if (!code) return res.send('<h2>Codigo ausente</h2>');
+    try {
+        const config = getBlingConfig();
+        if (!config) return res.send('<h2>Bling nao configurado</h2>');
+        const appUrl = process.env.APP_URL || ('http://localhost:' + PORT);
+        const redirectUri = appUrl + '/api/bling/callback';
+        const creds = Buffer.from(config.client_id + ':' + config.client_secret).toString('base64');
+        const body = 'grant_type=authorization_code&code=' + encodeURIComponent(code) + '&redirect_uri=' + encodeURIComponent(redirectUri);
+        const resp = await httpPostForm(BLING_TOKEN_URL, body, {
+            'Authorization': 'Basic ' + creds,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        });
+        const data = JSON.parse(resp);
+        if (data.error) return res.send('<h2>Erro: ' + (data.error_description || data.error) + '</h2>');
+        const expiresAt = Date.now() + (data.expires_in || 21600) * 1000;
+        db.prepare(`UPDATE bling_config SET access_token=?, refresh_token=?, token_type=?, expires_at=?, scope=?,
+            atualizado_em=datetime('now','localtime') WHERE id=?`
+        ).run(data.access_token, data.refresh_token || null, data.token_type || 'Bearer', expiresAt, data.scope || null, config.id);
+        res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bling Conectado</title>
+        <style>body{font-family:sans-serif;background:#0a0a0a;color:#eee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+        .box{background:#111;border:1px solid #222;border-radius:12px;padding:40px;text-align:center;max-width:420px}
+        h2{color:#00e676;margin:0 0 12px}p{color:#888;font-size:.9rem}a{color:#5a4bff;text-decoration:none}
+        </style></head><body><div class="box">
+        <h2>✅ Bling ERP v3 Conectado!</h2>
+        <p>Access Token recebido e salvo com sucesso.<br>Refresh Token: ${data.refresh_token ? '✔ disponível' : '✗ não retornado'}.</p>
+        <p>Feche esta janela e volte ao Genesis Indexa 360 IA.</p>
+        <p><a href="javascript:window.close()">Fechar</a></p>
+        </div></body></html>`);
+    } catch (err) {
+        res.send('<h2>Erro: ' + err.message + '</h2>');
+    }
+});
+
+// Refresh manual do token
+app.post('/api/bling/refresh', async (req, res) => {
+    try {
+        const config = getBlingConfig();
+        await blingRefreshToken(config);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// Sincronizar produto com Bling ERP v3
+app.post('/api/bling/sincronizar/:id', async (req, res) => {
+    try {
+        const produto = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
+        if (!produto) return res.status(404).json({ error: 'Produto nao encontrado' });
+        if (produto.status !== 'Congelado') return res.status(400).json({ error: 'Produto nao congelado' });
+
+        const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(req.params.id) || {};
+        const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(req.params.id) || {};
+        const log = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(req.params.id) || {};
+        const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=? AND status != "Reprovada" ORDER BY tipo').all(req.params.id);
+
+        const payload = {
+            nome: produto.descricao,
+            codigo: produto.ref,
+            preco: produto.preco_venda || 0,
+            precoCusto: produto.preco_custo || 0,
+            situacao: produto.status === 'Congelado' ? 'A' : 'I',
+            unidade: 'UN',
+            marca: dna.marca || '',
+            ...(fiscal.ncm ? { tributacao: { ncm: fiscal.ncm.replace(/\./g,'') } } : {}),
+            ...(log.peso_liq ? { pesoLiquido: log.peso_liq, pesoBruto: log.peso_bruto || log.peso_liq } : {}),
+            ...(log.largura ? { largura: log.largura, altura: log.altura || 0, comprimento: log.comprimento || 0 } : {}),
+            ...(imagens.length ? { imagensProduto: imagens.slice(0,5).map((img, i) => ({ url: img.url, principal: i === 0 })) } : {}),
+        };
+
+        // Verificar se produto já existe no Bling
+        let blingId = produto.bling_id || null;
+        if (blingId) {
+            await blingRequest('PUT', '/produtos/' + blingId, payload);
+        } else {
+            const resp = await blingRequest('POST', '/produtos', payload);
+            blingId = resp?.data?.id || null;
+            if (blingId) {
+                try { db.exec("ALTER TABLE produtos ADD COLUMN bling_id TEXT"); } catch(e) {}
+                db.prepare("UPDATE produtos SET bling_id=? WHERE id=?").run(String(blingId), req.params.id);
+            }
+        }
+
+        db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(
+            req.params.id, produto.ntc_score, produto.ntc_score, produto.status, produto.status, 'Sincronizado Bling ERP v3'
+        );
+
+        res.json({ success: true, bling_id: blingId, mensagem: 'Produto sincronizado no Bling ERP v3' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Buscar produto no Bling por código
+app.get('/api/bling/produto/:codigo', async (req, res) => {
+    try {
+        const data = await blingRequest('GET', '/produtos?codigo=' + encodeURIComponent(req.params.codigo));
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Listar produtos do Bling
+app.get('/api/bling/produtos', async (req, res) => {
+    try {
+        const data = await blingRequest('GET', '/produtos?pagina=1&limite=50');
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // -----------------------------------------------------------
 // SEED DATA
 // -----------------------------------------------------------
@@ -806,6 +1054,10 @@ app.delete('/api/imagens/:id', (req, res) => {
 });
 
 app.put('/api/imagens/:id/status', (req, res) => {
+    db.prepare("UPDATE imagens SET status=? WHERE id=?").run(req.body.status, req.params.id);
+    res.json({ success: true });
+});
+app.patch('/api/imagens/:id/status', (req, res) => {
     db.prepare("UPDATE imagens SET status=? WHERE id=?").run(req.body.status, req.params.id);
     res.json({ success: true });
 });
