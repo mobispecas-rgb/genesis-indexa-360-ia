@@ -607,16 +607,47 @@ tr:hover td{background:#1c1c1c}
 
             <!-- SYNC PANEL — aparece apos congelar -->
             <div id="enr-sync-panel" style="display:none">
-              <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2714; Produto Congelado — Selecione os canais de sincronizacao:</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <button class="btn" style="background:#0055a5;font-size:.78rem" onclick="sincronizar('bling')">&#x1F4CB; Bling ERP</button>
-                <button class="btn" style="background:#00b0f0;font-size:.78rem" onclick="sincronizar('wix')">&#x1F310; Wix Stores</button>
-                <button class="btn" style="background:#4285F4;font-size:.78rem" onclick="sincronizar('google_shopping')">&#x1F6D2; Google Shopping</button>
-                <button class="btn" style="background:#EA4335;font-size:.78rem" onclick="sincronizar('google_ads')">&#x1F4E2; Google Ads P-Max</button>
-              </div>
-              <div id="sync-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
-              <div style="margin-top:8px;text-align:center">
-                <button class="btn btn-gray btn-sm" onclick="reabrirEnriquecimento()" style="font-size:.7rem">&#x1F504; Enriquecer Novamente</button>
+              <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2744;&#xFE0F; Produto Congelado — Gerando pacote de publicacao...</div>
+              <div id="pub-loading" style="text-align:center;padding:20px"><div class="spinner"></div><div style="font-size:.72rem;color:var(--text3);margin-top:8px">Buscando imagens reais + gerando descricoes para todos os canais com Claude Haiku...</div></div>
+              <div id="pub-pacote" style="display:none">
+                <!-- Preview imagem + descricao -->
+                <div style="display:grid;grid-template-columns:140px 1fr;gap:12px;margin-bottom:14px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
+                  <div>
+                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">IMAGEM PRINCIPAL</div>
+                    <div id="pub-img-preview" style="width:130px;height:130px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#333;font-size:2rem">&#x1F4F7;</div>
+                    <div id="pub-img-count" style="font-size:.6rem;color:var(--text3);margin-top:4px;text-align:center"></div>
+                  </div>
+                  <div>
+                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">DESCRICAO COMERCIAL</div>
+                    <div id="pub-desc-comercial" style="font-size:.76rem;color:var(--text);line-height:1.5;max-height:120px;overflow:auto;white-space:pre-wrap"></div>
+                  </div>
+                </div>
+                <!-- Descricoes por canal -->
+                <div style="margin-bottom:12px">
+                  <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:.04em">COPIAR DESCRICAO POR CANAL</div>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+                    <button class="btn btn-sm pub-canal-tab active" onclick="switchPubCanal(this,'seo')">&#x1F50D; SEO</button>
+                    <button class="btn btn-sm btn-gray pub-canal-tab" onclick="switchPubCanal(this,'tecnico')">&#x2699;&#xFE0F; Tecnico</button>
+                    <button class="btn btn-sm btn-gray pub-canal-tab" onclick="switchPubCanal(this,'whatsapp')">&#x1F4AC; WhatsApp</button>
+                    <button class="btn btn-sm btn-gray pub-canal-tab" onclick="switchPubCanal(this,'pmax')">&#x1F4E2; P-Max</button>
+                  </div>
+                  <div id="pub-canal-text" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:.74rem;color:var(--text);white-space:pre-wrap;max-height:110px;overflow:auto;line-height:1.5"></div>
+                  <button class="btn btn-gray btn-xs" style="margin-top:4px;font-size:.65rem" onclick="copiarPubCanal()">&#x1F4CB; Copiar texto</button>
+                </div>
+                <!-- Canais de sincronizacao -->
+                <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:.04em">SINCRONIZAR NOS CANAIS</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <button class="btn" style="background:#0055a5;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('bling')"><div>&#x1F4CB; Bling ERP</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Cadastro + imagem + descricao PDV</div></button>
+                  <button class="btn" style="background:#00b0f0;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('wix')"><div>&#x1F310; Wix Stores</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Produto + fotos + descricao site</div></button>
+                  <button class="btn" style="background:#4285F4;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('google_shopping')"><div>&#x1F6D2; Google Shopping</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Feed + imagem + titulo SEO</div></button>
+                  <button class="btn" style="background:#EA4335;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('google_ads')"><div>&#x1F4E2; Google Ads P-Max</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">H1/H2/D1/D2/Callout prontos</div></button>
+                  <button class="btn" style="background:#25D366;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('whatsapp')"><div>&#x1F4AC; WhatsApp</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Mensagem pronta para copiar</div></button>
+                  <button class="btn btn-gray" style="font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('marketplace')"><div>&#x1F6D2; Marketplace</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">ML / Shopee / Amazon</div></button>
+                </div>
+                <div id="sync-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+                <div style="margin-top:8px;text-align:center">
+                  <button class="btn btn-gray btn-sm" onclick="reabrirEnriquecimento()" style="font-size:.7rem">&#x1F504; Enriquecer Novamente</button>
+                </div>
               </div>
             </div>
 
@@ -2911,7 +2942,7 @@ function updatePipelineState(nctScore, produtoStatus) {
         if (s2) s2.className = 'pipeline-step done';
         if (s3) s3.className = 'pipeline-step active';
         if (freezeZone) freezeZone.style.display = 'none';
-        if (syncPanel) syncPanel.style.display = 'block';
+        if (syncPanel) { syncPanel.style.display = 'block'; prepararPublicacao(); }
     } else if (score >= 0.95) {
         if (s1) s1.className = 'pipeline-step done';
         if (s2) s2.className = 'pipeline-step active';
@@ -2957,18 +2988,83 @@ function renderHistoricoNTC(historico) {
         }).join('') + '</div>';
 }
 
+let pubPacote = null;
+let pubCanalAtivo = 'seo';
+
+async function prepararPublicacao() {
+    if (!currentEnrId) return;
+    document.getElementById('pub-loading').style.display = 'block';
+    document.getElementById('pub-pacote').style.display = 'none';
+    const r = await api('/produtos/' + currentEnrId + '/preparar-publicacao', { method: 'POST' });
+    document.getElementById('pub-loading').style.display = 'none';
+    if (!r.success) return;
+    pubPacote = r.pacote;
+
+    // Imagem principal
+    const imgEl = document.getElementById('pub-img-preview');
+    const imgs = pubPacote.imagens || [];
+    const imgPrincipal = imgs.find(i => i.tipo === 'Principal') || imgs[0];
+    if (imgPrincipal) {
+        imgEl.innerHTML = `<img src="${imgPrincipal.url}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.display='none'">`;
+    }
+    document.getElementById('pub-img-count').textContent = imgs.length + ' imagem(ns)';
+
+    // Descricao comercial
+    const desc = pubPacote.descricoes || {};
+    document.getElementById('pub-desc-comercial').textContent = desc.comercial || pubPacote.produto?.descricao || '—';
+
+    // Texto do canal ativo
+    renderPubCanalText();
+
+    document.getElementById('pub-pacote').style.display = 'block';
+}
+
+function switchPubCanal(el, canal) {
+    document.querySelectorAll('.pub-canal-tab').forEach(t => { t.classList.remove('active'); t.classList.add('btn-gray'); });
+    el.classList.add('active'); el.classList.remove('btn-gray');
+    pubCanalAtivo = canal;
+    renderPubCanalText();
+}
+
+function renderPubCanalText() {
+    const el = document.getElementById('pub-canal-text');
+    if (!el || !pubPacote) return;
+    const desc = pubPacote.descricoes || {};
+    el.textContent = desc[pubCanalAtivo] || '— Descricao nao gerada para este canal';
+}
+
+function copiarPubCanal() {
+    const el = document.getElementById('pub-canal-text');
+    if (el && el.textContent) navigator.clipboard.writeText(el.textContent).then(() => {
+        const st = document.getElementById('sync-status');
+        if (st) { st.innerHTML = '<span style="color:var(--success)">&#x2714; Copiado!</span>'; setTimeout(() => st.textContent = '', 2000); }
+    });
+}
+
 async function sincronizar(plataforma) {
     if (!currentEnrId) return;
     const st = document.getElementById('sync-status');
-    const nomes = { bling:'Bling ERP', wix:'Wix Stores', google_shopping:'Google Shopping', google_ads:'Google Ads P-Max' };
-    st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px;margin-right:6px"></div> Sincronizando com ' + (nomes[plataforma]||plataforma) + '...';
+    const nomes = { bling:'Bling ERP', wix:'Wix Stores', google_shopping:'Google Shopping', google_ads:'Google Ads P-Max', whatsapp:'WhatsApp', marketplace:'Marketplace' };
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px;margin-right:6px"></div> Sincronizando ' + (nomes[plataforma]||plataforma) + '...';
+
     if (plataforma === 'wix') {
-        const r = await api('/produtos/' + currentEnrId + '/wix', { method: 'PUT' });
+        const r = await api('/produtos/' + currentEnrId + '/wix', { method: 'PUT', body: JSON.stringify({ wix_id: pubPacote?.produto?.ref }) });
         st.innerHTML = r.success
-            ? `<span style="color:var(--success)">&#x2714; Wix Stores sincronizado! ID: ${r.wix_id || '—'}</span>`
+            ? `<span style="color:var(--success)">&#x2714; Wix Stores — pacote enviado com ${pubPacote?.imagens?.length||0} imagens e descricao comercial</span>`
             : `<span style="color:var(--danger)">Wix: ${r.error || 'Erro'}</span>`;
+    } else if (plataforma === 'whatsapp') {
+        const txt = pubPacote?.whatsapp || pubPacote?.descricoes?.whatsapp || '';
+        if (txt) { navigator.clipboard.writeText(txt); st.innerHTML = '<span style="color:var(--success)">&#x2714; Mensagem WhatsApp copiada para area de transferencia!</span>'; }
+        else st.innerHTML = '<span style="color:var(--warning)">Gere o pacote de publicacao primeiro</span>';
+    } else if (plataforma === 'bling') {
+        st.innerHTML = `<span style="color:var(--warning)">&#x1F4CB; Bling ERP — pacote pronto (ref: ${pubPacote?.bling?.codigo||'?'}, imagem: ${pubPacote?.bling?.imagemURL ? 'sim' : 'nao'}). Informe a API Key do Bling para enviar.</span>`;
+    } else if (plataforma === 'google_shopping') {
+        st.innerHTML = `<span style="color:var(--warning)">&#x1F6D2; Google Shopping — feed preparado com imagem e titulo SEO. Configure Google Merchant Center para enviar.</span>`;
+    } else if (plataforma === 'google_ads') {
+        const pmax = pubPacote?.google_ads || pubPacote?.descricoes?.pmax || '';
+        if (pmax) { navigator.clipboard.writeText(pmax); st.innerHTML = '<span style="color:var(--success)">&#x2714; Assets P-Max copiados! Cole no Google Ads.</span>'; }
+        else st.innerHTML = '<span style="color:var(--warning)">Aguardando geracao de assets P-Max</span>';
     } else {
-        await new Promise(r => setTimeout(r, 1000));
         st.innerHTML = `<span style="color:var(--warning)">&#x26A0; ${nomes[plataforma]} — aguardando credenciais de API</span>`;
     }
 }
