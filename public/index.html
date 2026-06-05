@@ -247,6 +247,18 @@ tr:hover td{background:#1c1c1c}
 .link-btn{display:block;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:.75rem;text-decoration:none;text-align:center;transition:border .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .link-btn:hover{border-color:var(--primary);color:var(--primary)}
 
+/* CATALOGO IMPORT */
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;transition:border .2s;cursor:pointer}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--primary);background:rgba(90,75,255,.06)}
+.cat-tab.active{background:var(--primary)!important;color:#fff!important}
+.import-result{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+.import-kpi{background:var(--bg);border-radius:8px;padding:12px;text-align:center}
+.import-kpi .val{font-size:1.8rem;font-weight:900}
+.import-kpi .lbl{font-size:.65rem;color:var(--text3)}
+.scr-preview-table{width:100%;border-collapse:collapse;font-size:.75rem}
+.scr-preview-table th{background:var(--bg3);padding:6px 10px;text-align:left;color:var(--text3);font-weight:600}
+.scr-preview-table td{padding:5px 10px;border-top:1px solid var(--border)}
+
 /* PIPELINE iROLLO */
 .pipeline-steps{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;flex-wrap:wrap}
 .pipeline-step{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);opacity:.35;transition:.3s}
@@ -351,6 +363,7 @@ tr:hover td{background:#1c1c1c}
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Integracao</div>
+    <div class="nav-item" data-page="catalogo"><span class="nav-icon">&#x1F4E5;</span> Importar Catalogo</div>
     <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
     <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
   </div>
@@ -807,6 +820,152 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- CATALOGO IMPORT -->
+    <div class="page" id="page-catalogo">
+      <div class="irollo-header">
+        <div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Motor iRollo — Importacao em Lote</div>
+          <div style="font-size:1rem;font-weight:900;color:var(--primary)">Enriquecimento por Catalogo</div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">CSV · Excel · PDF · Robô Web · IA Parser</div>
+        </div>
+        <div class="irollo-status ml-auto"><div class="dot"></div> IMPORTADOR ON</div>
+      </div>
+
+      <!-- TABS -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn cat-tab active" id="tab-csv" onclick="switchCatTab('csv')">&#x1F4C4; CSV</button>
+        <button class="btn cat-tab btn-gray" id="tab-excel" onclick="switchCatTab('excel')">&#x1F4CA; Excel</button>
+        <button class="btn cat-tab btn-gray" id="tab-pdf" onclick="switchCatTab('pdf')">&#x1F4CB; PDF</button>
+        <button class="btn cat-tab btn-gray" id="tab-scraper" onclick="switchCatTab('scraper')">&#x1F916; Robô Web</button>
+        <button class="btn cat-tab btn-gray" id="tab-lote" onclick="switchCatTab('lote')">&#x26A1; Lote IA</button>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <a href="/api/catalogo/template/csv" class="btn btn-gray btn-sm">&#x2B07; Template CSV</a>
+          <a href="/api/catalogo/template/excel" class="btn btn-gray btn-sm">&#x2B07; Template Excel</a>
+        </div>
+      </div>
+
+      <!-- CSV -->
+      <div class="cat-panel" id="panel-csv">
+        <div class="sec">
+          <div class="sec-title">&#x1F4C4; Importar CSV</div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:12px">Colunas aceitas: ref, descricao, marca, oem, ncm, peso, aplicacoes, grupo, origem (qualquer ordem, qualquer idioma).</div>
+          <div class="upload-zone" id="drop-csv" ondragover="event.preventDefault()" ondrop="handleDrop(event,'csv')">
+            <div style="font-size:2rem">&#x1F4C4;</div>
+            <div style="font-size:.85rem;margin-top:8px">Arraste o arquivo CSV aqui</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-top:4px">ou</div>
+            <label class="btn btn-sm" style="margin-top:8px;cursor:pointer">
+              Selecionar arquivo
+              <input type="file" accept=".csv,.txt" id="file-csv" style="display:none" onchange="importarCsv()">
+            </label>
+          </div>
+          <div id="cat-csv-status" class="text-xs" style="margin-top:10px"></div>
+        </div>
+        <div class="sec" id="cat-csv-preview" style="display:none">
+          <div class="sec-title">Resultado da Importacao</div>
+          <div id="cat-csv-result"></div>
+        </div>
+      </div>
+
+      <!-- EXCEL -->
+      <div class="cat-panel" id="panel-excel" style="display:none">
+        <div class="sec">
+          <div class="sec-title">&#x1F4CA; Importar Excel (.xlsx / .xls)</div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:12px">Primeira linha deve ser cabecalho. Primeira aba da planilha sera importada.</div>
+          <div class="upload-zone" id="drop-excel" ondragover="event.preventDefault()" ondrop="handleDrop(event,'excel')">
+            <div style="font-size:2rem">&#x1F4CA;</div>
+            <div style="font-size:.85rem;margin-top:8px">Arraste o arquivo Excel aqui</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-top:4px">ou</div>
+            <label class="btn btn-sm" style="margin-top:8px;cursor:pointer">
+              Selecionar arquivo
+              <input type="file" accept=".xlsx,.xls,.ods" id="file-excel" style="display:none" onchange="importarExcel()">
+            </label>
+          </div>
+          <div id="cat-excel-status" class="text-xs" style="margin-top:10px"></div>
+        </div>
+        <div class="sec" id="cat-excel-preview" style="display:none">
+          <div class="sec-title">Resultado da Importacao</div>
+          <div id="cat-excel-result"></div>
+        </div>
+      </div>
+
+      <!-- PDF -->
+      <div class="cat-panel" id="panel-pdf" style="display:none">
+        <div class="sec">
+          <div class="sec-title">&#x1F4CB; Importar PDF — Claude Haiku Parser</div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:12px">Claude Haiku extrai produtos do texto do PDF automaticamente. Funciona com catalogos, tabelas de preco e listas de pecas.</div>
+          <div class="upload-zone" ondragover="event.preventDefault()" ondrop="handleDrop(event,'pdf')">
+            <div style="font-size:2rem">&#x1F4CB;</div>
+            <div style="font-size:.85rem;margin-top:8px">Arraste o arquivo PDF aqui</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-top:4px">ou</div>
+            <label class="btn btn-sm" style="margin-top:8px;cursor:pointer">
+              Selecionar PDF
+              <input type="file" accept=".pdf" id="file-pdf" style="display:none" onchange="importarPdf()">
+            </label>
+          </div>
+          <div id="cat-pdf-status" class="text-xs" style="margin-top:10px"></div>
+        </div>
+        <div class="sec" id="cat-pdf-preview" style="display:none">
+          <div class="sec-title">Resultado — Preview texto extraido</div>
+          <div id="cat-pdf-result"></div>
+        </div>
+      </div>
+
+      <!-- SCRAPER -->
+      <div class="cat-panel" id="panel-scraper" style="display:none">
+        <div class="sec">
+          <div class="sec-title">&#x1F916; Robô Web — Raspador de Catalogo</div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:14px">Informe a URL do catalogo do fornecedor. Use seletores CSS para extrair campos, ou ative o modo IA para extracao automatica.</div>
+          <div class="fg">
+            <label>URL do Catalogo</label>
+            <input type="url" id="scr-url" placeholder="https://fornecedor.com.br/catalogo" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-size:.83rem;width:100%;box-sizing:border-box">
+          </div>
+          <div style="margin:10px 0;display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="scr-ia-mode" checked>
+            <label for="scr-ia-mode" style="font-size:.78rem;cursor:pointer">&#x1F916; Modo IA (Claude Haiku extrai automaticamente)</label>
+          </div>
+          <div id="scr-selectors" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div class="fg" style="margin:0"><label>Seletor CSS — Referencia</label><input id="scr-sel-ref" placeholder=".product-code" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.78rem;width:100%;box-sizing:border-box"></div>
+              <div class="fg" style="margin:0"><label>Seletor CSS — Descricao</label><input id="scr-sel-desc" placeholder=".product-name" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.78rem;width:100%;box-sizing:border-box"></div>
+              <div class="fg" style="margin:0"><label>Seletor CSS — Marca (opcional)</label><input id="scr-sel-marca" placeholder=".brand" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.78rem;width:100%;box-sizing:border-box"></div>
+              <div class="fg" style="margin:0"><label>Seletor CSS — Preco (opcional)</label><input id="scr-sel-preco" placeholder=".price" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.78rem;width:100%;box-sizing:border-box"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn" onclick="executarScraper(false)">&#x1F50D; Preview (nao salvar)</button>
+            <button class="btn btn-blue" onclick="executarScraper(true)">&#x1F4E5; Extrair e Salvar</button>
+          </div>
+          <div id="cat-scr-status" class="text-xs" style="margin-top:10px"></div>
+        </div>
+        <div class="sec" id="cat-scr-preview" style="display:none">
+          <div class="sec-title">Preview — Produtos Extraidos</div>
+          <div id="cat-scr-result"></div>
+        </div>
+      </div>
+
+      <!-- LOTE IA -->
+      <div class="cat-panel" id="panel-lote" style="display:none">
+        <div class="sec">
+          <div class="sec-title">&#x26A1; Enriquecimento em Lote — Claude Haiku + Web</div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:14px">Selecione os produtos PENDENTES ou REPROVADOS para enriquecer automaticamente em lote. O robo busca dados na web e usa Claude Haiku para extrair aplicacoes, fiscal e DNA.</div>
+          <div id="lote-status-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px"></div>
+          <div class="fg" style="max-width:200px">
+            <label>Limite por lote</label>
+            <select id="lote-limite" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.83rem;width:100%">
+              <option value="5">5 produtos</option>
+              <option value="10" selected>10 produtos</option>
+              <option value="20">20 produtos</option>
+              <option value="50">50 produtos</option>
+            </select>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-blue" onclick="enriquecerLote()">&#x1F916; Iniciar Enriquecimento em Lote</button>
+          </div>
+          <div id="cat-lote-status" class="text-xs" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- WIX STORES -->
     <div class="page" id="page-wix">
       <div class="kpi-grid" id="wix-kpi-grid"></div>
@@ -1089,6 +1248,7 @@ function onPageActivate(page) {
     else if (page === 'enriquecimento') populateProductSelects();
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
+    else if (page === 'catalogo') loadLoteStats();
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -2955,6 +3115,143 @@ async function irParaEnriquecimento(id) {
     const sel = document.getElementById('enr-prod-select');
     if (sel) sel.value = id;
     await loadEnriquecimento();
+}
+
+// ======================================================
+// CATALOGO IMPORT
+// ======================================================
+function switchCatTab(tab) {
+    document.querySelectorAll('.cat-tab').forEach(t => { t.classList.remove('active'); t.classList.add('btn-gray'); });
+    document.querySelectorAll('.cat-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tab-' + tab).classList.remove('btn-gray');
+    document.getElementById('panel-' + tab).style.display = 'block';
+    if (tab === 'lote') loadLoteStats();
+}
+
+function handleDrop(event, tipo) {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+    if (tipo === 'csv') { document.getElementById('file-csv').files = event.dataTransfer.files; importarCsv(); }
+    else if (tipo === 'excel') { document.getElementById('file-excel').files = event.dataTransfer.files; importarExcel(); }
+    else if (tipo === 'pdf') { document.getElementById('file-pdf').files = event.dataTransfer.files; importarPdf(); }
+}
+
+function renderImportResult(result, containerId, statusId) {
+    const st = document.getElementById(statusId);
+    const prev = document.getElementById(containerId);
+    if (result.error) { st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${result.error}</span>`; return; }
+    prev.style.display = 'block';
+    document.getElementById(containerId.replace('-preview','-result')).innerHTML = `
+        <div class="import-result">
+            <div class="import-kpi"><div class="val" style="color:var(--primary)">${result.total||result.extraidos||0}</div><div class="lbl">Total Lidos</div></div>
+            <div class="import-kpi"><div class="val" style="color:var(--success)">${result.salvos||0}</div><div class="lbl">Salvos</div></div>
+            <div class="import-kpi"><div class="val" style="color:var(--info)">${result.novos||0}</div><div class="lbl">Novos</div></div>
+            <div class="import-kpi"><div class="val" style="color:var(--warning)">${result.atualizados||0}</div><div class="lbl">Atualizados</div></div>
+            <div class="import-kpi"><div class="val" style="color:var(--danger)">${result.erros||0}</div><div class="lbl">Erros</div></div>
+        </div>
+        ${result.planilha ? `<div style="font-size:.72rem;color:var(--text3)">Planilha: <b>${result.planilha}</b></div>` : ''}
+        ${result.paginas ? `<div style="font-size:.72rem;color:var(--text3)">Paginas PDF: <b>${result.paginas}</b> | Produtos extraidos: <b>${result.extraidos}</b></div>` : ''}
+        ${result.texto_preview ? `<div style="background:var(--bg);border-radius:6px;padding:10px;font-size:.7rem;color:var(--text3);margin-top:8px;max-height:100px;overflow:auto;white-space:pre-wrap">${result.texto_preview}</div>` : ''}
+        <div style="margin-top:10px"><button class="btn btn-sm" onclick="irParaEnriquecimento()">&#x2728; Ver no iRollo</button> <button class="btn btn-gray btn-sm" onclick="loadProdutos()">&#x1F4CB; Ver Produtos</button></div>`;
+    st.innerHTML = `<span style="color:var(--success)">&#x2714; Importacao concluida com sucesso!</span>`;
+}
+
+async function importarCsv() {
+    const file = document.getElementById('file-csv').files[0];
+    if (!file) return;
+    const st = document.getElementById('cat-csv-status');
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Importando CSV...';
+    const fd = new FormData();
+    fd.append('arquivo', file);
+    const r = await fetch('/api/catalogo/importar/csv', { method: 'POST', body: fd });
+    const result = await r.json();
+    renderImportResult(result, 'cat-csv-preview', 'cat-csv-status');
+}
+
+async function importarExcel() {
+    const file = document.getElementById('file-excel').files[0];
+    if (!file) return;
+    const st = document.getElementById('cat-excel-status');
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Importando Excel...';
+    const fd = new FormData();
+    fd.append('arquivo', file);
+    const r = await fetch('/api/catalogo/importar/excel', { method: 'POST', body: fd });
+    const result = await r.json();
+    renderImportResult(result, 'cat-excel-preview', 'cat-excel-status');
+}
+
+async function importarPdf() {
+    const file = document.getElementById('file-pdf').files[0];
+    if (!file) return;
+    const st = document.getElementById('cat-pdf-status');
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Extraindo texto do PDF com Claude Haiku...';
+    const fd = new FormData();
+    fd.append('arquivo', file);
+    const r = await fetch('/api/catalogo/importar/pdf', { method: 'POST', body: fd });
+    const result = await r.json();
+    renderImportResult(result, 'cat-pdf-preview', 'cat-pdf-status');
+}
+
+document.getElementById('scr-ia-mode')?.addEventListener('change', function() {
+    document.getElementById('scr-selectors').style.display = this.checked ? 'none' : 'block';
+});
+
+async function executarScraper(salvar) {
+    const url = document.getElementById('scr-url').value.trim();
+    if (!url) { alert('Informe a URL'); return; }
+    const iaMode = document.getElementById('scr-ia-mode').checked;
+    const st = document.getElementById('cat-scr-status');
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Acessando URL e extraindo produtos...';
+    const body = { url, salvar, usar_ia: iaMode };
+    if (!iaMode) {
+        body.seletor_ref = document.getElementById('scr-sel-ref').value.trim() || null;
+        body.seletor_desc = document.getElementById('scr-sel-desc').value.trim() || null;
+        body.seletor_marca = document.getElementById('scr-sel-marca').value.trim() || null;
+        body.seletor_preco = document.getElementById('scr-sel-preco').value.trim() || null;
+    }
+    const result = await api('/catalogo/scraper', { method: 'POST', body: JSON.stringify(body) });
+    if (result.error) { st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${result.error}</span>`; return; }
+    st.innerHTML = `<span style="color:var(--success)">&#x2714; ${result.extraidos} produtos encontrados${salvar ? ' — ' + result.salvos + ' salvos' : ' (preview)'}</span>`;
+    const preview = result.preview || [];
+    if (preview.length) {
+        document.getElementById('cat-scr-preview').style.display = 'block';
+        document.getElementById('cat-scr-result').innerHTML = `
+            <table class="scr-preview-table">
+                <thead><tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>OEM</th><th>Preco</th></tr></thead>
+                <tbody>${preview.map(p => `<tr>
+                    <td class="mono">${p.ref||p.codigo||'—'}</td>
+                    <td>${(p.descricao||p.description||p.nome||'—').substring(0,60)}</td>
+                    <td>${p.marca||p.brand||'—'}</td>
+                    <td class="mono">${p.oem||'—'}</td>
+                    <td>${p.preco||p.price||'—'}</td>
+                </tr>`).join('')}</tbody>
+            </table>
+            ${!salvar ? `<div style="margin-top:10px"><button class="btn btn-blue btn-sm" onclick="executarScraper(true)">&#x1F4E5; Salvar esses produtos</button></div>` : ''}`;
+    }
+}
+
+async function loadLoteStats() {
+    const d = await api('/dashboard');
+    document.getElementById('lote-status-grid').innerHTML = [
+        {label:'Total', val: d.total, cls:'kpi-orange'},
+        {label:'PENDENTES', val: d.pendentes, cls:'kpi-yellow'},
+        {label:'REPROVADOS', val: d.reprovados, cls:'kpi-red'},
+    ].map(k => `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div></div>`).join('');
+}
+
+async function enriquecerLote() {
+    const limite = parseInt(document.getElementById('lote-limite').value);
+    const st = document.getElementById('cat-lote-status');
+    st.innerHTML = `<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Iniciando lote de ${limite} produtos...`;
+    const r = await api('/catalogo/enriquecer-lote', { method: 'POST', body: JSON.stringify({ limite }) });
+    if (r.iniciado) {
+        st.innerHTML = `<span style="color:var(--success)">&#x2714; Lote iniciado! ${r.total} produtos em processamento (rodando em segundo plano).</span>
+        <div style="margin-top:8px;font-size:.72rem;color:var(--text3)">O processo continua mesmo se voce navegar para outra pagina. Verifique o dashboard em alguns minutos.</div>`;
+    } else {
+        st.innerHTML = `<span style="color:var(--danger)">Erro: ${r.error}</span>`;
+    }
 }
 
 // ======================================================
