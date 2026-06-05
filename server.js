@@ -562,6 +562,11 @@ app.get('/api/produtos', (req, res) => {
     const total = db.prepare('SELECT COUNT(*) as c FROM produtos p WHERE ' + whereStr).get(...params).c;
     params.push(parseInt(limit), offset);
     const rows = db.prepare('SELECT p.*, d.fabricante, d.marca, d.familia, d.grupo_industrial, d.origem_pais, d.codigo_dna FROM produtos p LEFT JOIN dna d ON d.produto_id = p.id WHERE ' + whereStr + ' ORDER BY p.atualizado_em DESC LIMIT ? OFFSET ?').all(...params);
+    // Attach imagem_principal for each product
+    rows.forEach(row => {
+        const img = db.prepare("SELECT url FROM imagens WHERE produto_id=? ORDER BY CASE WHEN tipo='Principal' THEN 0 ELSE 1 END, id ASC LIMIT 1").get(row.id);
+        row.imagem_principal = img ? img.url : null;
+    });
     res.json({ total, page: parseInt(page), limit: parseInt(limit), data: rows });
 });
 
@@ -789,6 +794,10 @@ app.get('/api/dashboard', (req, res) => {
     const congelados = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE status='Congelado'").get().c;
     const ntcMedio = db.prepare('SELECT AVG(ntc_score) as m FROM produtos').get().m || 0;
     const recentes = db.prepare('SELECT p.*, d.marca, d.fabricante FROM produtos p LEFT JOIN dna d ON d.produto_id=p.id ORDER BY p.atualizado_em DESC LIMIT 10').all();
+    recentes.forEach(row => {
+        const img = db.prepare("SELECT url FROM imagens WHERE produto_id=? ORDER BY CASE WHEN tipo='Principal' THEN 0 ELSE 1 END, id ASC LIMIT 1").get(row.id);
+        row.imagem_principal = img ? img.url : null;
+    });
     res.json({ total, aprovados, pendentes, reprovados, congelados, ntc_medio: parseFloat(ntcMedio.toFixed(4)), recentes });
 });
 
