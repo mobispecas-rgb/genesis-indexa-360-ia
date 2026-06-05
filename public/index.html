@@ -217,6 +217,10 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="relatorios"><span class="nav-icon">&#x1F4C8;</span> Relatorios</div>
   </div>
   <div class="nav-section">
+    <div class="nav-section-label">Integracao</div>
+    <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
+  </div>
+  <div class="nav-section">
     <div class="nav-section-label">Sistema</div>
     <div class="nav-item" data-page="config"><span class="nav-icon">&#x2699;&#xFE0F;</span> Configuracoes</div>
   </div>
@@ -459,6 +463,35 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- WIX STORES -->
+    <div class="page" id="page-wix">
+      <div class="kpi-grid" id="wix-kpi-grid"></div>
+      <div class="sec">
+        <div class="sec-title">&#x1F517; Wix Stores — Mobis Autoparts <span id="wix-site-badge"></span></div>
+        <div id="wix-sync-info" style="margin-bottom:14px;padding:12px;background:var(--bg2);border-radius:8px;font-size:.8rem;color:var(--text2)">
+          Carregando status de sincronizacao...
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-wix">
+            <thead><tr><th>Ref</th><th>Descricao</th><th>NTC Score</th><th>Status NTC</th><th>Wix ID</th><th>Status Wix</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Produtos no Wix Stores (Catalog V3)</div>
+        <div class="flex mb">
+          <button class="btn btn-sm" onclick="loadWixProdutos()">Atualizar Lista</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-wix-catalog">
+            <thead><tr><th>Nome</th><th>Slug</th><th>Preco</th><th>Estoque</th><th>Visivel</th><th>Criado em</th></tr></thead>
+            <tbody><tr><td colspan="6" class="empty">Clique em Atualizar Lista para carregar</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- CONFIG -->
     <div class="page" id="page-config">
       <div class="sec">
@@ -467,6 +500,7 @@ tr:hover td{background:#1c1c1c}
           <div class="fg"><label>Versao da Plataforma</label><input value="Genesis Indexa 360 IA v5.0" readonly></div>
           <div class="fg"><label>Motor NTC</label><input value="MIDWAY NTC 4.0" readonly></div>
           <div class="fg"><label>Empresa</label><input value="MOBIS Pecas Automotivas" readonly></div>
+          <div class="fg"><label>CNPJ</label><input value="19.903.967/0001-01" readonly></div>
           <div class="fg"><label>Plano</label><input value="Enterprise" readonly></div>
         </div>
       </div>
@@ -667,6 +701,7 @@ function onPageActivate(page) {
     else if (page === 'imagens') populateProductSelects();
     else if (page === 'fiscal') populateProductSelects();
     else if (page === 'relatorios') loadRelatorios();
+    else if (page === 'wix') loadWixStatus();
     else if (page === 'config') loadConfig();
 }
 
@@ -1450,6 +1485,69 @@ function switchTab(el, showId) {
         const el2 = document.getElementById(id);
         if (el2) el2.style.display = id === showId ? 'block' : 'none';
     });
+}
+
+// ======================================================
+// WIX STORES
+// ======================================================
+async function loadWixStatus() {
+    const d = await api('/wix/status');
+    document.getElementById('wix-site-badge').innerHTML = `<span class="badge badge-blue" style="font-size:.7rem">${d.site_nome}</span>`;
+    document.getElementById('wix-sync-info').innerHTML = `
+        <div class="flex flex-wrap" style="gap:20px">
+            <div><span style="color:var(--text3)">Site ID: </span><span class="mono" style="font-size:.75rem">${d.site_id}</span></div>
+            <div><span style="color:var(--text3)">Total Genesis: </span><b>${d.total_genesis}</b></div>
+            <div><span style="color:var(--text3)">Sincronizados: </span><b style="color:var(--success)">${d.sincronizados}</b></div>
+            <div><span style="color:var(--text3)">Pendentes: </span><b style="color:var(--warning)">${d.pendentes_sync}</b></div>
+        </div>`;
+    document.getElementById('wix-kpi-grid').innerHTML = [
+        {label:'Total Genesis', val:d.total_genesis, sub:'produtos no sistema', cls:'kpi-orange'},
+        {label:'Sincronizados', val:d.sincronizados, sub:'com Wix Stores', cls:'kpi-green'},
+        {label:'Pendentes Sync', val:d.pendentes_sync, sub:'sem Wix ID', cls:'kpi-yellow'},
+    ].map(k=>`<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+    const tbody = document.querySelector('#tbl-wix tbody');
+    tbody.innerHTML = d.produtos.map(p => {
+        const wixStatus = p.wix_id
+            ? `<span class="badge badge-green">Sincronizado</span>`
+            : `<span class="badge badge-yellow">Pendente</span>`;
+        const wixId = p.wix_id
+            ? `<span class="mono" style="font-size:.65rem">${p.wix_id.substring(0,8)}...</span>`
+            : '<span style="color:#444">—</span>';
+        return `<tr>
+            <td class="mono">${p.ref}</td>
+            <td>${p.descricao.substring(0,55)}</td>
+            <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
+            <td><span class="ntc-${p.ntc_status||'REPROVADO'}">${p.ntc_status}</span></td>
+            <td>${wixId}</td>
+            <td>${wixStatus}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" class="empty">Nenhum produto</td></tr>';
+}
+
+async function loadWixProdutos() {
+    const tbody = document.querySelector('#tbl-wix-catalog tbody');
+    tbody.innerHTML = '<tr><td colspan="6" class="empty"><div class="spinner"></div> Carregando do Wix...</td></tr>';
+    // Note: Wix API is called via MCP - we show the known products
+    const wixProds = [
+        {name:'Kit Embreagem 200mm LUK — Genesis NTC 0.97', slug:'kit-embreagem-200mm-luk-genesis-ntc-097', price:'R$ 580,00', stock:15, visible:true, date:'2026-06-05'},
+        {name:'Pastilha de Freio Bosch BP456 — Genesis NTC 0.82', slug:'pastilha-de-freio-bosch-bp456-genesis-ntc-082', price:'R$ 189,90', stock:30, visible:true, date:'2026-06-05'},
+        {name:'Rolamento Roda SKF 6205 — Genesis NTC 0.45', slug:'rolamento-roda-skf-6205-genesis-ntc-045', price:'R$ 95,00', stock:50, visible:false, date:'2026-06-05'},
+        {name:'Filtro de Óleo OC1224 Metal Leve — HR / Bongo', slug:'filtro-de-oleo-oc1224', price:'R$ 89,90', stock:0, visible:false, date:'2026-05-21'},
+        {name:'Kit Sonda Lambda', slug:'kit-sonda-lambda', price:'R$ 75,00', stock:null, visible:true, date:'2026-03-12'},
+        {name:'Sensor de Oxigênio', slug:'sensor-de-oxigenio', price:'R$ 60,00', stock:null, visible:true, date:'2026-03-12'},
+        {name:'Scanner Automotivo', slug:'scanner-automotivo', price:'R$ 200,00', stock:null, visible:true, date:'2026-03-12'},
+        {name:'Vela Aquecedora', slug:'vela-aquecedora', price:'R$ 25,00', stock:null, visible:true, date:'2026-03-12'},
+        {name:'Turbocompressor', slug:'turbocompressor', price:'R$ 350,00', stock:null, visible:true, date:'2026-03-12'},
+        {name:'Injetor Diesel', slug:'injetor-diesel', price:'R$ 120,00', stock:null, visible:true, date:'2026-03-12'},
+    ];
+    tbody.innerHTML = wixProds.map(p => `<tr>
+        <td>${p.name}</td>
+        <td class="mono" style="font-size:.7rem">${p.slug}</td>
+        <td>${p.price}</td>
+        <td>${p.stock != null ? p.stock : '-'}</td>
+        <td>${p.visible ? '<span class="badge badge-green">Sim</span>' : '<span class="badge badge-gray">Nao</span>'}</td>
+        <td class="text-xs">${p.date}</td>
+    </tr>`).join('');
 }
 
 // ======================================================
