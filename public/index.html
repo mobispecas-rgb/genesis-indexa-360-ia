@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Genesis Indexa 360 IA v5.0 — MIDWAY NTC 4.0</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   --bg:#0d0d0d;--bg2:#141414;--bg3:#1a1a1a;--bg4:#222;
   --primary:#ff4500;--primary2:#ff6b00;
@@ -13,17 +13,22 @@
   --text:#e0e0e0;--text2:#aaa;--text3:#666;
   --border:#2a2a2a;--sidebar:240px;
 }
-body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow:hidden}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+
+/* SIDEBAR OVERLAY (mobile) */
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99}
+#sidebar-overlay.open{display:block}
 
 /* SIDEBAR */
-#sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto}
+#sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto;transition:transform .25s;z-index:100}
 .sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
 .sidebar-logo .logo-title{font-size:.95rem;font-weight:900;color:var(--primary);line-height:1.2}
 .sidebar-logo .logo-sub{font-size:.65rem;color:var(--text3);margin-top:2px}
 .sidebar-logo .logo-badge{margin-top:6px;display:inline-block;background:#ff450020;color:var(--primary);border:1px solid #ff450040;padding:2px 8px;border-radius:10px;font-size:.6rem;font-weight:700}
 .nav-section{padding:8px 0}
 .nav-section-label{padding:6px 16px 4px;font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:all .15s;font-size:.82rem;color:var(--text2);border-left:3px solid transparent}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;transition:all .15s;font-size:.85rem;color:var(--text2);border-left:3px solid transparent;min-height:44px}
 .nav-item:hover{background:var(--bg3);color:var(--text)}
 .nav-item.active{background:#ff450015;color:var(--primary);border-left-color:var(--primary)}
 .nav-icon{width:18px;text-align:center;flex-shrink:0}
@@ -31,18 +36,52 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .sidebar-footer .user-info{font-size:.75rem;color:var(--text2);margin-bottom:4px}
 
 /* MAIN */
-#main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0}
-.topbar-title{font-size:1rem;font-weight:700;color:var(--text)}
-.topbar-badge{background:#ff450020;color:var(--primary);border:1px solid #ff450040;padding:2px 10px;border-radius:12px;font-size:.7rem;font-weight:700}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+#main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-width:0}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.topbar-title{font-size:.95rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-badge{background:#ff450020;color:var(--primary);border:1px solid #ff450040;padding:2px 8px;border-radius:12px;font-size:.65rem;font-weight:700;flex-shrink:0}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .pulse{width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 .online-txt{font-size:.72rem;color:var(--success)}
+/* hamburger button */
+#menu-btn{display:none;background:none;border:none;color:var(--text);font-size:1.4rem;cursor:pointer;padding:4px 6px;line-height:1;flex-shrink:0}
 
-#content{flex:1;overflow-y:auto;padding:20px 24px}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;-webkit-overflow-scrolling:touch}
 .page{display:none}
 .page.active{display:block}
+
+/* MOBILE MEDIA QUERY */
+@media(max-width:768px){
+  #menu-btn{display:block}
+  #sidebar{position:fixed;left:0;top:0;height:100%;transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  body{overflow:auto}
+  html,body{height:auto;min-height:100vh;overflow:auto}
+  #main{height:auto;min-height:100vh;overflow:visible}
+  #content{overflow:visible;padding:12px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .kpi-value{font-size:1.6rem}
+  .form-grid{grid-template-columns:1fr}
+  .module-grid{grid-template-columns:1fr}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:480px}
+  .filters{flex-direction:column;gap:8px}
+  .filters input,.filters select{width:100%}
+  .btn{padding:10px 16px;font-size:.85rem;min-height:40px}
+  .btn-sm{padding:8px 14px;font-size:.8rem;min-height:38px}
+  .btn-xs{padding:6px 10px;font-size:.75rem;min-height:34px}
+  .fg input,.fg select,.fg textarea{padding:10px 12px;font-size:.9rem}
+  .topbar{padding:8px 12px}
+  #content{padding:10px}
+  .sec{padding:14px}
+  .modal{max-width:95vw;max-height:90vh;padding:16px}
+  .modal-overlay{align-items:flex-end}
+  .modal{border-radius:12px 12px 0 0;max-height:92vh;width:100%}
+  .ntc-big .score{font-size:3rem}
+  div[style*="grid-template-columns:1fr 1fr"]{display:block!important}
+  div[style*="grid-template-columns:1fr 1fr"] > *{margin-bottom:14px}
+}
 
 /* CARDS KPI */
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
@@ -188,6 +227,9 @@ tr:hover td{background:#1c1c1c}
 </head>
 <body>
 
+<!-- SIDEBAR OVERLAY -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
 <!-- SIDEBAR -->
 <nav id="sidebar">
   <div class="sidebar-logo">
@@ -233,11 +275,12 @@ tr:hover td{background:#1c1c1c}
 <!-- MAIN -->
 <div id="main">
   <div class="topbar">
+    <button id="menu-btn" onclick="toggleSidebar()">&#9776;</button>
     <div class="topbar-title" id="topbar-title">Dashboard</div>
     <div class="topbar-badge">NTC 4.0</div>
     <div class="topbar-right">
       <div class="pulse"></div>
-      <div class="online-txt">Online</div>
+      <div class="online-txt" id="online-txt-label">Online</div>
     </div>
   </div>
 
@@ -690,6 +733,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
         document.getElementById('page-' + page).classList.add('active');
         document.getElementById('topbar-title').textContent = el.textContent.trim();
         onPageActivate(page);
+        closeSidebar();
     });
 });
 
@@ -1475,6 +1519,20 @@ function closeModal(id) {
 document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
+
+// ======================================================
+// MOBILE SIDEBAR
+// ======================================================
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    const open = sb.classList.toggle('open');
+    ov.classList.toggle('open', open);
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
 
 function switchTab(el, showId) {
     const modal = el.closest('.modal');
