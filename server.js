@@ -196,12 +196,15 @@ CREATE TABLE IF NOT EXISTS logs_ia (
 );
 `);
 
+// Add wix_id column if not exists (migration)
+try { db.exec("ALTER TABLE produtos ADD COLUMN wix_id TEXT"); } catch(e) { /* already exists */ }
+
 // -----------------------------------------------------------
 // SEED DATA
 // -----------------------------------------------------------
 const empCount = db.prepare('SELECT COUNT(*) as c FROM empresas').get();
 if (empCount.c === 0) {
-    db.prepare("INSERT INTO empresas (nome, cnpj, plano) VALUES (?,?,?)").run('MOBIS Pecas Automotivas', '12.345.678/0001-99', 'enterprise');
+    db.prepare("INSERT INTO empresas (nome, cnpj, plano) VALUES (?,?,?)").run('MOBIS Pecas Automotivas', '19.903.967/0001-01', 'enterprise');
 }
 
 const usrCount = db.prepare('SELECT COUNT(*) as c FROM usuarios').get();
@@ -212,22 +215,22 @@ if (usrCount.c === 0) {
 
 const prodCount = db.prepare('SELECT COUNT(*) as c FROM produtos').get();
 if (prodCount.c === 0) {
-    const insP = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao, status, ntc_score, ntc_status) VALUES (?,?,?,?,?,?)");
+    const insP = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao, status, ntc_score, ntc_status, wix_id) VALUES (?,?,?,?,?,?,?)");
     const insD = db.prepare("INSERT INTO dna (produto_id, fabricante, grupo_industrial, origem_pais, codigo_dna, marca, linha, familia, status_certificacao, score) VALUES (?,?,?,?,?,?,?,?,?,?)");
     const insF = db.prepare("INSERT INTO dados_fiscais (produto_id, ncm, cest, origem, ipi, icms, pis, cofins, cfop) VALUES (?,?,?,?,?,?,?,?,?)");
     const insL = db.prepare("INSERT INTO logistica (produto_id, peso_liq, peso_bruto, altura, largura, comprimento) VALUES (?,?,?,?,?,?)");
 
-    const p1 = insP.run(1, 'LUK-6203236', 'KIT DE EMBREAGEM 200MM PLATO/DISCO/ROLAMENTO', 'Ativo', 0.97, 'APROVADO');
+    const p1 = insP.run(1, 'LUK-6203236', 'KIT DE EMBREAGEM 200MM PLATO/DISCO/ROLAMENTO', 'Ativo', 0.97, 'APROVADO', 'a50f44fe-1c2e-463e-b21c-491a470007c3');
     insD.run(p1.lastInsertRowid, 'LUK Automotive', 'Schaeffler', 'Alemanha', '6203236000', 'LUK', 'RepSet Pro', 'Embreagem', 'Aprovado', 0.97);
     insF.run(p1.lastInsertRowid, '8708.93.00', '1512200', '0', 0, 12, 0.65, 3, '5102');
     insL.run(p1.lastInsertRowid, 4.2, 4.8, 12, 22, 22);
 
-    const p2 = insP.run(1, 'BOC-0986494131', 'PASTILHA DE FREIO DIANTEIRA CERAMICA', 'Ativo', 0.82, 'PENDENTE');
+    const p2 = insP.run(1, 'BOC-0986494131', 'PASTILHA DE FREIO DIANTEIRA CERAMICA', 'Ativo', 0.82, 'PENDENTE', 'd5e27817-e588-4da4-ad9d-fe5585356a21');
     insD.run(p2.lastInsertRowid, 'Robert Bosch GmbH', 'Robert Bosch GmbH', 'Alemanha', '0986494131', 'Bosch', 'Quietcast', 'Freios', 'Pendente', 0.82);
     insF.run(p2.lastInsertRowid, '8708.10.00', '1512100', '0', 0, 12, 0.65, 3, '5102');
     insL.run(p2.lastInsertRowid, 0.8, 1.0, 5, 15, 20);
 
-    const p3 = insP.run(1, 'SKF-VKBA3569', 'ROLAMENTO RODA TRASEIRA COM ABS', 'Ativo', 0.45, 'REPROVADO');
+    const p3 = insP.run(1, 'SKF-VKBA3569', 'ROLAMENTO RODA TRASEIRA COM ABS', 'Ativo', 0.45, 'REPROVADO', 'ce2aaa9f-ea27-42d4-95d2-7d3553c15380');
     insD.run(p3.lastInsertRowid, 'SKF AB', 'SKF AB', 'Suecia', 'VKBA3569', 'SKF', 'Bearings', 'Rolamentos', 'Reprovado', 0.45);
     insF.run(p3.lastInsertRowid, '8482.10.10', null, '0', 0, 12, 0.65, 3, '5102');
     insL.run(p3.lastInsertRowid, 1.5, 1.8, 8, 14, 14);
@@ -530,10 +533,12 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 // HEALTH / AUTH
 // -----------------------------------------------------------
 app.get('/api/health', (req, res) => {
+    const emp = db.prepare('SELECT * FROM empresas WHERE id=1').get();
     res.json({
         status: 'OK',
         version: '5.0.0',
         platform: 'Genesis Indexa 360 IA + MIDWAY NTC 4.0',
+        empresa: emp ? { nome: emp.nome, cnpj: emp.cnpj, plano: emp.plano } : null,
         produtos: db.prepare('SELECT COUNT(*) as c FROM produtos').get().c,
         uptime: process.uptime(),
         timestamp: new Date().toISOString()
@@ -813,6 +818,30 @@ app.get('/api/relatorios/resumo', (req, res) => {
 // -----------------------------------------------------------
 app.get('/api/produtos/:id/historico', (req, res) => {
     res.json(db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC').all(req.params.id));
+});
+
+// -----------------------------------------------------------
+// WIX INTEGRATION
+// -----------------------------------------------------------
+app.get('/api/wix/status', (req, res) => {
+    const total = db.prepare('SELECT COUNT(*) as c FROM produtos').get().c;
+    const sincronizados = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE wix_id IS NOT NULL").get().c;
+    const produtos = db.prepare('SELECT id, ref, descricao, ntc_score, ntc_status, wix_id, atualizado_em FROM produtos ORDER BY id').all();
+    res.json({
+        site_id: '29574987-cbf6-4241-9dce-d109734b0d95',
+        site_nome: 'Mobis Autoparts',
+        total_genesis: total,
+        sincronizados,
+        pendentes_sync: total - sincronizados,
+        produtos
+    });
+});
+
+app.put('/api/produtos/:id/wix', (req, res) => {
+    const { wix_id } = req.body;
+    if (!wix_id) return res.status(400).json({ error: 'wix_id obrigatorio' });
+    db.prepare("UPDATE produtos SET wix_id=?, atualizado_em=datetime('now','localtime') WHERE id=?").run(wix_id, req.params.id);
+    res.json({ success: true });
 });
 
 // -----------------------------------------------------------
