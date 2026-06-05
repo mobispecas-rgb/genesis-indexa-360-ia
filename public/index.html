@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Genesis Indexa 360 IA v5.0 — MIDWAY NTC 4.0</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -208,6 +209,30 @@ tr:hover td{background:#1c1c1c}
 .img-slot-card .slot-img-wrap{height:100px;display:flex;align-items:center;justify-content:center;border-radius:4px;overflow:hidden;background:#0d0d0d;border:1px dashed #2a2a2a;margin-bottom:6px}
 .img-slot-card .slot-img-wrap img{max-width:100%;max-height:100%;object-fit:contain}
 .img-slot-card .slot-placeholder{color:#333;font-size:2rem}
+/* SCANNER */
+.scanner-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden;max-width:480px;margin:0 auto}
+#scanner-video-region{width:100%}
+#scanner-video-region video{width:100%!important;border-radius:12px}
+#scanner-video-region img{display:none!important}
+.scanner-frame{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
+.scanner-line{width:80%;height:2px;background:linear-gradient(90deg,transparent,var(--primary),transparent);animation:scan-line 2s ease-in-out infinite}
+@keyframes scan-line{0%,100%{transform:translateY(-60px);opacity:0}50%{transform:translateY(60px);opacity:1}}
+.scanner-corner{position:absolute;width:40px;height:40px;border-color:var(--primary);border-style:solid;border-width:0}
+.sc-tl{top:20%;left:10%;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0}
+.sc-tr{top:20%;right:10%;border-top-width:3px;border-right-width:3px;border-radius:0 4px 0 0}
+.sc-bl{bottom:20%;left:10%;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 4px}
+.sc-br{bottom:20%;right:10%;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0}
+.gs1-field{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.gs1-ai{min-width:44px;font-size:.7rem;font-weight:700;color:var(--primary);font-family:monospace;background:#ff450015;padding:3px 6px;border-radius:4px;text-align:center}
+.gs1-label{font-size:.72rem;color:var(--text3);margin-bottom:2px}
+.gs1-value{font-size:.88rem;color:var(--text);font-family:monospace;word-break:break-all}
+.scan-result-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:14px}
+.scan-result-title{font-size:.8rem;font-weight:700;color:var(--success);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.scan-history-item{padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:8px;cursor:pointer;transition:border .15s}
+.scan-history-item:hover{border-color:var(--primary)}
+.scan-history-code{font-size:.78rem;font-family:monospace;color:var(--text);word-break:break-all}
+.scan-history-meta{font-size:.65rem;color:var(--text3);margin-top:2px}
+
 /* MISC */
 .flex{display:flex;align-items:center;gap:8px}
 .flex-wrap{flex-wrap:wrap}
@@ -242,6 +267,10 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">&#x1F4CA;</span> Dashboard</div>
     <div class="nav-item" data-page="produtos"><span class="nav-icon">&#x1F4E6;</span> Produtos</div>
     <div class="nav-item" data-page="ntc-inspector"><span class="nav-icon">&#x1F52C;</span> NTC Inspector</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Scanner</div>
+    <div class="nav-item" data-page="scanner"><span class="nav-icon">&#x1F4F7;</span> Leitor GS1 / OEM</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Catalogacao</div>
@@ -340,6 +369,49 @@ tr:hover td{background:#1c1c1c}
             <button class="btn btn-outline btn-sm" onclick="prodPage++; loadProdutos()">Prox</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- SCANNER GS1 / OEM / DNA -->
+    <div class="page" id="page-scanner">
+      <div class="sec">
+        <div class="sec-title">&#x1F4F7; Leitor de Codigo — GS1 / OEM / DNA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn" id="btn-start-scan" onclick="startScanner()">&#x25B6; Iniciar Camera</button>
+          <button class="btn btn-danger" id="btn-stop-scan" onclick="stopScanner()" style="display:none">&#x25A0; Parar Camera</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleCamera()">&#x1F504; Trocar Camera</button>
+          <button class="btn btn-gray btn-sm" onclick="clearScanHistory()">&#x1F5D1; Limpar Historico</button>
+        </div>
+        <!-- Camera view -->
+        <div class="scanner-wrap" id="scanner-wrap" style="display:none">
+          <div id="scanner-video-region"></div>
+          <div class="scanner-frame">
+            <div class="scanner-corner sc-tl"></div>
+            <div class="scanner-corner sc-tr"></div>
+            <div class="scanner-corner sc-bl"></div>
+            <div class="scanner-corner sc-br"></div>
+            <div class="scanner-line"></div>
+          </div>
+        </div>
+        <!-- Manual entry fallback -->
+        <div style="margin-top:14px">
+          <div class="fg" style="margin:0">
+            <label>Entrada Manual (cole ou digite o codigo)</label>
+            <div class="flex mt" style="gap:8px">
+              <input type="text" id="manual-barcode" placeholder="Ex: 0107894766669907 ou 6203236000 ou (01)07894766669907..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.85rem;outline:none;font-family:monospace" onkeydown="if(event.key==='Enter')parseManual()">
+              <button class="btn btn-sm" onclick="parseManual()">Analisar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultado do scan -->
+      <div id="scan-result-container"></div>
+
+      <!-- Historico -->
+      <div class="sec" id="scan-history-sec" style="display:none">
+        <div class="sec-title">Historico de Scans <span id="scan-history-count"></span></div>
+        <div id="scan-history-list"></div>
       </div>
     </div>
 
@@ -747,6 +819,8 @@ function onPageActivate(page) {
     else if (page === 'relatorios') loadRelatorios();
     else if (page === 'wix') loadWixStatus();
     else if (page === 'config') loadConfig();
+    // Stop scanner when leaving scanner page
+    if (page !== 'scanner' && scannerRunning) stopScanner();
 }
 
 // ======================================================
@@ -1543,6 +1617,438 @@ function switchTab(el, showId) {
         const el2 = document.getElementById(id);
         if (el2) el2.style.display = id === showId ? 'block' : 'none';
     });
+}
+
+// ======================================================
+// SCANNER GS1 / OEM / DNA
+// ======================================================
+let html5QrCode = null;
+let scannerRunning = false;
+let currentCameraFacing = 'environment'; // rear camera default
+let scanHistory = [];
+
+// GS1 Application Identifier definitions
+const GS1_AI = {
+    '00': { label: 'SSCC', name: 'Serial Shipping Container Code' },
+    '01': { label: 'GTIN', name: 'Global Trade Item Number' },
+    '02': { label: 'GTIN Contido', name: 'GTIN de itens contidos' },
+    '10': { label: 'Lote', name: 'Numero de lote/batch' },
+    '11': { label: 'Data Prod.', name: 'Data de producao' },
+    '13': { label: 'Data Embalagem', name: 'Data de embalagem' },
+    '15': { label: 'Validade Min.', name: 'Data de validade minima' },
+    '17': { label: 'Validade', name: 'Data de vencimento' },
+    '20': { label: 'Variante', name: 'Variante do produto' },
+    '21': { label: 'Serial', name: 'Numero de serie' },
+    '22': { label: 'Consumidor', name: 'ID consumidor' },
+    '30': { label: 'Qtd Variavel', name: 'Contagem variavel' },
+    '37': { label: 'Qtd Contida', name: 'Quantidade de itens contidos' },
+    '240': { label: 'ID Adicional', name: 'ID adicional do produto' },
+    '241': { label: 'Cod. Cliente', name: 'Numero de peca do cliente' },
+    '242': { label: 'Var. Pedido', name: 'Variacao do pedido feito' },
+    '243': { label: 'PCN', name: 'Numero do componente de embalagem' },
+    '250': { label: 'Serial 2', name: 'Numero de serie secundario' },
+    '251': { label: 'Ref. Fonte', name: 'Referencia da entidade fonte' },
+    '30':  { label: 'Qtd', name: 'Quantidade' },
+    '310': { label: 'Peso Liq(kg)', name: 'Peso liquido em kg' },
+    '311': { label: 'Comprimento(m)', name: 'Comprimento em metros' },
+    '312': { label: 'Largura(m)', name: 'Largura em metros' },
+    '315': { label: 'Volume(L)', name: 'Volume em litros' },
+    '320': { label: 'Peso Liq(lb)', name: 'Peso liquido em libras' },
+    '37':  { label: 'Qtd', name: 'Quantidade de itens' },
+    '400': { label: 'Pedido', name: 'Numero do pedido de compra' },
+    '401': { label: 'Consignacao', name: 'Numero de consignacao' },
+    '402': { label: 'Embarque', name: 'Numero de identificacao de embarque' },
+    '403': { label: 'Rota', name: 'Codigo de rota' },
+    '410': { label: 'Destino', name: 'Endereco de entrega (EAN.UCC-13)' },
+    '411': { label: 'Faturar', name: 'Faturar para (EAN.UCC-13)' },
+    '412': { label: 'Comprador', name: 'Comprador (EAN.UCC-13)' },
+    '413': { label: 'Ultima Dest.', name: 'Destino final (EAN.UCC-13)' },
+    '414': { label: 'Localizacao', name: 'Identificacao de localizacao' },
+    '420': { label: 'CEP', name: 'CEP de entrega' },
+    '421': { label: 'CEP Pais', name: 'CEP com codigo de pais' },
+    '422': { label: 'Origem', name: 'Pais de origem' },
+    '7001': { label: 'NATO NSN', name: 'NATO Stock Number' },
+    '7002': { label: 'Carne', name: 'Classificacao de carne UNECE' },
+    '8001': { label: 'Rolo', name: 'Dimensoes de rolo' },
+    '8002': { label: 'CMTE', name: 'ID de componente de celular' },
+    '8003': { label: 'GRAI', name: 'Global Returnable Asset Identifier' },
+    '8004': { label: 'GIAI', name: 'Global Individual Asset Identifier' },
+    '8005': { label: 'Preco/unid', name: 'Preco por unidade de medida' },
+    '8006': { label: 'ITIP', name: 'Componente individual de produto comercial' },
+    '8007': { label: 'IBAN', name: 'Numero de conta bancaria IBAN' },
+    '8008': { label: 'Data/Hora', name: 'Data e hora de producao' },
+    '8010': { label: 'CPID', name: 'ID de componente e peca' },
+    '8011': { label: 'CPID Serial', name: 'Numero serial do componente' },
+    '8012': { label: 'Versao Soft.', name: 'Versao do software' },
+    '8013': { label: 'GMN', name: 'Global Model Number' },
+    '8017': { label: 'GSRN Prov.', name: 'Global Service Relation Number (Provedor)' },
+    '8018': { label: 'GSRN Recip.', name: 'Global Service Relation Number (Recipiente)' },
+    '8019': { label: 'SRIN', name: 'Numero de instancia de relacao de servico' },
+    '8020': { label: 'REF Pag.', name: 'Referencia de pagamento' },
+    '8026': { label: 'ITIP Contido', name: 'Identificacao de itens ITIP contidos' },
+    '8110': { label: 'Cupom', name: 'Identificador de cupom' },
+    '8200': { label: 'URL Produto', name: 'URL de informacao estendida do produto' },
+    '90':  { label: 'Info Interna', name: 'Informacao de uso interno' },
+    '91':  { label: 'Int. Empresa 1', name: 'Empresa - uso interno' },
+    '92':  { label: 'Int. Empresa 2', name: 'Empresa - uso interno' },
+    '93':  { label: 'Int. Empresa 3', name: 'Empresa - uso interno' },
+    '94':  { label: 'Int. Empresa 4', name: 'Empresa - uso interno' },
+    '95':  { label: 'Int. Empresa 5', name: 'Empresa - uso interno' },
+    '96':  { label: 'Int. Empresa 6', name: 'Empresa - uso interno' },
+    '97':  { label: 'Int. Empresa 7', name: 'Empresa - uso interno' },
+    '98':  { label: 'Int. Empresa 8', name: 'Empresa - uso interno' },
+    '99':  { label: 'Int. Empresa 9', name: 'Empresa - uso interno' },
+};
+
+// GS1 AI variable-length definitions (max length)
+const GS1_AI_LENGTHS = {
+    '00':18,'01':14,'02':14,'10':20,'11':6,'13':6,'15':6,'17':6,
+    '20':2,'21':20,'22':20,'30':8,'37':8,'240':30,'241':30,'242':6,'243':20,
+    '250':30,'251':30,'400':30,'401':30,'402':17,'403':30,'410':13,'411':13,
+    '412':13,'413':13,'414':13,'420':20,'421':15,'422':3,'7001':13,'8002':20,
+    '8003':30,'8004':30,'8005':6,'8007':34,'8008':10,'8010':30,'8011':12,
+    '8012':20,'8013':25,'8017':18,'8018':18,'8019':10,'8020':25,'8026':22,
+    '8110':70,'8200':70,'90':30,'91':90,'92':90,'93':90,'94':90,'95':90,'96':90,'97':90,'98':90,'99':90
+};
+
+function parseGS1(raw) {
+    // Normalize: remove parentheses format (01)... to flat string
+    let str = raw.replace(/\((\d{2,4})\)/g, (_, ai) => String.fromCharCode(29) + ai);
+    // Remove leading FNC1 if present
+    str = str.replace(/^/, '');
+    const fields = [];
+    let i = 0;
+    // Try to detect if it's a plain GS1-128 without separators
+    // Standard GS1 format with FNC1 separators
+    while (i < str.length) {
+        // Skip GS separator
+        if (str[i] === '') { i++; continue; }
+        let ai = null, def = null;
+        // Try 4-digit AI first
+        for (const len of [4, 3, 2]) {
+            const candidate = str.substring(i, i + len);
+            if (GS1_AI[candidate]) { ai = candidate; def = GS1_AI[candidate]; break; }
+        }
+        if (!ai) { i++; continue; }
+        i += ai.length;
+        // Fixed length AIs
+        const fixedLen = { '01':14,'02':14,'00':18,'11':6,'13':6,'15':6,'17':6,'20':2,'30':8,'37':8 };
+        let value = '';
+        if (fixedLen[ai]) {
+            value = str.substring(i, i + fixedLen[ai]);
+            i += fixedLen[ai];
+        } else {
+            // Variable length — read until GS or end
+            const end = str.indexOf('', i);
+            value = end === -1 ? str.substring(i) : str.substring(i, end);
+            i += value.length;
+        }
+        if (value) fields.push({ ai, label: def.label, name: def.name, value });
+    }
+    return fields;
+}
+
+function detectBarcodeType(raw) {
+    const clean = raw.replace(/[\s]/g, '').replace(/\((\d+)\)/g, '$1');
+    if (/^\d{14}$/.test(clean) || raw.includes('(01)')) return 'GS1-GTIN-14';
+    if (/^\d{13}$/.test(clean)) return 'EAN-13';
+    if (/^\d{12}$/.test(clean)) return 'UPC-A';
+    if (/^\d{8}$/.test(clean)) return 'EAN-8';
+    if (raw.includes('') || /\(\d{2,4}\)/.test(raw)) return 'GS1-128';
+    if (/^[A-Z0-9\-\.\/\+\%\$\s]+$/.test(raw) && raw.length <= 30) return 'OEM/Code39';
+    if (/^[A-Z]{2,4}[-]?[0-9]{4,12}[A-Z0-9]*$/i.test(raw)) return 'OEM/Codigo Peca';
+    return 'Code128/Outro';
+}
+
+function parseOEM(raw) {
+    // Try to extract brand and part number from OEM codes
+    const brandPatterns = Object.keys(GRUPOS);
+    let detected = null;
+    const lower = raw.toLowerCase();
+    for (const b of brandPatterns) {
+        if (lower.startsWith(b) || lower.includes('-' + b) || lower.includes('.' + b)) {
+            detected = b; break;
+        }
+    }
+    // Extract numeric/alphanumeric code
+    const codeMatch = raw.match(/[A-Z0-9]{4,20}/i);
+    return {
+        brand: detected ? GRUPOS[detected] : null,
+        brandKey: detected,
+        codigo: codeMatch ? codeMatch[0] : raw,
+        raw
+    };
+}
+
+function extractDNAFromScan(raw, gs1Fields, barcodeType) {
+    const dna = { marca: null, fabricante: null, grupo_industrial: null, origem_pais: null, codigo_dna: null, ean: null, gtin: null, lote: null, serial: null, validade: null };
+
+    // From GS1 fields
+    if (gs1Fields.length > 0) {
+        for (const f of gs1Fields) {
+            if (f.ai === '01' || f.ai === '02') { dna.gtin = f.value; dna.ean = f.value; }
+            if (f.ai === '10') dna.lote = f.value;
+            if (f.ai === '21') dna.serial = f.value;
+            if (f.ai === '17' || f.ai === '15') dna.validade = f.value;
+            if (f.ai === '241') dna.codigo_dna = f.value;
+            if (f.ai === '240') dna.codigo_dna = dna.codigo_dna || f.value;
+        }
+    }
+
+    // From OEM/raw code — detect brand
+    const brandInfo = detectBrand(raw);
+    if (brandInfo) {
+        dna.marca = brandInfo.brand.toUpperCase();
+        dna.fabricante = brandInfo.grupo;
+        dna.grupo_industrial = brandInfo.grupo;
+        dna.origem_pais = brandInfo.origem;
+    }
+
+    // Extract part code
+    if (!dna.codigo_dna) {
+        const c = extractCode(raw);
+        if (c) dna.codigo_dna = c;
+    }
+
+    // EAN from plain digits
+    if (!dna.ean && /^\d{13}$/.test(raw.trim())) dna.ean = raw.trim();
+    if (!dna.ean && /^\d{14}$/.test(raw.trim())) { dna.gtin = raw.trim(); dna.ean = raw.trim(); }
+
+    return dna;
+}
+
+function renderScanResult(raw, fromCamera) {
+    const barcodeType = detectBarcodeType(raw);
+    const gs1Fields = parseGS1(raw);
+    const dna = extractDNAFromScan(raw, gs1Fields, barcodeType);
+    const ntcResult = calcNTCFromDNA(raw, dna);
+
+    // Save to history
+    scanHistory.unshift({ raw, barcodeType, dna, ts: new Date().toLocaleTimeString('pt-BR') });
+    if (scanHistory.length > 20) scanHistory.pop();
+    updateScanHistory();
+
+    const container = document.getElementById('scan-result-container');
+    const typeColor = barcodeType.includes('GS1') ? 'var(--success)' : barcodeType.includes('OEM') ? 'var(--info)' : 'var(--warning)';
+
+    container.innerHTML = `
+    <div class="scan-result-card">
+        <div class="scan-result-title">
+            <span style="font-size:1.2rem">&#x2714;</span>
+            Codigo Detectado
+            <span class="badge" style="background:${typeColor}20;color:${typeColor};border:1px solid ${typeColor}40">${barcodeType}</span>
+            ${fromCamera ? '<span class="badge badge-blue">Camera</span>' : '<span class="badge badge-gray">Manual</span>'}
+        </div>
+        <div style="background:var(--bg);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-family:monospace;font-size:.85rem;word-break:break-all;color:var(--text)">${raw}</div>
+
+        ${gs1Fields.length > 0 ? `
+        <div class="sec-title" style="font-size:.75rem;margin-bottom:8px">&#x1F4CB; Campos GS1 Decodificados (${gs1Fields.length})</div>
+        ${gs1Fields.map(f => `
+            <div class="gs1-field">
+                <div class="gs1-ai">AI (${f.ai})</div>
+                <div>
+                    <div class="gs1-label">${f.name}</div>
+                    <div class="gs1-value">${f.value}</div>
+                </div>
+            </div>`).join('')}
+        <div style="margin-bottom:12px"></div>` : ''}
+
+        <div class="sec-title" style="font-size:.75rem;margin-bottom:8px">&#x1F9EC; DNA Extraido</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:12px">
+            ${dnaField('Marca', dna.marca)}
+            ${dnaField('Fabricante', dna.fabricante)}
+            ${dnaField('Grupo', dna.grupo_industrial)}
+            ${dnaField('Origem', dna.origem_pais)}
+            ${dnaField('Codigo OEM/DNA', dna.codigo_dna)}
+            ${dnaField('EAN/GTIN', dna.ean || dna.gtin)}
+            ${dnaField('Lote', dna.lote)}
+            ${dnaField('Serial', dna.serial)}
+            ${dnaField('Validade', dna.validade)}
+        </div>
+
+        <div class="sec-title" style="font-size:.75rem;margin-bottom:8px">&#x1F4CA; NTC Estimado</div>
+        <div class="flex mb" style="gap:10px;margin-bottom:12px">
+            ${ntcBadge(ntcResult.score, ntcResult.status, true)}
+            <span class="mono" style="font-size:.65rem;color:var(--text3)">${ntcResult.rast_hash}</span>
+        </div>
+
+        <div class="sec-title" style="font-size:.75rem;margin-bottom:8px">&#x1F527; Aplicar em Produto</div>
+        <div class="flex" style="gap:8px;flex-wrap:wrap">
+            <select id="scan-apply-prod" style="flex:1;min-width:160px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.8rem">
+                <option value="">Selecione produto...</option>
+            </select>
+            <button class="btn btn-success btn-sm" onclick="applyScanToProduto()">Aplicar DNA</button>
+            <button class="btn btn-blue btn-sm" onclick="copiarCodigo('${raw.replace(/'/g, "\\'")}')">Copiar</button>
+        </div>
+        <div id="scan-apply-status" class="text-xs mt"></div>
+    </div>`;
+
+    // Populate product select
+    api('/produtos?limit=200').then(d => {
+        const sel = document.getElementById('scan-apply-prod');
+        if (sel) sel.innerHTML = '<option value="">Selecione produto...</option>' +
+            d.data.map(p => `<option value="${p.id}">${p.ref} — ${p.descricao.substring(0,40)}</option>`).join('');
+    });
+
+    // Store current DNA for apply
+    window._currentScanDNA = dna;
+    window._currentScanRaw = raw;
+}
+
+function dnaField(label, value) {
+    if (!value) return `<div style="background:#111;border-radius:6px;padding:8px 10px;opacity:.4"><div style="font-size:.65rem;color:var(--text3)">${label}</div><div style="font-size:.75rem;color:#555">— nao encontrado</div></div>`;
+    return `<div style="background:#111;border-radius:6px;padding:8px 10px;border:1px solid var(--border)"><div style="font-size:.65rem;color:var(--text3)">${label}</div><div style="font-size:.8rem;color:var(--text);font-family:monospace;word-break:break-all">${value}</div></div>`;
+}
+
+function calcNTCFromDNA(raw, dna) {
+    // Quick NTC estimate from scan data
+    const text = raw + ' ' + (dna.marca || '') + ' ' + (dna.fabricante || '');
+    const extra = {
+        ean: dna.ean || dna.gtin,
+        ncm: null, cest: null, cfop: null,
+        aplicacoes: [], codigos: [], imagens: []
+    };
+    return calcNTC(text, extra);
+}
+
+async function applyScanToProduto() {
+    const prodId = document.getElementById('scan-apply-prod').value;
+    const statusEl = document.getElementById('scan-apply-status');
+    const dna = window._currentScanDNA;
+    if (!prodId) { statusEl.textContent = 'Selecione um produto'; return; }
+    if (!dna) return;
+    statusEl.textContent = 'Aplicando...';
+    // Update DNA
+    const r = await api('/produtos/' + prodId + '/dna', {
+        method: 'PUT',
+        body: JSON.stringify({
+            marca: dna.marca || undefined,
+            fabricante: dna.fabricante || undefined,
+            grupo_industrial: dna.grupo_industrial || undefined,
+            origem_pais: dna.origem_pais || undefined,
+            codigo_dna: dna.codigo_dna || undefined,
+        })
+    });
+    // Recalculate NTC
+    const r2 = await api('/produtos/' + prodId + '/ntc/recalcular', { method: 'POST' });
+    if (r.success) {
+        const pct = r2.ntc ? (r2.ntc.score * 100).toFixed(1) + '% ' + r2.ntc.status : '';
+        statusEl.innerHTML = `<span style="color:var(--success)">&#x2714; DNA aplicado! NTC recalculado: ${pct}</span>`;
+    } else {
+        statusEl.textContent = r.error || 'Erro ao aplicar';
+    }
+}
+
+function copiarCodigo(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const el = document.getElementById('scan-apply-status');
+        if (el) { el.innerHTML = '<span style="color:var(--success)">&#x2714; Copiado!</span>'; setTimeout(() => el.textContent = '', 2000); }
+    });
+}
+
+function updateScanHistory() {
+    const sec = document.getElementById('scan-history-sec');
+    const list = document.getElementById('scan-history-list');
+    const count = document.getElementById('scan-history-count');
+    if (!scanHistory.length) { sec.style.display = 'none'; return; }
+    sec.style.display = 'block';
+    count.textContent = '(' + scanHistory.length + ')';
+    list.innerHTML = scanHistory.map((h, i) => `
+        <div class="scan-history-item" onclick="replayScan(${i})">
+            <div class="scan-history-code">${h.raw.substring(0, 80)}${h.raw.length > 80 ? '...' : ''}</div>
+            <div class="scan-history-meta">
+                <span class="badge badge-gray" style="font-size:.6rem">${h.barcodeType}</span>
+                ${h.dna.marca ? '<span style="color:var(--info);margin-left:6px;font-size:.65rem">'+h.dna.marca+'</span>' : ''}
+                <span style="margin-left:auto;float:right;color:var(--text3);font-size:.65rem">${h.ts}</span>
+            </div>
+        </div>`).join('');
+}
+
+function replayScan(index) {
+    const h = scanHistory[index];
+    if (h) renderScanResult(h.raw, false);
+}
+
+function clearScanHistory() {
+    scanHistory = [];
+    updateScanHistory();
+    document.getElementById('scan-result-container').innerHTML = '';
+}
+
+function parseManual() {
+    const val = document.getElementById('manual-barcode').value.trim();
+    if (!val) return;
+    renderScanResult(val, false);
+}
+
+async function startScanner() {
+    if (scannerRunning) return;
+    document.getElementById('scanner-wrap').style.display = 'block';
+    document.getElementById('btn-start-scan').style.display = 'none';
+    document.getElementById('btn-stop-scan').style.display = 'inline-block';
+
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode('scanner-video-region');
+    }
+
+    const config = {
+        fps: 15,
+        qrbox: { width: 280, height: 140 },
+        supportedScanTypes: [
+            Html5QrcodeScanType.SCAN_TYPE_CAMERA
+        ],
+        formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.PDF_417,
+            Html5QrcodeSupportedFormats.AZTEC,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+        ]
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: currentCameraFacing },
+            config,
+            (decodedText) => {
+                renderScanResult(decodedText, true);
+                // Vibrate on success (mobile)
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            },
+            () => {} // ignore scan errors
+        );
+        scannerRunning = true;
+    } catch (err) {
+        document.getElementById('scanner-wrap').style.display = 'none';
+        document.getElementById('btn-start-scan').style.display = 'inline-block';
+        document.getElementById('btn-stop-scan').style.display = 'none';
+        alert('Camera nao disponivel: ' + (err.message || err) + '\n\nUse a entrada manual abaixo.');
+    }
+}
+
+async function stopScanner() {
+    if (html5QrCode && scannerRunning) {
+        await html5QrCode.stop();
+        scannerRunning = false;
+    }
+    document.getElementById('scanner-wrap').style.display = 'none';
+    document.getElementById('btn-start-scan').style.display = 'inline-block';
+    document.getElementById('btn-stop-scan').style.display = 'none';
+}
+
+async function toggleCamera() {
+    currentCameraFacing = currentCameraFacing === 'environment' ? 'user' : 'environment';
+    if (scannerRunning) {
+        await stopScanner();
+        await startScanner();
+    }
 }
 
 // ======================================================
