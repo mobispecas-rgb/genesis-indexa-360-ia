@@ -247,6 +247,106 @@ tr:hover td{background:#1c1c1c}
 .link-btn{display:block;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:.75rem;text-decoration:none;text-align:center;transition:border .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .link-btn:hover{border-color:var(--primary);color:var(--primary)}
 
+/* ENRIQUECIMENTO iROLLO */
+.irollo-header{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.irollo-status{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--success)}
+.irollo-status .dot{width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+.nct-card{background:var(--bg2);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px;text-align:center}
+.nct-score-big{font-size:3.5rem;font-weight:900;line-height:1}
+.nct-status-big{font-size:1rem;font-weight:700;margin-top:4px}
+.nct-modules{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
+.nct-module{background:var(--bg3);border-radius:8px;padding:12px;text-align:left}
+.nct-mod-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.nct-mod-label{font-size:.72rem;font-weight:700;color:var(--text2)}
+.nct-mod-pct{font-size:.65rem;color:var(--text3)}
+.nct-mod-score{font-size:1.3rem;font-weight:900}
+.rast-box{background:#0d0d0d;border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:monospace;font-size:.75rem;color:var(--text3);display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.rast-hash{color:var(--primary);font-size:.8rem}
+.gaveta{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.gaveta-header{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;user-select:none;transition:background .15s}
+.gaveta-header:hover{background:var(--bg3)}
+.gaveta-icon{font-size:.85rem}
+.gaveta-status{margin-left:auto;font-size:.68rem}
+.gaveta-body{padding:14px 16px;border-top:1px solid var(--border);display:none}
+.gaveta.open .gaveta-body{display:block}
+.gaveta.open .gaveta-chevron{transform:rotate(180deg)}
+.gaveta-chevron{transition:transform .2s;font-size:.7rem;color:var(--text3)}
+.img-slot-6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:600px){.img-slot-6{grid-template-columns:repeat(2,1fr)}.nct-modules{grid-template-columns:1fr}}
+.img-slot-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:1;position:relative;cursor:pointer;transition:border .2s}
+.img-slot-item:hover{border-color:var(--primary)}
+.img-slot-item.has-img{border-color:#333}
+.img-slot-item img{width:100%;height:100%;object-fit:contain;background:#0d0d0d}
+.img-slot-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);font-size:.6rem;color:#aaa;padding:3px 6px;text-align:center;font-weight:700}
+.img-slot-num{position:absolute;top:5px;left:8px;font-size:.7rem;font-weight:900;color:var(--primary)}
+.img-slot-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#333;font-size:1.5rem;gap:4px}
+.img-slot-empty span{font-size:.6rem;color:#444}
+.gs-checks{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.72rem;margin-top:8px}
+.gs-check{display:flex;align-items:center;gap:5px}
+.gs-check.ok{color:var(--success)}
+.gs-check.fail{color:var(--danger)}
+.voz-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.voz-tab{padding:8px 14px;font-size:.75rem;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;min-height:38px;display:flex;align-items:center}
+.voz-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.voz-output{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:.84rem;color:var(--text);min-height:80px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.indexar-btn{width:100%;padding:16px;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#ff4500,#ff8800);border:none;border-radius:10px;color:#fff;cursor:pointer;transition:opacity .2s;letter-spacing:.05em;margin-top:4px}
+.indexar-btn:hover{opacity:.85}
+.indexar-btn:disabled{opacity:.5;cursor:not-allowed}
+.platform-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem}
+.platform-row:last-child{border-bottom:none}
+.platform-name{flex:1;font-weight:600}
+.platform-status{font-size:.72rem}
+
+/* ENRIQUECIMENTO iROLLO */
+.irollo-header{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.irollo-status{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--success)}
+.irollo-status .dot{width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+.nct-card{background:var(--bg2);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:14px;text-align:center}
+.nct-score-big{font-size:3.5rem;font-weight:900;line-height:1}
+.nct-status-big{font-size:1rem;font-weight:700;margin-top:4px}
+.nct-modules{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
+.nct-module{background:var(--bg3);border-radius:8px;padding:12px;text-align:left}
+.nct-mod-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.nct-mod-label{font-size:.72rem;font-weight:700;color:var(--text2)}
+.nct-mod-pct{font-size:.65rem;color:var(--text3)}
+.nct-mod-score{font-size:1.3rem;font-weight:900}
+.rast-box{background:#0d0d0d;border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:monospace;font-size:.75rem;color:var(--text3);display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.rast-hash{color:var(--primary);font-size:.8rem}
+.gaveta{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.gaveta-header{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;user-select:none;transition:background .15s}
+.gaveta-header:hover{background:var(--bg3)}
+.gaveta-icon{font-size:.85rem}
+.gaveta-status{margin-left:auto;font-size:.68rem}
+.gaveta-body{padding:14px 16px;border-top:1px solid var(--border);display:none}
+.gaveta.open .gaveta-body{display:block}
+.gaveta.open .gaveta-chevron{transform:rotate(180deg)}
+.gaveta-chevron{transition:transform .2s;font-size:.7rem;color:var(--text3)}
+.img-slot-6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:600px){.img-slot-6{grid-template-columns:repeat(2,1fr)}.nct-modules{grid-template-columns:1fr}}
+.img-slot-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:1;position:relative;cursor:pointer;transition:border .2s}
+.img-slot-item:hover{border-color:var(--primary)}
+.img-slot-item.has-img{border-color:#333}
+.img-slot-item img{width:100%;height:100%;object-fit:contain;background:#0d0d0d}
+.img-slot-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);font-size:.6rem;color:#aaa;padding:3px 6px;text-align:center;font-weight:700}
+.img-slot-num{position:absolute;top:5px;left:8px;font-size:.7rem;font-weight:900;color:var(--primary)}
+.img-slot-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#333;font-size:1.5rem;gap:4px}
+.img-slot-empty span{font-size:.6rem;color:#444}
+.gs-checks{display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.72rem;margin-top:8px}
+.gs-check{display:flex;align-items:center;gap:5px}
+.gs-check.ok{color:var(--success)}
+.gs-check.fail{color:var(--danger)}
+.voz-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.voz-tab{padding:8px 14px;font-size:.75rem;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;min-height:38px;display:flex;align-items:center}
+.voz-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.voz-output{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:.84rem;color:var(--text);min-height:80px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.indexar-btn{width:100%;padding:16px;font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#ff4500,#ff8800);border:none;border-radius:10px;color:#fff;cursor:pointer;transition:opacity .2s;letter-spacing:.05em;margin-top:4px}
+.indexar-btn:hover{opacity:.85}
+.indexar-btn:disabled{opacity:.5;cursor:not-allowed}
+.platform-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem}
+.platform-row:last-child{border-bottom:none}
+.platform-name{flex:1;font-weight:600}
+.platform-status{font-size:.72rem}
+
 /* MISC */
 .flex{display:flex;align-items:center;gap:8px}
 .flex-wrap{flex-wrap:wrap}
@@ -280,30 +380,30 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-section-label">Principal</div>
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">&#x1F4CA;</span> Dashboard</div>
     <div class="nav-item" data-page="produtos"><span class="nav-icon">&#x1F4E6;</span> Produtos</div>
-    <div class="nav-item" data-page="ntc-inspector"><span class="nav-icon">&#x1F52C;</span> NTC Inspector</div>
   </div>
   <div class="nav-section">
-    <div class="nav-section-label">Scanner</div>
-    <div class="nav-item" data-page="scanner"><span class="nav-icon">&#x1F4F7;</span> Leitor GS1 / OEM</div>
+    <div class="nav-section-label">Motor iRollo</div>
+    <div class="nav-item" data-page="enriquecimento"><span class="nav-icon">&#x2728;</span> Enriquecimento OEM</div>
+    <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao</div>
+    <div class="nav-item" data-page="congelados"><span class="nav-icon">&#x2744;&#xFE0F;</span> Congelados</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Catalogacao</div>
+    <div class="nav-item" data-page="scanner"><span class="nav-icon">&#x1F4F7;</span> EAN Scanner GS1</div>
+    <div class="nav-item" data-page="imagens"><span class="nav-icon">&#x1F5BC;&#xFE0F;</span> Imagens</div>
     <div class="nav-item" data-page="aplicacoes"><span class="nav-icon">&#x1F697;</span> Aplicacoes Motor</div>
-    <div class="nav-item" data-page="imagens"><span class="nav-icon">&#x1F5BC;&#xFE0F;</span> Central de Imagens</div>
     <div class="nav-item" data-page="fiscal"><span class="nav-icon">&#x1F4CB;</span> Fiscal &amp; Logistica</div>
-  </div>
-  <div class="nav-section">
-    <div class="nav-section-label">Comercial</div>
-    <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
+    <div class="nav-item" data-page="ntc-inspector"><span class="nav-icon">&#x1F52C;</span> NTC Inspector</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Inteligencia</div>
-    <div class="nav-item" data-page="ia-analyzer"><span class="nav-icon">&#x1F916;</span> IA + NTC Analyzer</div>
+    <div class="nav-item" data-page="ia-analyzer"><span class="nav-icon">&#x1F916;</span> IA Analyzer</div>
     <div class="nav-item" data-page="relatorios"><span class="nav-icon">&#x1F4C8;</span> Relatorios</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Integracao</div>
     <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
+    <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Sistema</div>
@@ -426,6 +526,127 @@ tr:hover td{background:#1c1c1c}
       <div class="sec" id="scan-history-sec" style="display:none">
         <div class="sec-title">Historico de Scans <span id="scan-history-count"></span></div>
         <div id="scan-history-list"></div>
+      </div>
+    </div>
+
+    <!-- ENRIQUECIMENTO iROLLO -->
+    <div class="page" id="page-enriquecimento">
+      <!-- Header -->
+      <div class="irollo-header">
+        <div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Motor iRollo v3.5 + Claude Haiku</div>
+          <div style="font-size:1rem;font-weight:900;color:var(--primary)">Enriquecimento por OEM / ID</div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">Triangulacao Web + TecDoc + EAN DB &#x2192; NCT &#x2192; Bling + Wix + Google Shopping</div>
+        </div>
+        <div class="irollo-status ml-auto"><div class="dot"></div> MOTOR ON</div>
+      </div>
+      <!-- Product selector -->
+      <div class="sec">
+        <div class="sec-title">Selecionar Produto</div>
+        <div class="flex" style="gap:10px;flex-wrap:wrap">
+          <select id="enr-prod-select" style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-size:.85rem">
+            <option value="">Selecione um produto para enriquecer...</option>
+          </select>
+          <button class="btn" onclick="loadEnriquecimento()">&#x26A1; Carregar</button>
+        </div>
+      </div>
+      <div id="enr-body" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <!-- LEFT: NCT + Dados + Voz -->
+          <div>
+            <!-- NCT Card -->
+            <div class="nct-card" id="enr-nct-card">
+              <div style="font-size:.7rem;color:var(--text3);margin-bottom:6px">Motor NCT — iRollo v3.5</div>
+              <div class="nct-score-big" id="enr-nct-score">—</div>
+              <div class="nct-status-big" id="enr-nct-status"></div>
+              <div class="nct-modules" id="enr-nct-modules"></div>
+              <div class="rast-box">
+                <span style="font-size:.65rem;color:var(--text3)">RAST-HASH Certificado</span>
+                <span class="rast-hash" id="enr-rast">—</span>
+                <button class="btn-xs btn-gray btn" onclick="copiarRast()" style="padding:2px 8px;font-size:.62rem">&#x1F4CB;</button>
+              </div>
+            </div>
+            <!-- Dados Tecnicos -->
+            <div class="sec">
+              <div class="sec-title">&#x1F4CB; Dados Tecnicos</div>
+              <div id="enr-dados-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem"></div>
+            </div>
+            <!-- Voz do Lojista -->
+            <div class="sec">
+              <div class="sec-title">&#x1F5E3;&#xFE0F; Voz do Lojista · Claude Haiku</div>
+              <div class="voz-tabs">
+                <div class="voz-tab active" onclick="switchVoz(this,'tecnico')">&#x2699;&#xFE0F; Tecnico</div>
+                <div class="voz-tab" onclick="switchVoz(this,'comercial')">&#x1F4BC; Comercial</div>
+                <div class="voz-tab" onclick="switchVoz(this,'seo')">&#x1F50D; SEO</div>
+                <div class="voz-tab" onclick="switchVoz(this,'whatsapp')">&#x1F4AC; WhatsApp</div>
+                <div class="voz-tab" onclick="switchVoz(this,'pmax')">&#x1F4E2; P-Max</div>
+              </div>
+              <div class="voz-output" id="voz-output">Clique em "Gerar com IA" para criar o texto.</div>
+              <div class="flex mt" style="gap:8px;margin-top:10px;flex-wrap:wrap">
+                <button class="btn btn-sm" id="voz-btn" onclick="gerarVoz()">&#x1F916; Gerar com IA</button>
+                <button class="btn btn-gray btn-sm" onclick="copiarVoz()">&#x1F4CB; Copiar</button>
+                <button class="btn btn-outline btn-sm" onclick="gerarVoz()">&#x1F504; Nova variacao</button>
+                <div class="text-xs ml-auto" id="voz-status"></div>
+              </div>
+            </div>
+          </div>
+          <!-- RIGHT: Imagens + Gavetas -->
+          <div>
+            <!-- Imagens -->
+            <div class="sec">
+              <div class="sec-title">&#x1F5BC;&#xFE0F; 6 Imagens — Padrao Google Shopping</div>
+              <div class="gs-checks" id="enr-gs-checks"></div>
+              <div class="img-slot-6" id="enr-img-slots" style="margin-top:12px"></div>
+              <!-- URL import -->
+              <div class="fg" style="margin-top:10px;margin-bottom:6px">
+                <label>Cole a URL da imagem ou busque na web</label>
+                <div class="flex" style="gap:6px;margin-top:4px">
+                  <input type="text" id="enr-img-url" placeholder="https://..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.8rem;outline:none">
+                  <button class="btn btn-sm" onclick="importarUrlEnr()">&#x2B07; Importar</button>
+                  <button class="btn btn-blue btn-sm" onclick="abrirBuscaWebEnr()">&#x1F50D; Web</button>
+                </div>
+              </div>
+              <div id="enr-img-status" class="text-xs"></div>
+            </div>
+            <!-- Gavetas de Indexacao -->
+            <div class="sec">
+              <div class="sec-title">&#x1F4E5; Gavetas de Indexacao</div>
+              <div id="enr-gavetas"></div>
+            </div>
+            <!-- INDEXAR -->
+            <button class="indexar-btn" id="btn-indexar" onclick="congelarIndexar()">
+              &#x2744;&#xFE0F; CONGELAR E INDEXAR — Bling + Wix + Google Shopping
+            </button>
+            <div id="indexar-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APROVACAO -->
+    <div class="page" id="page-aprovacao">
+      <div class="sec">
+        <div class="sec-title">&#x2705; Fila de Aprovacao</div>
+        <div class="tbl-wrap">
+          <table id="tbl-aprovacao">
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>NTC</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONGELADOS -->
+    <div class="page" id="page-congelados">
+      <div class="kpi-grid" id="congelados-kpi"></div>
+      <div class="sec">
+        <div class="sec-title">&#x2744;&#xFE0F; Produtos Congelados &amp; Indexados</div>
+        <div class="tbl-wrap">
+          <table id="tbl-congelados">
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Marca</th><th>NTC</th><th>Wix</th><th>Atualizado</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
