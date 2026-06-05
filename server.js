@@ -1345,6 +1345,294 @@ app.put('/api/produtos/:id/wix', (req, res) => {
 });
 
 // -----------------------------------------------------------
+// CATALOGO IMPORT — CSV / Excel / PDF / Web Scraper
+// -----------------------------------------------------------
+const XLSX = require('xlsx');
+const { parse: csvParse } = require('csv-parse/sync');
+const pdfParse = require('pdf-parse');
+const cheerio = require('cheerio');
+
+const uploadCatalogo = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 }
+});
+
+// Normalize a row from any format into product fields
+function normalizarLinha(row) {
+    const keys = Object.keys(row).map(k => k.toLowerCase().trim().replace(/\s+/g,'_'));
+    const vals = Object.values(row);
+    const obj = {};
+    keys.forEach((k, i) => { obj[k] = (vals[i] !== undefined && vals[i] !== null) ? String(vals[i]).trim() : ''; });
+
+    const pick = (...candidates) => { for (const c of candidates) { if (obj[c] && obj[c].length > 0) return obj[c]; } return null; };
+
+    return {
+        ref:        pick('ref','referencia','codigo','sku','part_number','cod','reference','part'),
+        descricao:  pick('descricao','description','nome','name','produto','title','titulo','desc'),
+        marca:      pick('marca','brand','fabricante','manufacturer'),
+        oem:        pick('oem','codigo_oem','codigo_dna','part_number','ref_oem','oe'),
+        ncm:        pick('ncm','ncm_sh','fiscal_ncm'),
+        peso:       pick('peso','peso_liq','peso_liquido','weight','peso_kg'),
+        preco:      pick('preco','price','preco_venda','valor','preco_custo'),
+        aplicacoes: pick('aplicacoes','aplicacao','veiculos','vehicles','fitment','compatibility'),
+        grupo:      pick('grupo','grupo_industrial','group','familia'),
+        origem:     pick('origem','origin','pais_origem','country'),
+    };
+}
+
+async function salvarLinha(linha, empresaId) {
+    if (!linha.ref || !linha.descricao) return { skip: true, motivo: 'ref ou descricao ausente' };
+    const ref = linha.ref.substring(0, 80);
+    const descricao = linha.descricao.substring(0, 255);
+    const existente = db.prepare('SELECT id FROM produtos WHERE ref=? AND empresa_id=?').get(ref, empresaId);
+    let prodId;
+    if (existente) {
+        prodId = existente.id;
+        db.prepare("UPDATE produtos SET descricao=?, atualizado_em=datetime('now','localtime') WHERE id=?").run(descricao, prodId);
+    } else {
+        const ins = db.prepare("INSERT INTO produtos (empresa_id,ref,descricao,status) VALUES (?,?,?,'Ativo')").run(empresaId, ref, descricao);
+        prodId = ins.lastInsertRowid;
+    }
+    // DNA
+    if (linha.marca || linha.oem || linha.grupo) {
+        const existDna = db.prepare('SELECT id FROM dna WHERE produto_id=?').get(prodId);
+        if (existDna) {
+            db.prepare("UPDATE dna SET marca=COALESCE(NULLIF(?,'')||marca,marca), codigo_dna=COALESCE(NULLIF(?,'')||codigo_dna,codigo_dna), grupo_industrial=COALESCE(NULLIF(?,'')||grupo_industrial,grupo_industrial), origem_pais=COALESCE(NULLIF(?,'')||origem_pais,origem_pais) WHERE produto_id=?")
+                .run(linha.marca||null, linha.oem||null, linha.grupo||null, linha.origem||null, prodId);
+        } else {
+            db.prepare("INSERT INTO dna (produto_id,marca,fabricante,codigo_dna,grupo_industrial,origem_pais) VALUES (?,?,?,?,?,?)")
+                .run(prodId, linha.marca||null, linha.marca||null, linha.oem||null, linha.grupo||null, linha.origem||null);
+        }
+    }
+    // Fiscal
+    if (linha.ncm) {
+        const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(prodId);
+        if (existF) db.prepare("UPDATE dados_fiscais SET ncm=? WHERE produto_id=?").run(linha.ncm, prodId);
+        else db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,origem) VALUES (?,?,?)").run(prodId, linha.ncm, '0');
+    }
+    // Logistica
+    if (linha.peso) {
+        const pesoNum = parseFloat(String(linha.peso).replace(',', '.'));
+        if (!isNaN(pesoNum)) {
+            const existL = db.prepare('SELECT id FROM logistica WHERE produto_id=?').get(prodId);
+            if (existL) db.prepare("UPDATE logistica SET peso_liq=? WHERE produto_id=?").run(pesoNum, prodId);
+            else db.prepare("INSERT INTO logistica (produto_id,peso_liq) VALUES (?,?)").run(prodId, pesoNum);
+        }
+    }
+    // Aplicacoes simples (texto livre)
+    if (linha.aplicacoes && linha.aplicacoes.length > 2) {
+        const partes = linha.aplicacoes.split(/[,;\/|]/);
+        for (const parte of partes.slice(0, 10)) {
+            const s = parte.trim();
+            if (s.length < 3) continue;
+            const jaExiste = db.prepare('SELECT id FROM aplicacoes_motor WHERE produto_id=? AND modelo=?').get(prodId, s);
+            if (!jaExiste) db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo) VALUES (?,?,?)").run(prodId, 'Geral', s);
+        }
+    }
+    return { success: true, id: prodId, ref, novo: !existente };
+}
+
+// Upload CSV
+app.post('/api/catalogo/importar/csv', uploadCatalogo.single('arquivo'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Arquivo obrigatorio' });
+    try {
+        const rows = csvParse(req.file.buffer, {
+            columns: true, skip_empty_lines: true, trim: true,
+            relax_quotes: true, relax_column_count: true
+        });
+        const resultados = [];
+        for (const row of rows) {
+            const linha = normalizarLinha(row);
+            resultados.push(await salvarLinha(linha, 1));
+        }
+        const salvos = resultados.filter(r => r.success).length;
+        const novos = resultados.filter(r => r.novo).length;
+        res.json({ success: true, total: rows.length, salvos, novos, atualizados: salvos - novos, erros: resultados.filter(r => r.skip).length });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Upload Excel
+app.post('/api/catalogo/importar/excel', uploadCatalogo.single('arquivo'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Arquivo obrigatorio' });
+    try {
+        const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        const resultados = [];
+        for (const row of rows) {
+            const linha = normalizarLinha(row);
+            resultados.push(await salvarLinha(linha, 1));
+        }
+        const salvos = resultados.filter(r => r.success).length;
+        const novos = resultados.filter(r => r.novo).length;
+        res.json({ success: true, total: rows.length, salvos, novos, atualizados: salvos - novos, erros: resultados.filter(r => r.skip).length, planilha: wb.SheetNames[0] });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Upload PDF
+app.post('/api/catalogo/importar/pdf', uploadCatalogo.single('arquivo'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Arquivo obrigatorio' });
+    try {
+        const data = await pdfParse(req.file.buffer);
+        const texto = data.text;
+        // Ask Claude Haiku to extract structured product list from PDF text
+        const systemPrompt = `Voce e um especialista em catalogo de autopecas. Extraia todos os produtos encontrados no texto e retorne SOMENTE um JSON array valido:
+[{"ref":"","descricao":"","marca":"","oem":"","ncm":"","peso":"","aplicacoes":""}]
+Regras: ref obrigatorio (codigo/SKU/part number), descricao obrigatorio. Use null para campos ausentes. Retorne apenas o JSON array, sem texto extra.`;
+        const userPrompt = `Extraia produtos deste catalogo PDF (primeiros 3000 chars):\n\n${texto.substring(0, 3000)}`;
+        const claudeResult = await callClaude(systemPrompt, userPrompt);
+        let produtos = [];
+        try {
+            const jsonText = (claudeResult.text || '').replace(/```json|```/g, '').trim();
+            produtos = JSON.parse(jsonText);
+            if (!Array.isArray(produtos)) produtos = [];
+        } catch (e) { produtos = []; }
+
+        const resultados = [];
+        for (const row of produtos) {
+            const linha = normalizarLinha(row);
+            resultados.push(await salvarLinha(linha, 1));
+        }
+        const salvos = resultados.filter(r => r.success).length;
+        res.json({ success: true, paginas: data.numpages, extraidos: produtos.length, salvos, texto_preview: texto.substring(0, 500) });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Web scraper — raspa URL de catalogo de fornecedor
+app.post('/api/catalogo/scraper', async (req, res) => {
+    const { url, seletor_ref, seletor_desc, seletor_marca, seletor_preco, usar_ia } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL obrigatoria' });
+    try {
+        const r = await httpGet(url, {
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'pt-BR,pt;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (compatible; GenesisBot/1.0; +https://genesis360.io)'
+        });
+        if (r.status !== 200) return res.status(400).json({ error: 'HTTP ' + r.status });
+        const $ = cheerio.load(r.body);
+
+        let produtos = [];
+
+        if (seletor_ref && seletor_desc) {
+            // Custom selectors mode
+            const refs = $(seletor_ref).map((i, el) => $(el).text().trim()).get();
+            const descs = $(seletor_desc).map((i, el) => $(el).text().trim()).get();
+            const marcas = seletor_marca ? $(seletor_marca).map((i, el) => $(el).text().trim()).get() : [];
+            const precos = seletor_preco ? $(seletor_preco).map((i, el) => $(el).text().trim()).get() : [];
+            const len = Math.min(refs.length, descs.length, 50);
+            for (let i = 0; i < len; i++) {
+                if (refs[i] && descs[i]) {
+                    produtos.push({ ref: refs[i], descricao: descs[i], marca: marcas[i] || null, preco: precos[i] || null });
+                }
+            }
+        } else if (usar_ia) {
+            // IA mode: send HTML to Claude to extract products
+            const htmlText = r.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
+            const systemPrompt = `Extraia produtos de autopecas do texto HTML e retorne JSON array: [{"ref":"","descricao":"","marca":"","oem":"","preco":""}]. Apenas JSON, sem texto extra.`;
+            const claudeResult = await callClaude(systemPrompt, `Extraia produtos:\n\n${htmlText}`);
+            try {
+                const jsonText = (claudeResult.text || '').replace(/```json|```/g, '').trim();
+                produtos = JSON.parse(jsonText);
+                if (!Array.isArray(produtos)) produtos = [];
+            } catch (e) { produtos = []; }
+        }
+
+        // Preview mode — return without saving if no save flag
+        if (!req.body.salvar) {
+            return res.json({ success: true, url, extraidos: produtos.length, preview: produtos.slice(0, 20) });
+        }
+
+        // Save mode
+        const resultados = [];
+        for (const p of produtos) {
+            const linha = normalizarLinha(p);
+            resultados.push(await salvarLinha(linha, 1));
+        }
+        const salvos = resultados.filter(r => r.success).length;
+        res.json({ success: true, url, extraidos: produtos.length, salvos });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Enriquecimento em lote — enriquece todos PENDENTES/REPROVADOS com web
+app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
+    const { limite = 10 } = req.body;
+    const produtos = db.prepare("SELECT id FROM produtos WHERE ntc_status != 'APROVADO' AND status != 'Congelado' LIMIT ?").all(parseInt(limite));
+    res.json({ iniciado: true, total: produtos.length, ids: produtos.map(p => p.id) });
+    // Run enrichment in background (fire-and-forget)
+    (async () => {
+        for (const p of produtos) {
+            try {
+                const prod = db.prepare('SELECT * FROM produtos WHERE id=?').get(p.id);
+                const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
+                const oem = dna?.codigo_dna || prod.ref.replace(/^[A-Z]+-/i, '');
+                const marca = dna?.marca || '';
+                const [ddg, imgUrls] = await Promise.all([searchDuckDuckGo(`${marca} ${oem} ${prod.descricao}`), searchBingImages(`${marca} ${oem} autopeca`)]);
+                const systemPrompt = `Retorne SOMENTE JSON: {"aplicacoes":[{"montadora":"","modelo":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0},"fiscal":{"ncm":""}}. Use null para dados sem certeza.`;
+                const cl = await callClaude(systemPrompt, `Produto: ${prod.descricao}\nMarca: ${marca}\nOEM: ${oem}\nWeb: ${ddg?.abstract||''}`);
+                let parsed = null;
+                try { parsed = JSON.parse((cl.text||'').replace(/```json|```/g,'').trim()); } catch (e) {}
+                if (parsed) {
+                    // Salvar dados basicos
+                    if (parsed.fiscal?.ncm) {
+                        const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(p.id);
+                        if (!existF) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,origem) VALUES (?,?,?)").run(p.id, parsed.fiscal.ncm, '0');
+                    }
+                    if (Array.isArray(parsed.aplicacoes)) {
+                        for (const a of parsed.aplicacoes.slice(0, 5)) {
+                            if (!a.montadora || !a.modelo) continue;
+                            const ex = db.prepare('SELECT id FROM aplicacoes_motor WHERE produto_id=? AND modelo=?').get(p.id, a.modelo);
+                            if (!ex) db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo,ano_ini,ano_fim) VALUES (?,?,?,?,?)").run(p.id, a.montadora, a.modelo, a.ano_ini||null, a.ano_fim||null);
+                        }
+                    }
+                }
+                for (const imgUrl of imgUrls.slice(0,2)) {
+                    const ex = db.prepare('SELECT id FROM imagens WHERE produto_id=? AND url=?').get(p.id, imgUrl);
+                    if (!ex) db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(p.id, 'Principal', imgUrl, 'Lote-Web', 'Aprovada');
+                }
+                // Recalc NTC
+                const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
+                const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(p.id);
+                const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(p.id);
+                const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca ? 0.70 : 0.10);
+                const nctFM = prod.descricao?.length > 20 ? 0.85 : 0.30;
+                const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
+                const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
+                const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
+                const ntcStatus = ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
+                db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,atualizado_em=datetime('now','localtime') WHERE id=?").run(ntcScore, ntcStatus, p.id);
+            } catch (e) { /* continue batch */ }
+            await new Promise(r => setTimeout(r, 500));
+        }
+    })();
+});
+
+// Template download — CSV modelo
+app.get('/api/catalogo/template/csv', (req, res) => {
+    const header = 'ref,descricao,marca,oem,ncm,peso,aplicacoes,grupo,origem\n';
+    const exemplo = 'LUK-6203236,"KIT DE EMBREAGEM 200MM",LUK,6203236000,8708.93.00,3.758,"Corsa 1.0/Celta/Prisma",Schaeffler,Alemanha\n';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=template_catalogo.csv');
+    res.send('﻿' + header + exemplo);
+});
+
+// Template download — Excel modelo
+app.get('/api/catalogo/template/excel', (req, res) => {
+    const wb = XLSX.utils.book_new();
+    const data = [
+        ['ref','descricao','marca','oem','ncm','peso','aplicacoes','grupo','origem'],
+        ['LUK-6203236','KIT DE EMBREAGEM 200MM','LUK','6203236000','8708.93.00',3.758,'Corsa 1.0/Celta/Prisma','Schaeffler','Alemanha'],
+        ['BOC-0986494131','PASTILHA DE FREIO DIANTEIRA','Bosch','0986494131','8708.30.11',0.8,'Gol/Saveiro/Parati','Bosch','Brasil'],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:18},{wch:40},{wch:12},{wch:16},{wch:12},{wch:8},{wch:35},{wch:14},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Catalogo');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=template_catalogo.xlsx');
+    res.send(buf);
+});
+
+// -----------------------------------------------------------
 // START
 // -----------------------------------------------------------
 app.listen(PORT, () => {
