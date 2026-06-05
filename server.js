@@ -307,36 +307,93 @@ function extractCode(text) {
 function detectComponents(text) {
     const lower = text.toLowerCase();
     const components = [];
-    const keywords = ['plato', 'disco', 'rolamento', 'mola', 'cubo', 'anel', 'vedacao', 'gaxeta', 'pistao', 'cilindro', 'sensor', 'cabo', 'bomba'];
+    const keywords = [
+        'plato','disco','rolamento','mola','cubo','anel','vedacao','gaxeta',
+        'pistao','cilindro','sensor','cabo','bomba','junta','retentores',
+        'parafuso','porca','arruela','bucha','pino','chaveta','engrenagem',
+        'correia','tensor','polia','suporte','carcaca','tampa','filtro',
+        'selo','oring','graxeira','mancal','casquilho'
+    ];
     keywords.forEach(k => { if (lower.includes(k)) components.push(k); });
     return components;
 }
 
 function detectMeasures(text) {
-    const m200 = text.match(/(\d{2,3})\s*mm/i);
+    const m = text.match(/(\d{2,3})\s*mm/i);
+    const pol = text.match(/(\d{1,2}[.,]\d{1,2})\s*(?:pol|inch|")/i);
     const estrias = text.match(/(\d{1,2})\s*estri/i);
+    const bar = text.match(/(\d{1,4})\s*(?:bar|psi|kpa)/i);
+    const nm  = text.match(/(\d{1,4})\s*n\.?m\b/i);
     return {
-        diametro: m200 ? m200[1] + 'mm' : null,
-        estrias: estrias ? parseInt(estrias[1]) : null
+        diametro: m ? m[1] + 'mm' : (pol ? pol[1] + '"' : null),
+        estrias: estrias ? parseInt(estrias[1]) : null,
+        pressao: bar ? bar[1] : null,
+        torque: nm ? nm[1] + 'Nm' : null
     };
 }
 
 function detectCategoria(text) {
     const lower = text.toLowerCase();
     const map = [
-        ['embreagem', 'Embreagem'],
-        ['pastilha', 'Freios'],
-        ['disco de freio', 'Freios'],
-        ['freio', 'Freios'],
+        // Motor / Cabeçote
+        ['cabecote', 'Motor'], ['cabeçote', 'Motor'], ['cabecote', 'Motor'],
+        ['junta do cabecote', 'Motor'], ['junta cabeçote', 'Motor'],
+        ['kit motor', 'Motor'], ['kit correia', 'Motor'],
+        ['correia dentada', 'Motor'], ['tensor', 'Motor'],
+        ['arvore de manivelas', 'Motor'], ['came', 'Motor'], ['comando', 'Motor'],
+        ['pistao', 'Motor'], ['segmento', 'Motor'], ['biela', 'Motor'],
+        ['bloco', 'Motor'], ['carter', 'Motor'], ['virabrequim', 'Motor'],
+        ['kit retifica', 'Motor'], ['retifica', 'Motor'],
+        // Embreagem
+        ['embreagem', 'Embreagem'], ['plato', 'Embreagem'],
+        ['disco de embreagem', 'Embreagem'], ['atuador de embreagem', 'Embreagem'],
+        // Freios
+        ['pastilha', 'Freios'], ['disco de freio', 'Freios'],
+        ['lona', 'Freios'], ['tambor', 'Freios'],
+        ['freio', 'Freios'], ['abs', 'Freios'], ['caliper', 'Freios'],
+        // Filtros
+        ['filtro de oleo', 'Filtros'], ['filtro de ar', 'Filtros'],
+        ['filtro de combustivel', 'Filtros'], ['filtro de cabine', 'Filtros'],
         ['filtro', 'Filtros'],
-        ['kit correia', 'Motor'],
+        // Suspensão
+        ['amortecedor', 'Suspensao'], ['mola', 'Suspensao'],
+        ['barra estabilizadora', 'Suspensao'], ['bandeja', 'Suspensao'],
+        ['pivô', 'Suspensao'], ['pivo', 'Suspensao'], ['cubo de roda', 'Suspensao'],
+        ['articulacao', 'Suspensao'], ['bieleta', 'Suspensao'],
+        ['terminal', 'Suspensao'], ['coxim', 'Suspensao'],
+        // Rolamentos / Vedações
+        ['rolamento', 'Rolamentos'], ['retentor', 'Vedacoes'],
+        ['retentores', 'Vedacoes'], ['oring', 'Vedacoes'],
+        ['vedacao', 'Vedacoes'], ['junta', 'Vedacoes'], ['gaxeta', 'Vedacoes'],
+        // Injeção / Combustível
+        ['injetor', 'Injecao'], ['bico injetor', 'Injecao'],
+        ['bomba de combustivel', 'Combustivel'], ['bomba injetora', 'Injecao'],
+        ['regulador de pressao', 'Combustivel'], ['rail', 'Injecao'],
+        // Elétrica / Ignição
+        ['vela de ignicao', 'Ignicao'], ['vela', 'Ignicao'],
+        ['bobina', 'Ignicao'], ['cabo de ignicao', 'Ignicao'],
+        ['distribuidor', 'Ignicao'], ['platinado', 'Ignicao'],
+        ['alternador', 'Eletrica'], ['motor de partida', 'Eletrica'],
+        ['sensor', 'Eletrica'], ['modulo', 'Eletrica'], ['cdi', 'Ignicao'],
+        // Arrefecimento
+        ['radiador', 'Arrefecimento'], ['bomba dagua', 'Arrefecimento'],
+        ['bomba d agua', 'Arrefecimento'], ['termostato', 'Arrefecimento'],
+        ['mangueira', 'Arrefecimento'], ['vareta', 'Arrefecimento'],
+        ['reservatorio', 'Arrefecimento'],
+        // Direção / Transmissão
+        ['direcao', 'Direcao'], ['caixa de direcao', 'Direcao'],
+        ['bomba de direcao', 'Direcao'], ['cremalheira', 'Direcao'],
+        ['transmissao', 'Transmissao'], ['cambio', 'Transmissao'],
+        ['junta homocinetica', 'Transmissao'], ['homocentica', 'Transmissao'],
+        ['semieixo', 'Transmissao'], ['diferencial', 'Transmissao'],
+        // Correia / Sistema auxiliar
         ['correia', 'Motor'],
-        ['rolamento', 'Rolamentos'],
-        ['amortecedor', 'Suspensao'],
-        ['vela', 'Ignicao'],
-        ['bomba', 'Sistema Hidraulico'],
-        ['sensor', 'Eletrica'],
-        ['injetor', 'Injecao']
+    ];
+    for (const [k, v] of map) {
+        if (lower.includes(k)) return v;
+    }
+    return 'Geral';
+}
     ];
     for (const [k, v] of map) {
         if (lower.includes(k)) return v;
@@ -818,6 +875,175 @@ app.get('/api/relatorios/resumo', (req, res) => {
 // -----------------------------------------------------------
 app.get('/api/produtos/:id/historico', (req, res) => {
     res.json(db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC').all(req.params.id));
+});
+
+// -----------------------------------------------------------
+// BUSCA WEB — DNA DO PRODUTO
+// -----------------------------------------------------------
+const https = require('https');
+
+function httpGet(url, headers = {}) {
+    return new Promise((resolve, reject) => {
+        const opts = new URL(url);
+        const options = {
+            hostname: opts.hostname,
+            path: opts.pathname + opts.search,
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; GenesisIndexa/5.0)',
+                'Accept': 'application/json, text/html',
+                ...headers
+            },
+            timeout: 8000
+        };
+        const req = https.request(options, res => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve({ status: res.statusCode, body: data, headers: res.headers }));
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+        req.end();
+    });
+}
+
+// Build smart DNA search query
+function buildDNAQuery(produto, dna) {
+    const parts = [];
+    if (dna && dna.marca) parts.push(dna.marca);
+    if (dna && dna.codigo_dna) parts.push(dna.codigo_dna);
+    else if (produto.ref) parts.push(produto.ref.replace(/^[A-Z]+-/i, ''));
+    const desc = produto.descricao || '';
+    // Take first 3 meaningful words of description
+    const words = desc.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
+    parts.push(...words);
+    return parts.join(' ');
+}
+
+// DuckDuckGo zero-click API (free, no key)
+async function searchDuckDuckGo(query) {
+    try {
+        const q = encodeURIComponent(query);
+        const r = await httpGet(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1&no_redirect=1`);
+        const data = JSON.parse(r.body);
+        return {
+            abstract: data.AbstractText || null,
+            abstractUrl: data.AbstractURL || null,
+            image: data.Image && data.Image.startsWith('http') ? data.Image : null,
+            source: data.AbstractSource || null,
+            related: (data.RelatedTopics || []).slice(0, 5).map(t => ({
+                text: t.Text || '',
+                url: t.FirstURL || ''
+            }))
+        };
+    } catch (e) { return null; }
+}
+
+// Search Open Parts APIs for automotive part data
+async function searchOpenParts(codigo, marca) {
+    // Try to get data from known automotive parts databases
+    const sources = [];
+    if (marca && codigo) {
+        // Construct search URLs (for reference display, not scraping)
+        sources.push({ nome: 'LUK Catalog', url: `https://www.repxpert.com/pt/search?query=${encodeURIComponent(codigo)}` });
+        sources.push({ nome: 'TecDoc', url: `https://www.tecdoc.net/search?q=${encodeURIComponent((marca||'') + ' ' + codigo)}` });
+        sources.push({ nome: 'Autozone PT', url: `https://www.autozone.com.br/search?q=${encodeURIComponent(codigo)}` });
+        sources.push({ nome: 'Google Images', url: `https://www.google.com/search?q=${encodeURIComponent((marca||'') + '+' + codigo + '+peca+automotiva')}&tbm=isch` });
+        sources.push({ nome: 'Bing Images', url: `https://www.bing.com/images/search?q=${encodeURIComponent((marca||'') + ' ' + codigo + ' auto part')}` });
+    }
+    return sources;
+}
+
+// Bing image search scraper (server-side, no CORS issue)
+async function searchBingImages(query) {
+    try {
+        const q = encodeURIComponent(query + ' peca automotiva');
+        const r = await httpGet(
+            `https://www.bing.com/images/search?q=${q}&form=HDRSC2&first=1&mmasync=1`,
+            { 'Accept-Language': 'pt-BR,pt;q=0.9', 'Referer': 'https://www.bing.com/' }
+        );
+        // Extract image URLs from response
+        const imgUrls = [];
+        const matches = r.body.matchAll(/murl&quot;:&quot;(https?:\/\/[^&"]+\.(?:jpg|jpeg|png|webp))&quot;/gi);
+        for (const m of matches) {
+            if (imgUrls.length >= 8) break;
+            const url = m[1].replace(/&amp;/g, '&');
+            if (!imgUrls.includes(url)) imgUrls.push(url);
+        }
+        // fallback: extract from murl json
+        if (!imgUrls.length) {
+            const matches2 = r.body.matchAll(/"murl":"(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
+            for (const m of matches2) {
+                if (imgUrls.length >= 8) break;
+                imgUrls.push(m[1]);
+            }
+        }
+        return imgUrls;
+    } catch (e) { return []; }
+}
+
+app.get('/api/produtos/:id/busca-web', async (req, res) => {
+    const id = req.params.id;
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+
+    const query = buildDNAQuery(p, dna);
+    const marca = dna ? dna.marca : null;
+    const codigo = dna ? dna.codigo_dna : null;
+
+    // Parallel search
+    const [ddg, imgUrls, fontes] = await Promise.all([
+        searchDuckDuckGo(query),
+        searchBingImages(query),
+        searchOpenParts(codigo || p.ref, marca)
+    ]);
+
+    // Combine image sources
+    const imagens = [];
+    if (ddg && ddg.image) imagens.unshift({ url: ddg.image, fonte: 'DuckDuckGo', tipo: 'Principal' });
+    imgUrls.forEach(url => imagens.push({ url, fonte: 'Bing Images', tipo: 'Principal' }));
+
+    res.json({
+        query,
+        produto: { id: p.id, ref: p.ref, descricao: p.descricao },
+        dna: dna || {},
+        ddg,
+        imagens: imagens.slice(0, 10),
+        fontes,
+        links: {
+            google_imagens: `https://www.google.com/search?q=${encodeURIComponent(query + ' peca automotiva')}&tbm=isch`,
+            bing_imagens: `https://www.bing.com/images/search?q=${encodeURIComponent(query + ' auto part')}`,
+            tecdoc: `https://www.tecdoc.net/search?q=${encodeURIComponent(query)}`,
+        }
+    });
+});
+
+// Auto-import imagem da web no produto
+app.post('/api/produtos/:id/importar-imagem-web', async (req, res) => {
+    const { url, tipo = 'Principal' } = req.body;
+    if (!url) return res.status(400).json({ error: 'url obrigatoria' });
+    // Save URL directly to imagens table
+    try {
+        const r = db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)")
+            .run(req.params.id, tipo, url, 'Web', 'Aprovada');
+        // Recalculate NTC
+        const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
+        const dna2 = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(req.params.id);
+        const fiscal2 = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(req.params.id);
+        const log2 = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(req.params.id);
+        const aplic2 = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(req.params.id);
+        const cod2 = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(req.params.id);
+        const imgs2 = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(req.params.id);
+        const text2 = p.descricao + ' ' + (dna2 ? (dna2.marca||'') + ' ' + (dna2.fabricante||'') : '');
+        const extra2 = { ncm: fiscal2?.ncm, cest: fiscal2?.cest, cfop: fiscal2?.cfop, peso: log2?.peso_liq, dimensoes: log2 ? (log2.altura && log2.largura) : false, aplicacoes: aplic2, codigos: cod2, imagens: imgs2 };
+        const ntcResult = calcNTC(text2, extra2);
+        db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,rast_hash=?,atualizado_em=datetime('now','localtime') WHERE id=?")
+            .run(ntcResult.score, ntcResult.status, ntcResult.rast_hash, req.params.id);
+        res.json({ success: true, id: r.lastInsertRowid, ntc: { score: ntcResult.score, status: ntcResult.status } });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
 });
 
 // -----------------------------------------------------------
