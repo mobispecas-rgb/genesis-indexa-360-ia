@@ -644,24 +644,15 @@ app.get('/api/produtos/:id', (req, res) => {
 });
 
 app.post('/api/produtos', (req, res) => {
-    let { ref, descricao, marca, empresa_id = 1, dna: dnaData, fiscal, logistica: logData } = req.body;
+    const { ref, descricao, empresa_id = 1, dna: dnaData, fiscal, logistica: logData } = req.body;
     if (!ref || !descricao) return res.status(400).json({ error: 'ref e descricao sao obrigatorios' });
-    // Separar OEM da marca: "CX355090 INDYSA" → ref="CX355090", marcaAuto="INDYSA"
-    const refParts = ref.trim().split(/\s+/);
-    const refLimpo = refParts[0];
-    const marcaAuto = marca || (refParts.length > 1 ? refParts.slice(1).join(' ') : null);
     try {
-        const ins = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao) VALUES (?,?,?)").run(empresa_id, refLimpo, descricao);
+        const ins = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao) VALUES (?,?,?)").run(empresa_id, ref, descricao);
         const pid = ins.lastInsertRowid;
-        // Se detectou marca no ref ou dnaData tem dados, criar DNA automaticamente
-        if (dnaData || marcaAuto) {
-            const d = dnaData || {};
-            db.prepare("INSERT INTO dna (produto_id,fabricante,grupo_industrial,origem_pais,codigo_dna,marca,linha,familia) VALUES (?,?,?,?,?,?,?,?)")
-              .run(pid, d.fabricante||marcaAuto||null, d.grupo_industrial||null, d.origem_pais||null, d.codigo_dna||refLimpo||null, d.marca||marcaAuto||null, d.linha||null, d.familia||null);
-        }
+        if (dnaData) db.prepare("INSERT INTO dna (produto_id,fabricante,grupo_industrial,origem_pais,codigo_dna,marca,linha,familia) VALUES (?,?,?,?,?,?,?,?)").run(pid, dnaData.fabricante||null, dnaData.grupo_industrial||null, dnaData.origem_pais||null, dnaData.codigo_dna||null, dnaData.marca||null, dnaData.linha||null, dnaData.familia||null);
         if (fiscal) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem,ipi,icms,pis,cofins,cfop) VALUES (?,?,?,?,?,?,?,?,?)").run(pid, fiscal.ncm||null, fiscal.cest||null, fiscal.origem||null, fiscal.ipi||0, fiscal.icms||0, fiscal.pis||0, fiscal.cofins||0, fiscal.cfop||null);
         if (logData) db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento) VALUES (?,?,?,?,?,?)").run(pid, logData.peso_liq||null, logData.peso_bruto||null, logData.altura||null, logData.largura||null, logData.comprimento||null);
-        res.status(201).json({ success: true, id: pid, ref: refLimpo, marca: marcaAuto });
+        res.status(201).json({ success: true, id: pid });
     } catch (e) {
         res.status(400).json({ error: e.message });
     }
@@ -1081,12 +1072,8 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
 
-    // Separar OEM da marca: "CX355090 INDYSA" → oem="CX355090", marcaRef="INDYSA"
-    const refRaw = (dna?.codigo_dna || p.ref || '').trim();
-    const refParts = refRaw.split(/\s+/);
-    const oem = refParts[0]; // primeiro token é sempre o código OEM
-    const marcaRef = refParts.length > 1 ? refParts.slice(1).join(' ') : '';
-    const marca = dna?.marca || dna?.fabricante || marcaRef || '';
+    const oem = dna?.codigo_dna || p.ref;
+    const marca = dna?.marca || dna?.fabricante || '';
 
     // Build rich search queries — include OEM code + part type
     const descTipo = p.descricao.split(' ').slice(0,4).join(' ');
@@ -1111,19 +1098,21 @@ Contexto web encontrado: ${contextoWeb}`;
 TAREFA: Analise o produto e retorne SOMENTE JSON valido (sem markdown, sem texto antes ou depois).
 
 ESTRUTURA EXATA — nao altere os nomes dos campos:
-{"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
+{"dna":{"fabricante":null,"marca":null,"familia":null,"codigo_oem":null},"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
 
-REGRAS ABSOLUTAS:
-- Use null para QUALQUER campo sem evidencia documental clara no contexto fornecido
-- NUNCA invente montadora, modelo, motor, ano, fabricante, NCM, peso ou dimensao
-- NUNCA use nomes de empresas inventados ou nao mencionados no contexto
-- Se o contexto web for "sem resultado" ou insuficiente: retorne todos os campos como null
-- NCM somente se tiver certeza absoluta (formato 0000.00.00)
-- aplicacoes: somente veiculos com montadora+modelo+ano CONFIRMADOS na web
-- descricao_tecnica: descreva APENAS o que esta no nome/referencia do produto — sem inventar`;
+REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
+- TIPO DO PRODUTO: determinado EXCLUSIVAMENTE pela descricao fornecida. Se diz "embreagem" e embreagem. Se diz "correia" e correia. NUNCA reclassifique com base no contexto web.
+- NUNCA invente fabricante, marca, montadora, modelo, motor, ano, NCM, peso, dimensao ou codigo equivalente
+- NUNCA use nomes de fabricantes inventados como TRIMGO, AUTOFLEX, AUTOPARTS — null se desconhecido
+- dna.fabricante: somente se explicitamente mencionado no contexto (ex: LUK, Bosch, INDYSA) — null se duvida
+- dna.familia: baseada APENAS na descricao do produto — nunca reclassifique pelo contexto web
+- Se contexto web contradiz o tipo do produto da descricao: IGNORE o contexto, retorne null
+- NCM: apenas se compativel com o tipo do produto e com certeza absoluta (formato 0000.00.00)
+- aplicacoes: somente veiculos CONFIRMADOS com montadora+modelo+ano — null se nao confirmado
+- descricao_tecnica: descreva o produto com base APENAS no nome/ref — sem inventar componentes`;
 
-    const userPrompt = `Extraia dados reais deste produto de autopecas:\n\n${contexto}`;
-    const claudeResult = await callClaude(systemPrompt, userPrompt);
+    const userPrompt = `PRODUTO (tipo nao pode ser alterado): ${p.descricao}\n\nDados para extracao:\n\n${contexto}`;
+    const claudeResult = await callClaude(systemPrompt, userPrompt, 1200);
 
     let parsed = null;
     try {
@@ -1138,19 +1127,19 @@ REGRAS ABSOLUTAS:
     if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
 
     const txResult = db.transaction(() => {
-        // DNA — salvar fabricante, marca, familia e codigo_oem separados
+        // DNA — salvar fabricante, marca, familia, codigo_oem separados (nunca com espacos no OEM)
         const dnaPayload = parsed.dna || {};
         const existDna = db.prepare('SELECT id FROM dna WHERE produto_id=?').get(id);
-        const dnaMarca = dnaPayload.marca || marca || null;
-        const dnaFab   = dnaPayload.fabricante || marca || null;
-        const dnaFam   = dnaPayload.familia || null;
-        const dnaOem   = (dnaPayload.codigo_oem || oem || '').split(/\s+/)[0] || null; // garante sem espaço
+        const dnaFab  = dnaPayload.fabricante || null;
+        const dnaMrc  = dnaPayload.marca || marca || null;
+        const dnaFam  = dnaPayload.familia || null;
+        const dnaOem  = (dnaPayload.codigo_oem || oem || '').split(/\s+/)[0] || null;
         if (existDna) {
             db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=COALESCE(?,codigo_dna) WHERE produto_id=?")
-              .run(dnaFab, dnaMarca, dnaFam, dnaOem, id);
-        } else if (dnaFab || dnaMarca || dnaFam || dnaOem) {
+              .run(dnaFab, dnaMrc, dnaFam, dnaOem, id);
+        } else if (dnaFab || dnaMrc || dnaFam || dnaOem) {
             db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna) VALUES (?,?,?,?,?)")
-              .run(id, dnaFab, dnaMarca, dnaFam, dnaOem);
+              .run(id, dnaFab, dnaMrc, dnaFam, dnaOem);
         }
 
         // APLICACOES
@@ -1269,11 +1258,11 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
     const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 20').all(id);
 
-    // NTC 4 modulos — formula unificada
+    // NCT simplified 4-module
     const nctTF = dna?.codigo_dna ? 0.97 : (dna?.marca || dna?.fabricante ? 0.70 : dna?.familia ? 0.50 : 0.10);
-    const nctFM = p.descricao?.length > 20 ? (logistica?.peso_liq || codigos.length > 0 ? 1.00 : 0.85) : 0.30;
-    const nctCO = fiscal?.ncm ? 1.00 : 0.00;
-    const nctAV = aplicacoes.length >= 5 ? 1.00 : aplicacoes.length >= 3 ? 0.80 : aplicacoes.length > 0 ? aplicacoes.length * 0.20 : 0.00;
+    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
+    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
+    const nctAV = aplicacoes.length >= 3 ? 1.00 : (aplicacoes.length > 0 ? aplicacoes.length * 0.25 : 0.00);
     const nctScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
     const nctStatus = nctScore >= 0.95 ? 'APROVADO' : nctScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
 
@@ -1330,13 +1319,13 @@ app.get('/api/congelados', (req, res) => {
 // -----------------------------------------------------------
 // CLAUDE HAIKU — VOZ DO LOJISTA
 // -----------------------------------------------------------
-async function callClaude(systemPrompt, userPrompt, maxTokens = 800) {
+async function callClaude(systemPrompt, userPrompt) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return { error: 'ANTHROPIC_API_KEY nao configurada. Adicione no painel de Configuracoes.' };
     return new Promise((resolve) => {
         const body = JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: maxTokens,
+            max_tokens: 600,
             system: systemPrompt,
             messages: [{ role: 'user', content: userPrompt }]
         });
@@ -1479,9 +1468,9 @@ app.post('/api/ia/voz', async (req, res) => {
     const aplic = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(produto_id);
     const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(produto_id);
     const nctTF = dna?.codigo_dna ? 0.97 : (dna?.marca || dna?.fabricante ? 0.70 : dna?.familia ? 0.50 : 0.10);
-    const nctFM = p.descricao?.length > 20 ? (fiscal?.ncm ? 1.00 : 0.85) : 0.30;
-    const nctCO = fiscal?.ncm ? 1.00 : 0.00;
-    const nctAV = aplic.length >= 5 ? 1.00 : aplic.length >= 3 ? 0.80 : aplic.length > 0 ? aplic.length * 0.20 : 0.00;
+    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
+    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
+    const nctAV = aplic.length >= 3 ? 1.00 : (aplic.length > 0 ? aplic.length * 0.25 : 0.00);
     const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
     const ntc = { score: ntcScore, status: ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO', modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } };
     const vp = VOZ_PROMPTS[perfil];
