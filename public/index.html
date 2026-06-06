@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Genesis Indexa 360 IA v5.0 — MIDWAY NTC 4.0</title>
+<title>IndexaAI Catalog Pro v5.0 — Motor NTC 4.0</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -337,8 +337,8 @@ tr:hover td{background:#1c1c1c}
 <!-- SIDEBAR -->
 <nav id="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-title">GENESIS INDEXA</div>
-    <div class="logo-sub">360 IA + MIDWAY NTC 4.0</div>
+    <div class="logo-title">INDEXAAI CATALOG</div>
+    <div class="logo-sub">PRO + Motor NTC 4.0</div>
     <div class="logo-badge">ENTERPRISE</div>
   </div>
   <div class="nav-section">
@@ -349,7 +349,7 @@ tr:hover td{background:#1c1c1c}
   <div class="nav-section">
     <div class="nav-section-label">Motor iRollo</div>
     <div class="nav-item" data-page="enriquecimento"><span class="nav-icon">&#x2728;</span> Enriquecimento OEM</div>
-    <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao</div>
+    <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao <span id="aprov-sidebar-badge" style="margin-left:auto;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 7px;border-radius:10px;font-size:.62rem;font-weight:900;display:none"></span></div>
     <div class="nav-item" data-page="congelados"><span class="nav-icon">&#x2744;&#xFE0F;</span> Congelados</div>
   </div>
   <div class="nav-section">
@@ -748,13 +748,46 @@ tr:hover td{background:#1c1c1c}
 
     <!-- APROVACAO -->
     <div class="page" id="page-aprovacao">
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="aprov-kpis"></div>
+
+      <!-- Fila Principal -->
       <div class="sec">
-        <div class="sec-title">&#x2705; Fila de Aprovacao</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="sec-title" style="margin:0">&#x2705; Fila de Aprovacao de Enriquecimento</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-success" onclick="aprovarLoteSelecionados()">&#x2713; Aprovar Sel.</button>
+            <button class="btn btn-sm btn-danger" onclick="rejeitarLoteSelecionados()">&#x2717; Rejeitar Sel.</button>
+            <button class="btn btn-sm btn-gray" onclick="selecionarTodosAprov(true)">Sel. Todos</button>
+            <button class="btn btn-sm btn-gray" onclick="selecionarTodosAprov(false)">Desmarcar</button>
+          </div>
+        </div>
+        <div class="tabs" style="margin-bottom:14px">
+          <div class="tab active" id="aprov-tab-todos" onclick="switchAprovTab('todos')">Todos</div>
+          <div class="tab" id="aprov-tab-pendente" onclick="switchAprovTab('pendente')">Pendentes <span id="aprov-badge-pend" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprov-tab-reprovado" onclick="switchAprovTab('reprovado')">Reprovados <span id="aprov-badge-repr" style="margin-left:4px;background:#ff224420;color:#ff2244;border:1px solid #ff224440;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprov-tab-aprovado" onclick="switchAprovTab('aprovado')">Aprovados prontos &#x2744;</div>
+        </div>
         <div class="tbl-wrap">
           <table id="tbl-aprovacao">
-            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>NTC</th><th>Status</th><th>Acoes</th></tr></thead>
-            <tbody></tbody>
+            <thead><tr>
+              <th><input type="checkbox" id="aprov-check-all" onchange="toggleAllAprov(this.checked)" style="accent-color:var(--primary)"></th>
+              <th>Img</th><th>Ref</th><th>Descricao</th><th>Marca</th><th>NTC</th>
+              <th>Aplic.</th><th>Imgs</th><th>Cod.</th><th>Acoes</th>
+            </tr></thead>
+            <tbody id="tbl-aprovacao-body"></tbody>
           </table>
+        </div>
+        <div id="aprov-paginacao" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:.75rem;color:var(--text3)"></div>
+      </div>
+
+      <!-- Painel de Imagens Pendentes -->
+      <div class="sec" id="aprov-img-panel" style="display:none">
+        <div class="sec-title">&#x1F5BC;&#xFE0F; Imagens Aguardando Aprovacao <span id="aprov-img-count" style="font-weight:400;font-size:.75rem;color:var(--text3)"></span></div>
+        <div id="aprov-img-grid" class="img-slot-6" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-sm btn-success" onclick="aprovarTodasImagens()">&#x2713; Aprovar Todas</button>
+          <button class="btn btn-sm btn-danger" onclick="rejeitarTodasImagens()">&#x2717; Rejeitar Todas</button>
         </div>
       </div>
     </div>
@@ -1117,8 +1150,8 @@ tr:hover td{background:#1c1c1c}
       <div class="sec">
         <div class="sec-title">Configuracoes do Sistema</div>
         <div class="form-grid">
-          <div class="fg"><label>Versao da Plataforma</label><input value="Genesis Indexa 360 IA v5.0" readonly></div>
-          <div class="fg"><label>Motor NTC</label><input value="MIDWAY NTC 4.0" readonly></div>
+          <div class="fg"><label>Versao da Plataforma</label><input value="IndexaAI Catalog Pro v5.0" readonly></div>
+          <div class="fg"><label>Motor NTC</label><input value="Motor NTC 4.0 + iRollo Engine" readonly></div>
           <div class="fg"><label>Empresa</label><input value="MOBIS Pecas Automotivas" readonly></div>
           <div class="fg"><label>CNPJ</label><input value="19.903.967/0001-01" readonly></div>
           <div class="fg"><label>Plano</label><input value="Enterprise" readonly></div>
@@ -2441,6 +2474,53 @@ async function enriquecerProduto(id) {
 // ======================================================
 // HELPERS
 // ======================================================
+
+// Toast notification
+let _toastTimeout;
+function showToast(msg, type) {
+    let el = document.getElementById('toast-global');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'toast-global';
+        el.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:8px;font-size:.82rem;font-weight:700;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:opacity .3s;opacity:0';
+        document.body.appendChild(el);
+    }
+    const colors = { success:'#00ff88;color:#000', error:'#ff2244;color:#fff', warning:'#ffaa00;color:#000', info:'#00aaff;color:#fff' };
+    const c = colors[type] || colors.info;
+    el.style.background = c.split(';')[0];
+    el.style.color = c.split(';')[1].replace('color:','');
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(_toastTimeout);
+    _toastTimeout = setTimeout(() => { el.style.opacity = '0'; }, 3200);
+}
+
+// POST helper
+async function apiPost(path, data) {
+    const r = await fetch('/api' + path, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    return r.json();
+}
+
+// PATCH helper
+async function apiPatch(path, data) {
+    const r = await fetch('/api' + path, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    return r.json();
+}
+
+// DELETE helper
+async function apiDelete(path) {
+    const r = await fetch('/api' + path, { method: 'DELETE', headers: {'Content-Type': 'application/json'} });
+    return r.json();
+}
+
 function imgThumb(url, size) {
     size = size || 30;
     if (!url) return `<div style="width:${size}px;height:${size}px;border:1px dashed #333;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#444;font-size:${Math.round(size*0.5)}px;vertical-align:middle">&#x1F4F7;</div>`;
@@ -3836,18 +3916,226 @@ async function abrirBuscaWebEnr() {
     currentBuscaWebProdId = currentEnrId;
 }
 
+// ======================================================
+// APROVACAO DE ENRIQUECIMENTO
+// ======================================================
+let aprovTab = 'todos';
+let aprovSelectedIds = new Set();
+let _aprovPendImgs = [];
+
 async function loadAprovacao() {
-    const d = await api('/produtos?limit=200');
-    const tbody = document.querySelector('#tbl-aprovacao tbody');
-    const rows = (d.data || []).filter(p => p.ntc_status === 'PENDENTE' || p.ntc_status === 'REPROVADO');
-    tbody.innerHTML = rows.map(p => `<tr>
-        <td>${imgThumb(p.imagem_principal, 36)}</td>
-        <td class="mono">${p.ref}</td>
-        <td>${p.descricao.substring(0,50)}</td>
-        <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
-        <td>${statusBadge(p.status)}</td>
-        <td><button class="btn btn-xs btn-blue" onclick="irParaEnriquecimento(${p.id})">Enriquecer</button></td>
-    </tr>`).join('') || '<tr><td colspan="6" class="empty">Todos os produtos estao APROVADOS!</td></tr>';
+    // Carrega stats
+    const stats = await api('/aprovacao/stats');
+
+    // Atualiza KPIs
+    document.getElementById('aprov-kpis').innerHTML = [
+        { label: 'Pendentes', val: stats.pendentes, sub: 'Aguardando aprovacao', cls: 'kpi-yellow' },
+        { label: 'Reprovados', val: stats.reprovados, sub: 'NTC insuficiente', cls: 'kpi-red' },
+        { label: 'Imgs Pendentes', val: stats.imgsPendentes, sub: 'Aguardam revisao', cls: 'kpi-orange' },
+        { label: 'Prontos p/ Congelar', val: stats.prontosCongelar, sub: 'NTC >= 80%', cls: 'kpi-green' },
+    ].map(k => `<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+
+    // Atualiza badges de tab
+    const bp = document.getElementById('aprov-badge-pend');
+    const br = document.getElementById('aprov-badge-repr');
+    if (bp) bp.textContent = stats.pendentes || '';
+    if (br) br.textContent = stats.reprovados || '';
+
+    // Atualiza badge do sidebar
+    const sb = document.getElementById('aprov-sidebar-badge');
+    if (sb) {
+        const total = stats.total_fila;
+        sb.textContent = total > 0 ? total : '';
+        sb.style.display = total > 0 ? 'inline-block' : 'none';
+    }
+
+    // Carrega fila
+    const tipo = aprovTab === 'aprovado' ? 'aprovado' : aprovTab;
+    const d = await api('/aprovacao/fila?tipo=' + tipo + '&limit=100');
+    const rows = d.data || [];
+
+    document.getElementById('aprov-paginacao').innerHTML =
+        `<span>${rows.length} de ${d.total} produto(s)</span>`;
+
+    const tbody = document.getElementById('tbl-aprovacao-body');
+    tbody.innerHTML = rows.map(p => {
+        const temDNA = !!(p.marca || p.fabricante);
+        const podCongelar = p.ntc_score >= 0.80;
+        const imgPendBadge = p.imagens_pendentes > 0
+            ? ` <span style="color:var(--warning);font-weight:900">(${p.imagens_pendentes}&#x26A0;)</span>` : '';
+        return `<tr id="aprov-row-${p.id}" style="transition:opacity .2s">
+            <td><input type="checkbox" class="aprov-check" data-id="${p.id}" onchange="toggleAprovCheck(${p.id},this.checked)" style="accent-color:var(--primary)"></td>
+            <td>${imgThumb(p.imagem_principal, 38)}</td>
+            <td class="mono" style="font-size:.75rem;font-weight:700">${p.ref}</td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem">${p.descricao}</td>
+            <td>${temDNA ? `<span class="badge badge-blue" style="font-size:.65rem">${p.marca||p.fabricante}</span>` : '<span style="color:#444;font-size:.7rem">sem DNA</span>'}</td>
+            <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
+            <td><span class="badge ${p.aplicacoes_count > 0 ? 'badge-green' : 'badge-red'}">${p.aplicacoes_count}</span></td>
+            <td><span class="badge ${p.imagens_count > 0 ? 'badge-blue' : 'badge-gray'}">${p.imagens_count}</span>${imgPendBadge}</td>
+            <td><span class="badge ${p.codigos_count > 0 ? 'badge-blue' : 'badge-gray'}">${p.codigos_count}</span></td>
+            <td>
+                <div style="display:flex;gap:3px;flex-wrap:wrap">
+                    <button class="btn btn-xs btn-success" onclick="aprovarProduto(${p.id},false)" title="Aprovar enriquecimento e recalcular NTC">&#x2713; OK</button>
+                    ${podCongelar ? `<button class="btn btn-xs btn-blue" onclick="aprovarProduto(${p.id},true)" title="Aprovar + Congelar (NTC >= 80%)">&#x2744;</button>` : ''}
+                    <button class="btn btn-xs btn-blue" onclick="irParaEnriquecimento(${p.id})" title="Abrir Motor iRollo">&#x26A1;</button>
+                    <button class="btn btn-xs btn-danger" onclick="rejeitarProduto(${p.id})" title="Rejeitar">&#x2717;</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('') || `<tr><td colspan="10" class="empty" style="padding:32px;text-align:center;color:var(--success)">&#x2705; Nenhum produto na fila de aprovacao!</td></tr>`;
+
+    // Carrega imagens pendentes
+    const imgResp = await api('/imagens/pendentes?limit=30');
+    _aprovPendImgs = imgResp.data || [];
+    renderAprovImagens();
+}
+
+function renderAprovImagens() {
+    const panel = document.getElementById('aprov-img-panel');
+    const grid = document.getElementById('aprov-img-grid');
+    const count = document.getElementById('aprov-img-count');
+    if (!panel || !grid) return;
+    if (_aprovPendImgs.length === 0) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    count.textContent = `(${_aprovPendImgs.length} aguardando)`;
+    grid.innerHTML = _aprovPendImgs.map(img => `
+        <div class="img-slot-item" id="imgcard-${img.id}" style="aspect-ratio:1;position:relative;border-radius:8px;overflow:hidden;background:#111;border:1px solid var(--border)">
+            <img src="${img.url}" alt="${img.tipo||''}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.opacity='.15'">
+            <div class="img-slot-label" style="font-size:.6rem">${img.produto_ref||img.produto_id} &bull; ${img.tipo||'—'}</div>
+            <div style="position:absolute;top:4px;right:4px;display:flex;gap:3px">
+                <button class="btn btn-xs btn-success" style="padding:2px 6px;font-size:.65rem" onclick="aprovarImagem(${img.id})">&#x2713;</button>
+                <button class="btn btn-xs btn-danger" style="padding:2px 6px;font-size:.65rem" onclick="rejeitarImagem(${img.id})">&#x2717;</button>
+            </div>
+        </div>`).join('');
+}
+
+function switchAprovTab(tab) {
+    aprovTab = tab;
+    aprovSelectedIds.clear();
+    document.querySelectorAll('[id^="aprov-tab-"]').forEach(t => t.classList.remove('active'));
+    const tabEl = document.getElementById('aprov-tab-' + tab);
+    if (tabEl) tabEl.classList.add('active');
+    const allCb = document.getElementById('aprov-check-all');
+    if (allCb) allCb.checked = false;
+    loadAprovacao();
+}
+
+function toggleAprovCheck(id, checked) {
+    if (checked) aprovSelectedIds.add(id);
+    else aprovSelectedIds.delete(id);
+}
+
+function toggleAllAprov(checked) {
+    document.querySelectorAll('.aprov-check').forEach(cb => {
+        cb.checked = checked;
+        const id = parseInt(cb.dataset.id);
+        if (checked) aprovSelectedIds.add(id);
+        else aprovSelectedIds.delete(id);
+    });
+}
+
+function selecionarTodosAprov(select) {
+    toggleAllAprov(select);
+    const allCb = document.getElementById('aprov-check-all');
+    if (allCb) allCb.checked = select;
+}
+
+async function aprovarProduto(id, congelar) {
+    const row = document.getElementById('aprov-row-' + id);
+    if (row) row.style.opacity = '0.4';
+    try {
+        const r = await apiPost('/produtos/' + id + '/aprovar', { congelar: !!congelar, motivo: 'Aprovacao manual pelo operador' });
+        if (r.success) {
+            const pct = (r.ntc.score * 100).toFixed(1);
+            showToast(`&#x2713; NTC recalculado: ${pct}% ${r.ntc.status}${r.congelado ? ' — Congelado!' : ''}`, 'success');
+            if (row) row.remove();
+            atualizarBadgeAprov();
+        } else {
+            showToast('Erro: ' + (r.error || 'Falha na aprovacao'), 'error');
+            if (row) row.style.opacity = '1';
+        }
+    } catch (e) {
+        showToast('Erro: ' + e.message, 'error');
+        if (row) row.style.opacity = '1';
+    }
+}
+
+async function rejeitarProduto(id) {
+    const motivo = prompt('Motivo da rejeicao (opcional):') || 'Rejeitado pelo operador';
+    const row = document.getElementById('aprov-row-' + id);
+    if (row) row.style.opacity = '0.4';
+    const r = await apiPost('/produtos/' + id + '/rejeitar', { motivo });
+    if (r.success) {
+        showToast('Produto rejeitado e marcado para re-enriquecimento', 'warning');
+        if (row) row.remove();
+        atualizarBadgeAprov();
+    } else {
+        showToast('Erro: ' + (r.error || 'Falha'), 'error');
+        if (row) row.style.opacity = '1';
+    }
+}
+
+async function aprovarLoteSelecionados() {
+    const ids = Array.from(aprovSelectedIds);
+    if (ids.length === 0) { showToast('Selecione ao menos um produto', 'warning'); return; }
+    const r = await apiPost('/aprovacao/lote', { ids, acao: 'aprovar' });
+    if (r.success) {
+        showToast(`&#x2713; ${r.processados} produto(s) aprovado(s) em lote`, 'success');
+        aprovSelectedIds.clear();
+        loadAprovacao();
+    }
+}
+
+async function rejeitarLoteSelecionados() {
+    const ids = Array.from(aprovSelectedIds);
+    if (ids.length === 0) { showToast('Selecione ao menos um produto', 'warning'); return; }
+    if (!confirm(`Rejeitar ${ids.length} produto(s) selecionado(s)?`)) return;
+    const r = await apiPost('/aprovacao/lote', { ids, acao: 'rejeitar' });
+    if (r.success) {
+        showToast(`${r.processados} produto(s) rejeitado(s)`, 'warning');
+        aprovSelectedIds.clear();
+        loadAprovacao();
+    }
+}
+
+async function aprovarImagem(id) {
+    await apiPatch('/imagens/' + id + '/status', { status: 'Aprovada' });
+    const card = document.getElementById('imgcard-' + id);
+    if (card) { card.style.opacity = '0'; setTimeout(() => card.remove(), 300); }
+    _aprovPendImgs = _aprovPendImgs.filter(i => i.id !== id);
+    document.getElementById('aprov-img-count').textContent = `(${_aprovPendImgs.length} aguardando)`;
+    if (_aprovPendImgs.length === 0) document.getElementById('aprov-img-panel').style.display = 'none';
+}
+
+async function rejeitarImagem(id) {
+    await apiPatch('/imagens/' + id + '/status', { status: 'Rejeitada' });
+    const card = document.getElementById('imgcard-' + id);
+    if (card) { card.style.opacity = '0'; setTimeout(() => card.remove(), 300); }
+    _aprovPendImgs = _aprovPendImgs.filter(i => i.id !== id);
+    document.getElementById('aprov-img-count').textContent = `(${_aprovPendImgs.length} aguardando)`;
+    if (_aprovPendImgs.length === 0) document.getElementById('aprov-img-panel').style.display = 'none';
+}
+
+async function aprovarTodasImagens() {
+    if (!confirm(`Aprovar todas as ${_aprovPendImgs.length} imagens pendentes?`)) return;
+    for (const img of [..._aprovPendImgs]) await aprovarImagem(img.id);
+    showToast('Todas as imagens aprovadas', 'success');
+}
+
+async function rejeitarTodasImagens() {
+    if (!confirm(`Rejeitar todas as ${_aprovPendImgs.length} imagens pendentes?`)) return;
+    for (const img of [..._aprovPendImgs]) await rejeitarImagem(img.id);
+    showToast('Todas as imagens rejeitadas', 'warning');
+}
+
+async function atualizarBadgeAprov() {
+    const stats = await api('/aprovacao/stats');
+    const sb = document.getElementById('aprov-sidebar-badge');
+    const bp = document.getElementById('aprov-badge-pend');
+    const br = document.getElementById('aprov-badge-repr');
+    if (sb) { sb.textContent = stats.total_fila > 0 ? stats.total_fila : ''; sb.style.display = stats.total_fila > 0 ? 'inline-block' : 'none'; }
+    if (bp) bp.textContent = stats.pendentes || '';
+    if (br) br.textContent = stats.reprovados || '';
 }
 
 async function loadCongelados() {
@@ -4017,6 +4305,8 @@ async function enriquecerLote() {
 // INIT
 // ======================================================
 loadDashboard();
+// Carrega badge de aprovacao em background
+atualizarBadgeAprov().catch(() => {});
 </script>
 </body>
 </html>
