@@ -1564,8 +1564,8 @@ app.get('/api/wix/status', (req, res) => {
     const sincronizados = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE wix_id IS NOT NULL").get().c;
     const produtos = db.prepare('SELECT id, ref, descricao, ntc_score, ntc_status, wix_id, atualizado_em FROM produtos ORDER BY id').all();
     res.json({
-        site_id: '29574987-cbf6-4241-9dce-d109734b0d95',
-        site_nome: 'Mobis Autoparts',
+        site_id: '53fd407a-65d0-42ef-a64b-0f3e9755cbc0',
+        site_nome: 'MOBIS AUTOPARTS',
         total_genesis: total,
         sincronizados,
         pendentes_sync: total - sincronizados,
