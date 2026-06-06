@@ -652,6 +652,10 @@ app.post('/api/produtos', (req, res) => {
         if (dnaData) db.prepare("INSERT INTO dna (produto_id,fabricante,grupo_industrial,origem_pais,codigo_dna,marca,linha,familia) VALUES (?,?,?,?,?,?,?,?)").run(pid, dnaData.fabricante||null, dnaData.grupo_industrial||null, dnaData.origem_pais||null, dnaData.codigo_dna||null, dnaData.marca||null, dnaData.linha||null, dnaData.familia||null);
         if (fiscal) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem,ipi,icms,pis,cofins,cfop) VALUES (?,?,?,?,?,?,?,?,?)").run(pid, fiscal.ncm||null, fiscal.cest||null, fiscal.origem||null, fiscal.ipi||0, fiscal.icms||0, fiscal.pis||0, fiscal.cofins||0, fiscal.cfop||null);
         if (logData) db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento) VALUES (?,?,?,?,?,?)").run(pid, logData.peso_liq||null, logData.peso_bruto||null, logData.altura||null, logData.largura||null, logData.comprimento||null);
+        const engData = req.body.engenharia;
+        if (engData) db.prepare("INSERT INTO engenharia (produto_id,componentes,diametro,estrias,sistema,material,especificacoes) VALUES (?,?,?,?,?,?,?)").run(pid, engData.componentes||null, engData.diametro||null, engData.estrias||null, engData.sistema||null, engData.material||null, engData.especificacoes||null);
+        const hierData = req.body.hierarquia;
+        if (hierData) db.prepare("INSERT INTO hierarquia (produto_id,fabricante_original,montadora,distribuidor,importador,marca_propria,lojista) VALUES (?,?,?,?,?,?,?)").run(pid, hierData.fabricante_original||null, hierData.montadora||null, hierData.distribuidor||null, hierData.importador||null, hierData.marca_propria||null, hierData.lojista||null);
         res.status(201).json({ success: true, id: pid });
     } catch (e) {
         res.status(400).json({ error: e.message });
@@ -744,10 +748,17 @@ app.post('/api/produtos/:id/sincronizar/:canal', (req, res) => {
     const produto = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
     if (!produto) return res.status(404).json({ error: 'Produto nao encontrado' });
     if (produto.status !== 'Congelado') return res.status(400).json({ error: 'Produto nao congelado. Congele antes de sincronizar.' });
-    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(
-        id, produto.ntc_score, produto.ntc_score, produto.status, produto.status, 'Sincronizado em ' + canal
-    );
-    res.json({ success: true, canal, message: 'Produto enviado para ' + canal + ' (integração pendente de API Key)' });
+    const instrucoes = {
+        bling: 'Configure a API Key v3 do Bling em Configuracoes > Integracoes para ativar o envio automatico.',
+        wix: 'Conecte o MCP do Wix em Configuracoes > Integracoes para sincronizar o catalogo.',
+        google_shopping: 'Configure sua conta Google Merchant Center em Configuracoes > Integracoes para gerar o feed.',
+    };
+    return res.status(501).json({
+        success: false,
+        stub: true,
+        canal,
+        mensagem: instrucoes[canal] || 'Integracao com ' + canal + ' ainda nao configurada.',
+    });
 });
 
 // -----------------------------------------------------------
@@ -782,6 +793,50 @@ app.put('/api/produtos/:id/logistica', (req, res) => {
         db.prepare("UPDATE logistica SET peso_liq=?,peso_bruto=?,altura=?,largura=?,comprimento=?,volume=? WHERE produto_id=?").run(l.peso_liq||null, l.peso_bruto||null, l.altura||null, l.largura||null, l.comprimento||null, l.volume||null, req.params.id);
     } else {
         db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento,volume) VALUES (?,?,?,?,?,?,?)").run(req.params.id, l.peso_liq||null, l.peso_bruto||null, l.altura||null, l.largura||null, l.comprimento||null, l.volume||null);
+    }
+    res.json({ success: true });
+});
+
+// -----------------------------------------------------------
+// ENGENHARIA
+// -----------------------------------------------------------
+app.get('/api/produtos/:id/engenharia', (req, res) => {
+    res.json(db.prepare('SELECT * FROM engenharia WHERE produto_id=?').get(req.params.id) || {});
+});
+
+app.put('/api/produtos/:id/engenharia', (req, res) => {
+    const e = req.body;
+    const existing = db.prepare('SELECT id FROM engenharia WHERE produto_id=?').get(req.params.id);
+    if (existing) {
+        db.prepare("UPDATE engenharia SET componentes=?,diametro=?,estrias=?,sistema=?,material=?,especificacoes=? WHERE produto_id=?").run(
+            e.componentes||null, e.diametro||null, e.estrias||null, e.sistema||null, e.material||null, e.especificacoes||null, req.params.id
+        );
+    } else {
+        db.prepare("INSERT INTO engenharia (produto_id,componentes,diametro,estrias,sistema,material,especificacoes) VALUES (?,?,?,?,?,?,?)").run(
+            req.params.id, e.componentes||null, e.diametro||null, e.estrias||null, e.sistema||null, e.material||null, e.especificacoes||null
+        );
+    }
+    res.json({ success: true });
+});
+
+// -----------------------------------------------------------
+// HIERARQUIA
+// -----------------------------------------------------------
+app.get('/api/produtos/:id/hierarquia', (req, res) => {
+    res.json(db.prepare('SELECT * FROM hierarquia WHERE produto_id=?').get(req.params.id) || {});
+});
+
+app.put('/api/produtos/:id/hierarquia', (req, res) => {
+    const h = req.body;
+    const existing = db.prepare('SELECT id FROM hierarquia WHERE produto_id=?').get(req.params.id);
+    if (existing) {
+        db.prepare("UPDATE hierarquia SET fabricante_original=?,montadora=?,distribuidor=?,importador=?,marca_propria=?,lojista=? WHERE produto_id=?").run(
+            h.fabricante_original||null, h.montadora||null, h.distribuidor||null, h.importador||null, h.marca_propria||null, h.lojista||null, req.params.id
+        );
+    } else {
+        db.prepare("INSERT INTO hierarquia (produto_id,fabricante_original,montadora,distribuidor,importador,marca_propria,lojista) VALUES (?,?,?,?,?,?,?)").run(
+            req.params.id, h.fabricante_original||null, h.montadora||null, h.distribuidor||null, h.importador||null, h.marca_propria||null, h.lojista||null
+        );
     }
     res.json({ success: true });
 });

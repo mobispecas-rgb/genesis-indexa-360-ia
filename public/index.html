@@ -326,7 +326,17 @@ tr:hover td{background:#1c1c1c}
 .platform-name{flex:1;font-weight:600}
 .platform-status{font-size:.72rem}
 
+/* Toast */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:10px 18px;border-radius:8px;font-size:.82rem;font-weight:600;color:#fff;opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;pointer-events:none;max-width:320px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast-success{background:linear-gradient(135deg,#00c864,#007a3d)}
+.toast-error{background:linear-gradient(135deg,#e74c3c,#922b21)}
+.toast-warning{background:linear-gradient(135deg,#f0a500,#b87200)}
+.toast-info{background:linear-gradient(135deg,#1a6fff,#0040cc)}
 
+/* Stub badge */
+.stub-badge{display:inline-block;font-size:.6rem;font-weight:700;background:rgba(240,165,0,.15);color:var(--warning);border:1px solid rgba(240,165,0,.3);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -522,6 +532,46 @@ tr:hover td{background:#1c1c1c}
           <div class="sec" style="margin-bottom:0">
             <div class="sec-title">&#x1F697; Aplicacoes Veiculares</div>
             <div id="dprod-av-table"></div>
+          </div>
+
+          <div class="sec" style="margin-bottom:0">
+            <div class="sec-title">&#x2699;&#xFE0F; Engenharia</div>
+            <div id="dprod-eng-view" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.78rem;margin-bottom:8px"></div>
+            <div id="dprod-eng-form" style="display:none">
+              <div class="form-grid" style="font-size:.8rem">
+                <div class="fg"><label>Diametro</label><input id="eng-diametro" placeholder="ex: 70mm"></div>
+                <div class="fg"><label>Estrias</label><input id="eng-estrias" type="number" placeholder="ex: 6"></div>
+                <div class="fg"><label>Sistema</label><input id="eng-sistema" placeholder="ex: FEAD"></div>
+                <div class="fg"><label>Material</label><input id="eng-material" placeholder="ex: Metalico"></div>
+                <div class="fg" style="grid-column:span 2"><label>Componentes (separados por virgula)</label><input id="eng-componentes" placeholder="ex: mola, rolamento, suporte"></div>
+                <div class="fg" style="grid-column:span 2"><label>Especificacoes adicionais</label><input id="eng-especificacoes" placeholder="ex: FEAD 1.8L, Poly-V 6PK"></div>
+              </div>
+              <div class="flex mt" style="gap:6px">
+                <button class="btn btn-sm" onclick="dprodSaveEngenharia()">Salvar Engenharia</button>
+                <button class="btn btn-outline btn-sm" onclick="dprodToggleEngForm(false)">Cancelar</button>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" id="dprod-eng-edit-btn" onclick="dprodToggleEngForm(true)" style="margin-top:4px;font-size:.7rem">Editar Engenharia</button>
+          </div>
+
+          <div class="sec" style="margin-bottom:0">
+            <div class="sec-title">&#x1F9EC; Hierarquia Genealogica</div>
+            <div id="dprod-hier-view" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.78rem;margin-bottom:8px"></div>
+            <div id="dprod-hier-form" style="display:none">
+              <div class="form-grid" style="font-size:.8rem">
+                <div class="fg"><label>Fabricante Original</label><input id="hier-fab" placeholder="ex: Schaeffler"></div>
+                <div class="fg"><label>Montadora (OEM)</label><input id="hier-mont" placeholder="ex: Honda"></div>
+                <div class="fg"><label>Distribuidor</label><input id="hier-dist" placeholder="ex: MOBIS Pecas"></div>
+                <div class="fg"><label>Importador</label><input id="hier-imp" placeholder="ex: Schaeffler Brasil"></div>
+                <div class="fg"><label>Marca Propria</label><input id="hier-mp" placeholder="se aplicavel"></div>
+                <div class="fg"><label>Lojista</label><input id="hier-loj" placeholder="ex: Autozone"></div>
+              </div>
+              <div class="flex mt" style="gap:6px">
+                <button class="btn btn-sm" onclick="dprodSaveHierarquia()">Salvar Hierarquia</button>
+                <button class="btn btn-outline btn-sm" onclick="dprodToggleHierForm(false)">Cancelar</button>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" id="dprod-hier-edit-btn" onclick="dprodToggleHierForm(true)" style="margin-top:4px;font-size:.7rem">Editar Hierarquia</button>
           </div>
         </div>
 
@@ -722,9 +772,9 @@ tr:hover td{background:#1c1c1c}
           <div id="pub-loading" style="text-align:center;padding:20px"><div class="spinner"></div></div>
           <div id="pub-pacote" style="display:none">
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-              <button class="btn" style="background:#0055a5" onclick="sincronizar('bling')">&#x1F4CB; Bling ERP</button>
               <button class="btn" style="background:#00b0f0" onclick="sincronizar('wix')">&#x1F310; Wix</button>
-              <button class="btn" style="background:#4285F4" onclick="sincronizar('google_shopping')">&#x1F6D2; G.Shopping</button>
+              <button class="btn" style="background:#667;cursor:not-allowed;opacity:.7" title="Configure a API Key v3 do Bling em Configuracoes para ativar" onclick="showToast('Bling: configure a API Key v3 em Configuracoes > Integracoes','warning',5000)">&#x1F4CB; Bling ERP <span class="stub-badge">API KEY</span></button>
+              <button class="btn" style="background:#667;cursor:not-allowed;opacity:.7" title="Configure o Google Merchant Center em Configuracoes para ativar" onclick="showToast('Google Shopping: configure o Merchant Center em Configuracoes > Integracoes','warning',5000)">&#x1F6D2; G.Shopping <span class="stub-badge">CONFIG</span></button>
             </div>
             <div id="sync-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
             <div style="margin-top:8px;text-align:center">
@@ -1309,7 +1359,24 @@ tr:hover td{background:#1c1c1c}
   </div>
 </div>
 
+<div id="toast-container"></div>
 <script>
+// ======================================================
+// TOAST
+// ======================================================
+function showToast(msg, type = 'success', duration = 3000) {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast toast-' + type;
+    t.textContent = msg;
+    c.appendChild(t);
+    requestAnimationFrame(() => { t.classList.add('show'); });
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 300);
+    }, duration);
+}
+
 // ======================================================
 // STATE
 // ======================================================
@@ -1548,6 +1615,10 @@ function dprodRenderDetalhe(p) {
 
     // Imagens gallery
     dprodRenderImagens(imagens);
+
+    // Engenharia + Hierarquia
+    dprodLoadEngenharia(id);
+    dprodLoadHierarquia(id);
 }
 
 function dprodUpdateCongelar(score, status) {
@@ -1578,10 +1649,127 @@ function dprodRenderAplicacoes(aplic) {
     const el = document.getElementById('dprod-av-table');
     if (!el) return;
     el.innerHTML = aplic.length
-        ? `<div class="tbl-wrap"><table style="font-size:.75rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th></tr></thead><tbody>` +
-          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||a.cilindrada||'—'}</td><td>${a.ano_ini||'?'}–${a.ano_fim||'?'}</td></tr>`).join('') +
+        ? `<div class="tbl-wrap"><table style="font-size:.75rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th><th></th></tr></thead><tbody>` +
+          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||a.cilindrada||'—'}</td><td>${a.ano_ini||'?'}–${a.ano_fim||'?'}</td><td><button class="btn btn-sm" style="background:#c0392b;padding:2px 6px;font-size:.6rem" onclick="dprodDeleteAplicacao(${a.id})" title="Remover">&#x2715;</button></td></tr>`).join('') +
           '</tbody></table></div>'
         : '<div class="empty" style="font-size:.78rem">Nenhuma aplicacao. Use ENRIQUECER NA WEB.</div>';
+}
+
+async function dprodDeleteAplicacao(id) {
+    if (!confirm('Remover esta aplicacao?')) return;
+    const r = await api('/aplicacoes/' + id, { method: 'DELETE' });
+    if (r && r.success) {
+        const p = await api('/produtos/' + dprodId);
+        dprodRenderAplicacoes(p.aplicacoes || []);
+        await api('/produtos/' + dprodId + '/ntc/recalcular', { method: 'POST' });
+        showToast('Aplicacao removida', 'success');
+    } else {
+        showToast('Erro ao remover aplicacao', 'error');
+    }
+}
+
+async function dprodLoadEngenharia(id) {
+    const e = await api('/produtos/' + (id || dprodId) + '/engenharia');
+    const view = document.getElementById('dprod-eng-view');
+    if (!view) return;
+    const fields = [
+        { label: 'Diametro', val: e.diametro },
+        { label: 'Estrias', val: e.estrias },
+        { label: 'Sistema', val: e.sistema },
+        { label: 'Material', val: e.material },
+        { label: 'Componentes', val: e.componentes },
+        { label: 'Especificacoes', val: e.especificacoes },
+    ];
+    view.innerHTML = fields.map(f =>
+        `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
+            <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${f.label}</div>
+            <div style="font-size:.75rem;font-weight:600;color:${f.val?'var(--text)':'var(--text3)'}">${f.val||'—'}</div>
+        </div>`).join('');
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    setV('eng-diametro', e.diametro); setV('eng-estrias', e.estrias);
+    setV('eng-sistema', e.sistema); setV('eng-material', e.material);
+    setV('eng-componentes', e.componentes); setV('eng-especificacoes', e.especificacoes);
+}
+
+function dprodToggleEngForm(show) {
+    document.getElementById('dprod-eng-form').style.display = show ? '' : 'none';
+    document.getElementById('dprod-eng-edit-btn').style.display = show ? 'none' : '';
+}
+
+async function dprodSaveEngenharia() {
+    if (!dprodId) return;
+    const r = await api('/produtos/' + dprodId + '/engenharia', {
+        method: 'PUT',
+        body: JSON.stringify({
+            diametro: document.getElementById('eng-diametro').value || null,
+            estrias: parseInt(document.getElementById('eng-estrias').value) || null,
+            sistema: document.getElementById('eng-sistema').value || null,
+            material: document.getElementById('eng-material').value || null,
+            componentes: document.getElementById('eng-componentes').value || null,
+            especificacoes: document.getElementById('eng-especificacoes').value || null,
+        })
+    });
+    if (r && r.success) {
+        dprodToggleEngForm(false);
+        await dprodLoadEngenharia();
+        await api('/produtos/' + dprodId + '/ntc/recalcular', { method: 'POST' });
+        showToast('Engenharia salva e NTC recalculado!', 'success');
+    } else {
+        showToast('Erro ao salvar engenharia: ' + (r && r.error || 'desconhecido'), 'error');
+    }
+}
+
+async function dprodLoadHierarquia(id) {
+    const h = await api('/produtos/' + (id || dprodId) + '/hierarquia');
+    const view = document.getElementById('dprod-hier-view');
+    if (!view) return;
+    const chain = [
+        { label: 'Fabricante Original', val: h.fabricante_original },
+        { label: 'Montadora (OEM)', val: h.montadora },
+        { label: 'Distribuidor', val: h.distribuidor },
+        { label: 'Importador', val: h.importador },
+        { label: 'Marca Propria', val: h.marca_propria },
+        { label: 'Lojista', val: h.lojista },
+    ];
+    const filled = chain.filter(c => c.val);
+    view.innerHTML = filled.length
+        ? chain.map(f =>
+            `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
+                <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${f.label}</div>
+                <div style="font-size:.75rem;font-weight:600;color:${f.val?'var(--text)':'var(--text3)'}">${f.val||'—'}</div>
+            </div>`).join('')
+        : '<div class="empty" style="font-size:.75rem;grid-column:span 2">Hierarquia nao cadastrada.</div>';
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    setV('hier-fab', h.fabricante_original); setV('hier-mont', h.montadora);
+    setV('hier-dist', h.distribuidor); setV('hier-imp', h.importador);
+    setV('hier-mp', h.marca_propria); setV('hier-loj', h.lojista);
+}
+
+function dprodToggleHierForm(show) {
+    document.getElementById('dprod-hier-form').style.display = show ? '' : 'none';
+    document.getElementById('dprod-hier-edit-btn').style.display = show ? 'none' : '';
+}
+
+async function dprodSaveHierarquia() {
+    if (!dprodId) return;
+    const r = await api('/produtos/' + dprodId + '/hierarquia', {
+        method: 'PUT',
+        body: JSON.stringify({
+            fabricante_original: document.getElementById('hier-fab').value || null,
+            montadora: document.getElementById('hier-mont').value || null,
+            distribuidor: document.getElementById('hier-dist').value || null,
+            importador: document.getElementById('hier-imp').value || null,
+            marca_propria: document.getElementById('hier-mp').value || null,
+            lojista: document.getElementById('hier-loj').value || null,
+        })
+    });
+    if (r && r.success) {
+        dprodToggleHierForm(false);
+        await dprodLoadHierarquia();
+        showToast('Hierarquia salva!', 'success');
+    } else {
+        showToast('Erro ao salvar hierarquia: ' + (r && r.error || 'desconhecido'), 'error');
+    }
 }
 
 function dprodRenderCodigos(codigos) {
@@ -1851,11 +2039,15 @@ async function dprodPrepararPublicacao() {
 async function dprodSincronizar(canal) {
     if (!dprodId) return;
     const st = document.getElementById('dprod-sinc-st');
-    st.textContent = 'Sincronizando ' + canal + '...';
     const r = await api('/produtos/' + dprodId + '/sincronizar/' + canal, { method: 'POST' });
-    st.innerHTML = r.success
-        ? `<span style="color:var(--success)">&#x2714; Sincronizado em ${canal}!</span>`
-        : `<span style="color:var(--danger)">&#x26A0; ${r.error||'Erro'}</span>`;
+    if (r && r.stub) {
+        st.innerHTML = `<span style="color:var(--warning)">&#x26A0; ${r.mensagem}</span>`;
+        showToast(r.mensagem, 'warning', 5000);
+    } else if (r && r.success) {
+        st.innerHTML = `<span style="color:var(--success)">&#x2714; Sincronizado em ${canal}!</span>`;
+    } else {
+        st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${r && r.error || 'Erro'}</span>`;
+    }
 }
 
 function row2(label, val) {
@@ -2202,8 +2394,8 @@ async function loadFiscal() {
 }
 
 async function saveFiscal() {
-    if (!currentFiscalProdId) return;
-    await api('/produtos/' + currentFiscalProdId + '/fiscal', {
+    if (!currentFiscalProdId) { showToast('Selecione um produto primeiro', 'warning'); return; }
+    const r = await api('/produtos/' + currentFiscalProdId + '/fiscal', {
         method: 'PUT',
         body: JSON.stringify({
             ncm: document.getElementById('f-ncm').value||null,
@@ -2216,12 +2408,17 @@ async function saveFiscal() {
             cofins: parseFloat(document.getElementById('f-cofins').value)||0,
         })
     });
-    alert('Fiscal salvo!');
+    if (r && r.success) {
+        await api('/produtos/' + currentFiscalProdId + '/ntc/recalcular', { method: 'POST' });
+        showToast('Fiscal salvo e NTC recalculado!', 'success');
+    } else {
+        showToast('Erro ao salvar fiscal: ' + (r && r.error || 'desconhecido'), 'error');
+    }
 }
 
 async function saveLogistica() {
-    if (!currentFiscalProdId) return;
-    await api('/produtos/' + currentFiscalProdId + '/logistica', {
+    if (!currentFiscalProdId) { showToast('Selecione um produto primeiro', 'warning'); return; }
+    const r = await api('/produtos/' + currentFiscalProdId + '/logistica', {
         method: 'PUT',
         body: JSON.stringify({
             peso_liq: parseFloat(document.getElementById('l-peso-liq').value)||null,
@@ -2232,7 +2429,12 @@ async function saveLogistica() {
             volume: parseFloat(document.getElementById('l-vol').value)||null,
         })
     });
-    alert('Logistica salva!');
+    if (r && r.success) {
+        await api('/produtos/' + currentFiscalProdId + '/ntc/recalcular', { method: 'POST' });
+        showToast('Logistica salva e NTC recalculado!', 'success');
+    } else {
+        showToast('Erro ao salvar logistica: ' + (r && r.error || 'desconhecido'), 'error');
+    }
 }
 
 function openModalNovoCodigo() {
