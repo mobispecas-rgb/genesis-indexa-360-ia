@@ -1199,7 +1199,7 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
         const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
         const imgsU = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
-        const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca ? 0.70 : 0.10);
+        const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
         const nctFM = p.descricao?.length > 20 ? (parsed.especificacoes?.diametro ? 1.00 : 0.85) : 0.30;
         const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
         const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
@@ -1319,13 +1319,13 @@ app.get('/api/congelados', (req, res) => {
 // -----------------------------------------------------------
 // CLAUDE HAIKU — VOZ DO LOJISTA
 // -----------------------------------------------------------
-async function callClaude(systemPrompt, userPrompt) {
+async function callClaude(systemPrompt, userPrompt, maxTokens = 800) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return { error: 'ANTHROPIC_API_KEY nao configurada. Adicione no painel de Configuracoes.' };
     return new Promise((resolve) => {
         const body = JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 600,
+            max_tokens: maxTokens,
             system: systemPrompt,
             messages: [{ role: 'user', content: userPrompt }]
         });
@@ -1889,7 +1889,7 @@ app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
                 const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
                 const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(p.id);
                 const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(p.id);
-                const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca ? 0.70 : 0.10);
+                const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
                 const nctFM = prod.descricao?.length > 20 ? 0.85 : 0.30;
                 const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
                 const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
