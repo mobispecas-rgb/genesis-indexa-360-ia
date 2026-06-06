@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: genesis-indexa-360-ia
+    name: indexaai-catalog-pro
     runtime: node
     plan: free
     buildCommand: npm install --production
@@ -16,9 +16,9 @@ services:
       - key: APP_URL
         fromService:
           type: web
-          name: genesis-indexa-360-ia
+          name: indexaai-catalog-pro
           property: host
     disk:
-      name: genesis-data
+      name: indexaai-data
       mountPath: /opt/render/project/src/data
       sizeGB: 1

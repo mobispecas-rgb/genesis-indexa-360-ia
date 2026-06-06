@@ -1,6 +1,6 @@
 // ============================================================
-// GENESIS INDEXA 360 IA v5.0 — ENTERPRISE SAAS PLATFORM
-// MIDWAY NTC 4.0 | Node.js + Express + SQLite
+// INDEXAAI CATALOG PRO v5.0 — ENTERPRISE SAAS PLATFORM
+// Motor NTC 4.0 + iRollo Engine | Node.js + Express + SQLite
 // MOBIS Pecas Automotivas
 // ============================================================
 require('dotenv').config();
@@ -589,7 +589,7 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
         version: '5.0.0',
-        platform: 'Genesis Indexa 360 IA + MIDWAY NTC 4.0',
+        platform: 'IndexaAI Catalog Pro v5.0 + Motor NTC 4.0',
         empresa: emp ? { nome: emp.nome, cnpj: emp.cnpj, plano: emp.plano } : null,
         produtos: db.prepare('SELECT COUNT(*) as c FROM produtos').get().c,
         uptime: process.uptime(),
@@ -2079,7 +2079,7 @@ app.get('/api/catalogo/template/excel', (req, res) => {
 // START
 // -----------------------------------------------------------
 app.listen(PORT, () => {
-    console.log('GENESIS INDEXA 360 IA v5.0 rodando na porta ' + PORT);
+    console.log('INDEXAAI CATALOG PRO v5.0 rodando na porta ' + PORT);
     console.log('Health: http://localhost:' + PORT + '/api/health');
 
     // Keep-alive: ping proprio servidor a cada 14 min para evitar cold start no Render
