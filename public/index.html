@@ -456,235 +456,124 @@ tr:hover td{background:#1c1c1c}
 
       <!-- DETAIL PANEL (Rollon model: cabeçote + gavetas editáveis) -->
       <div id="prod-detail-panel" style="display:none">
-        <!-- Cabeçote -->
+        <!-- Cabeçote simplificado -->
         <div class="irollo-header">
           <div>
             <button class="btn btn-gray btn-sm" onclick="fecharDetalhe()" style="margin-bottom:6px">&#x2190; Voltar ao Catalogo</button>
-            <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Genesis Indexa 360 IA — Ficha do Produto</div>
+            <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Indexa 360 — Ficha do Produto</div>
             <div style="font-size:1rem;font-weight:900;color:var(--primary)" id="dprod-titulo">—</div>
-            <div style="font-size:.72rem;color:var(--text2);margin-top:2px" id="dprod-subtitulo">Ref: — | Fabricante: —</div>
+            <div style="font-size:.72rem;color:var(--text2);margin-top:2px" id="dprod-subtitulo">—</div>
           </div>
-          <div id="dprod-status-badge" class="ml-auto"></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <div id="dprod-status-badge"></div>
+            <button class="btn btn-blue" onclick="dprodEnriquecerWeb()" id="dprod-btn-web">&#x1F310; ENRIQUECER</button>
+            <button class="btn" onclick="dprodResetar()" style="background:#c0392b;color:#fff" title="Apagar DNA, imagens e aplicacoes">&#x1F5D1; Reset</button>
+          </div>
         </div>
 
-        <!-- Pipeline -->
-        <div class="pipeline-steps" id="dprod-pipeline">
-          <div class="pipeline-step" id="dprod-pip-1"><div class="pip-num">1</div><div><div class="pip-label">ENRIQUECER</div><div class="pip-sub">DNA + Imagens</div></div></div>
-          <div class="pip-arrow">&#x2192;</div>
-          <div class="pipeline-step" id="dprod-pip-2"><div class="pip-num">2</div><div><div class="pip-label">APROVAR</div><div class="pip-sub">NTC &#x2265; 95%</div></div></div>
-          <div class="pip-arrow">&#x2192;</div>
-          <div class="pipeline-step" id="dprod-pip-3"><div class="pip-num">3</div><div><div class="pip-label">SINCRONIZAR</div><div class="pip-sub">Wix / Bling / Google</div></div></div>
-        </div>
+        <div id="dprod-web-status" class="text-xs" style="margin-bottom:8px"></div>
 
-        <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
-          <!-- LEFT: NTC Card + Ações -->
-          <div>
-            <!-- NTC Card -->
-            <div class="nct-card" id="dprod-nct-card">
-              <div style="font-size:.7rem;color:var(--text3);margin-bottom:6px">Motor NTC 4.0 — Genesis iRollo</div>
-              <div class="nct-score-big" id="dprod-nct-score">—</div>
-              <div class="nct-status-big" id="dprod-nct-status"></div>
-              <div class="nct-modules" id="dprod-nct-modules"></div>
-              <div class="rast-box" style="margin-top:10px">
-                <span style="font-size:.65rem;color:var(--text3)">RAST-HASH</span>
-                <span class="rast-hash" id="dprod-rast" style="font-size:.6rem">—</span>
-              </div>
-            </div>
-            <!-- Ações -->
-            <div class="sec" style="margin-top:10px">
-              <div class="sec-title">&#x26A1; Acoes</div>
-              <div style="display:grid;gap:8px">
-                <button class="btn btn-blue" onclick="dprodEnriquecerWeb()" id="dprod-btn-web">&#x1F310; ENRIQUECER DNA NA WEB</button>
-                <div id="dprod-web-status" class="text-xs"></div>
-                <div id="dprod-ntc-hint" style="font-size:.72rem;text-align:center"></div>
-                <button class="indexar-btn" id="dprod-btn-congelar" onclick="dprodCongelar()" disabled>&#x1F512; CONGELAR — NTC insuficiente</button>
-                <div id="dprod-indexar-status" class="text-xs" style="text-align:center"></div>
-              </div>
-            </div>
-            <!-- Historico NTC -->
-            <div id="dprod-historico"></div>
+        <!-- Linha 1: DNA + NTC -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:10px">&#x1F9EC; DNA DO PRODUTO</div>
+            <div id="dprod-dna-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:.8rem"></div>
           </div>
-
-          <!-- RIGHT: Gavetas editáveis -->
-          <div id="dprod-gavetas-wrap">
-            <!-- Gaveta DNA -->
-            <div class="gaveta open" id="dprod-gav-dna">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F9EC; DNA do Produto
-                <span class="badge badge-blue gaveta-status ml-auto" id="dprod-dna-badge">—</span>
-                <span class="gaveta-chevron">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem">
-                  <div class="fg"><label>Referencia (SKU)</label><input id="dp-ref" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Descricao</label><input id="dp-desc" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Fabricante</label><input id="dp-fab" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Marca</label><input id="dp-marca" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Familia</label><input id="dp-familia" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Grupo Industrial</label><input id="dp-grupo" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Linha</label><input id="dp-linha" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Origem / Pais</label><input id="dp-origem" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>Codigo DNA (OEM principal)</label><input id="dp-codigo-dna" type="text" class="inp-sm font-mono"></div>
-                  <div class="fg"><label>EAN / GTIN</label><input id="dp-ean" type="text" class="inp-sm font-mono"></div>
-                  <div class="fg"><label>Preco Custo (R$)</label><input id="dp-preco-custo" type="number" step="0.01" class="inp-sm"></div>
-                  <div class="fg"><label>Preco Venda (R$)</label><input id="dp-preco-venda" type="number" step="0.01" class="inp-sm"></div>
-                </div>
-                <button class="btn btn-sm" style="margin-top:10px" onclick="dprodSalvarDNA()">&#x1F4BE; Salvar DNA</button>
-                <span id="dp-dna-st" class="text-xs" style="margin-left:8px"></span>
+          <div id="dprod-nct-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em">MOTOR NTC 4.0</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="dprod-nct-status" style="font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;background:var(--bg)"></span>
+                <span id="dprod-nct-score" style="font-size:1.5rem;font-weight:800;color:var(--text)">—</span>
               </div>
             </div>
-
-            <!-- Gaveta Aplicações Veiculares -->
-            <div class="gaveta open" id="dprod-gav-av">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F697; Aplicacoes Veiculares
-                <span class="badge gaveta-status ml-auto" id="dprod-av-badge">0</span>
-                <span class="gaveta-chevron">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body">
-                <div id="dprod-av-table"></div>
-                <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-top:10px;border:1px solid var(--border)">
-                  <div style="font-size:.7rem;color:var(--text3);margin-bottom:8px;font-weight:700">+ Adicionar Aplicacao</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-size:.78rem">
-                    <div class="fg"><label>Montadora</label><input id="av-montadora" type="text" class="inp-sm" placeholder="ex: FIAT"></div>
-                    <div class="fg"><label>Modelo</label><input id="av-modelo" type="text" class="inp-sm" placeholder="ex: PALIO"></div>
-                    <div class="fg"><label>Motor</label><input id="av-motor" type="text" class="inp-sm" placeholder="ex: 1.0 8V"></div>
-                    <div class="fg"><label>Versao</label><input id="av-versao" type="text" class="inp-sm"></div>
-                    <div class="fg"><label>Ano Ini</label><input id="av-ano-ini" type="number" class="inp-sm" placeholder="2010"></div>
-                    <div class="fg"><label>Ano Fim</label><input id="av-ano-fim" type="number" class="inp-sm" placeholder="2020"></div>
-                    <div class="fg" style="grid-column:span 2"><label>Observacao</label><input id="av-obs" type="text" class="inp-sm"></div>
-                  </div>
-                  <button class="btn btn-sm" onclick="dprodAddAplicacao()">+ Adicionar</button>
-                  <span id="dp-av-st" class="text-xs" style="margin-left:8px"></span>
-                </div>
-              </div>
+            <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px">
+              <div id="dprod-nct-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a6fff,#00c896);transition:width .5s"></div>
             </div>
-
-            <!-- Gaveta Códigos OEM -->
-            <div class="gaveta open" id="dprod-gav-cod">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F4CB; Codigos OEM + Cambiados
-                <span class="badge gaveta-status ml-auto" id="dprod-cod-badge">0</span>
-                <span class="gaveta-chevron">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body">
-                <div id="dprod-cod-list"></div>
-                <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-top:10px;border:1px solid var(--border)">
-                  <div style="font-size:.7rem;color:var(--text3);margin-bottom:8px;font-weight:700">+ Adicionar Codigo</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:.78rem">
-                    <div class="fg"><label>Codigo</label><input id="cod-codigo" type="text" class="inp-sm font-mono" placeholder="ex: LUK-6203236"></div>
-                    <div class="fg"><label>Tipo</label>
-                      <select id="cod-tipo" class="inp-sm"><option>OEM</option><option>CAMBIADO</option><option>EAN</option><option>SKU_DIST</option><option>MOTOR</option></select>
-                    </div>
-                    <div class="fg"><label>Fabricante</label><input id="cod-fab" type="text" class="inp-sm" placeholder="ex: LUK"></div>
-                  </div>
-                  <button class="btn btn-sm" onclick="dprodAddCodigo()">+ Adicionar</button>
-                  <span id="dp-cod-st" class="text-xs" style="margin-left:8px"></span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Gaveta Fiscal -->
-            <div class="gaveta open" id="dprod-gav-fis">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F4CA; Dados Fiscais NCM + CEST
-                <span class="badge gaveta-status ml-auto" id="dprod-fis-badge">—</span>
-                <span class="gaveta-chevron">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body">
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.82rem">
-                  <div class="fg"><label>NCM</label><input id="dp-ncm" type="text" class="inp-sm font-mono" placeholder="ex: 8708.99.90"></div>
-                  <div class="fg"><label>CEST</label><input id="dp-cest" type="text" class="inp-sm font-mono"></div>
-                  <div class="fg"><label>CFOP</label><input id="dp-cfop" type="text" class="inp-sm font-mono"></div>
-                  <div class="fg"><label>Origem (0-8)</label><input id="dp-orig-fis" type="text" class="inp-sm"></div>
-                  <div class="fg"><label>IPI (%)</label><input id="dp-ipi" type="number" step="0.01" class="inp-sm"></div>
-                  <div class="fg"><label>ICMS (%)</label><input id="dp-icms" type="number" step="0.01" class="inp-sm"></div>
-                  <div class="fg"><label>PIS (%)</label><input id="dp-pis" type="number" step="0.01" class="inp-sm"></div>
-                  <div class="fg"><label>COFINS (%)</label><input id="dp-cofins" type="number" step="0.01" class="inp-sm"></div>
-                </div>
-                <button class="btn btn-sm" style="margin-top:10px" onclick="dprodSalvarFiscal()">&#x1F4BE; Salvar Fiscal</button>
-                <span id="dp-fis-st" class="text-xs" style="margin-left:8px"></span>
-              </div>
-            </div>
-
-            <!-- Gaveta Logística -->
-            <div class="gaveta open" id="dprod-gav-log">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F4E6; Logistica + Pesos + Dimensoes
-                <span class="badge gaveta-status ml-auto" id="dprod-log-badge">—</span>
-                <span class="gaveta-chevron">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body">
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:.82rem">
-                  <div class="fg"><label>Peso Liq (kg)</label><input id="dp-peso-liq" type="number" step="0.001" class="inp-sm"></div>
-                  <div class="fg"><label>Peso Bruto (kg)</label><input id="dp-peso-bruto" type="number" step="0.001" class="inp-sm"></div>
-                  <div class="fg"><label>Comprimento (cm)</label><input id="dp-comp" type="number" step="0.1" class="inp-sm"></div>
-                  <div class="fg"><label>Largura (cm)</label><input id="dp-larg" type="number" step="0.1" class="inp-sm"></div>
-                  <div class="fg"><label>Altura (cm)</label><input id="dp-alt" type="number" step="0.1" class="inp-sm"></div>
-                  <div class="fg"><label>Volume (m3)</label><input id="dp-vol" type="number" step="0.0001" class="inp-sm"></div>
-                </div>
-                <button class="btn btn-sm" style="margin-top:10px" onclick="dprodSalvarLog()">&#x1F4BE; Salvar Logistica</button>
-                <span id="dp-log-st" class="text-xs" style="margin-left:8px"></span>
-              </div>
-            </div>
-
-            <!-- Gaveta Imagens -->
-            <div class="gaveta open" id="dprod-gav-img">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F5BC; Imagens — Google Shopping
-                <span class="badge gaveta-status ml-auto" id="dprod-img-badge">0</span>
-                <span class="gaveta-chevron">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body">
-                <div id="dprod-img-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
-                <div class="fg" style="margin-bottom:8px">
-                  <label>Importar imagem por URL</label>
-                  <div class="flex" style="gap:6px;margin-top:4px">
-                    <input type="text" id="dprod-img-url" placeholder="https://..." class="inp-sm" style="flex:1">
-                    <button class="btn btn-sm" onclick="dprodImportUrl()">&#x2B07; Importar</button>
-                    <button class="btn btn-blue btn-sm" onclick="dprodBuscaWeb()">&#x1F50D; Web</button>
-                  </div>
-                </div>
-                <div id="dprod-img-st" class="text-xs"></div>
-              </div>
-            </div>
-
-            <!-- Gaveta Integrações -->
-            <div class="gaveta open" id="dprod-gav-int">
-              <div class="gaveta-header" onclick="this.closest('.gaveta').classList.toggle('open')">
-                <span class="gaveta-icon">&#x25BC;</span>&#x1F4E4; Integracoes — Bling / Wix / Google
-                <span class="gaveta-chevron ml-auto">&#x25B2;</span>
-              </div>
-              <div class="gaveta-body" id="dprod-int-body"></div>
-            </div>
-
-            <!-- SYNC PANEL -->
-            <div id="dprod-sync-panel" style="display:none">
-              <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2744;&#xFE0F; Produto Congelado — Pacote de publicacao pronto</div>
-              <div id="dprod-pub-loading" style="text-align:center;padding:20px"><div class="spinner"></div></div>
-              <div id="dprod-pub-pacote" style="display:none">
-                <div style="display:grid;grid-template-columns:140px 1fr;gap:12px;margin-bottom:14px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
-                  <div>
-                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">IMAGEM PRINCIPAL</div>
-                    <div id="dprod-pub-img" style="width:130px;height:130px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#333;font-size:2rem">&#x1F4F7;</div>
-                  </div>
-                  <div>
-                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">DESCRICAO COMERCIAL</div>
-                    <div id="dprod-pub-desc" style="font-size:.76rem;color:var(--text);line-height:1.5;max-height:120px;overflow:auto;white-space:pre-wrap"></div>
-                  </div>
-                </div>
-                <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700">SINCRONIZAR NOS CANAIS</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                  <button class="btn" style="background:#0055a5;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('bling')"><div>&#x1F4CB; Bling ERP</div><div style="font-size:.58rem;opacity:.75">Cadastro + imagem + descricao PDV</div></button>
-                  <button class="btn" style="background:#00b0f0;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('wix')"><div>&#x1F310; Wix Stores</div><div style="font-size:.58rem;opacity:.75">Produto + fotos + descricao site</div></button>
-                  <button class="btn" style="background:#4285F4;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('google_shopping')"><div>&#x1F6D2; Google Shopping</div><div style="font-size:.58rem;opacity:.75">Feed + imagem + titulo SEO</div></button>
-                  <button class="btn" style="background:#EA4335;font-size:.76rem;text-align:left;padding:8px 12px" onclick="dprodSincronizar('google_ads')"><div>&#x1F4E2; Google Ads P-Max</div><div style="font-size:.58rem;opacity:.75">H1/H2/D1/D2/Callout prontos</div></button>
-                </div>
-                <div id="dprod-sinc-st" class="text-xs" style="margin-top:8px;text-align:center"></div>
-              </div>
+            <div id="dprod-nct-modules" style="display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem"></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+              <span style="font-size:.58rem;color:var(--text3)">RAST</span>
+              <span id="dprod-rast" style="flex:1;font-family:monospace;font-size:.58rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
             </div>
           </div>
         </div>
+
+        <!-- Linha 2: Imagens + Aplicações -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div class="sec" style="margin-bottom:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div class="sec-title" style="margin-bottom:0">&#x1F5BC;&#xFE0F; Imagens</div>
+              <span id="dprod-img-count" style="font-size:.65rem;color:var(--text3)">0 imagens</span>
+            </div>
+            <div id="dprod-img-main" style="display:none;background:#0a0a0a;border-radius:8px;overflow:hidden;margin-bottom:8px;position:relative">
+              <img id="dprod-img-main-src" src="" style="width:100%;max-height:200px;object-fit:contain;display:block" onerror="this.style.opacity='.15'">
+              <div id="dprod-img-main-label" style="position:absolute;top:8px;left:8px;font-size:.6rem;font-weight:700;background:rgba(0,0,0,.7);color:#fff;padding:2px 8px;border-radius:10px"></div>
+              <div id="dprod-img-main-status" style="position:absolute;top:8px;right:8px;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px"></div>
+              <div id="dprod-img-main-actions" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:4px;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.85))"></div>
+            </div>
+            <div id="dprod-img-slots" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+              <input type="text" id="dprod-img-url" placeholder="Cole URL da imagem..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <button class="btn btn-sm" onclick="dprodImportUrl()">&#x2B07;</button>
+              <button class="btn btn-blue btn-sm" onclick="dprodBuscaWeb()">&#x1F50D;</button>
+            </div>
+            <div id="dprod-img-st" class="text-xs" style="margin-top:4px"></div>
+          </div>
+          <div class="sec" style="margin-bottom:0">
+            <div class="sec-title">&#x1F697; Aplicacoes Veiculares</div>
+            <div id="dprod-av-table"></div>
+          </div>
+        </div>
+
+        <!-- Congelar -->
+        <div id="dprod-freeze-zone">
+          <div id="dprod-ntc-hint" style="font-size:.72rem;text-align:center;margin-bottom:6px"></div>
+          <button class="indexar-btn" id="dprod-btn-congelar" onclick="dprodCongelar()" disabled>&#x1F512; CONGELAR — NTC insuficiente</button>
+          <div id="dprod-indexar-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+        </div>
+        <div id="dprod-historico" style="margin-top:10px"></div>
+
+        <!-- IDs legados necessários para funções existentes -->
+        <div id="dprod-sync-panel" style="display:none"></div>
+        <div id="dprod-pub-loading" style="display:none"></div>
+        <div id="dprod-pub-pacote" style="display:none"></div>
+        <div id="dprod-pub-img" style="display:none"></div>
+        <div id="dprod-pub-desc" style="display:none"></div>
+        <div id="dprod-sinc-st" style="display:none"></div>
+        <div id="dprod-gavetas-wrap" style="display:none"></div>
+        <div id="dprod-int-body" style="display:none"></div>
+        <!-- inputs legados necessários (usados por funções salvar) -->
+        <input id="dp-ref" type="hidden"><input id="dp-desc" type="hidden">
+        <input id="dp-fab" type="hidden"><input id="dp-marca" type="hidden">
+        <input id="dp-familia" type="hidden"><input id="dp-grupo" type="hidden">
+        <input id="dp-linha" type="hidden"><input id="dp-origem" type="hidden">
+        <input id="dp-codigo-dna" type="hidden"><input id="dp-ean" type="hidden">
+        <input id="dp-preco-custo" type="hidden"><input id="dp-preco-venda" type="hidden">
+        <input id="dp-ncm" type="hidden"><input id="dp-cest" type="hidden">
+        <input id="dp-cfop" type="hidden"><input id="dp-orig-fis" type="hidden">
+        <input id="dp-ipi" type="hidden"><input id="dp-icms" type="hidden">
+        <input id="dp-pis" type="hidden"><input id="dp-cofins" type="hidden">
+        <input id="dp-peso-liq" type="hidden"><input id="dp-peso-bruto" type="hidden">
+        <input id="dp-comp" type="hidden"><input id="dp-larg" type="hidden">
+        <input id="dp-alt" type="hidden"><input id="dp-vol" type="hidden">
+        <span id="dp-dna-st" style="display:none"></span>
+        <span id="dp-av-st" style="display:none"></span>
+        <span id="dp-fis-st" style="display:none"></span>
+        <span id="dp-log-st" style="display:none"></span>
+        <span id="dp-cod-st" style="display:none"></span>
+        <div id="dprod-dna-badge" style="display:none"></div>
+        <div id="dprod-av-badge" style="display:none"></div>
+        <div id="dprod-fis-badge" style="display:none"></div>
+        <div id="dprod-log-badge" style="display:none"></div>
+        <div id="dprod-img-badge" style="display:none"></div>
+        <div id="dprod-cod-badge" style="display:none"></div>
+        <div id="dprod-cod-list" style="display:none"></div>
+        <input id="av-montadora" type="hidden"><input id="av-modelo" type="hidden">
+        <input id="av-motor" type="hidden"><input id="av-versao" type="hidden">
+        <input id="av-ano-ini" type="hidden"><input id="av-ano-fim" type="hidden">
+        <input id="av-obs" type="hidden">
+        <input id="cod-codigo" type="hidden"><input id="cod-fab" type="hidden">
+        <select id="cod-tipo" style="display:none"><option>OEM</option></select>
       </div>
     </div>
 
@@ -1601,14 +1490,11 @@ async function verProduto(id) {
 
 function dprodRenderDetalhe(p) {
     const dna = p.dna || {};
-    const fis = p.fiscal || {};
-    const log = p.logistica || {};
     const aplic = p.aplicacoes || [];
-    const codigos = p.codigos || [];
     const imagens = p.imagens || [];
     const nct = p.nct || {};
 
-    // Cabeçote
+    // Cabeçalho
     document.getElementById('dprod-titulo').textContent = p.descricao || p.ref;
     document.getElementById('dprod-subtitulo').textContent = 'Ref: ' + p.ref + ' | Fabricante: ' + (dna.fabricante || p.fabricante || '—');
     document.getElementById('dprod-status-badge').innerHTML = statusBadge(p.status);
@@ -1629,128 +1515,73 @@ function dprodRenderDetalhe(p) {
         <div class="nct-module"><div class="nct-mod-label">CO 20%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.co||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.co||0)*100).toFixed(0)}%</div></div>
         <div class="nct-module"><div class="nct-mod-label">AV 10%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.av||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.av||0)*100).toFixed(0)}%</div></div>`;
 
-    // Pipeline
-    dprodUpdatePipeline(score, p.status);
+    // DNA Grid
+    const dnaItems = [
+        { label: 'Fabricante', val: dna.fabricante },
+        { label: 'Marca', val: dna.marca },
+        { label: 'Familia', val: dna.familia },
+        { label: 'Codigo DNA', val: dna.codigo_dna },
+        { label: 'Grupo', val: dna.grupo_industrial },
+        { label: 'Linha', val: dna.linha },
+        { label: 'Origem', val: dna.origem_pais },
+        { label: 'EAN', val: dna.ean || p.ean },
+    ];
+    document.getElementById('dprod-dna-grid').innerHTML = dnaItems.map(d =>
+        `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
+            <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${d.label}</div>
+            <div style="font-size:.78rem;font-weight:600;color:${d.val?'var(--text)':'var(--text3)'}">${d.val || '—'}</div>
+        </div>`).join('');
 
-    // Fill DNA fields
-    document.getElementById('dp-ref').value = p.ref || '';
-    document.getElementById('dp-desc').value = p.descricao || '';
-    document.getElementById('dp-fab').value = dna.fabricante || p.fabricante || '';
-    document.getElementById('dp-marca').value = dna.marca || '';
-    document.getElementById('dp-familia').value = dna.familia || p.familia || '';
-    document.getElementById('dp-grupo').value = dna.grupo_industrial || '';
-    document.getElementById('dp-linha').value = dna.linha || '';
-    document.getElementById('dp-origem').value = dna.origem_pais || '';
-    document.getElementById('dp-codigo-dna').value = dna.codigo_dna || '';
-    document.getElementById('dp-ean').value = dna.ean || p.ean || '';
-    document.getElementById('dp-preco-custo').value = p.preco_custo || '';
-    document.getElementById('dp-preco-venda').value = p.preco_venda || '';
-    const dnaBadge = document.getElementById('dprod-dna-badge');
-    const dnaFields = [dna.fabricante, dna.marca, dna.familia, dna.codigo_dna];
-    const dnaFilled = dnaFields.filter(Boolean).length;
-    dnaBadge.textContent = dnaFilled + '/4';
-    dnaBadge.className = 'badge ' + (dnaFilled >= 3 ? 'badge-green' : dnaFilled > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto';
+    // Preserve hidden inputs for backward-compat
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    set('dp-ref', p.ref); set('dp-desc', p.descricao);
+    set('dp-fab', dna.fabricante || p.fabricante); set('dp-marca', dna.marca);
+    set('dp-familia', dna.familia || p.familia); set('dp-grupo', dna.grupo_industrial);
+    set('dp-linha', dna.linha); set('dp-origem', dna.origem_pais);
+    set('dp-codigo-dna', dna.codigo_dna); set('dp-ean', dna.ean || p.ean);
 
-    // Fill Fiscal fields
-    document.getElementById('dp-ncm').value = fis.ncm || '';
-    document.getElementById('dp-cest').value = fis.cest || '';
-    document.getElementById('dp-cfop').value = fis.cfop || '';
-    document.getElementById('dp-orig-fis').value = fis.origem || '';
-    document.getElementById('dp-ipi').value = fis.ipi != null ? fis.ipi : '';
-    document.getElementById('dp-icms').value = fis.icms != null ? fis.icms : '';
-    document.getElementById('dp-pis').value = fis.pis != null ? fis.pis : '';
-    document.getElementById('dp-cofins').value = fis.cofins != null ? fis.cofins : '';
-    const fisBadge = document.getElementById('dprod-fis-badge');
-    fisBadge.textContent = fis.ncm ? 'NCM OK' : 'Sem NCM';
-    fisBadge.className = 'badge ' + (fis.ncm ? 'badge-green' : 'badge-red') + ' gaveta-status ml-auto';
+    // Congelar zone
+    dprodUpdateCongelar(score, p.status);
 
-    // Fill Logística fields
-    document.getElementById('dp-peso-liq').value = log.peso_liq || '';
-    document.getElementById('dp-peso-bruto').value = log.peso_bruto || '';
-    document.getElementById('dp-comp').value = log.comprimento || '';
-    document.getElementById('dp-larg').value = log.largura || '';
-    document.getElementById('dp-alt').value = log.altura || '';
-    document.getElementById('dp-vol').value = log.volume || '';
-    const logBadge = document.getElementById('dprod-log-badge');
-    logBadge.textContent = log.peso_liq ? 'OK' : '—';
-    logBadge.className = 'badge ' + (log.peso_liq ? 'badge-green' : 'badge-yellow') + ' gaveta-status ml-auto';
-
-    // Aplicações table
+    // Aplicações
     dprodRenderAplicacoes(aplic);
 
-    // Códigos
-    dprodRenderCodigos(codigos);
-
-    // Imagens
+    // Imagens gallery
     dprodRenderImagens(imagens);
-
-    // Integrações
-    document.getElementById('dprod-int-body').innerHTML = `<div class="flex flex-wrap" style="gap:8px">
-        <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Bling ERP</div><span class="badge badge-yellow">Aguardando API Key</span></div>
-        <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Wix Stores</div>${p.wix_id ? `<span class="badge badge-green">&#x2714; Sincronizado</span>` : '<span class="badge badge-yellow">Nao sincronizado</span>'}</div>
-        <div style="background:var(--bg);border-radius:8px;padding:12px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:.65rem;color:var(--text3);margin-bottom:4px">Google Shopping</div><span class="badge ${imagens.length > 0 ? 'badge-green' : 'badge-red'}">${imagens.length > 0 ? '&#x2714; Pronto' : '&#x26A0; Sem imagem'}</span></div>
-    </div>`;
-
-    // Historico NTC
-    const histEl = document.getElementById('dprod-historico');
-    if (histEl && p.historico && p.historico.length) {
-        histEl.innerHTML = `<div class="sec" style="margin-top:10px"><div class="sec-title">Historico NTC (${p.historico.length})</div>` +
-            p.historico.slice(0,5).map(h => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.68rem">
-                <span style="color:${h.status_novo==='APROVADO'?'var(--success)':h.status_novo==='PENDENTE'?'var(--warning)':'var(--danger)'};font-weight:900">${((h.ntc_novo||0)*100).toFixed(1)}%</span>
-                <span class="badge ${h.status_novo==='APROVADO'?'badge-green':h.status_novo==='PENDENTE'?'badge-yellow':'badge-red'}" style="font-size:.58rem">${h.status_novo||'—'}</span>
-                <span style="color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.alteracao||''}</span>
-                <span style="color:var(--text3)">${(h.criado_em||'').substring(5,16)}</span>
-            </div>`).join('') + '</div>';
-    } else if (histEl) {
-        histEl.innerHTML = '';
-    }
 }
 
-function dprodUpdatePipeline(score, status) {
-    const p1 = document.getElementById('dprod-pip-1');
-    const p2 = document.getElementById('dprod-pip-2');
-    const p3 = document.getElementById('dprod-pip-3');
+function dprodUpdateCongelar(score, status) {
     const btn = document.getElementById('dprod-btn-congelar');
     const hint = document.getElementById('dprod-ntc-hint');
-    const syncPanel = document.getElementById('dprod-sync-panel');
     const pct = (score * 100).toFixed(1);
     const isCongelado = status === 'Congelado';
     if (isCongelado) {
-        p1.className = 'pipeline-step done'; p2.className = 'pipeline-step done'; p3.className = 'pipeline-step active';
-        btn.style.display = 'none';
-        hint.innerHTML = '<span style="color:var(--success)">&#x2744; Produto Congelado — Pronto para sincronizar</span>';
-        syncPanel.style.display = 'block';
-        dprodPrepararPublicacao();
+        if (btn) { btn.style.display = 'none'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--success)">&#x2744; Produto Congelado — Pronto para sincronizar</span>';
     } else if (score >= 0.95) {
-        p1.className = 'pipeline-step done'; p2.className = 'pipeline-step active'; p3.className = 'pipeline-step';
-        btn.style.display = ''; btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#00c864,#007a3d)';
-        btn.innerHTML = '&#x2744;&#xFE0F; CONGELAR E INDEXAR — ' + pct + '% APROVADO';
-        hint.innerHTML = '<span style="color:var(--success)">&#x2714; NTC APROVADO ' + pct + '%</span>';
-        syncPanel.style.display = 'none';
+        if (btn) { btn.style.display = ''; btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#00c864,#007a3d)'; btn.innerHTML = '&#x2744;&#xFE0F; CONGELAR E INDEXAR — ' + pct + '% APROVADO'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--success)">&#x2714; NTC APROVADO ' + pct + '%</span>';
     } else if (score >= 0.80) {
-        p1.className = 'pipeline-step active'; p2.className = 'pipeline-step'; p3.className = 'pipeline-step';
-        btn.style.display = ''; btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#f0a500,#b87200)';
-        btn.innerHTML = '&#x26A0; CONGELAR (' + pct + '%) — Enriquecer mais recomendado';
-        hint.innerHTML = '<span style="color:var(--warning)">NTC ' + pct + '% PENDENTE</span>';
-        syncPanel.style.display = 'none';
+        if (btn) { btn.style.display = ''; btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#f0a500,#b87200)'; btn.innerHTML = '&#x26A0; CONGELAR (' + pct + '%) — Enriquecer mais recomendado'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--warning)">NTC ' + pct + '% PENDENTE</span>';
     } else {
-        p1.className = 'pipeline-step active'; p2.className = 'pipeline-step'; p3.className = 'pipeline-step';
-        btn.style.display = ''; btn.disabled = true; btn.style.background = '';
-        btn.innerHTML = '&#x1F512; CONGELAR — NTC ' + pct + '% (minimo 80%)';
-        hint.innerHTML = '<span style="color:var(--danger)">&#x26A0; NTC ' + pct + '% REPROVADO — use ENRIQUECER NA WEB</span>';
-        syncPanel.style.display = 'none';
+        if (btn) { btn.style.display = ''; btn.disabled = true; btn.style.background = ''; btn.innerHTML = '&#x1F512; CONGELAR — NTC ' + pct + '% (minimo 80%)'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--danger)">&#x26A0; NTC ' + pct + '% REPROVADO — use ENRIQUECER NA WEB</span>';
     }
 }
 
+function dprodUpdatePipeline(score, status) { dprodUpdateCongelar(score, status); }
+
 function dprodRenderAplicacoes(aplic) {
     const badge = document.getElementById('dprod-av-badge');
-    badge.textContent = aplic.length;
-    badge.className = 'badge ' + (aplic.length >= 3 ? 'badge-green' : aplic.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto';
-    document.getElementById('dprod-av-table').innerHTML = aplic.length
-        ? `<div class="tbl-wrap"><table style="font-size:.75rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th><th></th></tr></thead><tbody>` +
-          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||a.cilindrada||'—'}</td><td>${a.ano_ini||'?'}–${a.ano_fim||'?'}</td><td><button class="btn btn-danger btn-xs" onclick="dprodDelAplic(${a.id})">&#x1F5D1;</button></td></tr>`).join('') +
+    if (badge) { badge.textContent = aplic.length; badge.className = 'badge ' + (aplic.length >= 3 ? 'badge-green' : aplic.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto'; }
+    const el = document.getElementById('dprod-av-table');
+    if (!el) return;
+    el.innerHTML = aplic.length
+        ? `<div class="tbl-wrap"><table style="font-size:.75rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th></tr></thead><tbody>` +
+          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||a.cilindrada||'—'}</td><td>${a.ano_ini||'?'}–${a.ano_fim||'?'}</td></tr>`).join('') +
           '</tbody></table></div>'
-        : '<div class="empty" style="font-size:.78rem">Nenhuma aplicacao. Adicione manualmente ou use ENRIQUECER NA WEB.</div>';
+        : '<div class="empty" style="font-size:.78rem">Nenhuma aplicacao. Use ENRIQUECER NA WEB.</div>';
 }
 
 function dprodRenderCodigos(codigos) {
@@ -1767,16 +1598,42 @@ function dprodRenderCodigos(codigos) {
         : '<div class="empty" style="font-size:.78rem">Nenhum codigo. Adicione OEM ou use ENRIQUECER NA WEB.</div>';
 }
 
+function dprodSelectImg(url, tipo, status) {
+    const main = document.getElementById('dprod-img-main');
+    const src = document.getElementById('dprod-img-main-src');
+    const lbl = document.getElementById('dprod-img-main-label');
+    const sts = document.getElementById('dprod-img-main-status');
+    if (!main) return;
+    main.style.display = 'block';
+    src.src = url;
+    if (lbl) lbl.textContent = tipo || 'IMG';
+    if (sts) { sts.textContent = status || ''; sts.style.background = status === 'APROVADA' ? 'rgba(0,200,100,.8)' : 'rgba(255,160,0,.8)'; }
+    document.querySelectorAll('#dprod-img-slots .img-thumb').forEach(t => t.style.outline = '');
+    const active = document.querySelector(`#dprod-img-slots [data-url="${CSS.escape(url)}"]`);
+    if (active) active.style.outline = '2px solid var(--accent)';
+}
+
 function dprodRenderImagens(imagens) {
     const badge = document.getElementById('dprod-img-badge');
-    badge.textContent = imagens.length;
-    badge.className = 'badge ' + (imagens.length >= 3 ? 'badge-green' : imagens.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto';
-    document.getElementById('dprod-img-grid').innerHTML = imagens.length
-        ? imagens.map(img => `<div style="border-radius:6px;overflow:hidden;background:#0d0d0d;border:1px solid var(--border);aspect-ratio:1;position:relative">
+    if (badge) { badge.textContent = imagens.length; badge.className = 'badge ' + (imagens.length >= 3 ? 'badge-green' : imagens.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto'; }
+    const cnt = document.getElementById('dprod-img-count');
+    if (cnt) cnt.textContent = imagens.length + ' imagem(ns)';
+    const main = document.getElementById('dprod-img-main');
+    const slots = document.getElementById('dprod-img-slots');
+    if (!slots) return;
+    if (!imagens.length) {
+        if (main) main.style.display = 'none';
+        slots.innerHTML = '<div class="empty" style="font-size:.78rem">Nenhuma imagem. Use ENRIQUECER NA WEB.</div>';
+        return;
+    }
+    slots.innerHTML = imagens.map((img, i) => {
+        const color = img.status === 'APROVADA' ? '#00c864' : img.status === 'REPROVADA' ? '#c0392b' : '#f0a500';
+        return `<div class="img-thumb" data-url="${img.url}" onclick="dprodSelectImg('${img.url.replace(/'/g,"\\'")}','${img.tipo||'IMG'}','${img.status||''}')"
+            style="width:60px;height:60px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:2px solid ${color};cursor:pointer;flex-shrink:0">
             <img src="${img.url}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.opacity='.2'">
-            <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.75);font-size:.55rem;color:#aaa;padding:2px 5px;text-align:center">${img.tipo||'IMG'}</div>
-          </div>`).join('')
-        : '<div class="empty" style="font-size:.78rem;grid-column:span 3">Nenhuma imagem. Cole URL abaixo ou use ENRIQUECER NA WEB.</div>';
+        </div>`;
+    }).join('');
+    dprodSelectImg(imagens[0].url, imagens[0].tipo, imagens[0].status);
 }
 
 async function dprodSalvarDNA() {
@@ -1930,10 +1787,13 @@ async function dprodEnriquecerWeb() {
     if (!dprodId) return;
     const btn = document.getElementById('dprod-btn-web');
     const st = document.getElementById('dprod-web-status');
-    btn.disabled = true; btn.textContent = 'Buscando...';
+    btn.disabled = true; btn.textContent = 'Limpando...';
+    st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Limpando dados anteriores...';
+    await api('/produtos/' + dprodId + '/enriquecimento-web', { method: 'DELETE' });
+    btn.textContent = 'Enriquecendo...';
     st.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Triangulando + Claude Haiku...';
     const d = await api('/produtos/' + dprodId + '/enriquecer-web', { method: 'POST' });
-    btn.disabled = false; btn.innerHTML = '&#x1F310; ENRIQUECER DNA NA WEB';
+    btn.disabled = false; btn.innerHTML = '&#x1F310; ENRIQUECER';
     if (d.success) {
         st.innerHTML = `<span style="color:var(--success)">&#x2714; NTC: ${(d.nct.score*100).toFixed(1)}% | ${d.aplicacoes?.length||0} aplic | ${d.imagens?.length||0} imgs</span>`;
         const p = await api('/produtos/' + dprodId);
@@ -1941,6 +1801,16 @@ async function dprodEnriquecerWeb() {
     } else {
         st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${d.error||'Erro'}</span>`;
     }
+}
+
+async function dprodResetar() {
+    if (!dprodId) return;
+    const st = document.getElementById('dprod-web-status');
+    if (st) st.innerHTML = 'Resetando...';
+    await api('/produtos/' + dprodId + '/enriquecimento-web', { method: 'DELETE' });
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderDetalhe(p);
+    if (st) st.innerHTML = '<span style="color:var(--success)">&#x2714; DNA, imagens e aplicacoes removidos.</span>';
 }
 
 async function dprodCongelar() {
