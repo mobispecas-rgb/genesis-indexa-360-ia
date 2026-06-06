@@ -3,3 +3,4 @@ data/
 .env
 public/uploads/
 .claude/
+genesis.db
