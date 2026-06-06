@@ -3861,7 +3861,7 @@ function reabrirEnriquecimento() {
     enriquecerWeb();
 }
 
-// Voz do Lojista
+// Descricao por canal (legado — mantido para retrocompatibilidade)
 function switchVoz(el, perfil) {
     document.querySelectorAll('.voz-tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
@@ -3875,7 +3875,7 @@ async function gerarVoz() {
     if (!temDna) {
         const out = document.getElementById('voz-output');
         const st = document.getElementById('voz-status');
-        if (out) out.textContent = 'DNA incompleto — enriqueça o produto antes de gerar a Voz do Lojista.';
+        if (out) out.textContent = 'DNA incompleto — enriqueça o produto antes de gerar.';
         if (st) st.innerHTML = '<span style="color:var(--warning)">⚠ DNA obrigatório: clique em ENRIQUECER DNA NA WEB primeiro</span>';
         return;
     }
