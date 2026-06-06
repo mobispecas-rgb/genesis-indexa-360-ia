@@ -1240,10 +1240,10 @@ app.delete('/api/produtos/:id/enriquecimento-web', (req, res) => {
     db.transaction(() => {
         db.prepare("DELETE FROM aplicacoes_motor WHERE produto_id=?").run(id);
         db.prepare("DELETE FROM codigos_cambiados WHERE produto_id=?").run(id);
-        db.prepare("DELETE FROM imagens WHERE produto_id=? AND origem='Web-Auto'").run(id);
-        // Nao apaga fiscal/logistica pois podem ter sido preenchidos manualmente
+        db.prepare("DELETE FROM imagens WHERE produto_id=?").run(id);
+        db.prepare("DELETE FROM dna WHERE produto_id=?").run(id);
     })();
-    res.json({ success: true, msg: 'Dados de enriquecimento web removidos. Fiscal e logistica preservados.' });
+    res.json({ success: true, msg: 'DNA, aplicacoes e imagens removidos. Produto pronto para re-enriquecimento.' });
 });
 
 // -----------------------------------------------------------
