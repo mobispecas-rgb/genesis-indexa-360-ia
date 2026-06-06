@@ -1134,10 +1134,10 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         const dnaMrc  = dnaPayload.marca || marca || null;
         const dnaFam  = dnaPayload.familia || null;
         const dnaOem  = (dnaPayload.codigo_oem || oem || '').split(/\s+/)[0] || null;
-        // Só persiste DNA se todos os 4 campos estiverem presentes (evita dados parciais incorretos)
-        if (dnaFab && dnaMrc && dnaFam && dnaOem) {
+        // Só persiste DNA se codigo_dna + pelo menos marca ou fabricante estiverem presentes
+        if (dnaOem && (dnaMrc || dnaFab)) {
             if (existDna) {
-                db.prepare("UPDATE dna SET fabricante=?,marca=?,familia=?,codigo_dna=? WHERE produto_id=?")
+                db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=? WHERE produto_id=?")
                   .run(dnaFab, dnaMrc, dnaFam, dnaOem, id);
             } else {
                 db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna) VALUES (?,?,?,?,?)")
