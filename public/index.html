@@ -3871,6 +3871,15 @@ function switchVoz(el, perfil) {
 
 async function gerarVoz() {
     if (!currentEnrId) { alert('Carregue um produto primeiro'); return; }
+    const dna = enrData?.dna || {};
+    const temDna = dna.codigo_dna && (dna.marca || dna.fabricante);
+    if (!temDna) {
+        const out = document.getElementById('voz-output');
+        const st = document.getElementById('voz-status');
+        if (out) out.textContent = 'DNA incompleto — enriqueça o produto antes de gerar a Voz do Lojista.';
+        if (st) st.innerHTML = '<span style="color:var(--warning)">⚠ DNA obrigatório: clique em ENRIQUECER DNA NA WEB primeiro</span>';
+        return;
+    }
     const btn = document.getElementById('voz-btn');
     const out = document.getElementById('voz-output');
     const st = document.getElementById('voz-status');
