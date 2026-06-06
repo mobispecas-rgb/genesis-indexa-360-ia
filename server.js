@@ -1072,8 +1072,12 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
 
-    const oem = dna?.codigo_dna || p.ref;
-    const marca = dna?.marca || dna?.fabricante || '';
+    // Separar OEM da marca: "CX355090 INDYSA" → oem="CX355090", marcaRef="INDYSA"
+    const refRaw = (dna?.codigo_dna || p.ref || '').trim();
+    const refParts = refRaw.split(/\s+/);
+    const oem = refParts[0]; // primeiro token é sempre o código OEM
+    const marcaRef = refParts.length > 1 ? refParts.slice(1).join(' ') : '';
+    const marca = dna?.marca || dna?.fabricante || marcaRef || '';
 
     // Build rich search queries — include OEM code + part type
     const descTipo = p.descricao.split(' ').slice(0,4).join(' ');
@@ -1125,6 +1129,21 @@ REGRAS ABSOLUTAS:
     if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
 
     const txResult = db.transaction(() => {
+        // DNA — salvar fabricante, marca, familia e codigo_oem separados
+        const dnaPayload = parsed.dna || {};
+        const existDna = db.prepare('SELECT id FROM dna WHERE produto_id=?').get(id);
+        const dnaMarca = dnaPayload.marca || marca || null;
+        const dnaFab   = dnaPayload.fabricante || marca || null;
+        const dnaFam   = dnaPayload.familia || null;
+        const dnaOem   = (dnaPayload.codigo_oem || oem || '').split(/\s+/)[0] || null; // garante sem espaço
+        if (existDna) {
+            db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=COALESCE(?,codigo_dna) WHERE produto_id=?")
+              .run(dnaFab, dnaMarca, dnaFam, dnaOem, id);
+        } else if (dnaFab || dnaMarca || dnaFam || dnaOem) {
+            db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna) VALUES (?,?,?,?,?)")
+              .run(id, dnaFab, dnaMarca, dnaFam, dnaOem);
+        }
+
         // APLICACOES
         if (Array.isArray(parsed.aplicacoes)) {
             const existSet = new Set(db.prepare('SELECT montadora||"|"||modelo||"|"||COALESCE(ano_ini,"") as k FROM aplicacoes_motor WHERE produto_id=?').all(id).map(r => r.k));
