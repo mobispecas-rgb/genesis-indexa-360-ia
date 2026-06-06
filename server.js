@@ -825,6 +825,26 @@ app.post('/api/ia/ntc', (req, res) => {
     res.json(result);
 });
 
+function buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens) {
+    const eanRecord = codigos.find(c => c.tipo === 'EAN' || c.tipo === 'GTIN');
+    const ean = eanRecord ? eanRecord.codigo : null;
+    const dimText = logistica && logistica.largura ? logistica.largura + 'mm' : '';
+    const altText = logistica && logistica.altura ? logistica.altura + 'mm' : '';
+    const text = [p.ref, p.descricao, dna ? (dna.marca || '') : '', dna ? (dna.fabricante || '') : '', dimText, altText].filter(Boolean).join(' ');
+    const extra = {
+        ncm: fiscal && fiscal.ncm,
+        cest: fiscal && fiscal.cest,
+        cfop: fiscal && fiscal.cfop,
+        ean,
+        peso: logistica && logistica.peso_liq,
+        dimensoes: logistica ? !!(logistica.altura || logistica.largura || logistica.comprimento) : false,
+        aplicacoes,
+        codigos,
+        imagens
+    };
+    return { text, extra };
+}
+
 app.get('/api/produtos/:id/ntc', (req, res) => {
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
@@ -834,8 +854,7 @@ app.get('/api/produtos/:id/ntc', (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(req.params.id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(req.params.id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(req.params.id);
-    const text = p.descricao + ' ' + (dna ? (dna.marca || '') + ' ' + (dna.fabricante || '') : '');
-    const extra = { ncm: fiscal && fiscal.ncm, cest: fiscal && fiscal.cest, cfop: fiscal && fiscal.cfop, peso: logistica && logistica.peso_liq, dimensoes: logistica ? (logistica.altura && logistica.largura) : false, aplicacoes, codigos, imagens };
+    const { text, extra } = buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens);
     const result = calcNTC(text, extra);
     res.json({ produto: p, ntc: result });
 });
@@ -849,8 +868,7 @@ app.post('/api/produtos/:id/ntc/recalcular', (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(req.params.id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(req.params.id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(req.params.id);
-    const text = p.descricao + ' ' + (dna ? (dna.marca || '') + ' ' + (dna.fabricante || '') : '');
-    const extra = { ncm: fiscal && fiscal.ncm, cest: fiscal && fiscal.cest, cfop: fiscal && fiscal.cfop, peso: logistica && logistica.peso_liq, dimensoes: logistica ? (logistica.altura && logistica.largura) : false, aplicacoes, codigos, imagens };
+    const { text, extra } = buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens);
     const result = calcNTC(text, extra);
     db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(req.params.id, p.ntc_score, result.score, p.ntc_status, result.status, 'Recalculo NTC');
     db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,rast_hash=?,atualizado_em=datetime('now','localtime') WHERE id=?").run(result.score, result.status, result.rast_hash, req.params.id);
