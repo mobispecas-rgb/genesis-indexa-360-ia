@@ -644,15 +644,24 @@ app.get('/api/produtos/:id', (req, res) => {
 });
 
 app.post('/api/produtos', (req, res) => {
-    const { ref, descricao, empresa_id = 1, dna: dnaData, fiscal, logistica: logData } = req.body;
+    let { ref, descricao, marca, empresa_id = 1, dna: dnaData, fiscal, logistica: logData } = req.body;
     if (!ref || !descricao) return res.status(400).json({ error: 'ref e descricao sao obrigatorios' });
+    // Separar OEM da marca: "CX355090 INDYSA" → ref="CX355090", marcaAuto="INDYSA"
+    const refParts = ref.trim().split(/\s+/);
+    const refLimpo = refParts[0];
+    const marcaAuto = marca || (refParts.length > 1 ? refParts.slice(1).join(' ') : null);
     try {
-        const ins = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao) VALUES (?,?,?)").run(empresa_id, ref, descricao);
+        const ins = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao) VALUES (?,?,?)").run(empresa_id, refLimpo, descricao);
         const pid = ins.lastInsertRowid;
-        if (dnaData) db.prepare("INSERT INTO dna (produto_id,fabricante,grupo_industrial,origem_pais,codigo_dna,marca,linha,familia) VALUES (?,?,?,?,?,?,?,?)").run(pid, dnaData.fabricante||null, dnaData.grupo_industrial||null, dnaData.origem_pais||null, dnaData.codigo_dna||null, dnaData.marca||null, dnaData.linha||null, dnaData.familia||null);
+        // Se detectou marca no ref ou dnaData tem dados, criar DNA automaticamente
+        if (dnaData || marcaAuto) {
+            const d = dnaData || {};
+            db.prepare("INSERT INTO dna (produto_id,fabricante,grupo_industrial,origem_pais,codigo_dna,marca,linha,familia) VALUES (?,?,?,?,?,?,?,?)")
+              .run(pid, d.fabricante||marcaAuto||null, d.grupo_industrial||null, d.origem_pais||null, d.codigo_dna||refLimpo||null, d.marca||marcaAuto||null, d.linha||null, d.familia||null);
+        }
         if (fiscal) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem,ipi,icms,pis,cofins,cfop) VALUES (?,?,?,?,?,?,?,?,?)").run(pid, fiscal.ncm||null, fiscal.cest||null, fiscal.origem||null, fiscal.ipi||0, fiscal.icms||0, fiscal.pis||0, fiscal.cofins||0, fiscal.cfop||null);
         if (logData) db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento) VALUES (?,?,?,?,?,?)").run(pid, logData.peso_liq||null, logData.peso_bruto||null, logData.altura||null, logData.largura||null, logData.comprimento||null);
-        res.status(201).json({ success: true, id: pid });
+        res.status(201).json({ success: true, id: pid, ref: refLimpo, marca: marcaAuto });
     } catch (e) {
         res.status(400).json({ error: e.message });
     }
@@ -1260,11 +1269,11 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
     const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 20').all(id);
 
-    // NCT simplified 4-module
-    const nctTF = dna && dna.codigo_dna ? 0.82 : (dna && dna.marca ? 0.50 : 0.10);
-    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
-    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
-    const nctAV = aplicacoes.length >= 3 ? 1.00 : (aplicacoes.length > 0 ? aplicacoes.length * 0.25 : 0.00);
+    // NTC 4 modulos — formula unificada
+    const nctTF = dna?.codigo_dna ? 0.97 : (dna?.marca || dna?.fabricante ? 0.70 : dna?.familia ? 0.50 : 0.10);
+    const nctFM = p.descricao?.length > 20 ? (logistica?.peso_liq || codigos.length > 0 ? 1.00 : 0.85) : 0.30;
+    const nctCO = fiscal?.ncm ? 1.00 : 0.00;
+    const nctAV = aplicacoes.length >= 5 ? 1.00 : aplicacoes.length >= 3 ? 0.80 : aplicacoes.length > 0 ? aplicacoes.length * 0.20 : 0.00;
     const nctScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
     const nctStatus = nctScore >= 0.95 ? 'APROVADO' : nctScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
 
@@ -1469,10 +1478,10 @@ app.post('/api/ia/voz', async (req, res) => {
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produto_id);
     const aplic = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(produto_id);
     const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(produto_id);
-    const nctTF = dna && dna.codigo_dna ? 0.82 : (dna && dna.marca ? 0.50 : 0.10);
-    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
-    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
-    const nctAV = aplic.length >= 3 ? 1.00 : (aplic.length > 0 ? aplic.length * 0.25 : 0.00);
+    const nctTF = dna?.codigo_dna ? 0.97 : (dna?.marca || dna?.fabricante ? 0.70 : dna?.familia ? 0.50 : 0.10);
+    const nctFM = p.descricao?.length > 20 ? (fiscal?.ncm ? 1.00 : 0.85) : 0.30;
+    const nctCO = fiscal?.ncm ? 1.00 : 0.00;
+    const nctAV = aplic.length >= 5 ? 1.00 : aplic.length >= 3 ? 0.80 : aplic.length > 0 ? aplic.length * 0.20 : 0.00;
     const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
     const ntc = { score: ntcScore, status: ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO', modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } };
     const vp = VOZ_PROMPTS[perfil];
