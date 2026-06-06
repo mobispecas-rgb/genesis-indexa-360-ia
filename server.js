@@ -1098,19 +1098,21 @@ Contexto web encontrado: ${contextoWeb}`;
 TAREFA: Analise o produto e retorne SOMENTE JSON valido (sem markdown, sem texto antes ou depois).
 
 ESTRUTURA EXATA — nao altere os nomes dos campos:
-{"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
+{"dna":{"fabricante":null,"marca":null,"familia":null,"codigo_oem":null},"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
 
 REGRAS ABSOLUTAS:
 - Use null para QUALQUER campo sem evidencia documental clara no contexto fornecido
 - NUNCA invente montadora, modelo, motor, ano, fabricante, NCM, peso ou dimensao
 - NUNCA use nomes de empresas inventados ou nao mencionados no contexto
-- Se o contexto web for "sem resultado" ou insuficiente: retorne todos os campos como null
+- Se o contexto web for "sem resultado" ou insuficiente: use null em todos os campos de aplicacoes e fiscal
 - NCM somente se tiver certeza absoluta (formato 0000.00.00)
+- dna.fabricante: empresa fabricante real do produto (ex: LUK, Bosch, SKF) — null se desconhecido
+- dna.familia: categoria do produto (ex: Embreagem, Freios, Correia, Rolamento) baseada no nome/descricao
 - aplicacoes: somente veiculos com montadora+modelo+ano CONFIRMADOS na web
 - descricao_tecnica: descreva APENAS o que esta no nome/referencia do produto — sem inventar`;
 
     const userPrompt = `Extraia dados reais deste produto de autopecas:\n\n${contexto}`;
-    const claudeResult = await callClaude(systemPrompt, userPrompt);
+    const claudeResult = await callClaude(systemPrompt, userPrompt, 1200);
 
     let parsed = null;
     try {
@@ -1125,6 +1127,19 @@ REGRAS ABSOLUTAS:
     if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
 
     const txResult = db.transaction(() => {
+        // DNA — fabricante, marca, familia, codigo_oem
+        const dnaData = parsed.dna || {};
+        const existDna = db.prepare('SELECT id FROM dna WHERE produto_id=?').get(id);
+        const dnaMarca = dnaData.marca || marca || null;
+        const dnaFab = dnaData.fabricante || null;
+        const dnaFam = dnaData.familia || null;
+        const dnaOem = dnaData.codigo_oem || oem || null;
+        if (existDna) {
+            db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=COALESCE(?,codigo_dna) WHERE produto_id=?").run(dnaFab,dnaMarca,dnaFam,dnaOem,id);
+        } else if (dnaFab || dnaMarca || dnaFam) {
+            db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna) VALUES (?,?,?,?,?)").run(id,dnaFab,dnaMarca,dnaFam,dnaOem);
+        }
+
         // APLICACOES
         if (Array.isArray(parsed.aplicacoes)) {
             const existSet = new Set(db.prepare('SELECT montadora||"|"||modelo||"|"||COALESCE(ano_ini,"") as k FROM aplicacoes_motor WHERE produto_id=?').all(id).map(r => r.k));
@@ -1182,8 +1197,9 @@ REGRAS ABSOLUTAS:
         const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
         const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
         const imgsU = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
-        const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca ? 0.70 : 0.10);
-        const nctFM = p.descricao?.length > 20 ? (parsed.especificacoes?.diametro ? 1.00 : 0.85) : 0.30;
+        const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
+        const temEspec = parsed.especificacoes && Object.values(parsed.especificacoes).some(v => v != null);
+        const nctFM = p.descricao?.length > 20 ? (temEspec ? 1.00 : 0.85) : 0.30;
         const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
         const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
         const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
@@ -1241,11 +1257,11 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
     const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 20').all(id);
 
-    // NCT simplified 4-module
-    const nctTF = dna && dna.codigo_dna ? 0.82 : (dna && dna.marca ? 0.50 : 0.10);
-    const nctFM = p.descricao && p.descricao.length > 20 ? 0.80 : 0.30;
-    const nctCO = fiscal && fiscal.ncm ? 1.00 : 0.00;
-    const nctAV = aplicacoes.length >= 3 ? 1.00 : (aplicacoes.length > 0 ? aplicacoes.length * 0.25 : 0.00);
+    // NTC 4 modulos — formula unificada
+    const nctTF = dna?.codigo_dna ? 0.97 : (dna?.marca || dna?.fabricante ? 0.70 : dna?.familia ? 0.50 : 0.10);
+    const nctFM = p.descricao?.length > 20 ? (logistica?.peso_liq || codigos.length > 0 ? 1.00 : 0.85) : 0.30;
+    const nctCO = fiscal?.ncm ? 1.00 : 0.00;
+    const nctAV = aplicacoes.length >= 5 ? 1.00 : aplicacoes.length >= 3 ? 0.80 : aplicacoes.length > 0 ? aplicacoes.length * 0.20 : 0.00;
     const nctScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
     const nctStatus = nctScore >= 0.95 ? 'APROVADO' : nctScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
 
@@ -1302,13 +1318,13 @@ app.get('/api/congelados', (req, res) => {
 // -----------------------------------------------------------
 // CLAUDE HAIKU — VOZ DO LOJISTA
 // -----------------------------------------------------------
-async function callClaude(systemPrompt, userPrompt) {
+async function callClaude(systemPrompt, userPrompt, maxTokens = 800) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return { error: 'ANTHROPIC_API_KEY nao configurada. Adicione no painel de Configuracoes.' };
     return new Promise((resolve) => {
         const body = JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 600,
+            max_tokens: maxTokens,
             system: systemPrompt,
             messages: [{ role: 'user', content: userPrompt }]
         });
