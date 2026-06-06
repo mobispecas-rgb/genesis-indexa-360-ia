@@ -777,16 +777,26 @@ tr:hover td{background:#1c1c1c}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <!-- LEFT: NCT + Dados + Voz -->
           <div>
-            <!-- NCT Card -->
-            <div class="nct-card" id="enr-nct-card">
-              <div style="font-size:.7rem;color:var(--text3);margin-bottom:6px">Motor NCT — iRollo v3.5</div>
-              <div class="nct-score-big" id="enr-nct-score">—</div>
-              <div class="nct-status-big" id="enr-nct-status"></div>
-              <div class="nct-modules" id="enr-nct-modules"></div>
-              <div class="rast-box">
-                <span style="font-size:.65rem;color:var(--text3)">RAST-HASH Certificado</span>
-                <span class="rast-hash" id="enr-rast">—</span>
-                <button class="btn-xs btn-gray btn" onclick="copiarRast()" style="padding:2px 8px;font-size:.62rem">&#x1F4CB;</button>
+            <!-- NCT Card — layout horizontal -->
+            <div id="enr-nct-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em">MOTOR NCT — iRollo v3.5</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="nct-status-big" id="enr-nct-status" style="font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;background:var(--bg)"></span>
+                  <span class="nct-score-big" id="enr-nct-score" style="font-size:1.5rem;font-weight:800;color:var(--text)">—</span>
+                </div>
+              </div>
+              <!-- Barra de progresso NTC -->
+              <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px">
+                <div id="enr-nct-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a6fff,#00c896);transition:width .5s"></div>
+              </div>
+              <!-- Modulos em linha -->
+              <div id="enr-nct-modules" style="display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem"></div>
+              <!-- RAST-HASH -->
+              <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+                <span style="font-size:.6rem;color:var(--text3)">RAST-HASH</span>
+                <span class="rast-hash" id="enr-rast" style="flex:1;font-family:monospace;font-size:.6rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+                <button class="btn" onclick="copiarRast()" style="padding:1px 6px;font-size:.6rem;min-height:unset">&#x1F4CB;</button>
               </div>
             </div>
             <!-- Dados Tecnicos -->
@@ -815,21 +825,21 @@ tr:hover td{background:#1c1c1c}
           </div>
           <!-- RIGHT: Imagens + Gavetas -->
           <div>
-            <!-- Imagens -->
+            <!-- Imagens — ERP Grid -->
             <div class="sec">
-              <div class="sec-title">&#x1F5BC;&#xFE0F; 6 Imagens — Padrao Google Shopping</div>
-              <div class="gs-checks" id="enr-gs-checks"></div>
-              <div class="img-slot-6" id="enr-img-slots" style="margin-top:12px"></div>
-              <!-- URL import -->
-              <div class="fg" style="margin-top:10px;margin-bottom:6px">
-                <label>Cole a URL da imagem ou busque na web</label>
-                <div class="flex" style="gap:6px;margin-top:4px">
-                  <input type="text" id="enr-img-url" placeholder="https://..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text);font-size:.8rem;outline:none">
-                  <button class="btn btn-sm" onclick="importarUrlEnr()">&#x2B07; Importar</button>
-                  <button class="btn btn-blue btn-sm" onclick="abrirBuscaWebEnr()">&#x1F50D; Web</button>
-                </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div class="sec-title" style="margin-bottom:0">&#x1F5BC;&#xFE0F; Imagens do Produto</div>
+                <span id="enr-img-count" style="font-size:.65rem;color:var(--text3)">0 imagens</span>
               </div>
-              <div id="enr-img-status" class="text-xs"></div>
+              <!-- Slots ERP: 2 colunas, mais compacto -->
+              <div id="enr-img-slots" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px"></div>
+              <!-- URL import -->
+              <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
+                <input type="text" id="enr-img-url" placeholder="Cole URL da imagem..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.78rem;outline:none">
+                <button class="btn btn-sm" onclick="importarUrlEnr()">&#x2B07;</button>
+                <button class="btn btn-blue btn-sm" onclick="abrirBuscaWebEnr()">&#x1F50D; Web</button>
+              </div>
+              <div id="enr-img-status" class="text-xs" style="margin-top:4px"></div>
             </div>
             <!-- Gavetas de Indexacao -->
             <div class="sec">
@@ -3309,26 +3319,30 @@ function renderEnriquecimento(d) {
     // NTC card
     const nct = d.nct || {};
     const scoreColor = nct.status === 'APROVADO' ? 'var(--success)' : nct.status === 'PENDENTE' ? 'var(--warning)' : 'var(--danger)';
+    const scorePct = nct.score != null ? (nct.score*100).toFixed(1) : null;
     document.getElementById('enr-nct-score').style.color = scoreColor;
-    document.getElementById('enr-nct-score').textContent = nct.score != null ? (nct.score*100).toFixed(1)+'%' : '—';
-    document.getElementById('enr-nct-status').style.color = scoreColor;
-    document.getElementById('enr-nct-status').textContent = 'NTC ' + (nct.status || '—');
+    document.getElementById('enr-nct-score').textContent = scorePct ? scorePct+'%' : '—';
+    const stEl = document.getElementById('enr-nct-status');
+    stEl.textContent = nct.status || '—';
+    stEl.style.color = scoreColor;
+    stEl.style.borderColor = scoreColor;
+    stEl.style.border = '1px solid ' + scoreColor;
+    const barEl = document.getElementById('enr-nct-bar');
+    if (barEl) { barEl.style.width = (scorePct||0)+'%'; barEl.style.background = `linear-gradient(90deg,${scoreColor},${scoreColor}88)`; }
     const mod = nct.modules || {};
     document.getElementById('enr-nct-modules').innerHTML = [
-        {k:'TF', label:'Tecnologia & Fabricante', w:'50%'},
-        {k:'FM', label:'Ficha Mestra', w:'20%'},
-        {k:'CO', label:'Compliance Fiscal', w:'20%'},
-        {k:'AV', label:'Aplicacoes Veiculares', w:'10%'}
+        {k:'TF', label:'Fabricante', w:'50'},
+        {k:'FM', label:'Ficha', w:'20'},
+        {k:'CO', label:'Fiscal', w:'20'},
+        {k:'AV', label:'Aplic', w:'10'}
     ].map(m => {
         const v = mod[m.k] != null ? mod[m.k] : 0;
         const pct = (v*100).toFixed(0);
         const col = v >= 0.8 ? 'var(--success)' : v >= 0.5 ? 'var(--warning)' : 'var(--danger)';
-        return `<div style="margin-bottom:6px">
-            <div class="flex" style="font-size:.65rem;margin-bottom:2px">
-                <span style="color:var(--text3)">${m.k} — ${m.label}</span>
-                <span style="margin-left:auto;color:${col}">${pct}% <span style="color:var(--text3)">(peso ${m.w})</span></span>
-            </div>
-            <div style="height:5px;background:#1a1a1a;border-radius:3px"><div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s"></div></div>
+        return `<div style="display:flex;align-items:center;gap:5px;background:var(--bg);border-radius:5px;padding:3px 8px;border:1px solid var(--border)">
+            <span style="font-weight:700;color:${col};font-size:.65rem">${m.k}</span>
+            <span style="font-size:.6rem;color:var(--text3)">${m.label}</span>
+            <span style="margin-left:auto;font-size:.65rem;font-weight:700;color:${col}">${pct}%</span>
         </div>`;
     }).join('');
     document.getElementById('enr-rast').textContent = d.rast_hash || '—';
@@ -3365,15 +3379,35 @@ function renderEnriquecimento(d) {
 
 function renderEnrImagens(imagens) {
     const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
-    document.getElementById('enr-img-slots').innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">` +
-    slots.map((slot, i) => {
+    const cnt = document.getElementById('enr-img-count');
+    if (cnt) cnt.textContent = imagens.length + ' imagem(ns)';
+
+    const statusColor = { 'Aprovada': '#00c896', 'Pendente': '#f39c12', 'Reprovada': '#e74c3c' };
+
+    document.getElementById('enr-img-slots').innerHTML = slots.map((slot, i) => {
         const img = imagens.find(im => im.tipo === slot);
-        return `<div class="img-slot-item ${img?'has-img':''}">
-            <div class="img-slot-num">${i+1}</div>
-            ${img ? `<img src="${img.url}" onerror="this.style.display='none'" alt="${slot}">` : `<div class="img-slot-empty"><span>&#x1F4F7;</span><span>${slot}</span></div>`}
-            <div class="img-slot-label">${slot}</div>
+        const cor = img ? (statusColor[img.status] || '#888') : '#333';
+        return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative">
+            <div style="display:flex;align-items:center;padding:5px 8px;border-bottom:1px solid var(--border);gap:6px">
+                <span style="font-size:.6rem;font-weight:700;color:var(--text3);background:var(--card);padding:1px 6px;border-radius:3px">IMG ${i+1}</span>
+                <span style="font-size:.62rem;color:var(--text3);flex:1">${slot}</span>
+                ${img ? `<span style="font-size:.58rem;font-weight:700;color:${cor};border:1px solid ${cor};padding:1px 5px;border-radius:10px">${img.status||'?'}</span>` : ''}
+            </div>
+            ${img
+                ? `<div style="position:relative;aspect-ratio:1;background:#0a0a0a">
+                    <img src="${img.url}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.opacity='.15'" alt="${slot}">
+                    <div style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:2px;padding:4px;background:rgba(0,0,0,.7)">
+                        <button onclick="aprovarImagem(${img.id})" style="flex:1;background:#00c896;border:none;border-radius:3px;color:#000;font-size:.6rem;font-weight:700;padding:3px;cursor:pointer">✔ Aprovar</button>
+                        <button onclick="reprovarImagem(${img.id})" style="flex:1;background:#c0392b;border:none;border-radius:3px;color:#fff;font-size:.6rem;font-weight:700;padding:3px;cursor:pointer">✖ Reprovar</button>
+                    </div>
+                   </div>`
+                : `<div style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#333;cursor:pointer" onclick="document.getElementById('enr-img-url').focus()">
+                    <span style="font-size:1.6rem">&#x1F4F7;</span>
+                    <span style="font-size:.62rem;color:var(--text3)">Sem imagem</span>
+                   </div>`
+            }
         </div>`;
-    }).join('') + '</div>';
+    }).join('');
 }
 
 function renderGsChecks(q) {
@@ -3396,17 +3430,35 @@ function renderGavetas(d) {
     const imagens = d.imagens || [];
 
     const gavetasHtml = [
-        // Gaveta 1: Aplicacoes veiculares
+        // Gaveta 1: Aplicacoes veiculares — formato ERP
         buildGaveta('AV', '&#x1F697; Aplicacoes Veiculares', aplic.length,
-            aplic.length ? `<table style="width:100%;font-size:.75rem;border-collapse:collapse">
-                <thead><tr style="color:var(--text3)"><th style="padding:4px 8px;text-align:left">Montadora</th><th style="padding:4px 8px;text-align:left">Modelo</th><th>Motor</th><th>Anos</th></tr></thead>
-                <tbody>${aplic.map(a => `<tr style="border-top:1px solid var(--border)">
-                    <td style="padding:5px 8px">${a.montadora||'—'}</td>
-                    <td style="padding:5px 8px">${a.modelo||'—'} ${a.versao||''}</td>
-                    <td style="padding:5px 8px;text-align:center">${a.motor||a.cilindrada||'—'}</td>
-                    <td style="padding:5px 8px;text-align:center">${a.ano_ini||'?'} – ${a.ano_fim||'?'}</td>
-                </tr>`).join('')}</tbody>
-            </table>` : '<div class="empty" style="font-size:.78rem">Nenhuma aplicacao cadastrada. Clique em ENRIQUECER NA WEB.</div>',
+            aplic.length ? `
+            <div style="overflow-x:auto;border-radius:6px;border:1px solid var(--border)">
+            <table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:420px">
+                <thead>
+                <tr style="background:var(--bg2)">
+                    <th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--text3);font-size:.6rem;letter-spacing:.05em;border-bottom:1px solid var(--border)">MONTADORA</th>
+                    <th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--text3);font-size:.6rem;letter-spacing:.05em;border-bottom:1px solid var(--border)">MODELO / VERSAO</th>
+                    <th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text3);font-size:.6rem;letter-spacing:.05em;border-bottom:1px solid var(--border)">MOTOR</th>
+                    <th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text3);font-size:.6rem;letter-spacing:.05em;border-bottom:1px solid var(--border)">ANO INI</th>
+                    <th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text3);font-size:.6rem;letter-spacing:.05em;border-bottom:1px solid var(--border)">ANO FIM</th>
+                    <th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text3);font-size:.6rem;letter-spacing:.05em;border-bottom:1px solid var(--border)">COMB</th>
+                </tr>
+                </thead>
+                <tbody>
+                ${aplic.map((a,idx) => `<tr style="${idx%2===0?'':'background:var(--bg2)'}">
+                    <td style="padding:6px 10px;font-weight:600;color:var(--text)">${a.montadora||'—'}</td>
+                    <td style="padding:6px 10px;color:var(--text)">${a.modelo||'—'}${a.versao?' '+a.versao:''}</td>
+                    <td style="padding:6px 10px;text-align:center;font-family:monospace;color:var(--text2)">${a.motor||a.cilindrada||'—'}</td>
+                    <td style="padding:6px 10px;text-align:center;color:var(--text2)">${a.ano_ini||'?'}</td>
+                    <td style="padding:6px 10px;text-align:center;color:var(--text2)">${a.ano_fim||'?'}</td>
+                    <td style="padding:6px 10px;text-align:center;color:var(--text3);font-size:.65rem">${a.combustivel||'—'}</td>
+                </tr>`).join('')}
+                </tbody>
+            </table>
+            </div>
+            <div style="font-size:.62rem;color:var(--text3);margin-top:6px;text-align:right">${aplic.length} registro(s) — fonte: Web-Auto + manual</div>`
+            : '<div style="font-size:.78rem;color:var(--text3);padding:12px;text-align:center">Nenhuma aplicacao cadastrada.<br>Use ENRIQUECER NA WEB.</div>',
             aplic.length >= 3 ? 'badge-green' : aplic.length > 0 ? 'badge-yellow' : 'badge-red'),
 
         // Gaveta 2: Codigos cambiados / OEM
@@ -3580,6 +3632,16 @@ async function enriquecerWeb() {
     } else {
         if (st) st.innerHTML = `<span style="color:var(--danger)">&#x26A0; ${d.error || 'Erro ao enriquecer'}</span>`;
     }
+}
+
+// Aprovar/Reprovar imagem individual
+async function aprovarImagem(imgId) {
+    await api('/imagens/' + imgId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'Aprovada' }) });
+    if (currentEnrId) loadEnriquecimento();
+}
+async function reprovarImagem(imgId) {
+    await api('/imagens/' + imgId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'Reprovada' }) });
+    if (currentEnrId) loadEnriquecimento();
 }
 
 // Limpar dados de enriquecimento web incorretos (aplicacoes + imagens Web-Auto)
