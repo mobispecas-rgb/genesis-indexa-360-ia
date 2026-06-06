@@ -736,184 +736,124 @@ tr:hover td{background:#1c1c1c}
       <!-- Header -->
       <div class="irollo-header">
         <div>
-          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Motor iRollo v3.5 + Claude Haiku</div>
-          <div style="font-size:1rem;font-weight:900;color:var(--primary)">Enriquecimento por OEM / ID</div>
-          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">Triangulacao Web + TecDoc + EAN DB &#x2192; NCT &#x2192; Bling + Wix + Google Shopping</div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Motor iRollo v4.0 + Claude Haiku</div>
+          <div style="font-size:1rem;font-weight:900;color:var(--primary)">Indexa 360 — DNA + NTC + Imagens</div>
         </div>
         <div class="irollo-status ml-auto"><div class="dot"></div> MOTOR ON</div>
       </div>
 
-      <!-- PIPELINE INDICATOR -->
-      <div class="pipeline-steps" id="enr-pipeline">
-        <div class="pipeline-step" id="pip-step-1">
-          <div class="pip-num">1</div>
-          <div><div class="pip-label">ENRIQUECER</div><div class="pip-sub">Buscar DNA + Imagens</div></div>
-        </div>
-        <div class="pip-arrow">&#x2192;</div>
-        <div class="pipeline-step" id="pip-step-2">
-          <div class="pip-num">2</div>
-          <div><div class="pip-label">APROVAR</div><div class="pip-sub">NTC &#x2265; 95%</div></div>
-        </div>
-        <div class="pip-arrow">&#x2192;</div>
-        <div class="pipeline-step" id="pip-step-3">
-          <div class="pip-num">3</div>
-          <div><div class="pip-label">SINCRONIZAR</div><div class="pip-sub">Wix / Bling / Google</div></div>
-        </div>
-      </div>
-
-      <!-- Product selector -->
+      <!-- Busca OEM livre -->
       <div class="sec">
-        <div class="sec-title">Selecionar Produto</div>
-        <div class="flex" style="gap:10px;flex-wrap:wrap">
-          <select id="enr-prod-select" style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-size:.85rem">
-            <option value="">Selecione um produto para enriquecer...</option>
-          </select>
-          <button class="btn" onclick="loadEnriquecimento()">&#x26A1; Carregar</button>
-          <button class="btn btn-blue" id="btn-enriquecer-web" onclick="enriquecerWeb()" style="background:linear-gradient(135deg,#1a6fff,#0040cc)">&#x1F310; ENRIQUECER DNA NA WEB</button>
-          <button class="btn" onclick="limparEnriquecimentoWeb()" style="background:#c0392b;color:#fff" title="Remove aplicacoes e imagens Web-Auto incorretas">&#x1F5D1; Limpar Web</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="enr-oem-input" type="text" placeholder="Digite OEM, ref ou nome... ex: CX355090 INDYSA"
+            style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.85rem;outline:none"
+            onkeydown="if(event.key==='Enter') buscarOemEnr()">
+          <button class="btn btn-blue" onclick="buscarOemEnr()">&#x1F50D; Buscar</button>
+          <button class="btn btn-blue" id="btn-enriquecer-web" onclick="enriquecerWeb()" style="background:linear-gradient(135deg,#1a6fff,#0040cc);display:none">&#x1F310; ENRIQUECER</button>
+          <button class="btn" id="btn-reset-produto" onclick="resetarProduto()" style="background:#c0392b;color:#fff;display:none" title="Apaga todo o enriquecimento deste produto">&#x1F5D1; Reset</button>
         </div>
+        <div id="enriquecer-web-status" class="text-xs" style="margin-top:6px"></div>
+        <select id="enr-prod-select" style="display:none"></select>
       </div>
+
+      <!-- Corpo do enriquecimento -->
       <div id="enr-body" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <!-- LEFT: NCT + Dados + Voz -->
-          <div>
-            <!-- NCT Card — layout horizontal -->
-            <div id="enr-nct-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:10px">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <span style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em">MOTOR NCT — iRollo v3.5</span>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span class="nct-status-big" id="enr-nct-status" style="font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;background:var(--bg)"></span>
-                  <span class="nct-score-big" id="enr-nct-score" style="font-size:1.5rem;font-weight:800;color:var(--text)">—</span>
-                </div>
-              </div>
-              <!-- Barra de progresso NTC -->
-              <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px">
-                <div id="enr-nct-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a6fff,#00c896);transition:width .5s"></div>
-              </div>
-              <!-- Modulos em linha -->
-              <div id="enr-nct-modules" style="display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem"></div>
-              <!-- RAST-HASH -->
-              <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-                <span style="font-size:.6rem;color:var(--text3)">RAST-HASH</span>
-                <span class="rast-hash" id="enr-rast" style="flex:1;font-family:monospace;font-size:.6rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
-                <button class="btn" onclick="copiarRast()" style="padding:1px 6px;font-size:.6rem;min-height:unset">&#x1F4CB;</button>
-              </div>
-            </div>
-            <!-- Dados Tecnicos -->
-            <div class="sec">
-              <div class="sec-title">&#x1F4CB; Dados Tecnicos</div>
-              <div id="enr-dados-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.8rem"></div>
-            </div>
-            <!-- Voz do Lojista -->
-            <div class="sec">
-              <div class="sec-title">&#x1F5E3;&#xFE0F; Voz do Lojista · Claude Haiku</div>
-              <div class="voz-tabs">
-                <div class="voz-tab active" onclick="switchVoz(this,'tecnico')">&#x2699;&#xFE0F; Tecnico</div>
-                <div class="voz-tab" onclick="switchVoz(this,'comercial')">&#x1F4BC; Comercial</div>
-                <div class="voz-tab" onclick="switchVoz(this,'seo')">&#x1F50D; SEO</div>
-                <div class="voz-tab" onclick="switchVoz(this,'whatsapp')">&#x1F4AC; WhatsApp</div>
-                <div class="voz-tab" onclick="switchVoz(this,'pmax')">&#x1F4E2; P-Max</div>
-              </div>
-              <div class="voz-output" id="voz-output">Clique em "Gerar com IA" para criar o texto.</div>
-              <div class="flex mt" style="gap:8px;margin-top:10px;flex-wrap:wrap">
-                <button class="btn btn-sm" id="voz-btn" onclick="gerarVoz()">&#x1F916; Gerar com IA</button>
-                <button class="btn btn-gray btn-sm" onclick="copiarVoz()">&#x1F4CB; Copiar</button>
-                <button class="btn btn-outline btn-sm" onclick="gerarVoz()">&#x1F504; Nova variacao</button>
-                <div class="text-xs ml-auto" id="voz-status"></div>
-              </div>
-            </div>
+
+        <!-- Linha 1: DNA + NTC lado a lado -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+          <!-- DNA Card -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:10px">&#x1F9EC; DNA DO PRODUTO</div>
+            <div id="enr-dados-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:.8rem"></div>
           </div>
-          <!-- RIGHT: Imagens + Gavetas -->
-          <div>
-            <!-- Imagens — ERP Grid -->
-            <div class="sec">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <div class="sec-title" style="margin-bottom:0">&#x1F5BC;&#xFE0F; Imagens do Produto</div>
-                <span id="enr-img-count" style="font-size:.65rem;color:var(--text3)">0 imagens</span>
-              </div>
-              <!-- Galeria: imagem principal + tira de miniaturas -->
-              <div id="enr-img-main" style="display:none;background:#0a0a0a;border-radius:8px;overflow:hidden;margin-bottom:8px;position:relative">
-                <img id="enr-img-main-src" src="" style="width:100%;max-height:220px;object-fit:contain;display:block" onerror="this.style.opacity='.15'">
-                <div id="enr-img-main-label" style="position:absolute;top:8px;left:8px;font-size:.6rem;font-weight:700;background:rgba(0,0,0,.7);color:#fff;padding:2px 8px;border-radius:10px"></div>
-                <div id="enr-img-main-status" style="position:absolute;top:8px;right:8px;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px"></div>
-                <div id="enr-img-main-actions" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:4px;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.85))"></div>
-              </div>
-              <div id="enr-img-slots" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-              <!-- URL import -->
-              <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
-                <input type="text" id="enr-img-url" placeholder="Cole URL da imagem..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.78rem;outline:none">
-                <button class="btn btn-sm" onclick="importarUrlEnr()">&#x2B07;</button>
-                <button class="btn btn-blue btn-sm" onclick="abrirBuscaWebEnr()">&#x1F50D; Web</button>
-              </div>
-              <div id="enr-img-status" class="text-xs" style="margin-top:4px"></div>
-            </div>
-            <!-- Gavetas de Indexacao -->
-            <div class="sec">
-              <div class="sec-title">&#x1F4E5; Gavetas de Indexacao</div>
-              <div id="enr-gavetas"></div>
-            </div>
-            <!-- INDEXAR -->
-            <!-- FREEZE ZONE -->
-            <div id="enr-freeze-zone">
-              <div id="enr-ntc-hint" style="font-size:.72rem;text-align:center;margin-bottom:6px"></div>
-              <button class="indexar-btn" id="btn-indexar" onclick="congelarIndexar()" disabled>
-                &#x1F512; CONGELAR — NTC insuficiente
-              </button>
-              <div id="indexar-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
-            </div>
 
-            <!-- SYNC PANEL — aparece apos congelar -->
-            <div id="enr-sync-panel" style="display:none">
-              <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2744;&#xFE0F; Produto Congelado — Gerando pacote de publicacao...</div>
-              <div id="pub-loading" style="text-align:center;padding:20px"><div class="spinner"></div><div style="font-size:.72rem;color:var(--text3);margin-top:8px">Buscando imagens reais + gerando descricoes para todos os canais com Claude Haiku...</div></div>
-              <div id="pub-pacote" style="display:none">
-                <!-- Preview imagem + descricao -->
-                <div style="display:grid;grid-template-columns:140px 1fr;gap:12px;margin-bottom:14px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
-                  <div>
-                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">IMAGEM PRINCIPAL</div>
-                    <div id="pub-img-preview" style="width:130px;height:130px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#333;font-size:2rem">&#x1F4F7;</div>
-                    <div id="pub-img-count" style="font-size:.6rem;color:var(--text3);margin-top:4px;text-align:center"></div>
-                  </div>
-                  <div>
-                    <div style="font-size:.6rem;color:var(--text3);margin-bottom:4px;font-weight:700">DESCRICAO COMERCIAL</div>
-                    <div id="pub-desc-comercial" style="font-size:.76rem;color:var(--text);line-height:1.5;max-height:120px;overflow:auto;white-space:pre-wrap"></div>
-                  </div>
-                </div>
-                <!-- Descricoes por canal -->
-                <div style="margin-bottom:12px">
-                  <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:.04em">COPIAR DESCRICAO POR CANAL</div>
-                  <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
-                    <button class="btn btn-sm pub-canal-tab active" onclick="switchPubCanal(this,'seo')">&#x1F50D; SEO</button>
-                    <button class="btn btn-sm btn-gray pub-canal-tab" onclick="switchPubCanal(this,'tecnico')">&#x2699;&#xFE0F; Tecnico</button>
-                    <button class="btn btn-sm btn-gray pub-canal-tab" onclick="switchPubCanal(this,'whatsapp')">&#x1F4AC; WhatsApp</button>
-                    <button class="btn btn-sm btn-gray pub-canal-tab" onclick="switchPubCanal(this,'pmax')">&#x1F4E2; P-Max</button>
-                  </div>
-                  <div id="pub-canal-text" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:.74rem;color:var(--text);white-space:pre-wrap;max-height:110px;overflow:auto;line-height:1.5"></div>
-                  <button class="btn btn-gray btn-xs" style="margin-top:4px;font-size:.65rem" onclick="copiarPubCanal()">&#x1F4CB; Copiar texto</button>
-                </div>
-                <!-- Canais de sincronizacao -->
-                <div style="font-size:.65rem;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:.04em">SINCRONIZAR NOS CANAIS</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                  <button class="btn" style="background:#0055a5;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('bling')"><div>&#x1F4CB; Bling ERP</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Cadastro + imagem + descricao PDV</div></button>
-                  <button class="btn" style="background:#00b0f0;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('wix')"><div>&#x1F310; Wix Stores</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Produto + fotos + descricao site</div></button>
-                  <button class="btn" style="background:#4285F4;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('google_shopping')"><div>&#x1F6D2; Google Shopping</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Feed + imagem + titulo SEO</div></button>
-                  <button class="btn" style="background:#EA4335;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('google_ads')"><div>&#x1F4E2; Google Ads P-Max</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">H1/H2/D1/D2/Callout prontos</div></button>
-                  <button class="btn" style="background:#25D366;font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('whatsapp')"><div>&#x1F4AC; WhatsApp</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">Mensagem pronta para copiar</div></button>
-                  <button class="btn btn-gray" style="font-size:.76rem;text-align:left;padding:8px 12px" onclick="sincronizar('marketplace')"><div>&#x1F6D2; Marketplace</div><div style="font-size:.58rem;opacity:.75;margin-top:2px">ML / Shopee / Amazon</div></button>
-                </div>
-                <div id="sync-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
-                <div style="margin-top:8px;text-align:center">
-                  <button class="btn btn-gray btn-sm" onclick="reabrirEnriquecimento()" style="font-size:.7rem">&#x1F504; Enriquecer Novamente</button>
-                </div>
+          <!-- NTC Card -->
+          <div id="enr-nct-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em">MOTOR NTC 4.0</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="nct-status-big" id="enr-nct-status" style="font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;background:var(--bg)"></span>
+                <span class="nct-score-big" id="enr-nct-score" style="font-size:1.5rem;font-weight:800;color:var(--text)">—</span>
               </div>
             </div>
-
-            <!-- HISTORICO NTC -->
-            <div id="enr-historico" style="margin-top:10px"></div>
-
-            <div id="enriquecer-web-status" class="text-xs" style="margin-top:6px;text-align:center"></div>
+            <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px">
+              <div id="enr-nct-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a6fff,#00c896);transition:width .5s"></div>
+            </div>
+            <div id="enr-nct-modules" style="display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem"></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+              <span style="font-size:.58rem;color:var(--text3)">RAST</span>
+              <span class="rast-hash" id="enr-rast" style="flex:1;font-family:monospace;font-size:.58rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+              <button class="btn" onclick="copiarRast()" style="padding:1px 6px;font-size:.6rem;min-height:unset">&#x1F4CB;</button>
+            </div>
           </div>
         </div>
+
+        <!-- Linha 2: Imagens + Aplicações -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+          <!-- Imagens -->
+          <div class="sec" style="margin-bottom:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div class="sec-title" style="margin-bottom:0">&#x1F5BC;&#xFE0F; Imagens</div>
+              <span id="enr-img-count" style="font-size:.65rem;color:var(--text3)">0 imagens</span>
+            </div>
+            <div id="enr-img-main" style="display:none;background:#0a0a0a;border-radius:8px;overflow:hidden;margin-bottom:8px;position:relative">
+              <img id="enr-img-main-src" src="" style="width:100%;max-height:200px;object-fit:contain;display:block" onerror="this.style.opacity='.15'">
+              <div id="enr-img-main-label" style="position:absolute;top:8px;left:8px;font-size:.6rem;font-weight:700;background:rgba(0,0,0,.7);color:#fff;padding:2px 8px;border-radius:10px"></div>
+              <div id="enr-img-main-status" style="position:absolute;top:8px;right:8px;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px"></div>
+              <div id="enr-img-main-actions" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:4px;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.85))"></div>
+            </div>
+            <div id="enr-img-slots" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+              <input type="text" id="enr-img-url" placeholder="Cole URL da imagem..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <button class="btn btn-sm" onclick="importarUrlEnr()">&#x2B07;</button>
+              <button class="btn btn-blue btn-sm" onclick="abrirBuscaWebEnr()">&#x1F50D;</button>
+            </div>
+            <div id="enr-img-status" class="text-xs" style="margin-top:4px"></div>
+          </div>
+
+          <!-- Aplicações -->
+          <div class="sec" style="margin-bottom:0">
+            <div class="sec-title">&#x1F697; Aplicacoes Veiculares</div>
+            <div id="enr-aplic-table" style="overflow-x:auto"></div>
+          </div>
+        </div>
+
+        <!-- Congelar -->
+        <div id="enr-freeze-zone">
+          <div id="enr-ntc-hint" style="font-size:.72rem;text-align:center;margin-bottom:6px"></div>
+          <button class="indexar-btn" id="btn-indexar" onclick="congelarIndexar()" disabled>&#x1F512; CONGELAR — NTC insuficiente</button>
+          <div id="indexar-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+        </div>
+
+        <!-- Sync panel (pos-congelamento) -->
+        <div id="enr-sync-panel" style="display:none">
+          <div style="font-size:.75rem;font-weight:700;color:var(--success);margin-bottom:10px">&#x2744;&#xFE0F; Produto Congelado e Indexado</div>
+          <div id="pub-loading" style="text-align:center;padding:20px"><div class="spinner"></div></div>
+          <div id="pub-pacote" style="display:none">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn" style="background:#0055a5" onclick="sincronizar('bling')">&#x1F4CB; Bling ERP</button>
+              <button class="btn" style="background:#00b0f0" onclick="sincronizar('wix')">&#x1F310; Wix</button>
+              <button class="btn" style="background:#4285F4" onclick="sincronizar('google_shopping')">&#x1F6D2; G.Shopping</button>
+            </div>
+            <div id="sync-status" class="text-xs" style="margin-top:8px;text-align:center"></div>
+            <div style="margin-top:8px;text-align:center">
+              <button class="btn btn-gray btn-sm" onclick="reabrirEnriquecimento()">&#x1F504; Enriquecer Novamente</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="enr-historico" style="margin-top:10px"></div>
+        <!-- ids necessários para outros módulos continuarem funcionando -->
+        <div id="enr-gs-checks" style="display:none"></div>
+        <div id="enr-gavetas" style="display:none"></div>
+        <div id="pub-img-preview" style="display:none"></div>
+        <div id="pub-img-count" style="display:none"></div>
+        <div id="pub-desc-comercial" style="display:none"></div>
+        <div id="pub-canal-text" style="display:none"></div>
+        <div id="voz-output" style="display:none"></div>
+        <div id="voz-status" style="display:none"></div>
       </div>
     </div>
 
@@ -3373,14 +3313,43 @@ function renderEnriquecimento(d) {
 
     // Imagens
     renderEnrImagens(d.imagens || []);
-    renderGsChecks(d.imgQuality || {});
 
-    // Gavetas
-    renderGavetas(d);
+    // Aplicações
+    renderAplicacoesSimples(d.aplicacoes || []);
+
+    // Mostrar botões de ação
+    const btnEnr = document.getElementById('btn-enriquecer-web');
+    const btnReset = document.getElementById('btn-reset-produto');
+    if (btnEnr) btnEnr.style.display = '';
+    if (btnReset) btnReset.style.display = '';
 
     // Pipeline + historico
     updatePipelineState(d.nct?.score || 0, d.produto?.status);
     renderHistoricoNTC(d.historico || []);
+}
+
+function renderAplicacoesSimples(aplic) {
+    const el = document.getElementById('enr-aplic-table');
+    if (!el) return;
+    if (!aplic.length) {
+        el.innerHTML = '<div style="font-size:.76rem;color:var(--text3);padding:16px;text-align:center">Nenhuma aplicacao cadastrada</div>';
+        return;
+    }
+    el.innerHTML = `<div style="overflow-x:auto;border-radius:6px;border:1px solid var(--border)">
+    <table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:300px">
+        <thead><tr style="background:var(--bg2)">
+            <th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--text3);font-size:.6rem;border-bottom:1px solid var(--border)">MONTADORA</th>
+            <th style="padding:6px 10px;text-align:left;font-weight:700;color:var(--text3);font-size:.6rem;border-bottom:1px solid var(--border)">MODELO</th>
+            <th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text3);font-size:.6rem;border-bottom:1px solid var(--border)">MOTOR</th>
+            <th style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text3);font-size:.6rem;border-bottom:1px solid var(--border)">ANO</th>
+        </tr></thead>
+        <tbody>${aplic.map((a,i) => `<tr style="${i%2===0?'':'background:var(--bg2)'}">
+            <td style="padding:5px 10px;font-weight:600;color:var(--text)">${a.montadora||'—'}</td>
+            <td style="padding:5px 10px;color:var(--text)">${a.modelo||'—'}${a.versao?' '+a.versao:''}</td>
+            <td style="padding:5px 10px;text-align:center;font-family:monospace;color:var(--text2)">${a.motor||a.cilindrada||'—'}</td>
+            <td style="padding:5px 10px;text-align:center;color:var(--text2);white-space:nowrap">${a.ano_ini||'?'}${a.ano_fim?'–'+a.ano_fim:''}</td>
+        </tr>`).join('')}</tbody>
+    </table></div>`;
 }
 
 let _enrImgSelected = null;
@@ -3695,59 +3664,89 @@ async function reprovarImagem(imgId) {
 }
 
 // Limpar dados de enriquecimento web incorretos (aplicacoes + imagens Web-Auto)
+async function buscarOemEnr() {
+    const input = document.getElementById('enr-oem-input');
+    const st = document.getElementById('enriquecer-web-status');
+    const raw = (input?.value || '').trim();
+    if (!raw) { alert('Digite o OEM ou nome do produto'); return; }
+    const parts = raw.split(/\s+/);
+    const oem = parts[0];
+    if (st) st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Buscando...';
+    // Buscar no banco
+    const res = await api('/produtos?q=' + encodeURIComponent(oem) + '&limit=10');
+    const lista = res.data || [];
+    const match = lista.find(p => p.ref && p.ref.split(/\s+/)[0].toUpperCase() === oem.toUpperCase()) || lista[0];
+    if (match) {
+        currentEnrId = match.id;
+        document.getElementById('enr-prod-select').value = match.id;
+        if (st) st.innerHTML = '<span style="color:var(--success)">&#x2714; Produto encontrado: ' + match.ref + ' — ' + match.descricao + '</span>';
+        loadEnriquecimentoPorId(match.id);
+    } else {
+        // Criar produto automaticamente
+        if (st) st.innerHTML = 'Produto nao encontrado — cadastrando automaticamente...';
+        const marca = parts.length > 1 ? parts.slice(1).join(' ') : null;
+        const cr = await api('/produtos', { method: 'POST', body: JSON.stringify({ ref: oem, descricao: raw, marca }) });
+        if (cr.id) {
+            currentEnrId = cr.id;
+            if (st) st.innerHTML = '<span style="color:var(--success)">&#x2714; Produto criado: ' + oem + '</span>';
+            loadEnriquecimentoPorId(cr.id);
+        } else {
+            if (st) st.innerHTML = '<span style="color:var(--danger)">&#x26A0; Erro ao cadastrar: ' + (cr.error || 'erro') + '</span>';
+        }
+    }
+}
+
+async function loadEnriquecimentoPorId(id) {
+    currentEnrId = id;
+    const body = document.getElementById('enr-body');
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+    body.style.display = 'block';
+    const d = await api('/produtos/' + id + '/enriquecimento');
+    enrData = d;
+    body.innerHTML = '';
+    renderEnriquecimento(d);
+}
+
+async function resetarProduto() {
+    if (!currentEnrId) return;
+    if (!confirm('Apagar TODO o enriquecimento deste produto (DNA, aplicacoes, imagens)? O produto base e preservado.')) return;
+    const st = document.getElementById('enriquecer-web-status');
+    await api('/produtos/' + currentEnrId + '/enriquecimento-web', { method: 'DELETE' });
+    if (st) st.innerHTML = '<span style="color:var(--success)">&#x2714; Enriquecimento resetado. Pronto para re-enriquecer.</span>';
+    loadEnriquecimentoPorId(currentEnrId);
+}
+
 async function limparEnriquecimentoWeb() {
     if (!currentEnrId) { alert('Carregue um produto primeiro'); return; }
-    if (!confirm('Remover TODAS as aplicacoes e imagens Web-Auto deste produto? (Fiscal e logistica sao preservados)')) return;
-    const d = await api('/produtos/' + currentEnrId + '/enriquecimento-web', { method: 'DELETE' });
-    if (d.success) {
-        alert('Dados web removidos. Recarregando...');
-        loadEnriquecimento();
-    } else {
-        alert('Erro: ' + (d.error || 'desconhecido'));
-    }
+    await api('/produtos/' + currentEnrId + '/enriquecimento-web', { method: 'DELETE' });
+    loadEnriquecimentoPorId(currentEnrId);
 }
 
 // Pipeline state machine
 function updatePipelineState(nctScore, produtoStatus) {
-    const s1 = document.getElementById('pip-step-1');
-    const s2 = document.getElementById('pip-step-2');
-    const s3 = document.getElementById('pip-step-3');
     const btn = document.getElementById('btn-indexar');
     const hint = document.getElementById('enr-ntc-hint');
     const freezeZone = document.getElementById('enr-freeze-zone');
     const syncPanel = document.getElementById('enr-sync-panel');
-    if (!s1) return;
 
     const score = nctScore || 0;
     const pct = (score * 100).toFixed(1);
     const isCongelado = produtoStatus === 'Congelado';
 
     if (isCongelado) {
-        if (s1) s1.className = 'pipeline-step done';
-        if (s2) s2.className = 'pipeline-step done';
-        if (s3) s3.className = 'pipeline-step active';
         if (freezeZone) freezeZone.style.display = 'none';
         if (syncPanel) { syncPanel.style.display = 'block'; prepararPublicacao(); }
     } else if (score >= 0.95) {
-        if (s1) s1.className = 'pipeline-step done';
-        if (s2) s2.className = 'pipeline-step active';
-        if (s3) s3.className = 'pipeline-step';
         if (freezeZone) freezeZone.style.display = 'block';
         if (syncPanel) syncPanel.style.display = 'none';
         if (btn) { btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#00c864,#007a3d)'; btn.innerHTML = '&#x2744;&#xFE0F; CONGELAR E INDEXAR — ' + pct + '% APROVADO'; }
-        if (hint) hint.innerHTML = '<span style="color:var(--success)">&#x2714; NTC APROVADO ' + pct + '% — pronto para congelar e sincronizar</span>';
+        if (hint) hint.innerHTML = '<span style="color:var(--success)">&#x2714; NTC APROVADO ' + pct + '% — pronto para congelar</span>';
     } else if (score >= 0.80) {
-        if (s1) s1.className = 'pipeline-step active';
-        if (s2) s2.className = 'pipeline-step';
-        if (s3) s3.className = 'pipeline-step';
         if (freezeZone) freezeZone.style.display = 'block';
         if (syncPanel) syncPanel.style.display = 'none';
-        if (btn) { btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#f0a500,#b87200)'; btn.innerHTML = '&#x26A0;&#xFE0F; CONGELAR MESMO ASSIM (' + pct + '%) — Enriquecer mais recomendado'; }
-        if (hint) hint.innerHTML = '<span style="color:var(--warning)">NTC ' + pct + '% PENDENTE — enriqueça novamente para atingir 95% APROVADO</span>';
+        if (btn) { btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#f0a500,#b87200)'; btn.innerHTML = '&#x26A0;&#xFE0F; CONGELAR MESMO ASSIM (' + pct + '%)'; }
+        if (hint) hint.innerHTML = '<span style="color:var(--warning)">NTC ' + pct + '% — enriqueça para atingir 95%</span>';
     } else {
-        if (s1) s1.className = 'pipeline-step active';
-        if (s2) s2.className = 'pipeline-step';
-        if (s3) s3.className = 'pipeline-step';
         if (freezeZone) freezeZone.style.display = 'block';
         if (syncPanel) syncPanel.style.display = 'none';
         if (btn) { btn.disabled = true; btn.style.background = ''; btn.innerHTML = '&#x1F512; CONGELAR — NTC ' + pct + '% (minimo 80%)'; }
