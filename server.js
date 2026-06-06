@@ -809,6 +809,10 @@ app.put('/api/imagens/:id/status', (req, res) => {
     db.prepare("UPDATE imagens SET status=? WHERE id=?").run(req.body.status, req.params.id);
     res.json({ success: true });
 });
+app.patch('/api/imagens/:id/status', (req, res) => {
+    db.prepare("UPDATE imagens SET status=? WHERE id=?").run(req.body.status, req.params.id);
+    res.json({ success: true });
+});
 
 // -----------------------------------------------------------
 // NTC ENGINE ROUTES
