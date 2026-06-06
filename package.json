@@ -1,7 +1,7 @@
 {
     "name": "genesis-indexa-360-ia",
-    "version": "4.0.0",
-    "description": "Genesis Indexa 360 IA — Sistema de Catalogacao Universal",
+    "version": "5.0.0",
+    "description": "Genesis Indexa 360 IA — Plataforma Enterprise de Catalogacao Automotiva com IA",
     "main": "server.js",
     "engines": {
         "node": "20"
