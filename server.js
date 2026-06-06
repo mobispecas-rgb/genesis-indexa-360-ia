@@ -861,6 +861,150 @@ app.post('/api/produtos/:id/ntc/recalcular', (req, res) => {
 });
 
 // -----------------------------------------------------------
+// UNIFIED NTC HELPERS — single source of truth for all endpoints
+// -----------------------------------------------------------
+function calcNTCFromId(id) {
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return null;
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+    const fiscal = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
+    const logistica = db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(id);
+    const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
+    const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id);
+    const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
+    const text = p.descricao + ' ' + (dna ? (dna.marca || '') + ' ' + (dna.fabricante || '') : '');
+    const extra = {
+        ncm: fiscal?.ncm, cest: fiscal?.cest, cfop: fiscal?.cfop, ean: fiscal?.cest,
+        peso: logistica?.peso_liq,
+        dimensoes: logistica ? !!(logistica.altura && logistica.largura) : false,
+        aplicacoes, codigos, imagens
+    };
+    return calcNTC(text, extra);
+}
+
+function persistNTC(id, result, motivo) {
+    const p = db.prepare('SELECT ntc_score, ntc_status, descricao FROM produtos WHERE id=?').get(id);
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)")
+        .run(id, p?.ntc_score || 0, result.score, p?.ntc_status || 'PENDENTE', result.status, motivo || 'Recalculo NTC');
+    db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,rast_hash=?,atualizado_em=datetime('now','localtime') WHERE id=?")
+        .run(result.score, result.status, result.rast_hash, id);
+    const base = (p?.descricao || '').substring(0, 200);
+    const existing = db.prepare('SELECT id FROM rast_hash WHERE produto_id=?').get(id);
+    if (existing) db.prepare("UPDATE rast_hash SET hash=?,base=?,gerado_em=datetime('now','localtime') WHERE produto_id=?").run(result.rast_hash, base, id);
+    else db.prepare("INSERT INTO rast_hash (produto_id,hash,base) VALUES (?,?,?)").run(id, result.rast_hash, base);
+}
+
+// -----------------------------------------------------------
+// APROVACAO DE ENRIQUECIMENTO
+// -----------------------------------------------------------
+
+// Stats da fila de aprovacao
+app.get('/api/aprovacao/stats', (req, res) => {
+    const pendentes = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE ntc_status='PENDENTE' AND status!='Congelado'").get().c;
+    const reprovados = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE ntc_status='REPROVADO' AND status!='Congelado'").get().c;
+    const imgsPendentes = db.prepare("SELECT COUNT(*) as c FROM imagens WHERE status='Pendente'").get().c;
+    const aprovados = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE ntc_status='APROVADO' AND status!='Congelado'").get().c;
+    const prontosCongelar = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE ntc_score>=0.80 AND status='Ativo'").get().c;
+    res.json({ pendentes, reprovados, imgsPendentes, aprovados, prontosCongelar, total_fila: pendentes + reprovados });
+});
+
+// Fila de aprovacao com detalhes completos
+app.get('/api/aprovacao/fila', (req, res) => {
+    const { tipo = 'todos', page = 1, limit = 100 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const whereMap = {
+        todos: "p.ntc_status IN ('PENDENTE','REPROVADO')",
+        pendente: "p.ntc_status='PENDENTE'",
+        reprovado: "p.ntc_status='REPROVADO'",
+        aprovado: "p.ntc_status='APROVADO'"
+    };
+    const where = whereMap[tipo] || whereMap.todos;
+    const total = db.prepare(`SELECT COUNT(*) as c FROM produtos p WHERE ${where} AND p.status!='Congelado'`).get().c;
+    const rows = db.prepare(`SELECT p.*, d.fabricante, d.marca, d.familia, d.grupo_industrial, d.origem_pais, d.codigo_dna FROM produtos p LEFT JOIN dna d ON d.produto_id=p.id WHERE ${where} AND p.status!='Congelado' ORDER BY p.ntc_score DESC LIMIT ? OFFSET ?`).all(parseInt(limit), offset);
+    rows.forEach(row => {
+        const img = db.prepare("SELECT url FROM imagens WHERE produto_id=? ORDER BY CASE WHEN tipo='Principal' THEN 0 ELSE 1 END, id ASC LIMIT 1").get(row.id);
+        row.imagem_principal = img ? img.url : null;
+        row.aplicacoes_count = db.prepare('SELECT COUNT(*) as c FROM aplicacoes_motor WHERE produto_id=?').get(row.id).c;
+        row.imagens_count = db.prepare('SELECT COUNT(*) as c FROM imagens WHERE produto_id=?').get(row.id).c;
+        row.imagens_pendentes = db.prepare("SELECT COUNT(*) as c FROM imagens WHERE produto_id=? AND status='Pendente'").get(row.id).c;
+        row.codigos_count = db.prepare('SELECT COUNT(*) as c FROM codigos_cambiados WHERE produto_id=?').get(row.id).c;
+    });
+    res.json({ total, page: parseInt(page), limit: parseInt(limit), data: rows });
+});
+
+// Aprovar enriquecimento — recalcula NTC 12-modulos, aprova imagens pendentes
+app.post('/api/produtos/:id/aprovar', (req, res) => {
+    const id = req.params.id;
+    const { congelar = false, motivo = 'Aprovacao de enriquecimento' } = req.body;
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    const ntcResult = calcNTCFromId(id);
+    if (!ntcResult) return res.status(500).json({ error: 'Erro ao calcular NTC' });
+    db.transaction(() => {
+        persistNTC(id, ntcResult, motivo);
+        db.prepare("UPDATE imagens SET status='Aprovada' WHERE produto_id=? AND status='Pendente'").run(id);
+        if (congelar && ntcResult.score >= 0.80) {
+            db.prepare("UPDATE produtos SET status='Congelado', atualizado_em=datetime('now','localtime') WHERE id=?").run(id);
+            db.prepare("INSERT INTO historico_ntc (produto_id,status_anterior,status_novo,alteracao) VALUES (?,?,?,?)").run(id, p.status, 'Congelado', 'Congelado apos aprovacao');
+        }
+    })();
+    res.json({
+        success: true,
+        ntc: { score: ntcResult.score, status: ntcResult.status },
+        congelado: congelar && ntcResult.score >= 0.80,
+        produto: db.prepare('SELECT id,ref,descricao,ntc_score,ntc_status,status FROM produtos WHERE id=?').get(id)
+    });
+});
+
+// Rejeitar produto — marca imagens como rejeitadas e loga motivo
+app.post('/api/produtos/:id/rejeitar', (req, res) => {
+    const id = req.params.id;
+    const { motivo = 'Rejeitado pelo operador' } = req.body;
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+    if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
+    db.prepare("UPDATE imagens SET status='Rejeitada' WHERE produto_id=? AND status='Pendente'").run(id);
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(id, p.ntc_score, p.ntc_score, p.ntc_status, p.ntc_status, 'Rejeitado: ' + motivo);
+    res.json({ success: true, produto: db.prepare('SELECT id,ref,descricao,ntc_score,ntc_status,status FROM produtos WHERE id=?').get(id) });
+});
+
+// Aprovacao em lote
+app.post('/api/aprovacao/lote', (req, res) => {
+    const { ids = [], acao = 'aprovar', congelar = false } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids obrigatorio' });
+    const resultados = [];
+    for (const id of ids.slice(0, 50)) {
+        try {
+            const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
+            if (!p) { resultados.push({ id, error: 'nao encontrado' }); continue; }
+            if (acao === 'aprovar') {
+                const ntcResult = calcNTCFromId(id);
+                if (ntcResult) {
+                    db.transaction(() => {
+                        persistNTC(id, ntcResult, 'Aprovacao em lote');
+                        db.prepare("UPDATE imagens SET status='Aprovada' WHERE produto_id=? AND status='Pendente'").run(id);
+                        if (congelar && ntcResult.score >= 0.80) {
+                            db.prepare("UPDATE produtos SET status='Congelado', atualizado_em=datetime('now','localtime') WHERE id=?").run(id);
+                        }
+                    })();
+                    resultados.push({ id, success: true, ntc_score: ntcResult.score, ntc_status: ntcResult.status });
+                }
+            } else if (acao === 'rejeitar') {
+                db.prepare("UPDATE imagens SET status='Rejeitada' WHERE produto_id=? AND status='Pendente'").run(id);
+                resultados.push({ id, success: true, acao: 'rejeitado' });
+            }
+        } catch (e) { resultados.push({ id, error: e.message }); }
+    }
+    res.json({ success: true, processados: resultados.length, resultados });
+});
+
+// Imagens pendentes de aprovacao (todas as marcas)
+app.get('/api/imagens/pendentes', (req, res) => {
+    const { limit = 50 } = req.query;
+    const imgs = db.prepare(`SELECT i.*, p.ref as produto_ref, p.descricao as produto_descricao FROM imagens i JOIN produtos p ON p.id=i.produto_id WHERE i.status='Pendente' ORDER BY i.criado_em DESC LIMIT ?`).all(parseInt(limit));
+    res.json({ total: imgs.length, data: imgs });
+});
+
+// -----------------------------------------------------------
 // DASHBOARD / RELATORIOS
 // -----------------------------------------------------------
 app.get('/api/dashboard', (req, res) => {
