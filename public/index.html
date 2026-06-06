@@ -736,43 +736,54 @@ tr:hover td{background:#1c1c1c}
       <!-- Header -->
       <div class="irollo-header">
         <div>
-          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Motor iRollo v3.5 + Claude Haiku</div>
+          <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px">Motor iRollo v4.0 + Claude Haiku</div>
           <div style="font-size:1rem;font-weight:900;color:var(--primary)">Enriquecimento por OEM / ID</div>
-          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">Triangulacao Web + TecDoc + EAN DB &#x2192; NCT &#x2192; Bling + Wix + Google Shopping</div>
+          <div style="font-size:.72rem;color:var(--text2);margin-top:2px">Motor iRollo v4.0 + Claude Haiku &#x2192; DNA Real &#x2192; NCT &#x2192; Bling + Wix + Google Shopping</div>
         </div>
-        <div class="irollo-status ml-auto"><div class="dot"></div> MOTOR ON</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <span style="font-size:.6rem;background:#0055a5;color:#fff;padding:2px 8px;border-radius:4px;font-weight:700">&#x1F4CB; Bling</span>
+          <span style="font-size:.6rem;background:#111;color:#fff;padding:2px 8px;border-radius:4px;font-weight:700">&#x26AB; Wix</span>
+          <div class="irollo-status"><div class="dot"></div> MOTOR ON</div>
+        </div>
+      </div>
+
+      <!-- BUSCA OEM — campo livre igual ao v3.4 -->
+      <div class="sec">
+        <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-weight:700;letter-spacing:.05em">ENRIQUECIMENTO POR OEM / ID</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="enr-oem-input" type="text" placeholder="Digite o OEM, ref ou nome... ex: CX355090 INDYSA"
+            style="flex:1;min-width:220px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:.9rem;outline:none;font-family:monospace"
+            onkeydown="if(event.key==='Enter') buscarOemEnr()">
+          <button class="btn btn-blue" onclick="buscarOemEnr()" style="padding:10px 20px;font-size:.85rem">&#x1F50D; Enriquecer</button>
+          <button class="btn" onclick="limparEnriquecimentoWeb()" style="background:#c0392b;color:#fff;padding:10px 14px;font-size:.82rem" title="Remove aplicacoes e imagens Web-Auto incorretas">&#x1F5D1; Limpar Web</button>
+        </div>
+        <div id="enr-busca-status" style="margin-top:8px;font-size:.75rem;color:var(--text3)"></div>
+        <!-- select oculto para compatibilidade interna -->
+        <select id="enr-prod-select" style="display:none">
+          <option value="">Selecione um produto para enriquecer...</option>
+        </select>
       </div>
 
       <!-- PIPELINE INDICATOR -->
       <div class="pipeline-steps" id="enr-pipeline">
         <div class="pipeline-step" id="pip-step-1">
           <div class="pip-num">1</div>
-          <div><div class="pip-label">ENRIQUECER</div><div class="pip-sub">Buscar DNA + Imagens</div></div>
+          <div><div class="pip-label">ENRIQUECER</div><div class="pip-sub">DNA + Imagens Web</div></div>
         </div>
         <div class="pip-arrow">&#x2192;</div>
         <div class="pipeline-step" id="pip-step-2">
           <div class="pip-num">2</div>
-          <div><div class="pip-label">APROVAR</div><div class="pip-sub">NTC &#x2265; 95%</div></div>
+          <div><div class="pip-label">APROVAR</div><div class="pip-sub">NTC &#x2265; 80%</div></div>
         </div>
         <div class="pip-arrow">&#x2192;</div>
         <div class="pipeline-step" id="pip-step-3">
           <div class="pip-num">3</div>
-          <div><div class="pip-label">SINCRONIZAR</div><div class="pip-sub">Wix / Bling / Google</div></div>
+          <div><div class="pip-label">SINCRONIZAR</div><div class="pip-sub">Bling / Wix / Google</div></div>
         </div>
       </div>
 
-      <!-- Product selector -->
-      <div class="sec">
-        <div class="sec-title">Selecionar Produto</div>
-        <div class="flex" style="gap:10px;flex-wrap:wrap">
-          <select id="enr-prod-select" style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-size:.85rem">
-            <option value="">Selecione um produto para enriquecer...</option>
-          </select>
-          <button class="btn" onclick="loadEnriquecimento()">&#x26A1; Carregar</button>
-          <button class="btn btn-blue" id="btn-enriquecer-web" onclick="enriquecerWeb()" style="background:linear-gradient(135deg,#1a6fff,#0040cc)">&#x1F310; ENRIQUECER DNA NA WEB</button>
-          <button class="btn" onclick="limparEnriquecimentoWeb()" style="background:#c0392b;color:#fff" title="Remove aplicacoes e imagens Web-Auto incorretas">&#x1F5D1; Limpar Web</button>
-        </div>
-      </div>
+      <!-- botao enriquecer web oculto (usado internamente) -->
+      <button id="btn-enriquecer-web" style="display:none" onclick="enriquecerWeb()"></button>
       <div id="enr-body" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <!-- LEFT: NCT + Dados + Voz -->
@@ -3611,6 +3622,68 @@ function buildGaveta(key, title, count, bodyHtml, badgeCls) {
         </div>
         <div class="gaveta-body">${bodyHtml}</div>
     </div>`;
+}
+
+// Busca por OEM livre — acha ou cria o produto e dispara enriquecimento
+async function buscarOemEnr() {
+    const input = document.getElementById('enr-oem-input');
+    const st = document.getElementById('enr-busca-status');
+    const raw = (input?.value || '').trim();
+    if (!raw) { if (st) st.innerHTML = '<span style="color:var(--danger)">Digite o OEM ou nome do produto.</span>'; return; }
+
+    // Separar OEM da marca: "CX355090 INDYSA" → oem="CX355090", marca="INDYSA"
+    const parts = raw.split(/\s+/);
+    const oem = parts[0];
+    const marcaDigitada = parts.length > 1 ? parts.slice(1).join(' ') : '';
+
+    if (st) st.innerHTML = '<span style="color:var(--text3)">&#x1F50D; Buscando produto...</span>';
+
+    // 1. Buscar produto existente por ref ou descricao
+    const res = await api('/produtos?busca=' + encodeURIComponent(oem));
+    const lista = res.data || [];
+    let produto = lista.find(p => p.ref && p.ref.toUpperCase().startsWith(oem.toUpperCase()));
+
+    // 2. Se nao achou, criar automaticamente
+    if (!produto) {
+        if (st) st.innerHTML = '<span style="color:var(--warning)">Produto nao encontrado. Criando...</span>';
+        const descAuto = marcaDigitada ? oem + ' ' + marcaDigitada : oem;
+        const criado = await api('/produtos', {
+            method: 'POST',
+            body: JSON.stringify({ ref: raw, descricao: descAuto })
+        });
+        if (!criado.success) {
+            if (st) st.innerHTML = '<span style="color:var(--danger)">Erro ao criar produto: ' + (criado.error || 'desconhecido') + '</span>';
+            return;
+        }
+        // Recarregar para pegar o produto recém criado
+        const res2 = await api('/produtos?busca=' + encodeURIComponent(oem));
+        produto = (res2.data || []).find(p => p.ref && p.ref.toUpperCase().startsWith(oem.toUpperCase()));
+    }
+
+    if (!produto) {
+        if (st) st.innerHTML = '<span style="color:var(--danger)">Nao foi possivel localizar o produto.</span>';
+        return;
+    }
+
+    if (st) st.innerHTML = '<span style="color:var(--success)">&#x2714; Produto: <strong>' + produto.ref + '</strong> — ' + produto.descricao.substring(0,50) + '</span>';
+
+    // 3. Definir ID atual e carregar enriquecimento
+    currentEnrId = produto.id;
+    const sel = document.getElementById('enr-prod-select');
+    if (sel) {
+        // Adicionar ao select se nao existir
+        if (!Array.from(sel.options).some(o => o.value == produto.id)) {
+            const opt = document.createElement('option');
+            opt.value = produto.id;
+            opt.textContent = produto.ref + ' — ' + produto.descricao.substring(0, 60);
+            sel.appendChild(opt);
+        }
+        sel.value = produto.id;
+    }
+    await loadEnriquecimento();
+
+    // 4. Disparar enriquecimento web automatico
+    setTimeout(() => enriquecerWeb(), 300);
 }
 
 // Enriquecer produto via busca web automatica
