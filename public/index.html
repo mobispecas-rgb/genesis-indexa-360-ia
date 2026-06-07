@@ -1469,7 +1469,17 @@ tr:hover td{background:#1c1c1c}
     <!-- CATEGORIA -->
     <div class="page" id="page-categoria">
       <div class="sec">
-        <div class="sec-title">&#x1F3F7;&#xFE0F; Categorias de Produtos</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <div class="sec-title" style="margin:0">&#x1F3F7;&#xFE0F; Categorias de Produtos</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-outline" onclick="Categorias.exportar()">&#x2B07;&#xFE0F; Exportar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="Categorias.importar()">&#x2B06;&#xFE0F; Importar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="Categorias.sincronizar()">&#x1F504; Sincronizar</button>
+            <button class="btn btn-sm btn-blue" onclick="Categorias.adicionar()">&#x2795; Inserir categoria pai</button>
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:var(--text3);margin:0 0 12px">Para adicionar uma subcategoria, clique no botao com "+" na categoria pai.</p>
+        <input type="text" class="fg" id="categoria-busca" placeholder="Pesquisar categoria" style="max-width:320px;margin-bottom:14px" oninput="Categorias.buscar(this.value)">
         <div class="tbl-wrap">
           <table id="tbl-categoria">
             <thead><tr><th>Categoria</th><th>Subcategoria</th><th>Produtos</th><th>Status</th></tr></thead>
@@ -5109,6 +5119,45 @@ function loadCategorias() {
     document.querySelector('#tbl-categoria tbody').innerHTML =
         '<tr><td colspan="4" class="empty">Nenhuma categoria cadastrada ainda.</td></tr>';
 }
+
+const Categorias = {
+    busca: '',
+    buscar(valor) {
+        this.busca = (valor || '').trim().toLowerCase();
+        const rows = document.querySelectorAll('#tbl-categoria tbody tr');
+        rows.forEach(tr => {
+            const txt = tr.textContent.toLowerCase();
+            tr.style.display = (!this.busca || txt.includes(this.busca)) ? '' : 'none';
+        });
+    },
+    adicionar() {
+        const nome = prompt('Nome da nova categoria pai:');
+        if (!nome) return;
+        const tbody = document.querySelector('#tbl-categoria tbody');
+        const empty = tbody.querySelector('.empty');
+        if (empty) empty.closest('tr').remove();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${nome}</td><td>—</td><td>0</td><td><span class="badge">Ativa</span></td>`;
+        tbody.appendChild(tr);
+    },
+    sincronizar() {
+        alert('Sincronizando categorias com a plataforma integrada...');
+    },
+    exportar() {
+        const csv = 'categoria,subcategoria,produtos,status\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'categorias.csv';
+        a.click();
+    },
+    importar() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.click();
+    }
+};
 
 function loadTemplates() {
     document.querySelector('#tbl-templates tbody').innerHTML =
