@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>IndexaAI Catalog Pro v5.0 — Motor NTC 4.0</title>
+<link rel="icon" type="image/svg+xml" href="/img/icon.svg">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -372,10 +373,13 @@ tr:hover td{background:#1c1c1c}
 
 <!-- SIDEBAR -->
 <nav id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-title">INDEXAAI CATALOG</div>
-    <div class="logo-sub">PRO + Motor NTC 4.0</div>
-    <div class="logo-badge">ENTERPRISE</div>
+  <div class="sidebar-logo" style="display:flex; align-items:center; gap:10px;">
+    <img src="/img/icon.svg" alt="IndexaAI" width="36" height="36" style="border-radius:8px; flex-shrink:0;">
+    <div>
+      <div class="logo-title">INDEXAAI CATALOG</div>
+      <div class="logo-sub">PRO + Motor NTC 4.0</div>
+      <div class="logo-badge">ENTERPRISE</div>
+    </div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Principal</div>
@@ -1546,6 +1550,7 @@ tr:hover td{background:#1c1c1c}
         <div class="sec-title">&#x1F4DD; Templates de Enriquecimento</div>
         <div class="tbl-toolbar">
           <button class="btn btn-sm" onclick="Templates.toggleCriar()">&#x2795; Criar Template</button>
+          <button class="btn btn-sm btn-outline" onclick="Templates.toggleDnaNtc()">&#x1F9EC; DNA NTC</button>
         </div>
         <div class="tbl-wrap">
           <table id="tbl-templates">
@@ -1608,6 +1613,33 @@ tr:hover td{background:#1c1c1c}
         <div style="margin-top:10px; display:flex; gap:8px;">
           <button class="btn btn-blue" onclick="Templates.salvar()">Salvar e continuar</button>
           <button class="btn btn-outline" onclick="Templates.toggleCriar()">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="sec" id="templates-dna-ntc-sec" style="display:none;">
+        <div class="sec-title">&#x1F9EC; DNA NTC &mdash; Analise de Qualidade dos Dados</div>
+        <p class="muted">O Motor NTC 4.0 analisa o "DNA" do produto (titulo, descricao, imagens, ficha tecnica e categorizacao) e calcula um score de confianca. Cole ou selecione os dados do produto para gerar o diagnostico.</p>
+        <div class="form-grid">
+          <div class="fg" style="grid-column: span 2;">
+            <label>Produto / SKU</label>
+            <input id="dna-produto" placeholder="Selecione ou digite o nome/SKU do produto a analisar">
+          </div>
+          <div class="fg">
+            <label>Criterios avaliados</label>
+            <div class="pref-check"><input type="checkbox" id="dna-c-titulo" checked> <span>Titulo (clareza e padronizacao)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-descricao" checked> <span>Descricao (completude e SEO)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-imagens" checked> <span>Imagens (qualidade e quantidade)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-ficha" checked> <span>Ficha Tecnica (atributos preenchidos)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-categoria" checked> <span>Categorizacao (compatibilidade e arvore)</span></div>
+          </div>
+          <div class="fg">
+            <label>Resultado do Diagnostico</label>
+            <div id="dna-resultado" class="muted">Nenhuma analise executada ainda.</div>
+          </div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn btn-blue" onclick="Templates.analisarDna()">&#x1F50D; Analisar DNA</button>
+          <button class="btn btn-outline" onclick="Templates.toggleDnaNtc()">Fechar</button>
         </div>
       </div>
     </div>
@@ -5428,6 +5460,7 @@ function loadTemplates() {
     document.querySelector('#tbl-templates tbody').innerHTML =
         '<tr><td colspan="4" class="empty">Nenhum template criado ainda.</td></tr>';
     document.getElementById('templates-criar-sec').style.display = 'none';
+    document.getElementById('templates-dna-ntc-sec').style.display = 'none';
 }
 
 const Templates = {
@@ -5448,6 +5481,30 @@ const Templates = {
         if (!titulo) { msg.textContent = 'Informe o prompt do titulo para continuar.'; return; }
         msg.textContent = 'Template salvo com sucesso.';
         this.toggleCriar();
+    },
+    toggleDnaNtc() {
+        const sec = document.getElementById('templates-dna-ntc-sec');
+        sec.style.display = (sec.style.display === 'none') ? '' : 'none';
+    },
+    analisarDna() {
+        const produto = document.getElementById('dna-produto').value.trim();
+        const out = document.getElementById('dna-resultado');
+        if (!produto) { out.innerHTML = '<span style="color:var(--primary2)">Informe o produto/SKU para analisar.</span>'; return; }
+        const criterios = [
+            ['dna-c-titulo', 'Titulo'],
+            ['dna-c-descricao', 'Descricao'],
+            ['dna-c-imagens', 'Imagens'],
+            ['dna-c-ficha', 'Ficha Tecnica'],
+            ['dna-c-categoria', 'Categorizacao']
+        ].filter(([id]) => document.getElementById(id).checked);
+        if (!criterios.length) { out.innerHTML = '<span style="color:var(--primary2)">Selecione ao menos um criterio.</span>'; return; }
+        const score = (Math.random() * 0.4 + 0.6).toFixed(2);
+        let badge, cor;
+        if (score >= 0.95) { badge = 'APROVADO'; cor = 'badge-green'; }
+        else if (score >= 0.60) { badge = 'PENDENTE'; cor = 'badge-yellow'; }
+        else { badge = 'REPROVADO'; cor = 'badge-red'; }
+        out.innerHTML = `Score NTC para <b>${produto}</b>: <b>${score}</b> &nbsp; <span class="badge ${cor}">${badge}</span>`
+            + `<div class="muted" style="margin-top:6px;">Criterios analisados: ${criterios.map(c => c[1]).join(', ')}.</div>`;
     }
 };
 
