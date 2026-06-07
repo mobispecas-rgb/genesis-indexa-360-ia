@@ -1,6 +1,6 @@
 {
     "name": "indexaai-catalog-pro",
-    "version": "5.0.1",
+    "version": "5.0.2",
     "description": "IndexaAI Catalog Pro — Plataforma Enterprise de Enriquecimento de Catalogos Automotivos com IA",
     "main": "server.js",
     "engines": {
