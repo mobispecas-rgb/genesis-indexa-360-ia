@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: indexaai-catalog-pro
+    runtime: node
+    plan: free
+    buildCommand: npm install --production
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_URL
+        fromService:
+          type: web
+          name: indexaai-catalog-pro
+          property: host
+    disk:
+      name: indexaai-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
