@@ -870,6 +870,82 @@ app.patch('/api/imagens/:id/status', (req, res) => {
     res.json({ success: true });
 });
 
+app.put('/api/imagens/:id/tipo', (req, res) => {
+    const { tipo } = req.body;
+    if (!tipo) return res.status(400).json({ error: 'tipo obrigatorio' });
+    db.prepare("UPDATE imagens SET tipo=? WHERE id=?").run(tipo, req.params.id);
+    res.json({ success: true });
+});
+
+// Classificacao automatica de imagem por IA — sempre usa o contexto DNA do produto
+// (marca/fabricante/familia/descricao) para validar coerencia, e apenas SUGERE a
+// categoria: a aplicacao depende de confirmacao manual via PUT /api/imagens/:id/tipo
+app.post('/api/imagens/:id/classificar-ia', async (req, res) => {
+    const img = db.prepare('SELECT * FROM imagens WHERE id=?').get(req.params.id);
+    if (!img) return res.status(404).json({ error: 'Imagem nao encontrada' });
+    const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(img.produto_id);
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(img.produto_id);
+
+    let base64, mediaType;
+    try {
+        if (img.url.startsWith('/uploads/')) {
+            const filePath = path.join(__dirname, 'public', img.url);
+            base64 = fs.readFileSync(filePath).toString('base64');
+            mediaType = imageMediaType(filePath);
+        } else {
+            const { buffer, contentType } = await fetchImageBuffer(img.url);
+            base64 = buffer.toString('base64');
+            mediaType = (contentType || '').split(';')[0].trim() || imageMediaType(img.url);
+        }
+    } catch (e) {
+        return res.status(500).json({ error: 'Falha ao carregar imagem: ' + e.message });
+    }
+
+    const categorias = Object.entries(IMG_CATEGORIAS_IA).map(([k, v]) => `- ${k}: ${v}`).join('\n');
+    const dnaContexto = `Marca: ${dna?.marca || 'desconhecida'}\nFabricante: ${dna?.fabricante || 'desconhecido'}\nFamilia: ${dna?.familia || 'desconhecida'}\nCodigo OEM: ${dna?.codigo_dna || 'nao informado'}\nDescricao do produto: ${p?.descricao || ''}`;
+
+    const systemPrompt = `Voce e um classificador de imagens de autopecas para um catalogo certificado (NTC).
+Analise a imagem enviada e classifique-a em UMA das categorias abaixo, sempre considerando o contexto DNA do produto (marca, familia, descricao) para verificar coerencia entre a imagem e o produto:
+
+${categorias}
+
+Contexto DNA do produto (use sempre para validar se a imagem condiz com o produto):
+${dnaContexto}
+
+Responda SOMENTE com um JSON no formato:
+{"categoria": "<uma das chaves acima>", "confianca": <numero de 0 a 1>, "justificativa": "<explicacao curta em portugues, citando o que ve na imagem e como isso se relaciona ao DNA do produto>"}
+
+Regras:
+- NUNCA invente o que nao esta visivel na imagem
+- Se a imagem nao parecer condizer com o produto/DNA informado, reduza a confianca e explique a divergencia na justificativa
+- categoria deve ser exatamente uma das chaves listadas`;
+
+    const userContent = [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: 'Classifique esta imagem do produto seguindo as instrucoes do system prompt.' }
+    ];
+
+    const result = await callClaude(systemPrompt, userContent, 500);
+    if (result.error) return res.status(502).json({ error: result.error });
+
+    let parsed = null;
+    try {
+        let jsonText = (result.text || '').trim().replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        const match = jsonText.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+    } catch (e) { parsed = null; }
+
+    if (!parsed || !parsed.categoria) return res.json({ success: false, error: 'Parse error', raw: result.text });
+
+    res.json({
+        success: true,
+        sugestao: parsed.categoria,
+        confianca: typeof parsed.confianca === 'number' ? parsed.confianca : null,
+        justificativa: parsed.justificativa || '',
+        tipo_atual: img.tipo
+    });
+});
+
 // -----------------------------------------------------------
 // NTC ENGINE ROUTES
 // -----------------------------------------------------------
@@ -1131,6 +1207,42 @@ function httpGet(url, headers = {}) {
         req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
         req.end();
     });
+}
+
+// Baixa uma imagem (URL externa) preservando os bytes binarios — usado pela classificacao
+// automatica por IA, que precisa enviar a imagem em base64 para a API de visao da Anthropic.
+function fetchImageBuffer(url) {
+    return new Promise((resolve, reject) => {
+        const mod = url.startsWith('http://') ? require('http') : https;
+        const req = mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GenesisIndexa/5.0)' }, timeout: 10000 }, (res) => {
+            if (res.statusCode >= 400) { reject(new Error('HTTP ' + res.statusCode)); return; }
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => resolve({ buffer: Buffer.concat(chunks), contentType: res.headers['content-type'] || 'image/jpeg' }));
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    });
+}
+
+// Categorias do "Banco de Imagens Certificadas" usadas pela classificacao automatica por IA
+const IMG_CATEGORIAS_IA = {
+    Principal: 'Produto isolado em fundo neutro, sem contexto — foto de catalogo padrao',
+    Lateral: 'Vista lateral ou de outro angulo do produto isolado',
+    Tecnica: 'Foto tecnica destacando especificacoes, medidas, conectores ou componentes internos',
+    Detalhe: 'Zoom em um detalhe especifico do produto (acabamento, gravacao, textura, encaixe)',
+    Embalagem: 'Caixa, embalagem ou etiqueta do produto',
+    OEM: 'Codigo OEM, numero de peca ou gravacao de identificacao visivel na peca',
+    Aplicada: 'Produto montado/instalado no veiculo ou em um conjunto/aplicacao real'
+};
+
+function imageMediaType(urlOrPath) {
+    const ext = path.extname(urlOrPath).toLowerCase().replace('.', '');
+    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+    if (ext === 'png') return 'image/png';
+    if (ext === 'webp') return 'image/webp';
+    if (ext === 'gif') return 'image/gif';
+    return 'image/jpeg';
 }
 
 // Build smart DNA search query

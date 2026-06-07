@@ -555,6 +555,7 @@ tr:hover td{background:#1c1c1c}
               <div id="dprod-img-main-status" style="position:absolute;top:8px;right:8px;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px"></div>
               <div id="dprod-img-main-actions" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:4px;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.85))"></div>
             </div>
+            <div id="dprod-img-ia-sugestao"></div>
             <div id="dprod-img-slots" style="display:flex;gap:6px;flex-wrap:wrap"></div>
             <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
               <input type="text" id="dprod-img-url" placeholder="Cole URL da imagem..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
@@ -2058,19 +2059,52 @@ function dprodRenderCodigos(codigos) {
         : '<div class="empty" style="font-size:.78rem">Nenhum codigo. Adicione OEM ou use ENRIQUECER NA WEB.</div>';
 }
 
-function dprodSelectImg(url, tipo, status) {
+let dprodSelectedImgId = null;
+
+function dprodSelectImg(id, url, tipo, status) {
     const main = document.getElementById('dprod-img-main');
     const src = document.getElementById('dprod-img-main-src');
     const lbl = document.getElementById('dprod-img-main-label');
     const sts = document.getElementById('dprod-img-main-status');
+    const actions = document.getElementById('dprod-img-main-actions');
+    const sugestao = document.getElementById('dprod-img-ia-sugestao');
     if (!main) return;
+    dprodSelectedImgId = id;
     main.style.display = 'block';
     src.src = url;
     if (lbl) lbl.textContent = tipo || 'IMG';
     if (sts) { sts.textContent = status || ''; sts.style.background = status === 'APROVADA' ? 'rgba(0,200,100,.8)' : 'rgba(255,160,0,.8)'; }
+    if (actions) actions.innerHTML = id ? `<button class="btn btn-xs" style="background:rgba(255,255,255,.18);color:#fff" onclick="dprodClassificarImgIA(${id})">&#x1F916; Classificar com IA</button>` : '';
+    if (sugestao) sugestao.innerHTML = '';
     document.querySelectorAll('#dprod-img-slots .img-thumb').forEach(t => t.style.outline = '');
     const active = document.querySelector(`#dprod-img-slots [data-url="${CSS.escape(url)}"]`);
     if (active) active.style.outline = '2px solid var(--accent)';
+}
+
+// Classificacao automatica de imagem por IA — sempre considera o DNA do produto
+// (marca/familia/descricao) e apenas SUGERE; aplicar a categoria exige confirmacao manual
+async function dprodClassificarImgIA(id) {
+    const box = document.getElementById('dprod-img-ia-sugestao');
+    if (box) box.innerHTML = '<div class="empty" style="font-size:.72rem">&#x1F916; Analisando imagem com IA (considerando o DNA do produto)...</div>';
+    const r = await api('/imagens/' + id + '/classificar-ia', { method: 'POST' });
+    if (!box) return;
+    if (!r.success) { box.innerHTML = `<div style="font-size:.72rem;color:var(--danger);padding:8px 0">Erro ao classificar: ${r.error || 'desconhecido'}</div>`; return; }
+    const pct = r.confianca != null ? Math.round(r.confianca * 100) + '%' : '—';
+    const igual = r.sugestao === r.tipo_atual;
+    box.innerHTML = `<div style="background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:10px;margin-top:6px">
+        <div style="font-size:.62rem;color:var(--text3);margin-bottom:6px">&#x1F916; <strong>Sugestao da IA</strong> (baseada no DNA do produto) — confianca ${pct}</div>
+        <div style="font-size:.8rem;margin-bottom:4px">Categoria sugerida: <span class="badge badge-blue">${r.sugestao}</span>
+            <span style="color:var(--text3);font-size:.65rem"> ${igual ? '(igual a atual)' : '(atual: ' + (r.tipo_atual || '—') + ')'}</span></div>
+        <div style="font-size:.72rem;color:var(--text2);margin-bottom:8px">${r.justificativa || ''}</div>
+        ${igual ? '' : `<button class="btn btn-xs btn-success" onclick="dprodAplicarClassificacaoIA(${id},'${(r.sugestao||'').replace(/'/g,"\\'")}')">Aplicar categoria sugerida</button>`}
+    </div>`;
+}
+
+async function dprodAplicarClassificacaoIA(id, categoria) {
+    await api('/imagens/' + id + '/tipo', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ tipo: categoria }) });
+    showToast('Categoria da imagem atualizada para "' + categoria + '"', 'success');
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderImagens(p.imagens || []);
 }
 
 // Banco de Imagens Certificadas — as 6 categorias minimas exigidas para uma certificacao
@@ -2116,12 +2150,12 @@ function dprodRenderImagens(imagens) {
     }
     slots.innerHTML = imagens.map((img, i) => {
         const color = img.status === 'APROVADA' ? '#00c864' : img.status === 'REPROVADA' ? '#c0392b' : '#f0a500';
-        return `<div class="img-thumb" data-url="${img.url}" onclick="dprodSelectImg('${img.url.replace(/'/g,"\\'")}','${img.tipo||'IMG'}','${img.status||''}')"
+        return `<div class="img-thumb" data-url="${img.url}" onclick="dprodSelectImg(${img.id},'${img.url.replace(/'/g,"\\'")}','${img.tipo||'IMG'}','${img.status||''}')"
             style="width:60px;height:60px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:2px solid ${color};cursor:pointer;flex-shrink:0">
             <img src="${img.url}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.opacity='.2'">
         </div>`;
     }).join('');
-    dprodSelectImg(imagens[0].url, imagens[0].tipo, imagens[0].status);
+    dprodSelectImg(imagens[0].id, imagens[0].url, imagens[0].tipo, imagens[0].status);
 }
 
 async function dprodSalvarDNA() {
