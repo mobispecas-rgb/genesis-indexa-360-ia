@@ -582,6 +582,18 @@ tr:hover td{background:#1c1c1c}
           <div class="sec" style="margin-bottom:0">
             <div class="sec-title">&#x1F697; Aplicacoes Veiculares</div>
             <div id="dprod-av-table"></div>
+            <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <input type="text" id="av-montadora" placeholder="Montadora *" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <input type="text" id="av-modelo" placeholder="Modelo *" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <input type="text" id="av-versao" placeholder="Versao" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <input type="text" id="av-motor" placeholder="Motor" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <input type="number" id="av-ano-ini" placeholder="Ano inicio" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+              <input type="number" id="av-ano-fim" placeholder="Ano fim" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
+            </div>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+              <button class="btn btn-sm" onclick="dprodAddAplicacao()">&#x2795; Adicionar Aplicacao</button>
+              <span id="dp-av-st" class="text-xs"></span>
+            </div>
           </div>
 
           <div class="sec" style="margin-bottom:0">
@@ -657,7 +669,6 @@ tr:hover td{background:#1c1c1c}
         <input id="dp-comp" type="hidden"><input id="dp-larg" type="hidden">
         <input id="dp-alt" type="hidden"><input id="dp-vol" type="hidden">
         <span id="dp-dna-st" style="display:none"></span>
-        <span id="dp-av-st" style="display:none"></span>
         <span id="dp-fis-st" style="display:none"></span>
         <span id="dp-log-st" style="display:none"></span>
         <span id="dp-cod-st" style="display:none"></span>
@@ -666,10 +677,6 @@ tr:hover td{background:#1c1c1c}
         <div id="dprod-fis-badge" style="display:none"></div>
         <div id="dprod-log-badge" style="display:none"></div>
         <div id="dprod-img-badge" style="display:none"></div>
-        <input id="av-montadora" type="hidden"><input id="av-modelo" type="hidden">
-        <input id="av-motor" type="hidden"><input id="av-versao" type="hidden">
-        <input id="av-ano-ini" type="hidden"><input id="av-ano-fim" type="hidden">
-        <input id="av-obs" type="hidden">
         <input id="cod-codigo" type="hidden"><input id="cod-fab" type="hidden">
         <select id="cod-tipo" style="display:none"><option>OEM</option></select>
       </div>
@@ -2245,23 +2252,24 @@ async function dprodAddAplicacao() {
     const st = document.getElementById('dp-av-st');
     const montadora = document.getElementById('av-montadora').value.trim();
     const modelo = document.getElementById('av-modelo').value.trim();
-    if (!montadora || !modelo) { st.textContent = 'Montadora e modelo obrigatorios'; return; }
+    if (!montadora || !modelo) { st.textContent = 'Montadora e modelo sao obrigatorios'; return; }
     st.textContent = 'Salvando...';
-    await api('/produtos/' + dprodId + '/aplicacoes', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
+    const r = await api('/produtos/' + dprodId + '/aplicacoes', {
+        method: 'POST',
         body: JSON.stringify({
             montadora, modelo,
-            motor: document.getElementById('av-motor').value || null,
             versao: document.getElementById('av-versao').value || null,
+            motor: document.getElementById('av-motor').value || null,
             ano_ini: document.getElementById('av-ano-ini').value ? parseInt(document.getElementById('av-ano-ini').value) : null,
             ano_fim: document.getElementById('av-ano-fim').value ? parseInt(document.getElementById('av-ano-fim').value) : null,
-            observacao: document.getElementById('av-obs').value || null,
         })
     });
-    ['av-montadora','av-modelo','av-motor','av-versao','av-ano-ini','av-ano-fim','av-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    if (!r || !r.success) { st.innerHTML = '<span style="color:var(--danger)">&#x2716; Erro ao salvar</span>'; return; }
+    ['av-montadora','av-modelo','av-versao','av-motor','av-ano-ini','av-ano-fim'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     st.innerHTML = '<span style="color:var(--success)">&#x2714; Adicionado!</span>';
     const p = await api('/produtos/' + dprodId);
     dprodData = p; dprodRenderAplicacoes(p.aplicacoes || []);
+    await api('/produtos/' + dprodId + '/ntc/recalcular', { method: 'POST' });
 }
 
 async function dprodDelAplic(aplicId) {
