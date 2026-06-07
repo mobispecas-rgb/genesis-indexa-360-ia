@@ -386,6 +386,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="enriquecimento"><span class="nav-icon">&#x2728;</span> Enriquecimento OEM</div>
     <div class="nav-item" data-page="enriquecimento-massa"><span class="nav-icon">&#x1F4C2;</span> Enriquecimento por ID/Massa</div>
     <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao <span id="aprov-sidebar-badge" style="margin-left:auto;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 7px;border-radius:10px;font-size:.62rem;font-weight:900;display:none"></span></div>
+    <div class="nav-item" data-page="aprovacao-cadastro"><span class="nav-icon">&#x1F4DD;</span> Aprovacao de Cadastro</div>
     <div class="nav-item" data-page="congelados"><span class="nav-icon">&#x2744;&#xFE0F;</span> Congelados</div>
   </div>
   <div class="nav-section">
@@ -903,6 +904,49 @@ tr:hover td{background:#1c1c1c}
         <div style="margin-top:12px;display:flex;gap:8px">
           <button class="btn btn-sm btn-success" onclick="aprovarTodasImagens()">&#x2713; Aprovar Todas</button>
           <button class="btn btn-sm btn-danger" onclick="rejeitarTodasImagens()">&#x2717; Rejeitar Todas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APROVACAO DE CADASTRO -->
+    <div class="page" id="page-aprovacao-cadastro">
+      <div class="sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="sec-title" style="margin:0">&#x1F4DD; Aprovacao de Cadastro</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="aprovcad-ordenar" class="fg" style="width:auto" onchange="AprovacaoCadastro.reorder(this.value)">
+              <option value="createdAt-desc">Mais recentes primeiro</option>
+              <option value="createdAt-asc">Mais antigos primeiro</option>
+              <option value="name-asc">Nome (A-Z)</option>
+              <option value="name-desc">Nome (Z-A)</option>
+              <option value="image-desc">Com imagem primeiro</option>
+              <option value="image-asc">Sem imagem primeiro</option>
+            </select>
+            <button class="btn btn-sm btn-outline" onclick="AprovacaoCadastro.exportar()">&#x2B07;&#xFE0F; Exportar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="AprovacaoCadastro.importar()">&#x2B06;&#xFE0F; Importar dados</button>
+          </div>
+        </div>
+        <div class="tabs" style="margin-bottom:14px">
+          <div class="tab active" id="aprovcad-tab-cadastro" onclick="AprovacaoCadastro.switchTab('cadastro')">de Cadastro <span id="aprovcad-badge-cadastro" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprovcad-tab-enriquecimento" onclick="AprovacaoCadastro.switchTab('enriquecimento')">de Enriquecimento <span id="aprovcad-badge-enriquecimento" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprovcad-tab-categoria" onclick="AprovacaoCadastro.switchTab('categoria')">de Categoria <span id="aprovcad-badge-categoria" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprovcad-tab-aprovados" onclick="AprovacaoCadastro.switchTab('aprovados')">Aprovados</div>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-aprovacao-cadastro">
+            <thead><tr><th>Img</th><th>Nome</th><th>Categoria</th><th>Marca</th><th>Criado em</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody id="tbl-aprovacao-cadastro-body"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum cadastro pendente de aprovacao.</td></tr></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:.75rem;color:var(--text3)">
+          <select id="aprovcad-per-page" class="fg" style="width:auto" onchange="AprovacaoCadastro.setPerPage(this.value)">
+            <option value="10">10</option><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-xs btn-outline" onclick="AprovacaoCadastro.prevPage()">&#x2190; Anterior</button>
+            <span id="aprovcad-page-info">Pagina 1 de 1</span>
+            <button class="btn btn-xs btn-outline" onclick="AprovacaoCadastro.nextPage()">Proxima &#x2192;</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1686,6 +1730,7 @@ function onPageActivate(page) {
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
     else if (page === 'enriquecimento-massa') EnriquecimentoMassa.load();
+    else if (page === 'aprovacao-cadastro') AprovacaoCadastro.load();
     else if (page === 'catalogo-produtos') CatalogoProdutos.load();
     else if (page === 'planos') Planos.load();
     else if (page === 'categoria') loadCategorias();
@@ -4889,6 +4934,63 @@ const EnriquecimentoMassa = {
     enviar() {
         const status = document.getElementById('enrid-massa-status');
         status.textContent = 'Selecione uma planilha antes de enviar.';
+    }
+};
+
+const AprovacaoCadastro = {
+    tab: 'cadastro',
+    page: 1,
+    perPage: 50,
+    order: 'createdAt-desc',
+    load() {
+        this.renderEmpty();
+    },
+    switchTab(tab) {
+        this.tab = tab;
+        this.page = 1;
+        ['cadastro', 'enriquecimento', 'categoria', 'aprovados'].forEach(t => {
+            const el = document.getElementById('aprovcad-tab-' + t);
+            if (el) el.classList.toggle('active', t === tab);
+        });
+        this.renderEmpty();
+    },
+    renderEmpty() {
+        const tbody = document.getElementById('tbl-aprovacao-cadastro-body');
+        if (!tbody) return;
+        const labels = { cadastro: 'cadastro', enriquecimento: 'enriquecimento', categoria: 'categoria', aprovados: 'aprovados' };
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum item de ' + labels[this.tab] + ' pendente de aprovacao.</td></tr>';
+        document.getElementById('aprovcad-page-info').textContent = 'Pagina 1 de 1';
+    },
+    reorder(value) {
+        this.order = value;
+        this.page = 1;
+        this.renderEmpty();
+    },
+    setPerPage(value) {
+        this.perPage = parseInt(value, 10);
+        this.page = 1;
+        this.renderEmpty();
+    },
+    prevPage() {
+        if (this.page > 1) { this.page--; this.renderEmpty(); }
+    },
+    nextPage() {
+        this.page++;
+        this.renderEmpty();
+    },
+    exportar() {
+        const csv = 'nome,categoria,marca,status\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'aprovacao-cadastro.csv';
+        a.click();
+    },
+    importar() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.click();
     }
 };
 
