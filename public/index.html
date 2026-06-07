@@ -417,6 +417,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="pagamentos"><span class="nav-icon">&#x1F4B3;</span> Pagamentos</div>
     <div class="nav-item" data-page="planos"><span class="nav-icon">&#x1F4B0;</span> Planos</div>
     <div class="nav-item" data-page="usuarios"><span class="nav-icon">&#x1F465;</span> Usuarios</div>
+    <div class="nav-item" data-page="empresa"><span class="nav-icon">&#x1F3E2;</span> Empresa</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Sistema</div>
@@ -1618,12 +1619,40 @@ tr:hover td{background:#1c1c1c}
         </div>
       </div>
       <div class="sec">
+        <div class="sec-title">&#x1F4B5; Metodos de Pagamento</div>
+        <div class="tbl-wrap">
+          <table id="tbl-pagamentos-metodos">
+            <thead><tr><th>Metodo</th><th>Detalhes</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="btn btn-sm btn-outline" onclick="Pagamentos.adicionarMetodo()">&#x2795; Adicionar Metodo</button>
+        </div>
+      </div>
+      <div class="sec">
         <div class="sec-title">Historico de Faturas</div>
         <div class="tbl-wrap">
           <table id="tbl-pagamentos">
             <thead><tr><th>Data</th><th>Descricao</th><th>Valor</th><th>Status</th></tr></thead>
             <tbody></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESA -->
+    <div class="page" id="page-empresa">
+      <div class="sec">
+        <div class="sec-title">&#x1F3E2; Dados da Empresa</div>
+        <p class="muted">Aqui voce pode gerenciar as informacoes de sua empresa.</p>
+        <div class="form-grid">
+          <div class="fg"><label>Nome da Empresa</label><input id="empresa-nome" placeholder="Nome da empresa"></div>
+          <div class="fg"><label>CNPJ</label><input id="empresa-cnpj" placeholder="00.000.000/0000-00"></div>
+        </div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+          <button class="btn btn-blue" onclick="Empresa.salvar()">Salvar</button>
+          <span id="empresa-msg" class="muted"></span>
         </div>
       </div>
     </div>
@@ -1886,6 +1915,7 @@ function onPageActivate(page) {
     else if (page === 'templates') loadTemplates();
     else if (page === 'pagamentos') loadPagamentos();
     else if (page === 'usuarios') loadUsuarios();
+    else if (page === 'empresa') loadEmpresa();
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -5333,12 +5363,36 @@ function loadPagamentos() {
     document.getElementById('pagamentos-creditos').value = '—';
     document.querySelector('#tbl-pagamentos tbody').innerHTML =
         '<tr><td colspan="4" class="empty">Nenhuma fatura encontrada.</td></tr>';
+    document.querySelector('#tbl-pagamentos-metodos tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhum metodo de pagamento cadastrado.</td></tr>';
 }
+
+const Pagamentos = {
+    adicionarMetodo() {
+        showToast('Funcionalidade de adicionar metodo de pagamento em breve.', 'info', 4000);
+    }
+};
 
 function loadUsuarios() {
     document.querySelector('#tbl-usuarios tbody').innerHTML =
         '<tr><td colspan="4" class="empty">Nenhum usuario cadastrado ainda.</td></tr>';
 }
+
+function loadEmpresa() {
+    document.getElementById('empresa-nome').value = 'MOBIS Pecas Automotivas';
+    document.getElementById('empresa-cnpj').value = '19.903.967/0001-01';
+    document.getElementById('empresa-msg').textContent = '';
+}
+
+const Empresa = {
+    salvar() {
+        const nome = document.getElementById('empresa-nome').value.trim();
+        const cnpj = document.getElementById('empresa-cnpj').value.trim();
+        const msg = document.getElementById('empresa-msg');
+        if (!nome || !cnpj) { msg.textContent = 'Preencha nome e CNPJ para continuar.'; return; }
+        msg.textContent = 'Dados da empresa salvos com sucesso.';
+    }
+};
 
 async function irParaEnriquecimento(id) {
     // Navigate to enrichment page
