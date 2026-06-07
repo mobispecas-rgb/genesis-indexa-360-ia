@@ -946,13 +946,7 @@ function calcNTCFromId(id) {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
-    const text = p.descricao + ' ' + (dna ? (dna.marca || '') + ' ' + (dna.fabricante || '') : '');
-    const extra = {
-        ncm: fiscal?.ncm, cest: fiscal?.cest, cfop: fiscal?.cfop, ean: fiscal?.cest,
-        peso: logistica?.peso_liq,
-        dimensoes: logistica ? !!(logistica.altura && logistica.largura) : false,
-        aplicacoes, codigos, imagens
-    };
+    const { text, extra } = buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens);
     return calcNTC(text, extra);
 }
 
