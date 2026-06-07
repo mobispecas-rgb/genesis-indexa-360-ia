@@ -16,5 +16,4 @@ services:
           type: web
           name: indexaai-catalog-pro
           property: host
-    envVarGroups:
-      - genesis-irollo-360
+      - fromGroup: genesis-irollo-360
