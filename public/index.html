@@ -406,6 +406,13 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
   </div>
   <div class="nav-section">
+    <div class="nav-section-label">Plataforma</div>
+    <div class="nav-item" data-page="categoria"><span class="nav-icon">&#x1F3F7;&#xFE0F;</span> Categoria</div>
+    <div class="nav-item" data-page="templates"><span class="nav-icon">&#x1F4DD;</span> Templates</div>
+    <div class="nav-item" data-page="pagamentos"><span class="nav-icon">&#x1F4B3;</span> Pagamentos</div>
+    <div class="nav-item" data-page="usuarios"><span class="nav-icon">&#x1F465;</span> Usuarios</div>
+  </div>
+  <div class="nav-section">
     <div class="nav-section-label">Sistema</div>
     <div class="nav-item" data-page="config"><span class="nav-icon">&#x2699;&#xFE0F;</span> Configuracoes</div>
   </div>
@@ -1286,6 +1293,65 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- CATEGORIA -->
+    <div class="page" id="page-categoria">
+      <div class="sec">
+        <div class="sec-title">&#x1F3F7;&#xFE0F; Categorias de Produtos</div>
+        <div class="tbl-wrap">
+          <table id="tbl-categoria">
+            <thead><tr><th>Categoria</th><th>Subcategoria</th><th>Produtos</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="page" id="page-templates">
+      <div class="sec">
+        <div class="sec-title">&#x1F4DD; Templates de Enriquecimento</div>
+        <div class="tbl-wrap">
+          <table id="tbl-templates">
+            <thead><tr><th>Nome</th><th>Tipo</th><th>Atualizado</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGAMENTOS -->
+    <div class="page" id="page-pagamentos">
+      <div class="sec">
+        <div class="sec-title">&#x1F4B3; Pagamentos &amp; Plano</div>
+        <div class="form-grid">
+          <div class="fg"><label>Plano Atual</label><input value="Enterprise" readonly></div>
+          <div class="fg"><label>Creditos Disponiveis</label><input id="pagamentos-creditos" value="-" readonly></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Historico de Faturas</div>
+        <div class="tbl-wrap">
+          <table id="tbl-pagamentos">
+            <thead><tr><th>Data</th><th>Descricao</th><th>Valor</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="sec">
+        <div class="sec-title">&#x1F465; Usuarios da Empresa</div>
+        <div class="tbl-wrap">
+          <table id="tbl-usuarios">
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1521,6 +1587,10 @@ function onPageActivate(page) {
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
+    else if (page === 'categoria') loadCategorias();
+    else if (page === 'templates') loadTemplates();
+    else if (page === 'pagamentos') loadPagamentos();
+    else if (page === 'usuarios') loadUsuarios();
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -4675,6 +4745,27 @@ async function loadCongelados() {
         <td>${ntcBadge(p.ntc_score, p.ntc_status)}</td>
         <td><span class="badge badge-blue">Congelado</span></td>
     </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto congelado ainda.</td></tr>';
+}
+
+function loadCategorias() {
+    document.querySelector('#tbl-categoria tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhuma categoria cadastrada ainda.</td></tr>';
+}
+
+function loadTemplates() {
+    document.querySelector('#tbl-templates tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhum template criado ainda.</td></tr>';
+}
+
+function loadPagamentos() {
+    document.getElementById('pagamentos-creditos').value = '—';
+    document.querySelector('#tbl-pagamentos tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhuma fatura encontrada.</td></tr>';
+}
+
+function loadUsuarios() {
+    document.querySelector('#tbl-usuarios tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhum usuario cadastrado ainda.</td></tr>';
 }
 
 async function irParaEnriquecimento(id) {
