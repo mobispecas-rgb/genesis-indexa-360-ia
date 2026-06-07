@@ -408,6 +408,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="catalogo"><span class="nav-icon">&#x1F4E5;</span> Importar Catalogo</div>
     <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
     <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
+    <div class="nav-item" data-page="integracoes-plataformas"><span class="nav-icon">&#x1F50C;</span> Integracoes de Plataforma</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Plataforma</div>
@@ -1123,6 +1124,52 @@ tr:hover td{background:#1c1c1c}
       <div id="pdv-results"></div>
     </div>
 
+    <!-- INTEGRACOES DE PLATAFORMA -->
+    <div class="page" id="page-integracoes-plataformas">
+      <div class="sec">
+        <div class="sec-title">&#x1F50C; Integracoes de Plataforma</div>
+        <div class="form-grid" style="margin-bottom:18px">
+          <div class="fg">
+            <label>Plataforma</label>
+            <select id="integ-plataforma" onchange="Integracoes.selecionar(this.value)">
+              <option value="bling">Bling</option>
+              <option value="mercadolivre">Mercado Livre</option>
+              <option value="vtex">VTEX</option>
+              <option value="shopify">Shopify</option>
+              <option value="magento2">Magento 2</option>
+              <option value="tray">Tray</option>
+              <option value="lojaintegrada">Loja Integrada</option>
+              <option value="nuvemshop">Nuvemshop</option>
+              <option value="tiny">Tiny</option>
+            </select>
+          </div>
+        </div>
+        <div id="integ-form-area">
+          <p class="text-muted" id="integ-msg" style="margin-bottom:14px"></p>
+          <div class="form-grid">
+            <div class="fg">
+              <label>Nome da integracao</label>
+              <input type="text" id="integ-nome" value="Bling">
+            </div>
+            <div class="fg">
+              <label>Codigo de autorizacao (Code)</label>
+              <input type="text" id="integ-codigo" placeholder="">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-blue" onclick="Integracoes.autorizar()">Autorizar</button>
+            <button class="btn btn-outline" onclick="Integracoes.atualizar()">Atualizar</button>
+            <button class="btn btn-outline" onclick="Integracoes.testar()">Testar</button>
+            <button class="btn btn-danger btn-outline" onclick="Integracoes.limparCredenciais()">Limpar Credenciais</button>
+          </div>
+          <div style="margin-top:24px">
+            <h4>Ajuda</h4>
+            <p><a href="#" id="integ-ajuda-link" target="_blank">Como configurar a integracao na plataforma escolhida</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- IA ANALYZER -->
     <div class="page" id="page-ia-analyzer">
       <div class="sec">
@@ -1773,6 +1820,7 @@ function onPageActivate(page) {
     else if (page === 'enriquecimento-massa') EnriquecimentoMassa.load();
     else if (page === 'aprovacao-cadastro') AprovacaoCadastro.load();
     else if (page === 'aprovados') Aprovados.load();
+    else if (page === 'integracoes-plataformas') Integracoes.load();
     else if (page === 'catalogo-produtos') CatalogoProdutos.load();
     else if (page === 'planos') Planos.load();
     else if (page === 'categoria') loadCategorias();
@@ -5033,6 +5081,42 @@ const AprovacaoCadastro = {
         input.type = 'file';
         input.accept = '.csv,.xlsx,.xls';
         input.click();
+    }
+};
+
+const Integracoes = {
+    plataforma: 'bling',
+    nomes: {
+        bling: 'Bling', mercadolivre: 'Mercado Livre', vtex: 'VTEX', shopify: 'Shopify',
+        magento2: 'Magento 2', tray: 'Tray', lojaintegrada: 'Loja Integrada',
+        nuvemshop: 'Nuvemshop', tiny: 'Tiny'
+    },
+    load() {
+        this.selecionar(document.getElementById('integ-plataforma').value);
+    },
+    selecionar(plataforma) {
+        this.plataforma = plataforma;
+        const nome = this.nomes[plataforma] || plataforma;
+        document.getElementById('integ-nome').value = nome;
+        document.getElementById('integ-codigo').value = '';
+        document.getElementById('integ-msg').textContent = '';
+        document.getElementById('integ-ajuda-link').textContent = 'Como configurar a integracao ' + nome + ' na IndexaAI';
+    },
+    autorizar() {
+        const codigo = document.getElementById('integ-codigo').value.trim();
+        const msg = document.getElementById('integ-msg');
+        if (!codigo) { msg.textContent = 'Informe o codigo de autorizacao para continuar.'; return; }
+        msg.textContent = 'Autorizando integracao com ' + this.nomes[this.plataforma] + '...';
+    },
+    atualizar() {
+        document.getElementById('integ-msg').textContent = 'Integracao atualizada.';
+    },
+    testar() {
+        document.getElementById('integ-msg').textContent = 'Testando conexao com ' + this.nomes[this.plataforma] + '...';
+    },
+    limparCredenciais() {
+        document.getElementById('integ-codigo').value = '';
+        document.getElementById('integ-msg').textContent = 'Credenciais removidas.';
     }
 };
 
