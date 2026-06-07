@@ -387,6 +387,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="enriquecimento-massa"><span class="nav-icon">&#x1F4C2;</span> Enriquecimento por ID/Massa</div>
     <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao <span id="aprov-sidebar-badge" style="margin-left:auto;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 7px;border-radius:10px;font-size:.62rem;font-weight:900;display:none"></span></div>
     <div class="nav-item" data-page="aprovacao-cadastro"><span class="nav-icon">&#x1F4DD;</span> Aprovacao de Cadastro</div>
+    <div class="nav-item" data-page="aprovados"><span class="nav-icon">&#x1F31F;</span> Aprovados</div>
     <div class="nav-item" data-page="congelados"><span class="nav-icon">&#x2744;&#xFE0F;</span> Congelados</div>
   </div>
   <div class="nav-section">
@@ -947,6 +948,36 @@ tr:hover td{background:#1c1c1c}
             <span id="aprovcad-page-info">Pagina 1 de 1</span>
             <button class="btn btn-xs btn-outline" onclick="AprovacaoCadastro.nextPage()">Proxima &#x2192;</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APROVADOS -->
+    <div class="page" id="page-aprovados">
+      <div class="sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="sec-title" style="margin:0">&#x1F31F; Aprovados</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm btn-outline" onclick="Aprovados.openFilters()">&#x1F50D; Filtros</button>
+            <select id="aprovados-ordenar" class="fg" style="width:auto" onchange="Aprovados.reorder(this.value)">
+              <option value="name-asc">Nome (A-Z)</option>
+              <option value="name-desc">Nome (Z-A)</option>
+              <option value="createdAt-desc">Mais recente primeiro</option>
+              <option value="createdAt-asc">Mais antigo primeiro</option>
+              <option value="approvedAt-desc">Aprovados recentemente</option>
+              <option value="approvedAt-asc">Aprovados ha mais tempo</option>
+            </select>
+            <button class="btn btn-sm btn-outline" onclick="Aprovados.exportar()">&#x2B07;&#xFE0F; Exportar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="Aprovados.importar()">&#x2B06;&#xFE0F; Importar dados</button>
+          </div>
+        </div>
+        <div id="aprovados-active-filters" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div style="margin-bottom:10px;font-size:.75rem;color:var(--text3)"><span id="aprovados-qtd">0 produtos aprovados</span></div>
+        <div class="tbl-wrap">
+          <table id="tbl-aprovados">
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Aprovado em</th><th>Acoes</th></tr></thead>
+            <tbody id="tbl-aprovados-body"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum produto aprovado encontrado.</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1731,6 +1762,7 @@ function onPageActivate(page) {
     else if (page === 'catalogo') loadLoteStats();
     else if (page === 'enriquecimento-massa') EnriquecimentoMassa.load();
     else if (page === 'aprovacao-cadastro') AprovacaoCadastro.load();
+    else if (page === 'aprovados') Aprovados.load();
     else if (page === 'catalogo-produtos') CatalogoProdutos.load();
     else if (page === 'planos') Planos.load();
     else if (page === 'categoria') loadCategorias();
@@ -4984,6 +5016,57 @@ const AprovacaoCadastro = {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'aprovacao-cadastro.csv';
+        a.click();
+    },
+    importar() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.click();
+    }
+};
+
+const Aprovados = {
+    order: 'name-asc',
+    async load() {
+        const tbody = document.getElementById('tbl-aprovados-body');
+        const qtd = document.getElementById('aprovados-qtd');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Carregando...</td></tr>';
+        try {
+            const d = await api('/produtos?status=aprovado');
+            const produtos = (d.data || []);
+            qtd.textContent = produtos.length + ' produto(s) aprovado(s)';
+            tbody.innerHTML = produtos.length
+                ? produtos.map(p => `<tr>
+                    <td><img src="${p.imagem || '/img/placeholder.png'}" style="width:36px;height:36px;object-fit:cover;border-radius:4px" onerror="this.style.display='none'"></td>
+                    <td>${p.ref || '-'}</td>
+                    <td>${p.descricao || '-'}</td>
+                    <td>${p.marca || '-'}</td>
+                    <td>${p.categoria || '-'}</td>
+                    <td>${p.aprovado_em || p.updated_at || '-'}</td>
+                    <td><button class="btn btn-xs btn-outline" onclick="Aprovados.ver('${p.id}')">Ver</button></td>
+                  </tr>`).join('')
+                : '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum produto aprovado encontrado.</td></tr>';
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-red)">Erro ao carregar produtos aprovados.</td></tr>';
+            qtd.textContent = '0 produtos aprovados';
+        }
+    },
+    openFilters() {},
+    reorder(value) {
+        this.order = value;
+        this.load();
+    },
+    ver(id) {
+        if (typeof showProdutoModal === 'function') showProdutoModal(id);
+    },
+    exportar() {
+        const csv = 'ref,descricao,marca,categoria,aprovado_em\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'produtos-aprovados.csv';
         a.click();
     },
     importar() {
