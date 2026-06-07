@@ -652,6 +652,10 @@ app.post('/api/produtos', (req, res) => {
         if (dnaData) db.prepare("INSERT INTO dna (produto_id,fabricante,grupo_industrial,origem_pais,codigo_dna,marca,linha,familia) VALUES (?,?,?,?,?,?,?,?)").run(pid, dnaData.fabricante||null, dnaData.grupo_industrial||null, dnaData.origem_pais||null, dnaData.codigo_dna||null, dnaData.marca||null, dnaData.linha||null, dnaData.familia||null);
         if (fiscal) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem,ipi,icms,pis,cofins,cfop) VALUES (?,?,?,?,?,?,?,?,?)").run(pid, fiscal.ncm||null, fiscal.cest||null, fiscal.origem||null, fiscal.ipi||0, fiscal.icms||0, fiscal.pis||0, fiscal.cofins||0, fiscal.cfop||null);
         if (logData) db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento) VALUES (?,?,?,?,?,?)").run(pid, logData.peso_liq||null, logData.peso_bruto||null, logData.altura||null, logData.largura||null, logData.comprimento||null);
+        const engData = req.body.engenharia;
+        if (engData) db.prepare("INSERT INTO engenharia (produto_id,componentes,diametro,estrias,sistema,material,especificacoes) VALUES (?,?,?,?,?,?,?)").run(pid, engData.componentes||null, engData.diametro||null, engData.estrias||null, engData.sistema||null, engData.material||null, engData.especificacoes||null);
+        const hierData = req.body.hierarquia;
+        if (hierData) db.prepare("INSERT INTO hierarquia (produto_id,fabricante_original,montadora,distribuidor,importador,marca_propria,lojista) VALUES (?,?,?,?,?,?,?)").run(pid, hierData.fabricante_original||null, hierData.montadora||null, hierData.distribuidor||null, hierData.importador||null, hierData.marca_propria||null, hierData.lojista||null);
         res.status(201).json({ success: true, id: pid });
     } catch (e) {
         res.status(400).json({ error: e.message });
@@ -744,10 +748,17 @@ app.post('/api/produtos/:id/sincronizar/:canal', (req, res) => {
     const produto = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
     if (!produto) return res.status(404).json({ error: 'Produto nao encontrado' });
     if (produto.status !== 'Congelado') return res.status(400).json({ error: 'Produto nao congelado. Congele antes de sincronizar.' });
-    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(
-        id, produto.ntc_score, produto.ntc_score, produto.status, produto.status, 'Sincronizado em ' + canal
-    );
-    res.json({ success: true, canal, message: 'Produto enviado para ' + canal + ' (integração pendente de API Key)' });
+    const instrucoes = {
+        bling: 'Configure a API Key v3 do Bling em Configuracoes > Integracoes para ativar o envio automatico.',
+        wix: 'Conecte o MCP do Wix em Configuracoes > Integracoes para sincronizar o catalogo.',
+        google_shopping: 'Configure sua conta Google Merchant Center em Configuracoes > Integracoes para gerar o feed.',
+    };
+    return res.status(501).json({
+        success: false,
+        stub: true,
+        canal,
+        mensagem: instrucoes[canal] || 'Integracao com ' + canal + ' ainda nao configurada.',
+    });
 });
 
 // -----------------------------------------------------------
@@ -782,6 +793,50 @@ app.put('/api/produtos/:id/logistica', (req, res) => {
         db.prepare("UPDATE logistica SET peso_liq=?,peso_bruto=?,altura=?,largura=?,comprimento=?,volume=? WHERE produto_id=?").run(l.peso_liq||null, l.peso_bruto||null, l.altura||null, l.largura||null, l.comprimento||null, l.volume||null, req.params.id);
     } else {
         db.prepare("INSERT INTO logistica (produto_id,peso_liq,peso_bruto,altura,largura,comprimento,volume) VALUES (?,?,?,?,?,?,?)").run(req.params.id, l.peso_liq||null, l.peso_bruto||null, l.altura||null, l.largura||null, l.comprimento||null, l.volume||null);
+    }
+    res.json({ success: true });
+});
+
+// -----------------------------------------------------------
+// ENGENHARIA
+// -----------------------------------------------------------
+app.get('/api/produtos/:id/engenharia', (req, res) => {
+    res.json(db.prepare('SELECT * FROM engenharia WHERE produto_id=?').get(req.params.id) || {});
+});
+
+app.put('/api/produtos/:id/engenharia', (req, res) => {
+    const e = req.body;
+    const existing = db.prepare('SELECT id FROM engenharia WHERE produto_id=?').get(req.params.id);
+    if (existing) {
+        db.prepare("UPDATE engenharia SET componentes=?,diametro=?,estrias=?,sistema=?,material=?,especificacoes=? WHERE produto_id=?").run(
+            e.componentes||null, e.diametro||null, e.estrias||null, e.sistema||null, e.material||null, e.especificacoes||null, req.params.id
+        );
+    } else {
+        db.prepare("INSERT INTO engenharia (produto_id,componentes,diametro,estrias,sistema,material,especificacoes) VALUES (?,?,?,?,?,?,?)").run(
+            req.params.id, e.componentes||null, e.diametro||null, e.estrias||null, e.sistema||null, e.material||null, e.especificacoes||null
+        );
+    }
+    res.json({ success: true });
+});
+
+// -----------------------------------------------------------
+// HIERARQUIA
+// -----------------------------------------------------------
+app.get('/api/produtos/:id/hierarquia', (req, res) => {
+    res.json(db.prepare('SELECT * FROM hierarquia WHERE produto_id=?').get(req.params.id) || {});
+});
+
+app.put('/api/produtos/:id/hierarquia', (req, res) => {
+    const h = req.body;
+    const existing = db.prepare('SELECT id FROM hierarquia WHERE produto_id=?').get(req.params.id);
+    if (existing) {
+        db.prepare("UPDATE hierarquia SET fabricante_original=?,montadora=?,distribuidor=?,importador=?,marca_propria=?,lojista=? WHERE produto_id=?").run(
+            h.fabricante_original||null, h.montadora||null, h.distribuidor||null, h.importador||null, h.marca_propria||null, h.lojista||null, req.params.id
+        );
+    } else {
+        db.prepare("INSERT INTO hierarquia (produto_id,fabricante_original,montadora,distribuidor,importador,marca_propria,lojista) VALUES (?,?,?,?,?,?,?)").run(
+            req.params.id, h.fabricante_original||null, h.montadora||null, h.distribuidor||null, h.importador||null, h.marca_propria||null, h.lojista||null
+        );
     }
     res.json({ success: true });
 });
@@ -825,6 +880,26 @@ app.post('/api/ia/ntc', (req, res) => {
     res.json(result);
 });
 
+function buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens) {
+    const eanRecord = codigos.find(c => c.tipo === 'EAN' || c.tipo === 'GTIN');
+    const ean = eanRecord ? eanRecord.codigo : null;
+    const dimText = logistica && logistica.largura ? logistica.largura + 'mm' : '';
+    const altText = logistica && logistica.altura ? logistica.altura + 'mm' : '';
+    const text = [p.ref, p.descricao, dna ? (dna.marca || '') : '', dna ? (dna.fabricante || '') : '', dimText, altText].filter(Boolean).join(' ');
+    const extra = {
+        ncm: fiscal && fiscal.ncm,
+        cest: fiscal && fiscal.cest,
+        cfop: fiscal && fiscal.cfop,
+        ean,
+        peso: logistica && logistica.peso_liq,
+        dimensoes: logistica ? !!(logistica.altura || logistica.largura || logistica.comprimento) : false,
+        aplicacoes,
+        codigos,
+        imagens
+    };
+    return { text, extra };
+}
+
 app.get('/api/produtos/:id/ntc', (req, res) => {
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(req.params.id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
@@ -834,8 +909,7 @@ app.get('/api/produtos/:id/ntc', (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(req.params.id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(req.params.id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(req.params.id);
-    const text = p.descricao + ' ' + (dna ? (dna.marca || '') + ' ' + (dna.fabricante || '') : '');
-    const extra = { ncm: fiscal && fiscal.ncm, cest: fiscal && fiscal.cest, cfop: fiscal && fiscal.cfop, peso: logistica && logistica.peso_liq, dimensoes: logistica ? (logistica.altura && logistica.largura) : false, aplicacoes, codigos, imagens };
+    const { text, extra } = buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens);
     const result = calcNTC(text, extra);
     res.json({ produto: p, ntc: result });
 });
@@ -849,8 +923,7 @@ app.post('/api/produtos/:id/ntc/recalcular', (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(req.params.id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(req.params.id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(req.params.id);
-    const text = p.descricao + ' ' + (dna ? (dna.marca || '') + ' ' + (dna.fabricante || '') : '');
-    const extra = { ncm: fiscal && fiscal.ncm, cest: fiscal && fiscal.cest, cfop: fiscal && fiscal.cfop, peso: logistica && logistica.peso_liq, dimensoes: logistica ? (logistica.altura && logistica.largura) : false, aplicacoes, codigos, imagens };
+    const { text, extra } = buildProductNTCInput(p, dna, fiscal, logistica, aplicacoes, codigos, imagens);
     const result = calcNTC(text, extra);
     db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(req.params.id, p.ntc_score, result.score, p.ntc_status, result.status, 'Recalculo NTC');
     db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,rast_hash=?,atualizado_em=datetime('now','localtime') WHERE id=?").run(result.score, result.status, result.rast_hash, req.params.id);
@@ -1635,8 +1708,8 @@ app.get('/api/wix/status', (req, res) => {
     const sincronizados = db.prepare("SELECT COUNT(*) as c FROM produtos WHERE wix_id IS NOT NULL").get().c;
     const produtos = db.prepare('SELECT id, ref, descricao, ntc_score, ntc_status, wix_id, atualizado_em FROM produtos ORDER BY id').all();
     res.json({
-        site_id: '29574987-cbf6-4241-9dce-d109734b0d95',
-        site_nome: 'Mobis Autoparts',
+        site_id: '53fd407a-65d0-42ef-a64b-0f3e9755cbc0',
+        site_nome: 'MOBIS AUTOPARTS',
         total_genesis: total,
         sincronizados,
         pendentes_sync: total - sincronizados,

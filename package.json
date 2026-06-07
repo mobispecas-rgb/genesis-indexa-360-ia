@@ -1,6 +1,6 @@
 {
     "name": "indexaai-catalog-pro",
-    "version": "5.0.0",
+    "version": "5.0.1",
     "description": "IndexaAI Catalog Pro — Plataforma Enterprise de Enriquecimento de Catalogos Automotivos com IA",
     "main": "server.js",
     "engines": {
@@ -11,7 +11,7 @@
         "dev": "nodemon server.js"
     },
     "dependencies": {
-        "better-sqlite3": "^9.4.3",
+        "better-sqlite3": "^9.6.0",
         "cheerio": "^1.2.0",
         "cors": "^2.8.5",
         "csv-parse": "^6.2.1",
