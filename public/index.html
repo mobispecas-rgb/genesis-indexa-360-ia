@@ -139,6 +139,8 @@ tr:hover td{background:#1c1c1c}
 .fg label{display:block;font-size:.72rem;color:var(--text2);margin-bottom:4px}
 .fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid #333;border-radius:6px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;transition:border .2s}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary)}
+.pref-check{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text);margin-bottom:8px;cursor:pointer}
+.pref-check input{width:auto}
 .fg select option{background:var(--bg3)}
 .fg textarea{min-height:80px;resize:vertical}
 
@@ -418,6 +420,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="planos"><span class="nav-icon">&#x1F4B0;</span> Planos</div>
     <div class="nav-item" data-page="usuarios"><span class="nav-icon">&#x1F465;</span> Usuarios</div>
     <div class="nav-item" data-page="empresa"><span class="nav-icon">&#x1F3E2;</span> Empresa</div>
+    <div class="nav-item" data-page="preferencias"><span class="nav-icon">&#x1F39B;&#xFE0F;</span> Preferencias</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Sistema</div>
@@ -1657,6 +1660,94 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- PREFERENCIAS -->
+    <div class="page" id="page-preferencias">
+      <div class="sec">
+        <div class="sec-title">&#x1F39B;&#xFE0F; Preferencias</div>
+        <p class="muted">Altere suas definicoes de acordo com suas necessidades. As configuracoes se aplicam a todas as filiais.</p>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Aprovacao</div>
+        <label class="pref-check"><input type="checkbox" id="pref-update-active"> Subir produtos como ativos nas integracoes</label>
+        <label class="pref-check"><input type="checkbox" id="pref-vtex-meters"> Subir medidas em metros (vTex)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-update-price"> Subir preco dos produtos</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Imagens</div>
+        <label class="pref-check"><input type="checkbox" id="pref-square-img" checked> Deixar imagens quadradas</label>
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="fg"><label>Dimensoes minimas (px)</label>
+            <div style="display:flex; gap:6px; align-items:center;"><input id="pref-min-width" type="number" value="1000" style="width:90px"> x <input id="pref-min-height" type="number" value="1000" style="width:90px"></div>
+          </div>
+          <div class="fg"><label>Dimensoes maximas (px)</label>
+            <div style="display:flex; gap:6px; align-items:center;"><input id="pref-max-width" type="number" value="1000" style="width:90px"> x <input id="pref-max-height" type="number" value="1000" style="width:90px"></div>
+          </div>
+        </div>
+        <label class="pref-check"><input type="checkbox" id="pref-img-border"> Adicionar borda na imagem (Mercado Livre)</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Enriquecimento</div>
+        <label class="pref-check"><input type="checkbox" id="pref-image-recognition"> Usar reconhecimento de imagem</label>
+        <label class="pref-check"><input type="checkbox" id="pref-dont-update-images"> Nao atualizar imagens</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-category" checked> Usar categoria</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-category-specs"> Desabilitar sugestao de atributos de categoria</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-image"> Usar imagens no enriquecimento</label>
+        <label class="pref-check"><input type="checkbox" id="pref-internaldb-enhancement" checked> Enriquecimento de prompt</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-short-description"> Desabilitar descricao curta (Bagy, Climba)</label>
+        <div class="fg" style="margin-top:8px;"><label>Nome padrao da marca</label><input id="pref-default-brand"></div>
+        <label class="pref-check"><input type="checkbox" id="pref-strong-titles"> Habilitar tag &lt;strong&gt; nos titulos</label>
+        <div class="fg" style="margin-top:8px;"><label>Sites de referencia para captacao de informacoes</label><textarea id="pref-allowed-sites" rows="2" placeholder="Ex: amazon.com"></textarea></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Nome e Marca</div>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-nameparser"> Nao corrigir nomes automaticamente</label>
+        <label class="pref-check"><input type="checkbox" id="pref-improve-name"> Melhorar nomes automaticamente</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Cadastro em Massa</div>
+        <label class="pref-check"><input type="checkbox" id="pref-internaldb-mass" checked> Enriquecimento de prompt</label>
+        <label class="pref-check"><input type="checkbox" id="pref-ref-as-id"> Usar referencia como ID (Tray)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-auto-category"> Desabilitar auto-categorizacao</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Ficha Tecnica</div>
+        <label class="pref-check"><input type="checkbox" id="pref-gen-sizes"> Sugerir altura, largura, comprimento e peso</label>
+        <label class="pref-check"><input type="checkbox" id="pref-ignore-sizes"> Nao atualizar dimensoes e peso (VTEX)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-fill-sheet"> Preencher os dados da planilha de entrada</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Descricao</div>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-technical-info"> Desabilitar ficha tecnica</label>
+        <label class="pref-check"><input type="checkbox" id="pref-bling-complementar"> Descricao complementar (Bling)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-ignore-improve-html"> Nao melhorar a descricao gerada por template</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-h4-only"> Utilizar h4 na descricao</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-p-only"> Utilizar somente tag p na descricao</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-br"> Desabilitar tag br na descricao</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-html-send"> Enviar descricao sem HTML</label>
+        <label class="pref-check"><input type="checkbox" id="pref-keep-html-lines"> Manter quebra de linhas html</label>
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="fg"><label>Linguagem</label>
+            <select id="pref-description-lang"><option>Portugues</option><option>English</option><option>Espanol</option><option>中文</option></select>
+          </div>
+          <div class="fg"><label>Max. caracteres no meta title</label><input id="pref-max-title" type="number" value="70" min="20" max="255"></div>
+          <div class="fg"><label>Max. caracteres na meta description</label><input id="pref-max-description" type="number" value="170" min="160" max="255"></div>
+        </div>
+        <div class="fg" style="margin-top:8px;"><label>Texto padrao ao final da descricao (HTML)</label><textarea id="pref-text-footer" rows="2"></textarea></div>
+      </div>
+
+      <div class="sec">
+        <button class="btn btn-blue" onclick="Preferencias.salvar()">Salvar</button>
+        <span id="preferencias-msg" class="muted" style="margin-left:10px;"></span>
+      </div>
+    </div>
+
     <!-- USUARIOS -->
     <div class="page" id="page-usuarios">
       <div class="sec">
@@ -1916,6 +2007,7 @@ function onPageActivate(page) {
     else if (page === 'pagamentos') loadPagamentos();
     else if (page === 'usuarios') loadUsuarios();
     else if (page === 'empresa') loadEmpresa();
+    else if (page === 'preferencias') loadPreferencias();
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -5377,6 +5469,16 @@ function loadUsuarios() {
     document.querySelector('#tbl-usuarios tbody').innerHTML =
         '<tr><td colspan="4" class="empty">Nenhum usuario cadastrado ainda.</td></tr>';
 }
+
+function loadPreferencias() {
+    document.getElementById('preferencias-msg').textContent = '';
+}
+
+const Preferencias = {
+    salvar() {
+        document.getElementById('preferencias-msg').textContent = 'Preferencias salvas com sucesso.';
+    }
+};
 
 function loadEmpresa() {
     document.getElementById('empresa-nome').value = 'MOBIS Pecas Automotivas';
