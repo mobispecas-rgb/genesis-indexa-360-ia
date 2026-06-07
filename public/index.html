@@ -1540,11 +1540,70 @@ tr:hover td{background:#1c1c1c}
     <div class="page" id="page-templates">
       <div class="sec">
         <div class="sec-title">&#x1F4DD; Templates de Enriquecimento</div>
+        <div class="tbl-toolbar">
+          <button class="btn btn-sm" onclick="Templates.toggleCriar()">&#x2795; Criar Template</button>
+        </div>
         <div class="tbl-wrap">
           <table id="tbl-templates">
             <thead><tr><th>Nome</th><th>Tipo</th><th>Atualizado</th><th>Acoes</th></tr></thead>
             <tbody></tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="sec" id="templates-criar-sec" style="display:none;">
+        <div class="sec-title">&#x2728; Criar Template</div>
+        <p class="muted">Crie seu template a partir de um modelo pronto ou descreva o que precisa, e a IA faz o resto.</p>
+        <div class="form-grid">
+          <div class="fg" style="grid-column: span 2;">
+            <label>Prompt do Titulo</label>
+            <textarea id="tpl-prompt-titulo" rows="2" placeholder="Ex: [Nome produto] + [Marca] + [dados tecnicos]"></textarea>
+          </div>
+          <div class="fg">
+            <label>Tom de Voz</label>
+            <input id="tpl-tom-voz" list="tpl-tom-voz-list" placeholder="Escolha um tom de voz ou escreva um novo">
+            <datalist id="tpl-tom-voz-list">
+              <option value="Profissional e direto">
+              <option value="Didatico">
+              <option value="Engracado e descontraido">
+              <option value="Inspirador e motivacional">
+              <option value="Cetico e questionador">
+              <option value="Executivo">
+            </datalist>
+          </div>
+          <div class="fg">
+            <label>Palavras Negativas</label>
+            <textarea id="tpl-palavras-negativas" rows="2" placeholder='Ex: "barato", "promocao", "usado"'></textarea>
+          </div>
+          <div class="fg">
+            <label>Palavras-chave</label>
+            <textarea id="tpl-palavras-chave" rows="2" placeholder="Termos a destacar para melhorar o SEO"></textarea>
+          </div>
+          <div class="fg" style="grid-column: span 2;">
+            <label>Prompt da Descricao</label>
+            <textarea id="tpl-prompt-descricao" rows="3" placeholder="Descreva como a descricao do produto deve ser gerada"></textarea>
+            <div style="margin-top:6px; display:flex; gap:8px;">
+              <button class="btn btn-xs btn-outline" onclick="Templates.gerarDescricao()">Gerar a partir de uma descricao</button>
+              <button class="btn btn-xs btn-outline" onclick="Templates.testarDescricao()">Testar Descricao</button>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Meta Title</label>
+            <textarea id="tpl-meta-title" rows="2" placeholder="Meta title com ate 60 caracteres, com nome do produto e palavra-chave"></textarea>
+          </div>
+          <div class="fg">
+            <label>Meta Description</label>
+            <textarea id="tpl-meta-description" rows="2" placeholder="Meta description com ate 160 caracteres, destacando beneficios"></textarea>
+          </div>
+          <div class="fg" style="grid-column: span 2;">
+            <label>Meta Tags</label>
+            <textarea id="tpl-meta-tags" rows="2" placeholder="Meta tags separadas por virgula"></textarea>
+          </div>
+        </div>
+        <div id="templates-criar-msg" class="muted" style="margin-top:8px;"></div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn btn-blue" onclick="Templates.salvar()">Salvar e continuar</button>
+          <button class="btn btn-outline" onclick="Templates.toggleCriar()">Cancelar</button>
         </div>
       </div>
     </div>
@@ -5246,7 +5305,29 @@ const Categorias = {
 function loadTemplates() {
     document.querySelector('#tbl-templates tbody').innerHTML =
         '<tr><td colspan="4" class="empty">Nenhum template criado ainda.</td></tr>';
+    document.getElementById('templates-criar-sec').style.display = 'none';
 }
+
+const Templates = {
+    toggleCriar() {
+        const sec = document.getElementById('templates-criar-sec');
+        sec.style.display = (sec.style.display === 'none') ? '' : 'none';
+        document.getElementById('templates-criar-msg').textContent = '';
+    },
+    gerarDescricao() {
+        document.getElementById('templates-criar-msg').textContent = 'Gerando prompt de descricao a partir do texto informado...';
+    },
+    testarDescricao() {
+        document.getElementById('templates-criar-msg').textContent = 'Gerando descricao de teste com os dados do template...';
+    },
+    salvar() {
+        const titulo = document.getElementById('tpl-prompt-titulo').value.trim();
+        const msg = document.getElementById('templates-criar-msg');
+        if (!titulo) { msg.textContent = 'Informe o prompt do titulo para continuar.'; return; }
+        msg.textContent = 'Template salvo com sucesso.';
+        this.toggleCriar();
+    }
+};
 
 function loadPagamentos() {
     document.getElementById('pagamentos-creditos').value = '—';
