@@ -296,6 +296,7 @@ function extractCode(text) {
     const patterns = [
         /\b([A-Z]{2,4}[-]?[0-9]{6,12}[A-Z0-9]*)\b/,
         /\b([0-9]{7,13})\b/,
+        /\b([A-Z]{4,6}[0-9]{4,8}[A-Z0-9]*)\b/,
         /\b([A-Z]{1,3}[0-9]{4,8}[A-Z]?)\b/
     ];
     for (const p of patterns) {
