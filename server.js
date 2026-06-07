@@ -16,16 +16,33 @@ const Database = require('better-sqlite3');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Loga o stack trace completo antes de cair — sem isso, o processo morre
+// com "Exited with status 1" e nenhuma pista do motivo real fica nos logs.
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL] uncaughtException:', err && err.stack ? err.stack : err);
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[FATAL] unhandledRejection:', reason);
+});
+
 // -----------------------------------------------------------
 // DATABASE
 // -----------------------------------------------------------
-const dbPath = path.join(__dirname, 'data', 'genesis.db');
-if (!fs.existsSync(path.join(__dirname, 'data'))) {
-    fs.mkdirSync(path.join(__dirname, 'data'));
+const dataDir = path.join(__dirname, 'data');
+const dbPath = path.join(dataDir, 'genesis.db');
+let db;
+try {
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+    }
+    db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+} catch (err) {
+    console.error('[FATAL] Falha ao iniciar banco de dados em', dbPath, '-', err.message);
+    throw err;
 }
-const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS empresas (
