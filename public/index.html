@@ -379,6 +379,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-section-label">Principal</div>
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">&#x1F4CA;</span> Dashboard</div>
     <div class="nav-item" data-page="produtos"><span class="nav-icon">&#x1F4E6;</span> Produtos</div>
+    <div class="nav-item" data-page="catalogo-produtos"><span class="nav-icon">&#x1F4DA;</span> Catalogo de Produtos</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Motor iRollo</div>
@@ -410,6 +411,7 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="categoria"><span class="nav-icon">&#x1F3F7;&#xFE0F;</span> Categoria</div>
     <div class="nav-item" data-page="templates"><span class="nav-icon">&#x1F4DD;</span> Templates</div>
     <div class="nav-item" data-page="pagamentos"><span class="nav-icon">&#x1F4B3;</span> Pagamentos</div>
+    <div class="nav-item" data-page="planos"><span class="nav-icon">&#x1F4B0;</span> Planos</div>
     <div class="nav-item" data-page="usuarios"><span class="nav-icon">&#x1F465;</span> Usuarios</div>
   </div>
   <div class="nav-section">
@@ -1293,6 +1295,66 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- CATALOGO DE PRODUTOS -->
+    <div class="page" id="page-catalogo-produtos">
+      <div class="sec">
+        <div class="sec-title">&#x1F4DA; Catalogo de Produtos</div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+          <button class="btn btn-outline btn-sm" onclick="CatalogoProdutos.openFilters()">&#x1F50D; Filtros</button>
+          <select id="catprod-order" class="btn-sm" onchange="CatalogoProdutos.reorder(this.value)" style="padding:6px 10px;border-radius:6px">
+            <option value="name-asc">Nome (A-Z)</option>
+            <option value="name-desc">Nome (Z-A)</option>
+            <option value="recent-desc">Mais recentes</option>
+            <option value="recent-asc">Mais antigos</option>
+            <option value="score-desc">Mais relevantes</option>
+            <option value="score-asc">Menos relevantes</option>
+          </select>
+          <button class="btn btn-sm" onclick="CatalogoProdutos.atualizar()">Atualizar catalogo</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="CatalogoProdutos.limpar()">Limpar Catalogo</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-catalogo-produtos">
+            <thead><tr><th>Img</th><th>Nome</th><th>Categoria</th><th>Score</th><th>Atualizado</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="catprod-pagination" style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <select id="catprod-per-page" onchange="CatalogoProdutos.setPerPage(this.value)" style="padding:4px 8px;border-radius:6px">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+          </select>
+          <span>itens por pagina</span>
+          <button class="btn btn-xs" onclick="CatalogoProdutos.prevPage()">&#x2190; Anterior</button>
+          <span id="catprod-page-info">Pagina 1</span>
+          <button class="btn btn-xs" onclick="CatalogoProdutos.nextPage()">Proxima &#x2192;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANOS -->
+    <div class="page" id="page-planos">
+      <div class="sec">
+        <div class="sec-title">&#x1F4B0; Conheca nossos planos</div>
+        <p style="font-size:.82rem;color:var(--text2);max-width:760px">Explore nossas opcoes flexiveis de planos e descubra a solucao perfeita para otimizar sua experiencia. Personalize seu pacote de servicos de acordo com suas necessidades especificas.</p>
+        <div class="toolbar" style="display:flex;gap:8px;margin:14px 0">
+          <button class="btn btn-outline btn-sm" onclick="Planos.togglePeriod('monthly')">Mensal</button>
+          <button class="btn btn-outline btn-sm" onclick="Planos.togglePeriod('yearly')">Anual</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-planos">
+            <thead><tr><th>Plano</th><th>Preco</th><th>Creditos</th><th>Recursos</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="sec" style="margin-top:16px">
+          <div class="sec-title">Nao encontrou o que buscava?</div>
+          <button class="btn" onclick="Planos.contato()">Entrar em contato</button>
+        </div>
+      </div>
+    </div>
+
     <!-- CATEGORIA -->
     <div class="page" id="page-categoria">
       <div class="sec">
@@ -1587,6 +1649,8 @@ function onPageActivate(page) {
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
+    else if (page === 'catalogo-produtos') CatalogoProdutos.load();
+    else if (page === 'planos') Planos.load();
     else if (page === 'categoria') loadCategorias();
     else if (page === 'templates') loadTemplates();
     else if (page === 'pagamentos') loadPagamentos();
@@ -4746,6 +4810,34 @@ async function loadCongelados() {
         <td><span class="badge badge-blue">Congelado</span></td>
     </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto congelado ainda.</td></tr>';
 }
+
+const CatalogoProdutos = {
+    page: 1,
+    perPage: 100,
+    order: 'name-asc',
+    load() {
+        const tbody = document.querySelector('#tbl-catalogo-produtos tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Sem resultados. Limpe os filtros ou indexe os dados do seu catalogo.</td></tr>';
+        document.getElementById('catprod-page-info').textContent = 'Pagina ' + this.page;
+    },
+    openFilters() { alert('Filtros do catalogo de produtos em breve.'); },
+    reorder(value) { this.order = value; this.load(); },
+    setPerPage(value) { this.perPage = parseInt(value, 10); this.page = 1; this.load(); },
+    prevPage() { if (this.page > 1) { this.page--; this.load(); } },
+    nextPage() { this.page++; this.load(); },
+    atualizar() { this.load(); },
+    limpar() { if (confirm('Limpar todo o catalogo de produtos?')) this.load(); }
+};
+
+const Planos = {
+    period: 'monthly',
+    load() {
+        const tbody = document.querySelector('#tbl-planos tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum plano disponivel no momento.</td></tr>';
+    },
+    togglePeriod(p) { this.period = p; this.load(); },
+    contato() { window.open('https://calendly.com/indexaai/agendar-demonstracao', '_blank'); }
+};
 
 function loadCategorias() {
     document.querySelector('#tbl-categoria tbody').innerHTML =
