@@ -1336,7 +1336,10 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         if (match) parsed = JSON.parse(match[0]);
     } catch (e) { parsed = null; }
 
-    if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
+    if (!parsed) {
+        if (claudeResult.error) return res.json({ success: false, error: claudeResult.error });
+        return res.json({ success: false, error: 'Parse error', raw: claudeResult.text });
+    }
 
     const txResult = db.transaction(() => {
         // DNA — salvar fabricante, marca, familia, codigo_oem separados (nunca com espacos no OEM)
