@@ -384,6 +384,7 @@ tr:hover td{background:#1c1c1c}
   <div class="nav-section">
     <div class="nav-section-label">Motor iRollo</div>
     <div class="nav-item" data-page="enriquecimento"><span class="nav-icon">&#x2728;</span> Enriquecimento OEM</div>
+    <div class="nav-item" data-page="enriquecimento-massa"><span class="nav-icon">&#x1F4C2;</span> Enriquecimento por ID/Massa</div>
     <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao <span id="aprov-sidebar-badge" style="margin-left:auto;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 7px;border-radius:10px;font-size:.62rem;font-weight:900;display:none"></span></div>
     <div class="nav-item" data-page="congelados"><span class="nav-icon">&#x2744;&#xFE0F;</span> Congelados</div>
   </div>
@@ -1295,6 +1296,41 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- ENRIQUECIMENTO POR ID / MASSA -->
+    <div class="page" id="page-enriquecimento-massa">
+      <div class="sec">
+        <div class="sec-title">&#x1F50D; Enriquecimento por ID</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="enrid-tipo" style="padding:9px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+            <option value="id">ID</option>
+            <option value="ref">Referencia</option>
+            <option value="ean">EAN</option>
+          </select>
+          <input id="enrid-valor" type="text" placeholder="Digite o identificador do produto..."
+            style="flex:1;min-width:220px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.85rem;outline:none"
+            onkeydown="if(event.key==='Enter') EnriquecimentoMassa.buscarPorId()">
+          <button class="btn btn-blue" onclick="EnriquecimentoMassa.buscarPorId()">Buscar</button>
+        </div>
+        <div id="enrid-result" class="text-xs" style="margin-top:10px"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">&#x1F4C2; Enriquecimento em Massa</div>
+        <div class="dropzones" style="display:flex;flex-direction:column;align-items:center;gap:10px;border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center"
+          ondragover="event.preventDefault()" ondrop="EnriquecimentoMassa.onDrop(event)">
+          <div style="font-size:2rem">&#x1F4C4;</div>
+          <p>Arraste sua planilha aqui</p>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('enrid-file').click()">&#x2B06;&#xFE0F; Importar</button>
+          <input class="hidden" type="file" id="enrid-file" style="display:none" accept=".csv,.xlsx,.xls" onchange="EnriquecimentoMassa.upload(this.files[0])">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <button class="btn btn-outline btn-sm" onclick="EnriquecimentoMassa.baixarModelo()">&#x2B07;&#xFE0F; Baixar Modelo</button>
+          <button class="btn btn-sm" style="margin-left:auto" onclick="EnriquecimentoMassa.enviar()">Enviar</button>
+        </div>
+        <div id="enrid-massa-status" class="text-xs" style="margin-top:10px"></div>
+      </div>
+    </div>
+
     <!-- CATALOGO DE PRODUTOS -->
     <div class="page" id="page-catalogo-produtos">
       <div class="sec">
@@ -1649,6 +1685,7 @@ function onPageActivate(page) {
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
+    else if (page === 'enriquecimento-massa') EnriquecimentoMassa.load();
     else if (page === 'catalogo-produtos') CatalogoProdutos.load();
     else if (page === 'planos') Planos.load();
     else if (page === 'categoria') loadCategorias();
@@ -4810,6 +4847,50 @@ async function loadCongelados() {
         <td><span class="badge badge-blue">Congelado</span></td>
     </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto congelado ainda.</td></tr>';
 }
+
+const EnriquecimentoMassa = {
+    load() {
+        document.getElementById('enrid-result').innerHTML = '';
+        document.getElementById('enrid-massa-status').innerHTML = '';
+    },
+    async buscarPorId() {
+        const tipo = document.getElementById('enrid-tipo').value;
+        const valor = document.getElementById('enrid-valor').value.trim();
+        const resultEl = document.getElementById('enrid-result');
+        if (!valor) { resultEl.innerHTML = '<span class="text-red">Informe um identificador para buscar.</span>'; return; }
+        resultEl.innerHTML = 'Buscando por ' + tipo + ' "' + valor + '"...';
+        try {
+            const d = await api('/produtos?search=' + encodeURIComponent(valor));
+            const produtos = (d.data || []);
+            resultEl.innerHTML = produtos.length
+                ? produtos.map(p => `<div>${p.ref} — ${p.descricao}</div>`).join('')
+                : 'Nenhum produto encontrado para "' + valor + '".';
+        } catch (e) {
+            resultEl.innerHTML = '<span class="text-red">Erro ao buscar produto.</span>';
+        }
+    },
+    onDrop(ev) {
+        ev.preventDefault();
+        const file = ev.dataTransfer.files[0];
+        if (file) this.upload(file);
+    },
+    upload(file) {
+        if (!file) return;
+        document.getElementById('enrid-massa-status').textContent = 'Arquivo selecionado: ' + file.name;
+    },
+    baixarModelo() {
+        const csv = 'ref,descricao,oem\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'modelo-enriquecimento.csv';
+        a.click();
+    },
+    enviar() {
+        const status = document.getElementById('enrid-massa-status');
+        status.textContent = 'Selecione uma planilha antes de enviar.';
+    }
+};
 
 const CatalogoProdutos = {
     page: 1,
