@@ -285,6 +285,15 @@ tr:hover td{background:#1c1c1c}
 .nct-mod-label{font-size:.72rem;font-weight:700;color:var(--text2)}
 .nct-mod-pct{font-size:.65rem;color:var(--text3)}
 .nct-mod-score{font-size:1.3rem;font-weight:900}
+.nct-module{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;min-width:108px}
+.nct-mod-label{font-size:.6rem;font-weight:700;color:var(--text2);width:30px;flex-shrink:0}
+.nct-mod-bar{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;min-width:36px}
+.nct-mod-fill{height:100%;background:linear-gradient(90deg,#1a6fff,#00c896);transition:width .4s}
+.nct-mod-val{font-size:.6rem;color:var(--text3);width:30px;text-align:right;flex-shrink:0}
+.cpc-score-box{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:8px}
+.cpc-score-val{font-size:1.4rem;font-weight:900}
+.cpc-score-label{font-size:.62rem;color:var(--text3);letter-spacing:.05em}
+.rast-full{font-family:monospace;font-size:.68rem;color:var(--text2);word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:6px;line-height:1.5}
 .rast-box{background:#0d0d0d;border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-family:monospace;font-size:.75rem;color:var(--text3);display:flex;align-items:center;justify-content:space-between;margin-top:10px}
 .rast-hash{color:var(--primary);font-size:.8rem}
 .gaveta{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
@@ -500,11 +509,35 @@ tr:hover td{background:#1c1c1c}
             <div style="background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px">
               <div id="dprod-nct-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a6fff,#00c896);transition:width .5s"></div>
             </div>
-            <div id="dprod-nct-modules" style="display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem"></div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-              <span style="font-size:.58rem;color:var(--text3)">RAST</span>
-              <span id="dprod-rast" style="flex:1;font-family:monospace;font-size:.58rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+            <div id="dprod-nct-modules" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.65rem"></div>
+            <div id="dprod-cpc-box"></div>
+            <div id="dprod-ntc-inspector"></div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:.58rem;color:var(--text3)">RAST-HASH</span>
+                <span id="dprod-rast" style="flex:1;font-family:monospace;font-size:.58rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+              </div>
+              <div id="dprod-rast-full" class="rast-full" style="display:none"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Linha 1b: Codigos Cambiados / OEM + Fiscal & Logistica -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div class="sec" style="margin-bottom:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <div class="sec-title" style="margin-bottom:0">&#x1F517; Codigos Cambiados / OEM Historico</div>
+              <span id="dprod-cod-count" style="font-size:.65rem;color:var(--text3)">0 codigos</span>
+            </div>
+            <div id="dprod-cod-table"></div>
+          </div>
+          <div class="sec" style="margin-bottom:0">
+            <div class="sec-title">&#x1F4CB; Fiscal &amp; Logistica</div>
+            <div style="font-size:.6rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:6px">DADOS FISCAIS</div>
+            <div id="dprod-fm-status" style="font-size:.66rem;margin-bottom:6px"></div>
+            <div id="dprod-fiscal-view" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.78rem;margin-bottom:10px"></div>
+            <div style="font-size:.6rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:6px">LOGISTICA</div>
+            <div id="dprod-log-view" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.78rem"></div>
           </div>
         </div>
 
@@ -515,12 +548,14 @@ tr:hover td{background:#1c1c1c}
               <div class="sec-title" style="margin-bottom:0">&#x1F5BC;&#xFE0F; Imagens</div>
               <span id="dprod-img-count" style="font-size:.65rem;color:var(--text3)">0 imagens</span>
             </div>
+            <div id="dprod-img-checklist"></div>
             <div id="dprod-img-main" style="display:none;background:#0a0a0a;border-radius:8px;overflow:hidden;margin-bottom:8px;position:relative">
               <img id="dprod-img-main-src" src="" style="width:100%;max-height:200px;object-fit:contain;display:block" onerror="this.style.opacity='.15'">
               <div id="dprod-img-main-label" style="position:absolute;top:8px;left:8px;font-size:.6rem;font-weight:700;background:rgba(0,0,0,.7);color:#fff;padding:2px 8px;border-radius:10px"></div>
               <div id="dprod-img-main-status" style="position:absolute;top:8px;right:8px;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px"></div>
               <div id="dprod-img-main-actions" style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:4px;padding:6px;background:linear-gradient(transparent,rgba(0,0,0,.85))"></div>
             </div>
+            <div id="dprod-img-ia-sugestao"></div>
             <div id="dprod-img-slots" style="display:flex;gap:6px;flex-wrap:wrap"></div>
             <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
               <input type="text" id="dprod-img-url" placeholder="Cole URL da imagem..." style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none">
@@ -616,8 +651,6 @@ tr:hover td{background:#1c1c1c}
         <div id="dprod-fis-badge" style="display:none"></div>
         <div id="dprod-log-badge" style="display:none"></div>
         <div id="dprod-img-badge" style="display:none"></div>
-        <div id="dprod-cod-badge" style="display:none"></div>
-        <div id="dprod-cod-list" style="display:none"></div>
         <input id="av-montadora" type="hidden"><input id="av-modelo" type="hidden">
         <input id="av-motor" type="hidden"><input id="av-versao" type="hidden">
         <input id="av-ano-ini" type="hidden"><input id="av-ano-fim" type="hidden">
@@ -1352,7 +1385,7 @@ tr:hover td{background:#1c1c1c}
   <div class="modal">
     <div class="modal-title">Adicionar Imagem <span class="modal-close" onclick="closeModal('modal-imagem')">&#x2715;</span></div>
     <div class="fg"><label>Tipo</label>
-      <select id="img-tipo"><option value="Principal">Principal</option><option value="Lateral">Lateral</option><option value="Tecnica">Tecnica</option><option value="Detalhe">Detalhe</option><option value="Embalagem">Embalagem</option><option value="Aplicada">Aplicada</option></select>
+      <select id="img-tipo"><option value="Principal">Principal</option><option value="Lateral">Lateral</option><option value="Tecnica">Tecnica</option><option value="Detalhe">Detalhe</option><option value="Embalagem">Embalagem</option><option value="OEM">OEM</option><option value="Aplicada">Aplicada</option></select>
     </div>
     <div class="fg"><label>Upload de Arquivo</label><input type="file" id="img-file" accept="image/*" style="background:var(--bg);border:1px solid #333;border-radius:6px;padding:6px;color:var(--text);width:100%"></div>
     <div class="fg"><label>— ou — URL da Imagem</label><input id="img-url" placeholder="https://..."></div>
@@ -1605,15 +1638,55 @@ function dprodRenderDetalhe(p) {
     document.getElementById('dprod-nct-score').textContent = pct + '%';
     document.getElementById('dprod-nct-status').textContent = nct.status || p.ntc_status || 'REPROVADO';
     document.getElementById('dprod-nct-status').className = 'nct-status-big ntc-' + (nct.status || p.ntc_status || 'REPROVADO');
-    document.getElementById('dprod-rast').textContent = p.rast ? p.rast.hash.substring(0,20) + '...' : '—';
+    const rastHash = (p.rast && p.rast.hash) || nct.rast_hash || null;
+    document.getElementById('dprod-rast').textContent = rastHash ? rastHash.substring(0,20) + '...' : '—';
+    const rastFullEl = document.getElementById('dprod-rast-full');
+    if (rastHash) {
+        rastFullEl.style.display = '';
+        rastFullEl.innerHTML = `<div><strong>Hash:</strong> ${rastHash}</div>` +
+            (p.rast && p.rast.base ? `<div style="margin-top:4px;color:var(--text3)"><strong>Base:</strong> ${p.rast.base}</div>` : '') +
+            (p.rast && p.rast.gerado_em ? `<div style="margin-top:2px;color:var(--text3)"><strong>Gerado em:</strong> ${p.rast.gerado_em}</div>` : '');
+    } else {
+        rastFullEl.style.display = 'none';
+    }
 
-    // NTC modules
+    // NTC modules — todos os 12 modulos do Motor NTC 4.0 (DNA, TF, FM, CO, AV, MC, EC, BTA, CC, LG, FI, FP)
     const mods = nct.modules || {};
-    document.getElementById('dprod-nct-modules').innerHTML = `
-        <div class="nct-module"><div class="nct-mod-label">TF 50%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.tf||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.tf||0)*100).toFixed(0)}%</div></div>
-        <div class="nct-module"><div class="nct-mod-label">FM 20%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.fm||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.fm||0)*100).toFixed(0)}%</div></div>
-        <div class="nct-module"><div class="nct-mod-label">CO 20%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.co||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.co||0)*100).toFixed(0)}%</div></div>
-        <div class="nct-module"><div class="nct-mod-label">AV 10%</div><div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${((mods.av||0)*100).toFixed(0)}%"></div></div><div class="nct-mod-val">${((mods.av||0)*100).toFixed(0)}%</div></div>`;
+    const modKeys = ['DNA','TF','FM','CO','AV','MC','EC','BTA','CC','LG','FI','FP'];
+    document.getElementById('dprod-nct-modules').innerHTML = modKeys.map(k => {
+        const m = mods[k] || { score: 0, weight: 0 };
+        const mpct = (m.score * 100).toFixed(0);
+        const wpct = (m.weight * 100).toFixed(0);
+        const title = (m.evidence && m.evidence.length ? 'Evidencias: ' + m.evidence.join('; ') : '') +
+            (m.missing && m.missing.length ? (m.evidence && m.evidence.length ? ' | ' : '') + 'Faltando: ' + m.missing.join('; ') : '');
+        return `<div class="nct-module" title="${(title||'').replace(/"/g,'&quot;')}">
+            <div class="nct-mod-label">${k} ${wpct}%</div>
+            <div class="nct-mod-bar"><div class="nct-mod-fill" style="width:${mpct}%"></div></div>
+            <div class="nct-mod-val">${mpct}%</div>
+        </div>`;
+    }).join('');
+
+    // Score CPC — Completude de Certificacao do Produto (media simples dos 12 modulos)
+    const cpcBox = document.getElementById('dprod-cpc-box');
+    if (modKeys.some(k => mods[k])) {
+        const scores = modKeys.map(k => (mods[k] && mods[k].score) || 0);
+        const cpc = scores.reduce((a,b) => a+b, 0) / scores.length;
+        const cpcPct = (cpc * 100).toFixed(1);
+        const completos = scores.filter(s => s >= 0.6).length;
+        const cpcColor = cpc >= 0.8 ? 'var(--success)' : cpc >= 0.6 ? 'var(--warning)' : 'var(--danger)';
+        cpcBox.innerHTML = `<div class="cpc-score-box">
+            <div class="cpc-score-val" style="color:${cpcColor}">${cpcPct}%</div>
+            <div>
+                <div class="cpc-score-label">SCORE CPC — COMPLETUDE DA CERTIFICACAO</div>
+                <div style="font-size:.7rem;color:var(--text2);margin-top:2px">${completos}/12 modulos com evidencias suficientes (&ge;60%)</div>
+            </div>
+        </div>`;
+    } else {
+        cpcBox.innerHTML = '';
+    }
+
+    // NTC Inspector — gap analysis: o que falta para certificar 100%
+    dprodRenderNtcInspector(mods, modKeys);
 
     // DNA Grid
     const dnaItems = [
@@ -1649,9 +1722,46 @@ function dprodRenderDetalhe(p) {
     // Imagens gallery
     dprodRenderImagens(imagens);
 
+    // Codigos cambiados / OEM historico
+    dprodRenderCodigos(p.codigos || []);
+
+    // Fiscal & Logistica
+    dprodRenderFiscalLogistica(p.fiscal, p.logistica, mods);
+
     // Engenharia + Hierarquia
-    dprodLoadEngenharia(id);
-    dprodLoadHierarquia(id);
+    dprodLoadEngenharia(p.id);
+    dprodLoadHierarquia(p.id);
+}
+
+// NTC Inspector — para cada modulo abaixo de 100%, calcula quantos pontos percentuais
+// a certificacao ganharia se aquele modulo fosse completado, ordenado do maior ganho
+// para o menor (responde "o que falta para chegar a 100%?").
+function dprodRenderNtcInspector(mods, modKeys) {
+    const el = document.getElementById('dprod-ntc-inspector');
+    if (!el) return;
+    const keys = modKeys || Object.keys(mods || {});
+    const gaps = keys.map(k => {
+        const m = mods[k];
+        if (!m) return null;
+        const delta = (1 - m.score) * m.weight * 100;
+        return { k, label: m.label || k, delta, missing: m.missing || [] };
+    }).filter(g => g && g.delta > 0.05).sort((a, b) => b.delta - a.delta);
+
+    if (!gaps.length) {
+        el.innerHTML = !keys.some(k => mods[k]) ? '' : `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:.7rem;color:var(--success)">
+            &#x2714; Certificacao completa — nenhum modulo tem ganho adicional disponivel.
+        </div>`;
+        return;
+    }
+    el.innerHTML = `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="font-size:.6rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:6px">&#x1F50D; NTC INSPECTOR — O QUE FALTA PARA CERTIFICAR 100%</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+            ${gaps.slice(0, 6).map(g => `<div style="display:flex;align-items:flex-start;gap:6px;font-size:.66rem;line-height:1.35">
+                <span style="color:var(--success);font-weight:800;min-width:48px;flex-shrink:0">+${g.delta.toFixed(1)}%</span>
+                <span style="color:var(--text2)"><strong>${g.label}</strong>${g.missing.length ? ' — ' + g.missing.join('; ') : ''}</span>
+            </div>`).join('')}
+        </div>
+    </div>`;
 }
 
 function dprodUpdateCongelar(score, status) {
@@ -1682,10 +1792,59 @@ function dprodRenderAplicacoes(aplic) {
     const el = document.getElementById('dprod-av-table');
     if (!el) return;
     el.innerHTML = aplic.length
-        ? `<div class="tbl-wrap"><table style="font-size:.75rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Anos</th><th></th></tr></thead><tbody>` +
-          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||a.cilindrada||'—'}</td><td>${a.ano_ini||'?'}–${a.ano_fim||'?'}</td><td><button class="btn btn-sm" style="background:#c0392b;padding:2px 6px;font-size:.6rem" onclick="dprodDeleteAplicacao(${a.id})" title="Remover">&#x2715;</button></td></tr>`).join('') +
+        ? `<div class="tbl-wrap"><table style="font-size:.7rem"><thead><tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Cod. Motor</th><th>Cilindrada</th><th>Potencia</th><th>Combustivel</th><th>Ano Inicial</th><th>Ano Final</th><th></th></tr></thead><tbody>` +
+          aplic.map(a => `<tr><td>${a.montadora||'—'}</td><td>${a.modelo||'—'} ${a.versao||''}</td><td>${a.motor||'—'}</td><td>${a.codigo_motor||'—'}</td><td>${a.cilindrada||'—'}</td><td>${a.potencia?a.potencia+' cv':'—'}</td><td>${a.combustivel||'—'}</td><td>${a.ano_ini||'?'}</td><td>${a.ano_fim||'?'}</td><td><button class="btn btn-sm" style="background:#c0392b;padding:2px 6px;font-size:.6rem" onclick="dprodDeleteAplicacao(${a.id})" title="Remover">&#x2715;</button></td></tr>`).join('') +
           '</tbody></table></div>'
         : '<div class="empty" style="font-size:.78rem">Nenhuma aplicacao. Use ENRIQUECER NA WEB.</div>';
+}
+
+function dprodRenderFiscalLogistica(fiscal, logistica, mods) {
+    const f = fiscal || {};
+    const l = logistica || {};
+    const fEl = document.getElementById('dprod-fiscal-view');
+    const lEl = document.getElementById('dprod-log-view');
+    const card = (label, val, suffix) => `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
+            <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${label}</div>
+            <div style="font-size:.75rem;font-weight:600;color:${val!=null && val!==''?'var(--text)':'var(--text3)'}">${val!=null && val!==''?(val+(suffix||'')):'—'}</div>
+        </div>`;
+    // Campos fiscais ausentes pesam diretamente no modulo FM (Mapeamento Fiscal) — por isso
+    // mostramos uma mensagem explicita em vez de um simples traco, deixando claro o que falta certificar.
+    const fiscalCard = (label, val, suffix, msgVazio) => {
+        const filled = val != null && val !== '';
+        return `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid ${filled ? 'var(--border)' : 'var(--warning)'}">
+            <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${label}</div>
+            <div style="font-size:${filled ? '.75rem' : '.64rem'};font-weight:${filled ? '600' : '500'};color:${filled ? 'var(--text)' : 'var(--warning)'}">${filled ? (val + (suffix || '')) : msgVazio}</div>
+        </div>`;
+    };
+    if (fEl) fEl.innerHTML = [
+        fiscalCard('NCM', f.ncm, '', 'NCM nao certificado — aguardando documento fiscal'),
+        fiscalCard('CEST', f.cest, '', 'CEST nao informado — aguardando documento fiscal'),
+        fiscalCard('CFOP', f.cfop, '', 'CFOP nao informado — aguardando documento fiscal'),
+        fiscalCard('Origem', f.origem, '', 'Origem fiscal nao informada'),
+        fiscalCard('IPI', f.ipi, '%', 'Aliquota de IPI nao cadastrada'),
+        fiscalCard('ICMS', f.icms, '%', 'Aliquota de ICMS nao cadastrada'),
+        fiscalCard('PIS', f.pis, '%', 'Aliquota de PIS nao cadastrada'),
+        fiscalCard('COFINS', f.cofins, '%', 'Aliquota de COFINS nao cadastrada'),
+    ].join('');
+    if (lEl) lEl.innerHTML = [
+        card('Peso Liquido', l.peso_liq, 'kg'), card('Peso Bruto', l.peso_bruto, 'kg'),
+        card('Altura', l.altura, 'cm'), card('Largura', l.largura, 'cm'),
+        card('Comprimento', l.comprimento, 'cm'), card('Volume', l.volume, 'm3'),
+    ].join('');
+    // Liga visualmente o estado dos campos fiscais ao modulo FM da certificacao NTC,
+    // deixando explicito por que o score do modulo nao esta em 100%.
+    const fmEl = document.getElementById('dprod-fm-status');
+    if (fmEl) {
+        const fm = mods && mods.FM;
+        if (fm) {
+            const fmPct = (fm.score * 100).toFixed(0);
+            const color = fm.score >= 0.6 ? 'var(--success)' : fm.score > 0 ? 'var(--warning)' : 'var(--danger)';
+            fmEl.innerHTML = `<span style="color:${color};font-weight:700">&#x1F4CA; Modulo FM (Mapeamento Fiscal): ${fmPct}%</span>` +
+                (fm.missing && fm.missing.length ? `<span style="color:var(--text3)"> — faltando: ${fm.missing.join(', ')}</span>` : '');
+        } else {
+            fmEl.innerHTML = '';
+        }
+    }
 }
 
 async function dprodDeleteAplicacao(id) {
@@ -1701,6 +1860,38 @@ async function dprodDeleteAplicacao(id) {
     }
 }
 
+// Modelos de engenharia por categoria de produto — usados apenas como SUGESTAO quando a
+// ficha de engenharia ainda esta vazia. Nunca sao salvos automaticamente: o usuario revisa
+// e confirma em "Usar sugestao e revisar" para certificar oficialmente (mesma logica de
+// "nunca inventar dados" aplicada as imagens no Motor NTC).
+const ENG_TEMPLATES = [
+    { match: /tensor/i, sistema: 'Distribuicao', material: 'Aco Temperado', componentes: 'Rolamento blindado, mola tensora, suporte, polia', especificacoes: 'Tipo: Tensor Mecanico | Rolamento: Blindado | Funcao: Tensionamento da correia/corrente de distribuicao' },
+    { match: /poli[ae]/i, sistema: 'Distribuicao / Acessorios', material: 'Aco / Compositos', componentes: 'Rolamento, eixo, revestimento externo', especificacoes: 'Tipo: Polia Tensora ou Guia | Funcao: Guiar e tensionar a correia' },
+    { match: /correia/i, sistema: 'Distribuicao / Transmissao', material: 'Borracha sintetica reforcada com fibra de vidro', componentes: 'Dentes/nervuras, nucleo de tracao, tecido de revestimento', especificacoes: 'Funcao: Transmitir movimento entre componentes do motor' },
+    { match: /amortecedor/i, sistema: 'Suspensao', material: 'Aco / Oleo hidraulico', componentes: 'Pistao, haste, valvulas, mola helicoidal', especificacoes: 'Funcao: Absorver impactos e estabilizar o veiculo' },
+    { match: /pastilha|disco.*freio|freio/i, sistema: 'Freios', material: 'Material de friccao semi-metalico ou ceramico', componentes: 'Lona/pastilha, suporte metalico, mola antirruido', especificacoes: 'Funcao: Converter energia cinetica em termica para frear o veiculo' },
+    { match: /rolamento/i, sistema: 'Transmissao / Rodas', material: 'Aco para rolamentos (cromo)', componentes: 'Esferas/roletes, pista interna e externa, gaiola, vedacao', especificacoes: 'Funcao: Reduzir atrito entre partes moveis' },
+    { match: /vela/i, sistema: 'Ignicao', material: 'Ceramica de alumina / eletrodo de niquel ou iridio', componentes: 'Eletrodo central, eletrodo lateral, isolador ceramico, corpo metalico', especificacoes: 'Funcao: Gerar centelha para combustao da mistura ar-combustivel' },
+    { match: /filtro/i, sistema: 'Filtragem', material: 'Papel filtrante / fibra sintetica', componentes: 'Elemento filtrante, carcaca, vedacoes', especificacoes: 'Funcao: Reter impurezas do ar, oleo ou combustivel' },
+];
+
+function dprodSugestaoEngenharia(p) {
+    const dna = (p && p.dna) || {};
+    const texto = [dna.familia, p && p.descricao].filter(Boolean).join(' ');
+    if (!texto) return null;
+    return ENG_TEMPLATES.find(t => t.match.test(texto)) || null;
+}
+
+function dprodAplicarSugestaoEngenharia() {
+    const tpl = dprodSugestaoEngenharia(dprodData);
+    if (!tpl) return;
+    dprodToggleEngForm(true);
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    setV('eng-sistema', tpl.sistema); setV('eng-material', tpl.material);
+    setV('eng-componentes', tpl.componentes); setV('eng-especificacoes', tpl.especificacoes);
+    showToast('Sugestao aplicada — revise os campos e clique em "Salvar Engenharia" para certificar', 'info');
+}
+
 async function dprodLoadEngenharia(id) {
     const e = await api('/produtos/' + (id || dprodId) + '/engenharia');
     const view = document.getElementById('dprod-eng-view');
@@ -1713,11 +1904,27 @@ async function dprodLoadEngenharia(id) {
         { label: 'Componentes', val: e.componentes },
         { label: 'Especificacoes', val: e.especificacoes },
     ];
-    view.innerHTML = fields.map(f =>
-        `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
-            <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${f.label}</div>
-            <div style="font-size:.75rem;font-weight:600;color:${f.val?'var(--text)':'var(--text3)'}">${f.val||'—'}</div>
-        </div>`).join('');
+    const preenchido = fields.some(f => f.val);
+    const tpl = !preenchido ? dprodSugestaoEngenharia(dprodData) : null;
+    if (tpl) {
+        const dna = (dprodData && dprodData.dna) || {};
+        view.innerHTML = `<div style="grid-column:span 2;background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:10px">
+            <div style="font-size:.62rem;color:var(--text3);margin-bottom:6px">&#x1F4A1; <strong>Sugestao automatica</strong> baseada na categoria "${dna.familia || ''}" — ainda nao certificada, revise antes de salvar:</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.72rem;margin-bottom:8px">
+                <div><span style="color:var(--text3)">Sistema:</span> <strong>${tpl.sistema}</strong></div>
+                <div><span style="color:var(--text3)">Material:</span> <strong>${tpl.material}</strong></div>
+                <div style="grid-column:span 2"><span style="color:var(--text3)">Componentes:</span> <strong>${tpl.componentes}</strong></div>
+                <div style="grid-column:span 2"><span style="color:var(--text3)">Especificacoes:</span> <strong>${tpl.especificacoes}</strong></div>
+            </div>
+            <button class="btn btn-sm" onclick="dprodAplicarSugestaoEngenharia()">Usar sugestao e revisar</button>
+        </div>`;
+    } else {
+        view.innerHTML = fields.map(f =>
+            `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
+                <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${f.label}</div>
+                <div style="font-size:.75rem;font-weight:600;color:${f.val?'var(--text)':'var(--text3)'}">${f.val||'—'}</div>
+            </div>`).join('');
+    }
     const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
     setV('eng-diametro', e.diametro); setV('eng-estrias', e.estrias);
     setV('eng-sistema', e.sistema); setV('eng-material', e.material);
@@ -1752,6 +1959,21 @@ async function dprodSaveEngenharia() {
     }
 }
 
+// Deriva a cadeia genealogica (Arvore DNA) a partir dos dados ja detectados/cadastrados:
+// Grupo Industrial -> Marca -> Codigo do Produto -> Codigo OEM -> Aplicacao (montadora/modelo)
+function dprodCadeiaGenealogica(p) {
+    const dna = (p && p.dna) || {};
+    const oem = ((p && p.codigos) || []).find(c => c.tipo === 'OEM');
+    const aplic = ((p && p.aplicacoes) || [])[0];
+    const elos = [];
+    if (dna.grupo_industrial || dna.fabricante) elos.push({ label: 'Grupo Industrial', val: dna.grupo_industrial || dna.fabricante });
+    if (dna.marca) elos.push({ label: 'Marca (Fabricante)', val: dna.marca });
+    if (dna.codigo_dna || (p && p.ref)) elos.push({ label: 'Codigo do Produto', val: dna.codigo_dna || p.ref });
+    if (oem) elos.push({ label: 'Codigo OEM', val: oem.codigo + (oem.fabricante ? ' (' + oem.fabricante + ')' : '') });
+    if (aplic) elos.push({ label: 'Aplicacao Principal', val: [aplic.montadora, aplic.modelo].filter(Boolean).join(' ') });
+    return elos;
+}
+
 async function dprodLoadHierarquia(id) {
     const h = await api('/produtos/' + (id || dprodId) + '/hierarquia');
     const view = document.getElementById('dprod-hier-view');
@@ -1765,13 +1987,30 @@ async function dprodLoadHierarquia(id) {
         { label: 'Lojista', val: h.lojista },
     ];
     const filled = chain.filter(c => c.val);
-    view.innerHTML = filled.length
-        ? chain.map(f =>
+    if (filled.length) {
+        view.innerHTML = chain.map(f =>
             `<div style="background:var(--bg2);border-radius:6px;padding:6px 10px;border:1px solid var(--border)">
                 <div style="font-size:.6rem;color:var(--text3);margin-bottom:2px">${f.label}</div>
                 <div style="font-size:.75rem;font-weight:600;color:${f.val?'var(--text)':'var(--text3)'}">${f.val||'—'}</div>
-            </div>`).join('')
-        : '<div class="empty" style="font-size:.75rem;grid-column:span 2">Hierarquia nao cadastrada.</div>';
+            </div>`).join('');
+    } else {
+        // Hierarquia ainda nao certificada manualmente — deriva uma "Arvore DNA" (cadeia
+        // genealogica) a partir do que o Motor DNA ja detectou (marca/grupo/origem) +
+        // codigos OEM e aplicacoes reais, para o usuario revisar e oficializar com 1 clique.
+        const elos = dprodCadeiaGenealogica(dprodData || {});
+        view.innerHTML = elos.length >= 2
+            ? `<div style="grid-column:span 2">
+                <div style="font-size:.64rem;color:var(--text3);margin-bottom:8px">&#x1F333; <strong>Arvore DNA detectada automaticamente</strong> pelo Motor DNA — revise e clique em "Editar Hierarquia" para certificar oficialmente:</div>
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+                    ${elos.map((e, i) => `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:6px 12px">
+                        <div style="font-size:.56rem;color:var(--text3)">${e.label}</div>
+                        <div style="font-size:.74rem;font-weight:700">${e.val}</div>
+                    </div>` + (i < elos.length - 1 ? '<span style="color:var(--text3);font-size:.8rem">&#x2192;</span>' : '')).join('')}
+                </div>
+                <div style="font-size:.6rem;color:var(--text3);margin-top:8px">Esta cadeia ainda nao foi certificada manualmente — o modulo BTA/MC usa os dados de marca acima, mas a Hierarquia oficial so conta para o NTC apos voce revisar e salvar.</div>
+            </div>`
+            : '<div class="empty" style="font-size:.75rem;grid-column:span 2">Hierarquia nao cadastrada.</div>';
+    }
     const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
     setV('hier-fab', h.fabricante_original); setV('hier-mont', h.montadora);
     setV('hier-dist', h.distribuidor); setV('hier-imp', h.importador);
@@ -1806,10 +2045,11 @@ async function dprodSaveHierarquia() {
 }
 
 function dprodRenderCodigos(codigos) {
-    const badge = document.getElementById('dprod-cod-badge');
-    badge.textContent = codigos.length;
-    badge.className = 'badge ' + (codigos.length > 0 ? 'badge-green' : 'badge-yellow') + ' gaveta-status ml-auto';
-    document.getElementById('dprod-cod-list').innerHTML = codigos.length
+    const count = document.getElementById('dprod-cod-count');
+    if (count) count.textContent = codigos.length + ' codigo' + (codigos.length === 1 ? '' : 's');
+    const list = document.getElementById('dprod-cod-table');
+    if (!list) return;
+    list.innerHTML = codigos.length
         ? codigos.map(c => `<div style="background:var(--bg);border-radius:6px;padding:7px 12px;border:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:8px">
             <span class="badge badge-blue" style="font-size:.62rem">${c.tipo||'OEM'}</span>
             <span style="font-family:monospace;font-size:.85rem;flex:1">${c.codigo}</span>
@@ -1819,22 +2059,83 @@ function dprodRenderCodigos(codigos) {
         : '<div class="empty" style="font-size:.78rem">Nenhum codigo. Adicione OEM ou use ENRIQUECER NA WEB.</div>';
 }
 
-function dprodSelectImg(url, tipo, status) {
+let dprodSelectedImgId = null;
+
+function dprodSelectImg(id, url, tipo, status) {
     const main = document.getElementById('dprod-img-main');
     const src = document.getElementById('dprod-img-main-src');
     const lbl = document.getElementById('dprod-img-main-label');
     const sts = document.getElementById('dprod-img-main-status');
+    const actions = document.getElementById('dprod-img-main-actions');
+    const sugestao = document.getElementById('dprod-img-ia-sugestao');
     if (!main) return;
+    dprodSelectedImgId = id;
     main.style.display = 'block';
     src.src = url;
     if (lbl) lbl.textContent = tipo || 'IMG';
     if (sts) { sts.textContent = status || ''; sts.style.background = status === 'APROVADA' ? 'rgba(0,200,100,.8)' : 'rgba(255,160,0,.8)'; }
+    if (actions) actions.innerHTML = id ? `<button class="btn btn-xs" style="background:rgba(255,255,255,.18);color:#fff" onclick="dprodClassificarImgIA(${id})">&#x1F916; Classificar com IA</button>` : '';
+    if (sugestao) sugestao.innerHTML = '';
     document.querySelectorAll('#dprod-img-slots .img-thumb').forEach(t => t.style.outline = '');
     const active = document.querySelector(`#dprod-img-slots [data-url="${CSS.escape(url)}"]`);
     if (active) active.style.outline = '2px solid var(--accent)';
 }
 
+// Classificacao automatica de imagem por IA — sempre considera o DNA do produto
+// (marca/familia/descricao) e apenas SUGERE; aplicar a categoria exige confirmacao manual
+async function dprodClassificarImgIA(id) {
+    const box = document.getElementById('dprod-img-ia-sugestao');
+    if (box) box.innerHTML = '<div class="empty" style="font-size:.72rem">&#x1F916; Analisando imagem com IA (considerando o DNA do produto)...</div>';
+    const r = await api('/imagens/' + id + '/classificar-ia', { method: 'POST' });
+    if (!box) return;
+    if (!r.success) { box.innerHTML = `<div style="font-size:.72rem;color:var(--danger);padding:8px 0">Erro ao classificar: ${r.error || 'desconhecido'}</div>`; return; }
+    const pct = r.confianca != null ? Math.round(r.confianca * 100) + '%' : '—';
+    const igual = r.sugestao === r.tipo_atual;
+    box.innerHTML = `<div style="background:var(--bg2);border:1px dashed var(--border);border-radius:8px;padding:10px;margin-top:6px">
+        <div style="font-size:.62rem;color:var(--text3);margin-bottom:6px">&#x1F916; <strong>Sugestao da IA</strong> (baseada no DNA do produto) — confianca ${pct}</div>
+        <div style="font-size:.8rem;margin-bottom:4px">Categoria sugerida: <span class="badge badge-blue">${r.sugestao}</span>
+            <span style="color:var(--text3);font-size:.65rem"> ${igual ? '(igual a atual)' : '(atual: ' + (r.tipo_atual || '—') + ')'}</span></div>
+        <div style="font-size:.72rem;color:var(--text2);margin-bottom:8px">${r.justificativa || ''}</div>
+        ${igual ? '' : `<button class="btn btn-xs btn-success" onclick="dprodAplicarClassificacaoIA(${id},'${(r.sugestao||'').replace(/'/g,"\\'")}')">Aplicar categoria sugerida</button>`}
+    </div>`;
+}
+
+async function dprodAplicarClassificacaoIA(id, categoria) {
+    await api('/imagens/' + id + '/tipo', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ tipo: categoria }) });
+    showToast('Categoria da imagem atualizada para "' + categoria + '"', 'success');
+    const p = await api('/produtos/' + dprodId);
+    dprodData = p; dprodRenderImagens(p.imagens || []);
+}
+
+// Banco de Imagens Certificadas — as 6 categorias minimas exigidas para uma certificacao
+// fotografica completa. Reaproveita os "tipos" ja existentes no upload de imagens; mostra
+// um checklist de presenca/ausencia (categorias ausentes reduzem os modulos LG/FI no NTC).
+const IMG_CATEGORIAS_CERTIFICADAS = [
+    { tipos: ['Principal'], label: 'Produto isolado' },
+    { tipos: ['Lateral'], label: 'Vista lateral' },
+    { tipos: ['Tecnica', 'Detalhe'], label: 'Detalhe tecnico' },
+    { tipos: ['Embalagem'], label: 'Embalagem' },
+    { tipos: ['OEM'], label: 'OEM gravado' },
+    { tipos: ['Aplicada'], label: 'Aplicacao real' },
+];
+
+function dprodRenderImgChecklist(imagens) {
+    const el = document.getElementById('dprod-img-checklist');
+    if (!el) return;
+    const tiposPresentes = new Set((imagens || []).map(i => i.tipo));
+    const itens = IMG_CATEGORIAS_CERTIFICADAS.map(c => ({ label: c.label, ok: c.tipos.some(t => tiposPresentes.has(t)) }));
+    const total = itens.filter(i => i.ok).length;
+    el.innerHTML = `<div style="margin-bottom:8px">
+        <div style="font-size:.6rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:6px">&#x1F4F8; BANCO DE IMAGENS CERTIFICADAS — ${total}/6 categorias</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${itens.map(i => `<span style="font-size:.6rem;padding:3px 9px;border-radius:12px;background:${i.ok ? 'rgba(0,200,100,.15)' : 'rgba(240,165,0,.12)'};color:${i.ok ? 'var(--success)' : 'var(--warning)'};border:1px solid ${i.ok ? 'var(--success)' : 'var(--warning)'}">${i.ok ? '&#x2714;' : '&#x26A0;'} ${i.label}</span>`).join('')}
+        </div>
+        ${total < 6 ? '<div style="font-size:.58rem;color:var(--text3);margin-top:5px">Categorias ausentes podem reduzir os modulos LG e FI na proxima certificacao NTC.</div>' : ''}
+    </div>`;
+}
+
 function dprodRenderImagens(imagens) {
+    dprodRenderImgChecklist(imagens);
     const badge = document.getElementById('dprod-img-badge');
     if (badge) { badge.textContent = imagens.length; badge.className = 'badge ' + (imagens.length >= 3 ? 'badge-green' : imagens.length > 0 ? 'badge-yellow' : 'badge-red') + ' gaveta-status ml-auto'; }
     const cnt = document.getElementById('dprod-img-count');
@@ -1849,12 +2150,12 @@ function dprodRenderImagens(imagens) {
     }
     slots.innerHTML = imagens.map((img, i) => {
         const color = img.status === 'APROVADA' ? '#00c864' : img.status === 'REPROVADA' ? '#c0392b' : '#f0a500';
-        return `<div class="img-thumb" data-url="${img.url}" onclick="dprodSelectImg('${img.url.replace(/'/g,"\\'")}','${img.tipo||'IMG'}','${img.status||''}')"
+        return `<div class="img-thumb" data-url="${img.url}" onclick="dprodSelectImg(${img.id},'${img.url.replace(/'/g,"\\'")}','${img.tipo||'IMG'}','${img.status||''}')"
             style="width:60px;height:60px;border-radius:6px;overflow:hidden;background:#0d0d0d;border:2px solid ${color};cursor:pointer;flex-shrink:0">
             <img src="${img.url}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.opacity='.2'">
         </div>`;
     }).join('');
-    dprodSelectImg(imagens[0].url, imagens[0].tipo, imagens[0].status);
+    dprodSelectImg(imagens[0].id, imagens[0].url, imagens[0].tipo, imagens[0].status);
 }
 
 async function dprodSalvarDNA() {
@@ -2295,7 +2596,7 @@ async function deletarAplicacao(id) {
 // ======================================================
 // IMAGENS
 // ======================================================
-const IMG_SLOT_TYPES = ['Principal', 'Lateral', 'Tecnica', 'Detalhe', 'Embalagem', 'Aplicada'];
+const IMG_SLOT_TYPES = ['Principal', 'Lateral', 'Tecnica', 'Detalhe', 'Embalagem', 'OEM', 'Aplicada'];
 
 function buscarWebImagens() {
     if (!currentImagemProdId) return;
@@ -2579,7 +2880,7 @@ async function analisarNTC() {
                 <div class="fg" style="margin:0"><label>Produto (ID ou Ref)</label><input id="ia-img-prod-id" placeholder="ID do produto..."></div>
                 <div class="fg" style="margin:0"><label>Tipo</label>
                     <select id="ia-img-tipo" style="width:100%;background:var(--bg);border:1px solid #333;border-radius:6px;padding:8px;color:var(--text);font-size:.82rem">
-                        <option>Principal</option><option>Lateral</option><option>Tecnica</option><option>Detalhe</option><option>Embalagem</option><option>Aplicada</option>
+                        <option>Principal</option><option>Lateral</option><option>Tecnica</option><option>Detalhe</option><option>Embalagem</option><option>OEM</option><option>Aplicada</option>
                     </select>
                 </div>
                 <div class="fg" style="margin:0"><label>Arquivo de Imagem</label><input type="file" id="ia-img-file" accept="image/*" style="background:var(--bg);border:1px solid #333;border-radius:6px;padding:6px;color:var(--text);width:100%"></div>
@@ -3507,7 +3808,7 @@ function renderAplicacoesSimples(aplic) {
 let _enrImgSelected = null;
 
 function renderEnrImagens(imagens) {
-    const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
+    const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','OEM','Aplicada'];
     const cnt = document.getElementById('enr-img-count');
     if (cnt) cnt.textContent = imagens.length + ' imagem(ns)';
 
