@@ -799,6 +799,12 @@ tr:hover td{background:#1c1c1c}
             <div id="enr-dados-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:.8rem"></div>
           </div>
 
+          <!-- Estimativas IA (dados plausiveis nao confirmados) -->
+          <div id="enr-estimativas-card" style="display:none;background:var(--card);border:1px solid #ffaa0050;border-radius:10px;padding:14px">
+            <div style="font-size:.65rem;color:#ffaa00;font-weight:700;letter-spacing:.05em;margin-bottom:6px">&#x26A0; ESTIMADO PELA IA — CONFIRA ANTES DE PUBLICAR</div>
+            <div id="enr-estimativas-list" style="display:flex;flex-direction:column;gap:6px;font-size:.76rem"></div>
+          </div>
+
           <!-- NTC Card -->
           <div id="enr-nct-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -4280,6 +4286,8 @@ function resetEnriquecimentoOem() {
     if (input) input.value = '';
     if (st) st.innerHTML = '';
     if (sel) sel.value = '';
+    const estCard = document.getElementById('enr-estimativas-card');
+    if (estCard) estCard.style.display = 'none';
 }
 
 async function loadEnriquecimento() {
@@ -4351,6 +4359,9 @@ function renderEnriquecimento(d) {
         <div style="font-size:.78rem;font-family:monospace">${v || '—'}</div>
     </div>`).join('');
 
+    // Estimativas IA (dados plausiveis nao confirmados)
+    renderEstimativasIA(d.estimativas || []);
+
     // Imagens
     renderEnrImagens(d.imagens || []);
 
@@ -4366,6 +4377,24 @@ function renderEnriquecimento(d) {
     // Pipeline + historico
     updatePipelineState(d.nct?.score || 0, d.produto?.status);
     renderHistoricoNTC(d.historico || []);
+}
+
+function renderEstimativasIA(lista) {
+    const card = document.getElementById('enr-estimativas-card');
+    const list = document.getElementById('enr-estimativas-list');
+    if (!card || !list) return;
+    if (!lista.length) { card.style.display = 'none'; list.innerHTML = ''; return; }
+    card.style.display = 'block';
+    list.innerHTML = lista.map(e => {
+        const pct = typeof e.confianca === 'number' ? Math.round(e.confianca * 100) + '%' : null;
+        return `<div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div style="display:flex;justify-content:space-between;gap:8px">
+                <span style="font-weight:700;color:var(--text)">${e.campo}: <span style="font-family:monospace;font-weight:400;color:var(--text2)">${e.valor}</span></span>
+                ${pct ? `<span style="font-size:.62rem;color:#ffaa00;white-space:nowrap">confianca ${pct}</span>` : ''}
+            </div>
+            ${e.observacao ? `<div style="font-size:.66rem;color:var(--text3);margin-top:3px">${e.observacao}</div>` : ''}
+        </div>`;
+    }).join('');
 }
 
 function renderAplicacoesSimples(aplic) {

@@ -204,6 +204,17 @@ CREATE TABLE IF NOT EXISTS historico_ntc (
   FOREIGN KEY(produto_id) REFERENCES produtos(id)
 );
 
+CREATE TABLE IF NOT EXISTS dados_estimados_ia (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  produto_id INTEGER NOT NULL,
+  campo TEXT,
+  valor TEXT,
+  confianca REAL,
+  observacao TEXT,
+  criado_em TEXT DEFAULT (datetime('now','localtime')),
+  FOREIGN KEY(produto_id) REFERENCES produtos(id)
+);
+
 CREATE TABLE IF NOT EXISTS logs_ia (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   produto_ref TEXT,
@@ -1535,7 +1546,7 @@ Contexto web encontrado: ${contextoWeb}`;
 TAREFA: Analise o produto e retorne SOMENTE JSON valido (sem markdown, sem texto antes ou depois).
 
 ESTRUTURA EXATA — nao altere os nomes dos campos:
-{"dna":{"fabricante":null,"marca":null,"familia":null,"codigo_oem":null},"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
+{"dna":{"fabricante":null,"marca":null,"familia":null,"codigo_oem":null},"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null,"estimativas":[{"campo":null,"valor":null,"confianca":null,"observacao":null}]}
 
 REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 - TIPO DO PRODUTO: determinado EXCLUSIVAMENTE pela descricao fornecida. Se diz "embreagem" e embreagem. Se diz "correia" e correia. NUNCA reclassifique com base no contexto web.
@@ -1547,7 +1558,8 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 - NCM: apenas se compativel com o tipo do produto e com certeza absoluta (formato 0000.00.00)
 - aplicacoes: somente veiculos CONFIRMADOS com montadora+modelo+ano — null se nao confirmado
 - descricao_tecnica: descreva o produto com base APENAS no nome/ref — sem inventar componentes
-- IMPORTANTE: o "Contexto web encontrado" abaixo reune VARIAS buscas (geral, especificacao tecnica, classificacao fiscal/NCM, codigos equivalentes). Vasculhe-o com atencao e preencha CADA campo em que houver informacao real e claramente correspondente ao produto — nao deixe um campo null so por preguica de procurar; deixe null APENAS quando a informacao realmente nao aparecer no contexto ou nao tiver certeza`;
+- IMPORTANTE: o "Contexto web encontrado" abaixo reune VARIAS buscas (geral, especificacao tecnica, classificacao fiscal/NCM, codigos equivalentes). Vasculhe-o com atencao e preencha CADA campo em que houver informacao real e claramente correspondente ao produto — nao deixe um campo null so por preguica de procurar; deixe null APENAS quando a informacao realmente nao aparecer no contexto ou nao tiver certeza
+- ESTIMATIVAS: quando encontrar um dado PLAUSIVEL mas NAO 100% confirmavel (ex: medida tecnica citada em catalogo de terceiro, NCM provavel por familia, codigo equivalente mencionado em apenas uma fonte), NAO o invente nos campos confirmados acima — em vez disso, adicione um item em "estimativas" com: campo (nome do dado, ex: "Diametro do cilindro"), valor (o dado em si), confianca (0 a 1, sua avaliacao honesta de quao confiavel e a fonte) e observacao (de onde veio / por que nao e 100% certo). Use isso para nao perder informacao util, mas deixando claro que precisa confirmacao humana antes de publicar. NUNCA coloque em "estimativas" algo totalmente inventado sem nenhuma base no contexto coletado — so o que tiver alguma evidencia, ainda que fraca`;
 
     const userPrompt = `PRODUTO (tipo nao pode ser alterado): ${p.descricao}\n\nDados para extracao:\n\n${contexto}`;
     const claudeResult = await callClaude(systemPrompt, userPrompt, 1200);
@@ -1657,6 +1669,16 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
             }
             si++;
         }
+        // ESTIMATIVAS — dados plausiveis porem nao confirmados; gravados separados e
+        // sinalizados na interface como "Estimado pela IA — confira antes de publicar"
+        db.prepare('DELETE FROM dados_estimados_ia WHERE produto_id=?').run(id);
+        if (Array.isArray(parsed.estimativas)) {
+            for (const est of parsed.estimativas) {
+                if (!est || !est.campo || est.valor === null || est.valor === undefined || est.valor === '') continue;
+                db.prepare("INSERT INTO dados_estimados_ia (produto_id,campo,valor,confianca,observacao) VALUES (?,?,?,?,?)")
+                  .run(id, String(est.campo), String(est.valor), typeof est.confianca === 'number' ? est.confianca : null, est.observacao || null);
+            }
+        }
         // RECALCULAR NTC
         const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
         const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id);
@@ -1676,7 +1698,8 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
             codigos: db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id),
             imagens: db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id),
             logistica: db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(id) || {},
-            fiscal: db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id) || {}
+            fiscal: db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id) || {},
+            estimativas: db.prepare('SELECT * FROM dados_estimados_ia WHERE produto_id=?').all(id)
         };
     })();
 
@@ -1723,6 +1746,7 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
+    const estimativas = db.prepare('SELECT * FROM dados_estimados_ia WHERE produto_id=?').all(id);
     const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 20').all(id);
 
     // NCT simplified 4-module
@@ -1752,7 +1776,7 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
 
     res.json({
         produto: p, dna: dna||{}, fiscal: fiscal||{}, logistica: logistica||{},
-        aplicacoes, codigos, imagens,
+        aplicacoes, codigos, imagens, estimativas,
         nct: { score: nctScore, status: nctStatus, modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } },
         imgQuality, historico,
         wix_id: p.wix_id,
