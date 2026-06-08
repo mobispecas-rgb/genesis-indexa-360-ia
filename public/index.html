@@ -4675,13 +4675,17 @@ async function buscarOemEnr() {
     const st = document.getElementById('enriquecer-web-status');
     const raw = (input?.value || '').trim();
     if (!raw) { alert('Digite o OEM ou nome do produto'); return; }
-    const parts = raw.split(/\s+/);
-    const oem = parts[0];
+    const parts = raw.split(/\s+/).filter(Boolean);
+    // Prioriza tokens que parecem codigos de peca (contem digito e tem 4+ caracteres)
+    const candidatos = parts.filter(p => /\d/.test(p) && p.replace(/[^a-zA-Z0-9]/g, '').length >= 4);
+    const oem = (candidatos[0] || parts[0]).replace(/^[\/,;-]+|[\/,;-]+$/g, '');
     if (st) st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Buscando...';
     // Buscar no banco
     const res = await api('/produtos?q=' + encodeURIComponent(oem) + '&limit=10');
     const lista = res.data || [];
-    const match = lista.find(p => p.ref && p.ref.split(/\s+/)[0].toUpperCase() === oem.toUpperCase()) || lista[0];
+    const oemUp = oem.toUpperCase();
+    const match = lista.find(p => p.ref && p.ref.toUpperCase().split(/[\s\/,;-]+/).includes(oemUp))
+        || lista.find(p => p.ref && p.ref.toUpperCase().includes(oemUp));
     if (match) {
         currentEnrId = match.id;
         document.getElementById('enr-prod-select').value = match.id;
