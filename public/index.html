@@ -4681,7 +4681,7 @@ async function buscarOemEnr() {
     const oem = (candidatos[0] || parts[0]).replace(/^[\/,;-]+|[\/,;-]+$/g, '');
     if (st) st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Buscando...';
     // Buscar no banco
-    const res = await api('/produtos?q=' + encodeURIComponent(oem) + '&limit=10');
+    const res = await api('/produtos?search=' + encodeURIComponent(oem) + '&limit=10');
     const lista = res.data || [];
     const oemUp = oem.toUpperCase();
     const match = lista.find(p => p.ref && p.ref.toUpperCase().split(/[\s\/,;-]+/).includes(oemUp))
