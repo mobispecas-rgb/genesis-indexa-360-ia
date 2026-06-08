@@ -2110,7 +2110,7 @@ async function loadDashboard() {
 
     // Tabela recentes
     const tbody = document.querySelector('#tbl-recentes tbody');
-    tbody.innerHTML = d.recentes.map(p => `<tr>
+    tbody.innerHTML = d.recentes.map(p => `<tr style="cursor:pointer" title="Abrir perfil completo (DNA) para enriquecer e elevar o NTC" onclick="irParaEnriquecimento(${p.id})">
         <td>${imgThumb(p.imagem_principal, 30)}</td>
         <td class="mono">${p.ref}</td>
         <td>${p.descricao}</td>
