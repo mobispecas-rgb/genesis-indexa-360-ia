@@ -1383,6 +1383,29 @@ async function searchDuckDuckGo(query) {
     } catch (e) { return null; }
 }
 
+// Busca resultados reais de paginas na web (titulo + trecho) via DuckDuckGo HTML —
+// a API "Instant Answer" usada acima quase sempre vem vazia para codigos de peca
+// de nicho (ex: "BDJ2513"), pois so cobre verbetes tipo Wikipedia. Esta busca HTML
+// devolve paginas reais (catalogos de fabricante, lojas, fichas tecnicas) que
+// frequentemente contem o dado documental que o produto realmente possui.
+async function searchWebSnippets(query) {
+    try {
+        const q = encodeURIComponent(query);
+        const r = await httpGet(`https://html.duckduckgo.com/html/?q=${q}`, {
+            'Accept-Language': 'pt-BR,pt;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (compatible; Genesis/5.0)'
+        });
+        const results = [];
+        const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+        const strip = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+        let m;
+        while ((m = re.exec(r.body)) && results.length < 5) {
+            results.push({ titulo: strip(m[2]), trecho: strip(m[3]), url: strip(m[1]) });
+        }
+        return results;
+    } catch (e) { return []; }
+}
+
 // Search Open Parts APIs for automotive part data
 async function searchOpenParts(codigo, marca) {
     // Try to get data from known automotive parts databases
@@ -1526,9 +1549,11 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     const searchQuery = `${oem} ${descTipo} autopeça aplicação veicular`.trim();
     const imgQuery = `"${oem}" ${descTipo} autopeça foto produto`;
 
-    const [ddg, imgUrls] = await Promise.all([
+    const [ddg, imgUrls, paginas, paginas2] = await Promise.all([
         searchDuckDuckGo(searchQuery),
-        searchBingImages(imgQuery)
+        searchBingImages(imgQuery),
+        searchWebSnippets(`${oem} ${marca} ${descTipo}`.trim()),
+        searchWebSnippets(`"${oem}" catalogo ficha tecnica aplicacao`)
     ]);
 
     // Pesquisas adicionais e mais especificas — aumentam a chance de achar dados
@@ -1540,7 +1565,14 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
         searchDuckDuckGo(`${oem} ${marca} NCM classificacao fiscal autopeca`),
         searchDuckDuckGo(`${oem} codigo equivalente referencia cruzada OEM`)
     ]);
-    const contextoWeb = [ddg?.abstract, ddg2?.abstract, ddg3?.abstract, ddg4?.abstract].filter(Boolean).join(' | ') || 'sem resultado';
+    const abstracts = [ddg?.abstract, ddg2?.abstract, ddg3?.abstract, ddg4?.abstract].filter(Boolean).join(' | ');
+    // Resultados de paginas reais (catalogos de fabricante, lojas, fichas tecnicas) —
+    // costumam trazer o dado documental que a Instant Answer API nao cobre
+    const paginasTexto = [...paginas, ...paginas2]
+        .filter(r => r.titulo || r.trecho)
+        .map(r => `[${r.titulo}] ${r.trecho} (${r.url})`)
+        .join(' || ');
+    const contextoWeb = [abstracts, paginasTexto].filter(Boolean).join(' | ') || 'sem resultado';
 
     const contexto = `Produto: ${p.descricao}
 Referencia/OEM: ${oem}
