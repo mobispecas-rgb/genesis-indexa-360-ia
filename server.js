@@ -233,25 +233,27 @@ if (usrCount.c === 0) {
 
 const prodCount = db.prepare('SELECT COUNT(*) as c FROM produtos').get();
 if (prodCount.c === 0) {
-    const insP = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao, status, ntc_score, ntc_status, wix_id) VALUES (?,?,?,?,?,?,?)");
-    const insD = db.prepare("INSERT INTO dna (produto_id, fabricante, grupo_industrial, origem_pais, codigo_dna, marca, linha, familia, status_certificacao, score) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    const insP = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao, status, wix_id) VALUES (?,?,?,?,?)");
+    const insD = db.prepare("INSERT INTO dna (produto_id, fabricante, grupo_industrial, origem_pais, codigo_dna, marca, linha, familia, status_certificacao) VALUES (?,?,?,?,?,?,?,?,?)");
     const insF = db.prepare("INSERT INTO dados_fiscais (produto_id, ncm, cest, origem, ipi, icms, pis, cofins, cfop) VALUES (?,?,?,?,?,?,?,?,?)");
     const insL = db.prepare("INSERT INTO logistica (produto_id, peso_liq, peso_bruto, altura, largura, comprimento) VALUES (?,?,?,?,?,?)");
 
-    const p1 = insP.run(1, 'LUK-6203236', 'KIT DE EMBREAGEM 200MM PLATO/DISCO/ROLAMENTO', 'Ativo', 0.97, 'APROVADO', 'a50f44fe-1c2e-463e-b21c-491a470007c3');
-    insD.run(p1.lastInsertRowid, 'LUK Automotive', 'Schaeffler', 'Alemanha', '6203236000', 'LUK', 'RepSet Pro', 'Embreagem', 'Aprovado', 0.97);
+    const p1 = insP.run(1, 'LUK-6203236', 'KIT DE EMBREAGEM 200MM PLATO/DISCO/ROLAMENTO', 'Ativo', 'a50f44fe-1c2e-463e-b21c-491a470007c3');
+    insD.run(p1.lastInsertRowid, 'LUK Automotive', 'Schaeffler', 'Alemanha', '6203236000', 'LUK', 'RepSet Pro', 'Embreagem', 'Aprovado');
     insF.run(p1.lastInsertRowid, '8708.93.00', '1512200', '0', 0, 12, 0.65, 3, '5102');
     insL.run(p1.lastInsertRowid, 4.2, 4.8, 12, 22, 22);
 
-    const p2 = insP.run(1, 'BOC-0986494131', 'PASTILHA DE FREIO DIANTEIRA CERAMICA', 'Ativo', 0.82, 'PENDENTE', 'd5e27817-e588-4da4-ad9d-fe5585356a21');
-    insD.run(p2.lastInsertRowid, 'Robert Bosch GmbH', 'Robert Bosch GmbH', 'Alemanha', '0986494131', 'Bosch', 'Quietcast', 'Freios', 'Pendente', 0.82);
+    const p2 = insP.run(1, 'BOC-0986494131', 'PASTILHA DE FREIO DIANTEIRA CERAMICA', 'Ativo', 'd5e27817-e588-4da4-ad9d-fe5585356a21');
+    insD.run(p2.lastInsertRowid, 'Robert Bosch GmbH', 'Robert Bosch GmbH', 'Alemanha', '0986494131', 'Bosch', 'Quietcast', 'Freios', 'Pendente');
     insF.run(p2.lastInsertRowid, '8708.10.00', '1512100', '0', 0, 12, 0.65, 3, '5102');
     insL.run(p2.lastInsertRowid, 0.8, 1.0, 5, 15, 20);
 
-    const p3 = insP.run(1, 'SKF-VKBA3569', 'ROLAMENTO RODA TRASEIRA COM ABS', 'Ativo', 0.45, 'REPROVADO', 'ce2aaa9f-ea27-42d4-95d2-7d3553c15380');
-    insD.run(p3.lastInsertRowid, 'SKF AB', 'SKF AB', 'Suecia', 'VKBA3569', 'SKF', 'Bearings', 'Rolamentos', 'Reprovado', 0.45);
+    const p3 = insP.run(1, 'SKF-VKBA3569', 'ROLAMENTO RODA TRASEIRA COM ABS', 'Ativo', 'ce2aaa9f-ea27-42d4-95d2-7d3553c15380');
+    insD.run(p3.lastInsertRowid, 'SKF AB', 'SKF AB', 'Suecia', 'VKBA3569', 'SKF', 'Bearings', 'Rolamentos', 'Reprovado');
     insF.run(p3.lastInsertRowid, '8482.10.10', null, '0', 0, 12, 0.65, 3, '5102');
     insL.run(p3.lastInsertRowid, 1.5, 1.8, 8, 14, 14);
+
+    global.__seedProdutoIds = [p1.lastInsertRowid, p2.lastInsertRowid, p3.lastInsertRowid];
 }
 
 // -----------------------------------------------------------
@@ -297,6 +299,21 @@ const NTC_WEIGHTS = {
     AV: 0.10, MC: 0.05, EC: 0.05, BTA: 0.05,
     CC: 0.05, LG: 0.05, FI: 0.03, FP: 0.02
 };
+
+// O score e status NTC dos produtos de demonstracao nao sao fixados no
+// cadastro: sao calculados e auditados pelo Motor NTC 4.0 a partir dos
+// dados reais (DNA, fiscal, logistica) de cada produto, igual ao fluxo
+// usado para qualquer produto enriquecido pela plataforma.
+if (global.__seedProdutoIds) {
+    for (const id of global.__seedProdutoIds) {
+        const resultado = calcNTCFromId(id);
+        if (resultado) {
+            persistNTC(id, resultado, 'Auditoria inicial do Motor NTC 4.0 no cadastro do produto');
+            db.prepare('UPDATE dna SET score=? WHERE produto_id=?').run(resultado.score, id);
+        }
+    }
+    delete global.__seedProdutoIds;
+}
 
 // -----------------------------------------------------------
 // NTC ENGINE FUNCTIONS
