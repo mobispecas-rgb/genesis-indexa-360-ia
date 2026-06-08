@@ -1694,8 +1694,18 @@ tr:hover td{background:#1c1c1c}
         <p class="muted">Aqui voce pode gerenciar as informacoes de sua empresa.</p>
         <div class="form-grid">
           <div class="fg"><label>Nome da Empresa</label><input id="empresa-nome" placeholder="Nome da empresa"></div>
-          <div class="fg"><label>CNPJ</label><input id="empresa-cnpj" placeholder="00.000.000/0000-00"></div>
+          <div class="fg">
+            <label>CNPJ</label>
+            <div style="display:flex; gap:8px;">
+              <input id="empresa-cnpj" placeholder="00.000.000/0000-00" style="flex:1">
+              <button class="btn btn-sm btn-outline" onclick="Empresa.buscarCnpj()">&#x1F50D; Buscar na Receita</button>
+            </div>
+          </div>
+          <div class="fg"><label>Razao Social</label><input id="empresa-razao-social" readonly placeholder="Preenchido automaticamente pela API publica"></div>
+          <div class="fg"><label>Situacao Cadastral</label><input id="empresa-situacao" readonly placeholder="Preenchido automaticamente pela API publica"></div>
+          <div class="fg" style="grid-column: span 2;"><label>Endereco</label><input id="empresa-endereco" readonly placeholder="Preenchido automaticamente pela API publica"></div>
         </div>
+        <div id="empresa-cnpj-msg" class="muted" style="margin-bottom:6px;"></div>
         <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
           <button class="btn btn-blue" onclick="Empresa.salvar()">Salvar</button>
           <span id="empresa-msg" class="muted"></span>
@@ -5559,6 +5569,26 @@ function loadEmpresa() {
 }
 
 const Empresa = {
+    async buscarCnpj() {
+        const cnpjRaw = document.getElementById('empresa-cnpj').value.trim();
+        const cnpj = cnpjRaw.replace(/\D/g, '');
+        const msg = document.getElementById('empresa-cnpj-msg');
+        if (cnpj.length !== 14) { msg.innerHTML = '<span style="color:var(--primary2)">Informe um CNPJ valido com 14 digitos para buscar.</span>'; return; }
+        msg.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Consultando API publica da Receita Federal (BrasilAPI)...';
+        try {
+            const resp = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj);
+            if (!resp.ok) throw new Error('CNPJ nao encontrado na base publica.');
+            const d = await resp.json();
+            document.getElementById('empresa-nome').value = d.nome_fantasia || d.razao_social || '';
+            document.getElementById('empresa-razao-social').value = d.razao_social || '';
+            document.getElementById('empresa-situacao').value = d.descricao_situacao_cadastral || '';
+            document.getElementById('empresa-endereco').value = [d.logradouro, d.numero, d.bairro, d.municipio, d.uf, d.cep]
+                .filter(Boolean).join(', ');
+            msg.innerHTML = '<span style="color:var(--success)">&#x2714; Dados encontrados na API publica e preenchidos automaticamente.</span>';
+        } catch (e) {
+            msg.innerHTML = '<span style="color:var(--danger)">&#x26A0; ' + (e.message || 'Falha ao consultar a API publica.') + '</span>';
+        }
+    },
     salvar() {
         const nome = document.getElementById('empresa-nome').value.trim();
         const cnpj = document.getElementById('empresa-cnpj').value.trim();
