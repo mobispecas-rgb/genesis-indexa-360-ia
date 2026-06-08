@@ -693,6 +693,9 @@ app.post('/api/produtos', (req, res) => {
         if (hierData) db.prepare("INSERT INTO hierarquia (produto_id,fabricante_original,montadora,distribuidor,importador,marca_propria,lojista) VALUES (?,?,?,?,?,?,?)").run(pid, hierData.fabricante_original||null, hierData.montadora||null, hierData.distribuidor||null, hierData.importador||null, hierData.marca_propria||null, hierData.lojista||null);
         res.status(201).json({ success: true, id: pid });
     } catch (e) {
+        if (/UNIQUE constraint failed: produtos\.empresa_id, produtos\.ref/.test(e.message)) {
+            return res.status(400).json({ error: `Ja existe um produto cadastrado com a referencia "${ref}" para esta empresa. Use uma referencia diferente.` });
+        }
         res.status(400).json({ error: e.message });
     }
 });
