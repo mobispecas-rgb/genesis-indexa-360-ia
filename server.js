@@ -1259,6 +1259,59 @@ function fetchImageBuffer(url) {
     });
 }
 
+// Verifica via IA de visao se uma imagem encontrada na web realmente corresponde ao produto,
+// ANTES de salva-la no catalogo — evita imagens trazidas pela busca generica que nao tem
+// nenhuma relacao com a autopeca (ex: moveis, decoracao, pessoas, etc.)
+async function verificarRelevanciaImagem(url, p, dna) {
+    let base64, mediaType;
+    try {
+        const { buffer, contentType } = await fetchImageBuffer(url);
+        if (buffer.length > 5 * 1024 * 1024) return { relevante: false, motivo: 'Imagem muito grande' };
+        base64 = buffer.toString('base64');
+        mediaType = (contentType || '').split(';')[0].trim() || imageMediaType(url);
+        if (!/^image\//.test(mediaType)) return { relevante: false, motivo: 'Conteudo nao e imagem' };
+    } catch (e) {
+        return { relevante: false, motivo: 'Falha ao baixar: ' + e.message };
+    }
+
+    const dnaContexto = `Produto: ${p.descricao}\nReferencia/OEM: ${dna?.codigo_dna || p.ref}\nMarca/Fabricante: ${dna?.marca || dna?.fabricante || 'desconhecido'}\nFamilia: ${dna?.familia || 'desconhecida'}`;
+    const systemPrompt = `Voce e um verificador de relevancia de imagens para um catalogo comercial de autopecas (NTC).
+Sua tarefa e dizer se a imagem enviada pode realmente representar o produto abaixo, ou se e uma imagem sem nenhuma relacao (trazida por engano por uma busca generica na web).
+
+${dnaContexto}
+
+Responda SOMENTE com JSON no formato:
+{"relevante": <true ou false>, "confianca": <numero de 0 a 1>, "motivo": "<explicacao curta em portugues>"}
+
+Regras:
+- relevante=false se a imagem mostrar algo claramente diferente do tipo de produto (ex: moveis, decoracao, roupas, pessoas, paisagens, comida, eletronicos nao automotivos)
+- relevante=false tambem se a imagem contiver conteudo impróprio/adulto, violento ou que nao condiz com um catalogo comercial de autopecas
+- relevante=true somente se a imagem puder plausivelmente mostrar a autopeca, sua embalagem, aplicacao ou um item tecnicamente compativel com a descricao
+- Em caso de duvida real (imagem generica, nao especifica), prefira relevante=true com confianca baixa`;
+
+    const userContent = [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: 'Esta imagem pode representar o produto descrito no contexto? Responda no formato JSON pedido.' }
+    ];
+
+    const result = await callClaude(systemPrompt, userContent, 300);
+    if (result.error) return { relevante: true, confianca: null, motivo: 'Verificacao indisponivel: ' + result.error };
+
+    try {
+        const jsonText = (result.text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        const match = jsonText.match(/\{[\s\S]*\}/);
+        if (match) {
+            const parsed = JSON.parse(match[0]);
+            return {
+                relevante: parsed.relevante !== false,
+                confianca: typeof parsed.confianca === 'number' ? parsed.confianca : null,
+                motivo: parsed.motivo || ''
+            };
+        }
+    } catch (e) {}
+    return { relevante: true, confianca: null, motivo: 'Resposta da IA nao pode ser interpretada' };
+}
+
 // Categorias do "Banco de Imagens Certificadas" usadas pela classificacao automatica por IA
 const IMG_CATEGORIAS_IA = {
     Principal: 'Produto isolado em fundo neutro, sem contexto — foto de catalogo padrao',
@@ -1501,6 +1554,27 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 
     if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
 
+    // Filtrar URLs claramente invalidas e bloquear conteudo improprio (catalogo comercial)
+    const candidateUrls = imgUrls.filter(url =>
+        url && url.startsWith('http') &&
+        !url.includes('logo') && !url.includes('favicon') &&
+        !url.includes('banner') && !url.includes('avatar') &&
+        !isImagemImpropria(url)
+    );
+    // Verificar relevancia de cada imagem com IA de visao ANTES de salvar — evita
+    // que a busca generica traga fotos sem nenhuma relacao com a autopeca
+    const dnaAtual = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+    const aprovadas = [];
+    for (const url of candidateUrls.slice(0, 8)) {
+        if (aprovadas.length >= 6) break;
+        const verif = await verificarRelevanciaImagem(url, p, dnaAtual);
+        if (verif.relevante && (verif.confianca === null || verif.confianca >= 0.4)) {
+            aprovadas.push(url);
+        } else {
+            console.log(`[enriquecer-web] imagem descartada (${url}): ${verif.motivo}`);
+        }
+    }
+
     const txResult = db.transaction(() => {
         // DNA — salvar fabricante, marca, familia, codigo_oem separados (nunca com espacos no OEM)
         const dnaPayload = parsed.dna || {};
@@ -1554,18 +1628,11 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
             if (existF) db.prepare("UPDATE dados_fiscais SET ncm=COALESCE(?,ncm),cest=COALESCE(?,cest) WHERE produto_id=?").run(F.ncm||null,F.cest||null,id);
             else db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem) VALUES (?,?,?,?)").run(id,F.ncm||null,F.cest||null,'0');
         }
-        // IMAGENS WEB — salvar com status Pendente para revisao humana
+        // IMAGENS WEB — somente as aprovadas pela verificacao de relevancia da IA, com status Pendente para revisao humana
         const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
         const existImgs = new Set(db.prepare('SELECT url FROM imagens WHERE produto_id=?').all(id).map(i => i.url));
         let si = 0;
-        // Filtrar URLs claramente invalidas e bloquear conteudo improprio (catalogo comercial)
-        const validUrls = imgUrls.filter(url =>
-            url && url.startsWith('http') &&
-            !url.includes('logo') && !url.includes('favicon') &&
-            !url.includes('banner') && !url.includes('avatar') &&
-            !isImagemImpropria(url)
-        );
-        for (const url of validUrls.slice(0, 6)) {
+        for (const url of aprovadas) {
             if (!existImgs.has(url)) {
                 // Status Pendente — precisa aprovacao humana pois busca web pode trazer imagem errada
                 db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(id, slots[si%slots.length], url, 'Web-Auto', 'Pendente');
