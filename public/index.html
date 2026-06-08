@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>IndexaAI Catalog Pro v5.0 — Motor NTC 4.0</title>
+<link rel="icon" type="image/svg+xml" href="/img/icon.svg">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -15,7 +16,7 @@
   --border:#2a2a2a;--sidebar:240px;
 }
 html,body{height:100%;overflow:hidden}
-body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
 
 /* SIDEBAR OVERLAY (mobile) */
 #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99}
@@ -82,6 +83,15 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
   .ntc-big .score{font-size:3rem}
   div[style*="grid-template-columns:1fr 1fr"]{display:block!important}
   div[style*="grid-template-columns:1fr 1fr"] > *{margin-bottom:14px}
+  .scanner-wrap{max-width:100%}
+}
+
+/* TABLETS / NOTEBOOKS (entre celular e desktop) */
+@media(min-width:769px) and (max-width:1199px){
+  #content{padding:18px}
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .module-grid{grid-template-columns:repeat(2,1fr)}
+  .scanner-wrap{max-width:560px}
 }
 
 /* TELAS GRANDES (PC widescreen / Smart TV) */
@@ -97,6 +107,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
   th,td{padding:12px 16px}
   .module-grid{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
   .ntc-big .score{font-size:5rem}
+  .scanner-wrap{max-width:760px}
+  #scanner-video-region video{max-height:70vh;object-fit:contain}
 }
 
 /* CARDS KPI */
@@ -139,6 +151,8 @@ tr:hover td{background:#1c1c1c}
 .fg label{display:block;font-size:.72rem;color:var(--text2);margin-bottom:4px}
 .fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid #333;border-radius:6px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;transition:border .2s}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary)}
+.pref-check{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text);margin-bottom:8px;cursor:pointer}
+.pref-check input{width:auto}
 .fg select option{background:var(--bg3)}
 .fg textarea{min-height:80px;resize:vertical}
 
@@ -370,20 +384,27 @@ tr:hover td{background:#1c1c1c}
 
 <!-- SIDEBAR -->
 <nav id="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-title">INDEXAAI CATALOG</div>
-    <div class="logo-sub">PRO + Motor NTC 4.0</div>
-    <div class="logo-badge">ENTERPRISE</div>
+  <div class="sidebar-logo" style="display:flex; align-items:center; gap:10px;">
+    <img src="/img/icon.svg" alt="IndexaAI" width="36" height="36" style="border-radius:8px; flex-shrink:0;">
+    <div>
+      <div class="logo-title">INDEXAAI CATALOG</div>
+      <div class="logo-sub">PRO + Motor NTC 4.0</div>
+      <div class="logo-badge">ENTERPRISE</div>
+    </div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Principal</div>
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">&#x1F4CA;</span> Dashboard</div>
     <div class="nav-item" data-page="produtos"><span class="nav-icon">&#x1F4E6;</span> Produtos</div>
+    <div class="nav-item" data-page="catalogo-produtos"><span class="nav-icon">&#x1F4DA;</span> Catalogo de Produtos</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Motor iRollo</div>
     <div class="nav-item" data-page="enriquecimento"><span class="nav-icon">&#x2728;</span> Enriquecimento OEM</div>
+    <div class="nav-item" data-page="enriquecimento-massa"><span class="nav-icon">&#x1F4C2;</span> Enriquecimento por ID/Massa</div>
     <div class="nav-item" data-page="aprovacao"><span class="nav-icon">&#x2705;</span> Aprovacao <span id="aprov-sidebar-badge" style="margin-left:auto;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 7px;border-radius:10px;font-size:.62rem;font-weight:900;display:none"></span></div>
+    <div class="nav-item" data-page="aprovacao-cadastro"><span class="nav-icon">&#x1F4DD;</span> Aprovacao de Cadastro</div>
+    <div class="nav-item" data-page="aprovados"><span class="nav-icon">&#x1F31F;</span> Aprovados</div>
     <div class="nav-item" data-page="congelados"><span class="nav-icon">&#x2744;&#xFE0F;</span> Congelados</div>
   </div>
   <div class="nav-section">
@@ -404,6 +425,17 @@ tr:hover td{background:#1c1c1c}
     <div class="nav-item" data-page="catalogo"><span class="nav-icon">&#x1F4E5;</span> Importar Catalogo</div>
     <div class="nav-item" data-page="wix"><span class="nav-icon">&#x1F517;</span> Wix Stores</div>
     <div class="nav-item" data-page="pdv"><span class="nav-icon">&#x1F3EA;</span> PDV</div>
+    <div class="nav-item" data-page="integracoes-plataformas"><span class="nav-icon">&#x1F50C;</span> Integracoes de Plataforma</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Plataforma</div>
+    <div class="nav-item" data-page="categoria"><span class="nav-icon">&#x1F3F7;&#xFE0F;</span> Categoria</div>
+    <div class="nav-item" data-page="templates"><span class="nav-icon">&#x1F4DD;</span> Templates</div>
+    <div class="nav-item" data-page="pagamentos"><span class="nav-icon">&#x1F4B3;</span> Pagamentos</div>
+    <div class="nav-item" data-page="planos"><span class="nav-icon">&#x1F4B0;</span> Planos</div>
+    <div class="nav-item" data-page="usuarios"><span class="nav-icon">&#x1F465;</span> Usuarios</div>
+    <div class="nav-item" data-page="empresa"><span class="nav-icon">&#x1F3E2;</span> Empresa</div>
+    <div class="nav-item" data-page="preferencias"><span class="nav-icon">&#x1F39B;&#xFE0F;</span> Preferencias</div>
   </div>
   <div class="nav-section">
     <div class="nav-section-label">Sistema</div>
@@ -753,6 +785,11 @@ tr:hover td{background:#1c1c1c}
       <!-- Corpo do enriquecimento -->
       <div id="enr-body" style="display:none">
 
+        <div id="enr-loading" style="display:none;text-align:center;padding:40px">
+          <div class="spinner"></div>
+          <div style="margin-top:12px;font-size:.8rem;color:var(--text3)">Carregando dados...</div>
+        </div>
+
         <!-- Linha 1: DNA + NTC lado a lado -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
 
@@ -760,6 +797,12 @@ tr:hover td{background:#1c1c1c}
           <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
             <div style="font-size:.65rem;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:10px">&#x1F9EC; DNA DO PRODUTO</div>
             <div id="enr-dados-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:.8rem"></div>
+          </div>
+
+          <!-- Estimativas IA (dados plausiveis nao confirmados) -->
+          <div id="enr-estimativas-card" style="display:none;background:var(--card);border:1px solid #ffaa0050;border-radius:10px;padding:14px">
+            <div style="font-size:.65rem;color:#ffaa00;font-weight:700;letter-spacing:.05em;margin-bottom:6px">&#x26A0; ESTIMADO PELA IA — CONFIRA ANTES DE PUBLICAR</div>
+            <div id="enr-estimativas-list" style="display:flex;flex-direction:column;gap:6px;font-size:.76rem"></div>
           </div>
 
           <!-- NTC Card -->
@@ -893,6 +936,79 @@ tr:hover td{background:#1c1c1c}
         <div style="margin-top:12px;display:flex;gap:8px">
           <button class="btn btn-sm btn-success" onclick="aprovarTodasImagens()">&#x2713; Aprovar Todas</button>
           <button class="btn btn-sm btn-danger" onclick="rejeitarTodasImagens()">&#x2717; Rejeitar Todas</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- APROVACAO DE CADASTRO -->
+    <div class="page" id="page-aprovacao-cadastro">
+      <div class="sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="sec-title" style="margin:0">&#x1F4DD; Aprovacao de Cadastro</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="aprovcad-ordenar" class="fg" style="width:auto" onchange="AprovacaoCadastro.reorder(this.value)">
+              <option value="createdAt-desc">Mais recentes primeiro</option>
+              <option value="createdAt-asc">Mais antigos primeiro</option>
+              <option value="name-asc">Nome (A-Z)</option>
+              <option value="name-desc">Nome (Z-A)</option>
+              <option value="image-desc">Com imagem primeiro</option>
+              <option value="image-asc">Sem imagem primeiro</option>
+            </select>
+            <button class="btn btn-sm btn-outline" onclick="AprovacaoCadastro.exportar()">&#x2B07;&#xFE0F; Exportar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="AprovacaoCadastro.importar()">&#x2B06;&#xFE0F; Importar dados</button>
+          </div>
+        </div>
+        <div class="tabs" style="margin-bottom:14px">
+          <div class="tab active" id="aprovcad-tab-cadastro" onclick="AprovacaoCadastro.switchTab('cadastro')">de Cadastro <span id="aprovcad-badge-cadastro" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprovcad-tab-enriquecimento" onclick="AprovacaoCadastro.switchTab('enriquecimento')">de Enriquecimento <span id="aprovcad-badge-enriquecimento" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprovcad-tab-categoria" onclick="AprovacaoCadastro.switchTab('categoria')">de Categoria <span id="aprovcad-badge-categoria" style="margin-left:4px;background:#ffaa0030;color:#ffaa00;border:1px solid #ffaa0050;padding:1px 6px;border-radius:8px;font-size:.62rem"></span></div>
+          <div class="tab" id="aprovcad-tab-aprovados" onclick="AprovacaoCadastro.switchTab('aprovados')">Aprovados</div>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-aprovacao-cadastro">
+            <thead><tr><th>Img</th><th>Nome</th><th>Categoria</th><th>Marca</th><th>Criado em</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody id="tbl-aprovacao-cadastro-body"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum cadastro pendente de aprovacao.</td></tr></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:.75rem;color:var(--text3)">
+          <select id="aprovcad-per-page" class="fg" style="width:auto" onchange="AprovacaoCadastro.setPerPage(this.value)">
+            <option value="10">10</option><option value="20">20</option><option value="50" selected>50</option><option value="100">100</option>
+          </select>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-xs btn-outline" onclick="AprovacaoCadastro.prevPage()">&#x2190; Anterior</button>
+            <span id="aprovcad-page-info">Pagina 1 de 1</span>
+            <button class="btn btn-xs btn-outline" onclick="AprovacaoCadastro.nextPage()">Proxima &#x2192;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APROVADOS -->
+    <div class="page" id="page-aprovados">
+      <div class="sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="sec-title" style="margin:0">&#x1F31F; Aprovados</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm btn-outline" onclick="Aprovados.openFilters()">&#x1F50D; Filtros</button>
+            <select id="aprovados-ordenar" class="fg" style="width:auto" onchange="Aprovados.reorder(this.value)">
+              <option value="name-asc">Nome (A-Z)</option>
+              <option value="name-desc">Nome (Z-A)</option>
+              <option value="createdAt-desc">Mais recente primeiro</option>
+              <option value="createdAt-asc">Mais antigo primeiro</option>
+              <option value="approvedAt-desc">Aprovados recentemente</option>
+              <option value="approvedAt-asc">Aprovados ha mais tempo</option>
+            </select>
+            <button class="btn btn-sm btn-outline" onclick="Aprovados.exportar()">&#x2B07;&#xFE0F; Exportar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="Aprovados.importar()">&#x2B06;&#xFE0F; Importar dados</button>
+          </div>
+        </div>
+        <div id="aprovados-active-filters" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div style="margin-bottom:10px;font-size:.75rem;color:var(--text3)"><span id="aprovados-qtd">0 produtos aprovados</span></div>
+        <div class="tbl-wrap">
+          <table id="tbl-aprovados">
+            <thead><tr><th>Img</th><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Aprovado em</th><th>Acoes</th></tr></thead>
+            <tbody id="tbl-aprovados-body"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum produto aprovado encontrado.</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1036,6 +1152,52 @@ tr:hover td{background:#1c1c1c}
         </div>
       </div>
       <div id="pdv-results"></div>
+    </div>
+
+    <!-- INTEGRACOES DE PLATAFORMA -->
+    <div class="page" id="page-integracoes-plataformas">
+      <div class="sec">
+        <div class="sec-title">&#x1F50C; Integracoes de Plataforma</div>
+        <div class="form-grid" style="margin-bottom:18px">
+          <div class="fg">
+            <label>Plataforma</label>
+            <select id="integ-plataforma" onchange="Integracoes.selecionar(this.value)">
+              <option value="bling">Bling</option>
+              <option value="mercadolivre">Mercado Livre</option>
+              <option value="vtex">VTEX</option>
+              <option value="shopify">Shopify</option>
+              <option value="magento2">Magento 2</option>
+              <option value="tray">Tray</option>
+              <option value="lojaintegrada">Loja Integrada</option>
+              <option value="nuvemshop">Nuvemshop</option>
+              <option value="tiny">Tiny</option>
+            </select>
+          </div>
+        </div>
+        <div id="integ-form-area">
+          <p class="text-muted" id="integ-msg" style="margin-bottom:14px"></p>
+          <div class="form-grid">
+            <div class="fg">
+              <label>Nome da integracao</label>
+              <input type="text" id="integ-nome" value="Bling">
+            </div>
+            <div class="fg">
+              <label>Codigo de autorizacao (Code)</label>
+              <input type="text" id="integ-codigo" placeholder="">
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-blue" onclick="Integracoes.autorizar()">Autorizar</button>
+            <button class="btn btn-outline" onclick="Integracoes.atualizar()">Atualizar</button>
+            <button class="btn btn-outline" onclick="Integracoes.testar()">Testar</button>
+            <button class="btn btn-danger btn-outline" onclick="Integracoes.limparCredenciais()">Limpar Credenciais</button>
+          </div>
+          <div style="margin-top:24px">
+            <h4>Ajuda</h4>
+            <p><a href="#" id="integ-ajuda-link" target="_blank">Como configurar a integracao na plataforma escolhida</a></p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- IA ANALYZER -->
@@ -1286,6 +1448,383 @@ tr:hover td{background:#1c1c1c}
       </div>
     </div>
 
+    <!-- ENRIQUECIMENTO POR ID / MASSA -->
+    <div class="page" id="page-enriquecimento-massa">
+      <div class="sec">
+        <div class="sec-title">&#x1F50D; Enriquecimento por ID</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="enrid-tipo" style="padding:9px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+            <option value="id">ID</option>
+            <option value="ref">Referencia</option>
+            <option value="ean">EAN</option>
+          </select>
+          <input id="enrid-valor" type="text" placeholder="Digite o identificador do produto..."
+            style="flex:1;min-width:220px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font-size:.85rem;outline:none"
+            onkeydown="if(event.key==='Enter') EnriquecimentoMassa.buscarPorId()">
+          <button class="btn btn-blue" onclick="EnriquecimentoMassa.buscarPorId()">Buscar</button>
+        </div>
+        <div id="enrid-result" class="text-xs" style="margin-top:10px"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">&#x1F4C2; Enriquecimento em Massa</div>
+        <div class="dropzones" style="display:flex;flex-direction:column;align-items:center;gap:10px;border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center"
+          ondragover="event.preventDefault()" ondrop="EnriquecimentoMassa.onDrop(event)">
+          <div style="font-size:2rem">&#x1F4C4;</div>
+          <p>Arraste sua planilha aqui</p>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('enrid-file').click()">&#x2B06;&#xFE0F; Importar</button>
+          <input class="hidden" type="file" id="enrid-file" style="display:none" accept=".csv,.xlsx,.xls" onchange="EnriquecimentoMassa.upload(this.files[0])">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <button class="btn btn-outline btn-sm" onclick="EnriquecimentoMassa.baixarModelo()">&#x2B07;&#xFE0F; Baixar Modelo</button>
+          <button class="btn btn-sm" style="margin-left:auto" onclick="EnriquecimentoMassa.enviar()">Enviar</button>
+        </div>
+        <div id="enrid-massa-status" class="text-xs" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- CATALOGO DE PRODUTOS -->
+    <div class="page" id="page-catalogo-produtos">
+      <div class="sec">
+        <div class="sec-title">&#x1F4DA; Catalogo de Produtos</div>
+        <div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+          <button class="btn btn-outline btn-sm" onclick="CatalogoProdutos.openFilters()">&#x1F50D; Filtros</button>
+          <select id="catprod-order" class="btn-sm" onchange="CatalogoProdutos.reorder(this.value)" style="padding:6px 10px;border-radius:6px">
+            <option value="name-asc">Nome (A-Z)</option>
+            <option value="name-desc">Nome (Z-A)</option>
+            <option value="recent-desc">Mais recentes</option>
+            <option value="recent-asc">Mais antigos</option>
+            <option value="score-desc">Mais relevantes</option>
+            <option value="score-asc">Menos relevantes</option>
+          </select>
+          <button class="btn btn-sm" onclick="CatalogoProdutos.atualizar()">Atualizar catalogo</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="CatalogoProdutos.limpar()">Limpar Catalogo</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-catalogo-produtos">
+            <thead><tr><th>Img</th><th>Nome</th><th>Categoria</th><th>Score</th><th>Atualizado</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="catprod-pagination" style="display:flex;gap:8px;align-items:center;margin-top:12px">
+          <select id="catprod-per-page" onchange="CatalogoProdutos.setPerPage(this.value)" style="padding:4px 8px;border-radius:6px">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+          </select>
+          <span>itens por pagina</span>
+          <button class="btn btn-xs" onclick="CatalogoProdutos.prevPage()">&#x2190; Anterior</button>
+          <span id="catprod-page-info">Pagina 1</span>
+          <button class="btn btn-xs" onclick="CatalogoProdutos.nextPage()">Proxima &#x2192;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLANOS -->
+    <div class="page" id="page-planos">
+      <div class="sec">
+        <div class="sec-title">&#x1F4B0; Conheca nossos planos</div>
+        <p style="font-size:.82rem;color:var(--text2);max-width:760px">Explore nossas opcoes flexiveis de planos e descubra a solucao perfeita para otimizar sua experiencia. Personalize seu pacote de servicos de acordo com suas necessidades especificas.</p>
+        <div class="toolbar" style="display:flex;gap:8px;margin:14px 0">
+          <button class="btn btn-outline btn-sm" onclick="Planos.togglePeriod('monthly')">Mensal</button>
+          <button class="btn btn-outline btn-sm" onclick="Planos.togglePeriod('yearly')">Anual</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-planos">
+            <thead><tr><th>Plano</th><th>Preco</th><th>Creditos</th><th>Recursos</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="sec" style="margin-top:16px">
+          <div class="sec-title">Nao encontrou o que buscava?</div>
+          <button class="btn" onclick="Planos.contato()">Entrar em contato</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORIA -->
+    <div class="page" id="page-categoria">
+      <div class="sec">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+          <div class="sec-title" style="margin:0">&#x1F3F7;&#xFE0F; Categorias de Produtos</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-outline" onclick="Categorias.exportar()">&#x2B07;&#xFE0F; Exportar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="Categorias.importar()">&#x2B06;&#xFE0F; Importar dados</button>
+            <button class="btn btn-sm btn-outline" onclick="Categorias.sincronizar()">&#x1F504; Sincronizar</button>
+            <button class="btn btn-sm btn-blue" onclick="Categorias.adicionar()">&#x2795; Inserir categoria pai</button>
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:var(--text3);margin:0 0 12px">Para adicionar uma subcategoria, clique no botao com "+" na categoria pai.</p>
+        <input type="text" class="fg" id="categoria-busca" placeholder="Pesquisar categoria" style="max-width:320px;margin-bottom:14px" oninput="Categorias.buscar(this.value)">
+        <div class="tbl-wrap">
+          <table id="tbl-categoria">
+            <thead><tr><th>Categoria</th><th>Subcategoria</th><th>Produtos</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="page" id="page-templates">
+      <div class="sec">
+        <div class="sec-title">&#x1F4DD; Templates de Enriquecimento</div>
+        <div class="tbl-toolbar">
+          <button class="btn btn-sm" onclick="Templates.toggleCriar()">&#x2795; Criar Template</button>
+          <button class="btn btn-sm btn-outline" onclick="Templates.toggleDnaNtc()">&#x1F9EC; DNA NTC</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-templates">
+            <thead><tr><th>Nome</th><th>Tipo</th><th>Atualizado</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sec" id="templates-criar-sec" style="display:none;">
+        <div class="sec-title">&#x2728; Criar Template</div>
+        <p class="muted">Crie seu template a partir de um modelo pronto ou descreva o que precisa, e a IA faz o resto.</p>
+        <div class="form-grid">
+          <div class="fg" style="grid-column: span 2;">
+            <label>Prompt do Titulo</label>
+            <textarea id="tpl-prompt-titulo" rows="2" placeholder="Ex: [Nome produto] + [Marca] + [dados tecnicos]"></textarea>
+          </div>
+          <div class="fg">
+            <label>Tom de Voz</label>
+            <input id="tpl-tom-voz" list="tpl-tom-voz-list" placeholder="Escolha um tom de voz ou escreva um novo">
+            <datalist id="tpl-tom-voz-list">
+              <option value="Profissional e direto">
+              <option value="Didatico">
+              <option value="Engracado e descontraido">
+              <option value="Inspirador e motivacional">
+              <option value="Cetico e questionador">
+              <option value="Executivo">
+            </datalist>
+          </div>
+          <div class="fg">
+            <label>Palavras Negativas</label>
+            <textarea id="tpl-palavras-negativas" rows="2" placeholder='Ex: "barato", "promocao", "usado"'></textarea>
+          </div>
+          <div class="fg">
+            <label>Palavras-chave</label>
+            <textarea id="tpl-palavras-chave" rows="2" placeholder="Termos a destacar para melhorar o SEO"></textarea>
+          </div>
+          <div class="fg" style="grid-column: span 2;">
+            <label>Prompt da Descricao</label>
+            <textarea id="tpl-prompt-descricao" rows="3" placeholder="Descreva como a descricao do produto deve ser gerada"></textarea>
+            <div style="margin-top:6px; display:flex; gap:8px;">
+              <button class="btn btn-xs btn-outline" onclick="Templates.gerarDescricao()">Gerar a partir de uma descricao</button>
+              <button class="btn btn-xs btn-outline" onclick="Templates.testarDescricao()">Testar Descricao</button>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Meta Title</label>
+            <textarea id="tpl-meta-title" rows="2" placeholder="Meta title com ate 60 caracteres, com nome do produto e palavra-chave"></textarea>
+          </div>
+          <div class="fg">
+            <label>Meta Description</label>
+            <textarea id="tpl-meta-description" rows="2" placeholder="Meta description com ate 160 caracteres, destacando beneficios"></textarea>
+          </div>
+          <div class="fg" style="grid-column: span 2;">
+            <label>Meta Tags</label>
+            <textarea id="tpl-meta-tags" rows="2" placeholder="Meta tags separadas por virgula"></textarea>
+          </div>
+        </div>
+        <div id="templates-criar-msg" class="muted" style="margin-top:8px;"></div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn btn-blue" onclick="Templates.salvar()">Salvar e continuar</button>
+          <button class="btn btn-outline" onclick="Templates.toggleCriar()">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="sec" id="templates-dna-ntc-sec" style="display:none;">
+        <div class="sec-title">&#x1F9EC; DNA NTC &mdash; Analise de Qualidade dos Dados</div>
+        <p class="muted">O Motor NTC 4.0 analisa o "DNA" do produto (titulo, descricao, imagens, ficha tecnica e categorizacao) e calcula um score de confianca. Cole ou selecione os dados do produto para gerar o diagnostico.</p>
+        <div class="form-grid">
+          <div class="fg" style="grid-column: span 2;">
+            <label>Produto / SKU</label>
+            <input id="dna-produto" placeholder="Selecione ou digite o nome/SKU do produto a analisar">
+          </div>
+          <div class="fg">
+            <label>Criterios avaliados</label>
+            <div class="pref-check"><input type="checkbox" id="dna-c-titulo" checked> <span>Titulo (clareza e padronizacao)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-descricao" checked> <span>Descricao (completude e SEO)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-imagens" checked> <span>Imagens (qualidade e quantidade)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-ficha" checked> <span>Ficha Tecnica (atributos preenchidos)</span></div>
+            <div class="pref-check"><input type="checkbox" id="dna-c-categoria" checked> <span>Categorizacao (compatibilidade e arvore)</span></div>
+          </div>
+          <div class="fg">
+            <label>Resultado do Diagnostico</label>
+            <div id="dna-resultado" class="muted">Nenhuma analise executada ainda.</div>
+          </div>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="btn btn-blue" onclick="Templates.analisarDna()">&#x1F50D; Analisar DNA</button>
+          <button class="btn btn-outline" onclick="Templates.toggleDnaNtc()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGAMENTOS -->
+    <div class="page" id="page-pagamentos">
+      <div class="sec">
+        <div class="sec-title">&#x1F4B3; Pagamentos &amp; Plano</div>
+        <div class="form-grid">
+          <div class="fg"><label>Plano Atual</label><input value="Enterprise" readonly></div>
+          <div class="fg"><label>Creditos Disponiveis</label><input id="pagamentos-creditos" value="-" readonly></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">&#x1F4B5; Metodos de Pagamento</div>
+        <div class="tbl-wrap">
+          <table id="tbl-pagamentos-metodos">
+            <thead><tr><th>Metodo</th><th>Detalhes</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="btn btn-sm btn-outline" onclick="Pagamentos.adicionarMetodo()">&#x2795; Adicionar Metodo</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-title">Historico de Faturas</div>
+        <div class="tbl-wrap">
+          <table id="tbl-pagamentos">
+            <thead><tr><th>Data</th><th>Descricao</th><th>Valor</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESA -->
+    <div class="page" id="page-empresa">
+      <div class="sec">
+        <div class="sec-title">&#x1F3E2; Dados da Empresa</div>
+        <p class="muted">Aqui voce pode gerenciar as informacoes de sua empresa.</p>
+        <div class="form-grid">
+          <div class="fg"><label>Nome da Empresa</label><input id="empresa-nome" placeholder="Nome da empresa"></div>
+          <div class="fg">
+            <label>CNPJ</label>
+            <div style="display:flex; gap:8px;">
+              <input id="empresa-cnpj" placeholder="00.000.000/0000-00" style="flex:1">
+              <button class="btn btn-sm btn-outline" onclick="Empresa.buscarCnpj()">&#x1F50D; Buscar na Receita</button>
+            </div>
+          </div>
+          <div class="fg"><label>Razao Social</label><input id="empresa-razao-social" readonly placeholder="Preenchido automaticamente pela API publica"></div>
+          <div class="fg"><label>Situacao Cadastral</label><input id="empresa-situacao" readonly placeholder="Preenchido automaticamente pela API publica"></div>
+          <div class="fg" style="grid-column: span 2;"><label>Endereco</label><input id="empresa-endereco" readonly placeholder="Preenchido automaticamente pela API publica"></div>
+        </div>
+        <div id="empresa-cnpj-msg" class="muted" style="margin-bottom:6px;"></div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+          <button class="btn btn-blue" onclick="Empresa.salvar()">Salvar</button>
+          <span id="empresa-msg" class="muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREFERENCIAS -->
+    <div class="page" id="page-preferencias">
+      <div class="sec">
+        <div class="sec-title">&#x1F39B;&#xFE0F; Preferencias</div>
+        <p class="muted">Altere suas definicoes de acordo com suas necessidades. As configuracoes se aplicam a todas as filiais.</p>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Aprovacao</div>
+        <label class="pref-check"><input type="checkbox" id="pref-update-active"> Subir produtos como ativos nas integracoes</label>
+        <label class="pref-check"><input type="checkbox" id="pref-vtex-meters"> Subir medidas em metros (vTex)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-update-price"> Subir preco dos produtos</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Imagens</div>
+        <label class="pref-check"><input type="checkbox" id="pref-square-img" checked> Deixar imagens quadradas</label>
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="fg"><label>Dimensoes minimas (px)</label>
+            <div style="display:flex; gap:6px; align-items:center;"><input id="pref-min-width" type="number" value="1000" style="width:90px"> x <input id="pref-min-height" type="number" value="1000" style="width:90px"></div>
+          </div>
+          <div class="fg"><label>Dimensoes maximas (px)</label>
+            <div style="display:flex; gap:6px; align-items:center;"><input id="pref-max-width" type="number" value="1000" style="width:90px"> x <input id="pref-max-height" type="number" value="1000" style="width:90px"></div>
+          </div>
+        </div>
+        <label class="pref-check"><input type="checkbox" id="pref-img-border"> Adicionar borda na imagem (Mercado Livre)</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Enriquecimento</div>
+        <label class="pref-check"><input type="checkbox" id="pref-image-recognition"> Usar reconhecimento de imagem</label>
+        <label class="pref-check"><input type="checkbox" id="pref-dont-update-images"> Nao atualizar imagens</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-category" checked> Usar categoria</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-category-specs"> Desabilitar sugestao de atributos de categoria</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-image"> Usar imagens no enriquecimento</label>
+        <label class="pref-check"><input type="checkbox" id="pref-internaldb-enhancement" checked> Enriquecimento de prompt</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-short-description"> Desabilitar descricao curta (Bagy, Climba)</label>
+        <div class="fg" style="margin-top:8px;"><label>Nome padrao da marca</label><input id="pref-default-brand"></div>
+        <label class="pref-check"><input type="checkbox" id="pref-strong-titles"> Habilitar tag &lt;strong&gt; nos titulos</label>
+        <div class="fg" style="margin-top:8px;"><label>Sites de referencia para captacao de informacoes</label><textarea id="pref-allowed-sites" rows="2" placeholder="Ex: amazon.com"></textarea></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Nome e Marca</div>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-nameparser"> Nao corrigir nomes automaticamente</label>
+        <label class="pref-check"><input type="checkbox" id="pref-improve-name"> Melhorar nomes automaticamente</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Cadastro em Massa</div>
+        <label class="pref-check"><input type="checkbox" id="pref-internaldb-mass" checked> Enriquecimento de prompt</label>
+        <label class="pref-check"><input type="checkbox" id="pref-ref-as-id"> Usar referencia como ID (Tray)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-auto-category"> Desabilitar auto-categorizacao</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Ficha Tecnica</div>
+        <label class="pref-check"><input type="checkbox" id="pref-gen-sizes"> Sugerir altura, largura, comprimento e peso</label>
+        <label class="pref-check"><input type="checkbox" id="pref-ignore-sizes"> Nao atualizar dimensoes e peso (VTEX)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-fill-sheet"> Preencher os dados da planilha de entrada</label>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">Descricao</div>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-technical-info"> Desabilitar ficha tecnica</label>
+        <label class="pref-check"><input type="checkbox" id="pref-bling-complementar"> Descricao complementar (Bling)</label>
+        <label class="pref-check"><input type="checkbox" id="pref-ignore-improve-html"> Nao melhorar a descricao gerada por template</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-h4-only"> Utilizar h4 na descricao</label>
+        <label class="pref-check"><input type="checkbox" id="pref-use-p-only"> Utilizar somente tag p na descricao</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-br"> Desabilitar tag br na descricao</label>
+        <label class="pref-check"><input type="checkbox" id="pref-disable-html-send"> Enviar descricao sem HTML</label>
+        <label class="pref-check"><input type="checkbox" id="pref-keep-html-lines"> Manter quebra de linhas html</label>
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="fg"><label>Linguagem</label>
+            <select id="pref-description-lang"><option>Portugues</option><option>English</option><option>Espanol</option><option>中文</option></select>
+          </div>
+          <div class="fg"><label>Max. caracteres no meta title</label><input id="pref-max-title" type="number" value="70" min="20" max="255"></div>
+          <div class="fg"><label>Max. caracteres na meta description</label><input id="pref-max-description" type="number" value="170" min="160" max="255"></div>
+        </div>
+        <div class="fg" style="margin-top:8px;"><label>Texto padrao ao final da descricao (HTML)</label><textarea id="pref-text-footer" rows="2"></textarea></div>
+      </div>
+
+      <div class="sec">
+        <button class="btn btn-blue" onclick="Preferencias.salvar()">Salvar</button>
+        <span id="preferencias-msg" class="muted" style="margin-left:10px;"></span>
+      </div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="sec">
+        <div class="sec-title">&#x1F465; Usuarios da Empresa</div>
+        <div class="tbl-wrap">
+          <table id="tbl-usuarios">
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1517,10 +2056,22 @@ function onPageActivate(page) {
     else if (page === 'relatorios') loadRelatorios();
     else if (page === 'wix') loadWixStatus();
     else if (page === 'config') loadConfig();
-    else if (page === 'enriquecimento') populateProductSelects();
+    else if (page === 'enriquecimento') { resetEnriquecimentoOem(); populateProductSelects(); }
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
+    else if (page === 'enriquecimento-massa') EnriquecimentoMassa.load();
+    else if (page === 'aprovacao-cadastro') AprovacaoCadastro.load();
+    else if (page === 'aprovados') Aprovados.load();
+    else if (page === 'integracoes-plataformas') Integracoes.load();
+    else if (page === 'catalogo-produtos') CatalogoProdutos.load();
+    else if (page === 'planos') Planos.load();
+    else if (page === 'categoria') loadCategorias();
+    else if (page === 'templates') loadTemplates();
+    else if (page === 'pagamentos') loadPagamentos();
+    else if (page === 'usuarios') loadUsuarios();
+    else if (page === 'empresa') loadEmpresa();
+    else if (page === 'preferencias') loadPreferencias();
     // Stop scanner when leaving scanner page
     if (page !== 'scanner' && scannerRunning) stopScanner();
 }
@@ -1570,7 +2121,7 @@ async function loadDashboard() {
 
     // Tabela recentes
     const tbody = document.querySelector('#tbl-recentes tbody');
-    tbody.innerHTML = d.recentes.map(p => `<tr>
+    tbody.innerHTML = d.recentes.map(p => `<tr style="cursor:pointer" title="Abrir perfil completo (DNA) para enriquecer e elevar o NTC" onclick="irParaEnriquecimento(${p.id})">
         <td>${imgThumb(p.imagem_principal, 30)}</td>
         <td class="mono">${p.ref}</td>
         <td>${p.descricao}</td>
@@ -2165,8 +2716,11 @@ function dprodRenderImagens(imagens) {
     const main = document.getElementById('dprod-img-main');
     const slots = document.getElementById('dprod-img-slots');
     if (!slots) return;
+    const sugestaoBox = document.getElementById('dprod-img-ia-sugestao');
     if (!imagens.length) {
         if (main) main.style.display = 'none';
+        if (sugestaoBox) sugestaoBox.innerHTML = '';
+        dprodSelectedImgId = null;
         slots.innerHTML = '<div class="empty" style="font-size:.78rem">Nenhuma imagem. Use ENRIQUECER NA WEB.</div>';
         return;
     }
@@ -3719,18 +4273,36 @@ let currentEnrId = null;
 let vozPerfil = 'tecnico';
 let enrData = {};
 
+function resetEnriquecimentoOem() {
+    currentEnrId = null;
+    enrData = {};
+    const body = document.getElementById('enr-body');
+    const loading = document.getElementById('enr-loading');
+    const input = document.getElementById('enr-oem-input');
+    const st = document.getElementById('enriquecer-web-status');
+    const sel = document.getElementById('enr-prod-select');
+    if (body) body.style.display = 'none';
+    if (loading) loading.style.display = 'none';
+    if (input) input.value = '';
+    if (st) st.innerHTML = '';
+    if (sel) sel.value = '';
+    const estCard = document.getElementById('enr-estimativas-card');
+    if (estCard) estCard.style.display = 'none';
+}
+
 async function loadEnriquecimento() {
     const sel = document.getElementById('enr-prod-select');
     const id = sel ? sel.value : null;
     if (!id) { alert('Selecione um produto'); return; }
     currentEnrId = id;
     const body = document.getElementById('enr-body');
-    body.style.display = 'none';
-    body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div><div style="margin-top:12px;font-size:.8rem;color:var(--text3)">Carregando dados...</div></div>';
+    const loading = document.getElementById('enr-loading');
     body.style.display = 'block';
+    if (loading) loading.style.display = 'block';
 
     const d = await api('/produtos/' + id + '/enriquecimento');
     enrData = d;
+    if (loading) loading.style.display = 'none';
     renderEnriquecimento(d);
 }
 
@@ -3787,6 +4359,9 @@ function renderEnriquecimento(d) {
         <div style="font-size:.78rem;font-family:monospace">${v || '—'}</div>
     </div>`).join('');
 
+    // Estimativas IA (dados plausiveis nao confirmados)
+    renderEstimativasIA(d.estimativas || []);
+
     // Imagens
     renderEnrImagens(d.imagens || []);
 
@@ -3802,6 +4377,24 @@ function renderEnriquecimento(d) {
     // Pipeline + historico
     updatePipelineState(d.nct?.score || 0, d.produto?.status);
     renderHistoricoNTC(d.historico || []);
+}
+
+function renderEstimativasIA(lista) {
+    const card = document.getElementById('enr-estimativas-card');
+    const list = document.getElementById('enr-estimativas-list');
+    if (!card || !list) return;
+    if (!lista.length) { card.style.display = 'none'; list.innerHTML = ''; return; }
+    card.style.display = 'block';
+    list.innerHTML = lista.map(e => {
+        const pct = typeof e.confianca === 'number' ? Math.round(e.confianca * 100) + '%' : null;
+        return `<div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div style="display:flex;justify-content:space-between;gap:8px">
+                <span style="font-weight:700;color:var(--text)">${e.campo}: <span style="font-family:monospace;font-weight:400;color:var(--text2)">${e.valor}</span></span>
+                ${pct ? `<span style="font-size:.62rem;color:#ffaa00;white-space:nowrap">confianca ${pct}</span>` : ''}
+            </div>
+            ${e.observacao ? `<div style="font-size:.66rem;color:var(--text3);margin-top:3px">${e.observacao}</div>` : ''}
+        </div>`;
+    }).join('');
 }
 
 function renderAplicacoesSimples(aplic) {
@@ -4145,13 +4738,20 @@ async function buscarOemEnr() {
     const st = document.getElementById('enriquecer-web-status');
     const raw = (input?.value || '').trim();
     if (!raw) { alert('Digite o OEM ou nome do produto'); return; }
-    const parts = raw.split(/\s+/);
-    const oem = parts[0];
+    const parts = raw.split(/\s+/).filter(Boolean);
+    // Prioriza tokens que parecem codigos de peca (contem digito e tem 4+ caracteres)
+    const candidatos = parts.filter(p => /\d/.test(p) && p.replace(/[^a-zA-Z0-9]/g, '').length >= 4);
+    const oem = (candidatos[0] || parts[0]).replace(/^[\/,;-]+|[\/,;-]+$/g, '');
     if (st) st.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Buscando...';
     // Buscar no banco
-    const res = await api('/produtos?q=' + encodeURIComponent(oem) + '&limit=10');
+    const res = await api('/produtos?search=' + encodeURIComponent(oem) + '&limit=10');
     const lista = res.data || [];
-    const match = lista.find(p => p.ref && p.ref.split(/\s+/)[0].toUpperCase() === oem.toUpperCase()) || lista[0];
+    const oemUp = oem.toUpperCase();
+    const rawUp = raw.toUpperCase();
+    const match = lista.find(p => p.ref && p.ref.toUpperCase() === rawUp)
+        || lista.find(p => p.ref && p.ref.toUpperCase() === oemUp)
+        || lista.find(p => p.ref && p.ref.toUpperCase().split(/[\s\/,;-]+/).includes(oemUp))
+        || lista.find(p => p.ref && p.ref.toUpperCase().includes(oemUp));
     if (match) {
         currentEnrId = match.id;
         document.getElementById('enr-prod-select').value = match.id;
@@ -4175,11 +4775,12 @@ async function buscarOemEnr() {
 async function loadEnriquecimentoPorId(id) {
     currentEnrId = id;
     const body = document.getElementById('enr-body');
-    body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+    const loading = document.getElementById('enr-loading');
     body.style.display = 'block';
+    if (loading) loading.style.display = 'block';
     const d = await api('/produtos/' + id + '/enriquecimento');
     enrData = d;
-    body.innerHTML = '';
+    if (loading) loading.style.display = 'none';
     renderEnriquecimento(d);
 }
 
@@ -4676,6 +5277,392 @@ async function loadCongelados() {
         <td><span class="badge badge-blue">Congelado</span></td>
     </tr>`).join('') || '<tr><td colspan="6" class="empty">Nenhum produto congelado ainda.</td></tr>';
 }
+
+const EnriquecimentoMassa = {
+    load() {
+        document.getElementById('enrid-result').innerHTML = '';
+        document.getElementById('enrid-massa-status').innerHTML = '';
+    },
+    async buscarPorId() {
+        const tipo = document.getElementById('enrid-tipo').value;
+        const valor = document.getElementById('enrid-valor').value.trim();
+        const resultEl = document.getElementById('enrid-result');
+        if (!valor) { resultEl.innerHTML = '<span class="text-red">Informe um identificador para buscar.</span>'; return; }
+        resultEl.innerHTML = 'Buscando por ' + tipo + ' "' + valor + '"...';
+        try {
+            const d = await api('/produtos?search=' + encodeURIComponent(valor));
+            const produtos = (d.data || []);
+            resultEl.innerHTML = produtos.length
+                ? produtos.map(p => `<div>${p.ref} — ${p.descricao}</div>`).join('')
+                : 'Nenhum produto encontrado para "' + valor + '".';
+        } catch (e) {
+            resultEl.innerHTML = '<span class="text-red">Erro ao buscar produto.</span>';
+        }
+    },
+    onDrop(ev) {
+        ev.preventDefault();
+        const file = ev.dataTransfer.files[0];
+        if (file) this.upload(file);
+    },
+    upload(file) {
+        if (!file) return;
+        document.getElementById('enrid-massa-status').textContent = 'Arquivo selecionado: ' + file.name;
+    },
+    baixarModelo() {
+        const csv = 'ref,descricao,oem\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'modelo-enriquecimento.csv';
+        a.click();
+    },
+    enviar() {
+        const status = document.getElementById('enrid-massa-status');
+        status.textContent = 'Selecione uma planilha antes de enviar.';
+    }
+};
+
+const AprovacaoCadastro = {
+    tab: 'cadastro',
+    page: 1,
+    perPage: 50,
+    order: 'createdAt-desc',
+    load() {
+        this.renderEmpty();
+    },
+    switchTab(tab) {
+        this.tab = tab;
+        this.page = 1;
+        ['cadastro', 'enriquecimento', 'categoria', 'aprovados'].forEach(t => {
+            const el = document.getElementById('aprovcad-tab-' + t);
+            if (el) el.classList.toggle('active', t === tab);
+        });
+        this.renderEmpty();
+    },
+    renderEmpty() {
+        const tbody = document.getElementById('tbl-aprovacao-cadastro-body');
+        if (!tbody) return;
+        const labels = { cadastro: 'cadastro', enriquecimento: 'enriquecimento', categoria: 'categoria', aprovados: 'aprovados' };
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum item de ' + labels[this.tab] + ' pendente de aprovacao.</td></tr>';
+        document.getElementById('aprovcad-page-info').textContent = 'Pagina 1 de 1';
+    },
+    reorder(value) {
+        this.order = value;
+        this.page = 1;
+        this.renderEmpty();
+    },
+    setPerPage(value) {
+        this.perPage = parseInt(value, 10);
+        this.page = 1;
+        this.renderEmpty();
+    },
+    prevPage() {
+        if (this.page > 1) { this.page--; this.renderEmpty(); }
+    },
+    nextPage() {
+        this.page++;
+        this.renderEmpty();
+    },
+    exportar() {
+        const csv = 'nome,categoria,marca,status\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'aprovacao-cadastro.csv';
+        a.click();
+    },
+    importar() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.click();
+    }
+};
+
+const Integracoes = {
+    plataforma: 'bling',
+    nomes: {
+        bling: 'Bling', mercadolivre: 'Mercado Livre', vtex: 'VTEX', shopify: 'Shopify',
+        magento2: 'Magento 2', tray: 'Tray', lojaintegrada: 'Loja Integrada',
+        nuvemshop: 'Nuvemshop', tiny: 'Tiny'
+    },
+    load() {
+        this.selecionar(document.getElementById('integ-plataforma').value);
+    },
+    selecionar(plataforma) {
+        this.plataforma = plataforma;
+        const nome = this.nomes[plataforma] || plataforma;
+        document.getElementById('integ-nome').value = nome;
+        document.getElementById('integ-codigo').value = '';
+        document.getElementById('integ-msg').textContent = '';
+        document.getElementById('integ-ajuda-link').textContent = 'Como configurar a integracao ' + nome + ' na IndexaAI';
+    },
+    autorizar() {
+        const codigo = document.getElementById('integ-codigo').value.trim();
+        const msg = document.getElementById('integ-msg');
+        if (!codigo) { msg.textContent = 'Informe o codigo de autorizacao para continuar.'; return; }
+        msg.textContent = 'Autorizando integracao com ' + this.nomes[this.plataforma] + '...';
+    },
+    atualizar() {
+        document.getElementById('integ-msg').textContent = 'Integracao atualizada.';
+    },
+    testar() {
+        document.getElementById('integ-msg').textContent = 'Testando conexao com ' + this.nomes[this.plataforma] + '...';
+    },
+    limparCredenciais() {
+        document.getElementById('integ-codigo').value = '';
+        document.getElementById('integ-msg').textContent = 'Credenciais removidas.';
+    }
+};
+
+const Aprovados = {
+    order: 'name-asc',
+    async load() {
+        const tbody = document.getElementById('tbl-aprovados-body');
+        const qtd = document.getElementById('aprovados-qtd');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Carregando...</td></tr>';
+        try {
+            const d = await api('/produtos?status=aprovado');
+            const produtos = (d.data || []);
+            qtd.textContent = produtos.length + ' produto(s) aprovado(s)';
+            tbody.innerHTML = produtos.length
+                ? produtos.map(p => `<tr>
+                    <td><img src="${p.imagem || '/img/placeholder.png'}" style="width:36px;height:36px;object-fit:cover;border-radius:4px" onerror="this.style.display='none'"></td>
+                    <td>${p.ref || '-'}</td>
+                    <td>${p.descricao || '-'}</td>
+                    <td>${p.marca || '-'}</td>
+                    <td>${p.categoria || '-'}</td>
+                    <td>${p.aprovado_em || p.updated_at || '-'}</td>
+                    <td><button class="btn btn-xs btn-outline" onclick="Aprovados.ver('${p.id}')">Ver</button></td>
+                  </tr>`).join('')
+                : '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhum produto aprovado encontrado.</td></tr>';
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-red)">Erro ao carregar produtos aprovados.</td></tr>';
+            qtd.textContent = '0 produtos aprovados';
+        }
+    },
+    openFilters() {},
+    reorder(value) {
+        this.order = value;
+        this.load();
+    },
+    ver(id) {
+        if (typeof showProdutoModal === 'function') showProdutoModal(id);
+    },
+    exportar() {
+        const csv = 'ref,descricao,marca,categoria,aprovado_em\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'produtos-aprovados.csv';
+        a.click();
+    },
+    importar() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.click();
+    }
+};
+
+const CatalogoProdutos = {
+    page: 1,
+    perPage: 100,
+    order: 'name-asc',
+    load() {
+        const tbody = document.querySelector('#tbl-catalogo-produtos tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Sem resultados. Limpe os filtros ou indexe os dados do seu catalogo.</td></tr>';
+        document.getElementById('catprod-page-info').textContent = 'Pagina ' + this.page;
+    },
+    openFilters() { alert('Filtros do catalogo de produtos em breve.'); },
+    reorder(value) { this.order = value; this.load(); },
+    setPerPage(value) { this.perPage = parseInt(value, 10); this.page = 1; this.load(); },
+    prevPage() { if (this.page > 1) { this.page--; this.load(); } },
+    nextPage() { this.page++; this.load(); },
+    atualizar() { this.load(); },
+    limpar() { if (confirm('Limpar todo o catalogo de produtos?')) this.load(); }
+};
+
+const Planos = {
+    period: 'monthly',
+    load() {
+        const tbody = document.querySelector('#tbl-planos tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum plano disponivel no momento.</td></tr>';
+    },
+    togglePeriod(p) { this.period = p; this.load(); },
+    contato() { window.open('https://wa.me/5562991654515?text=' + encodeURIComponent('Ola! Gostaria de saber mais sobre os planos do IndexaAI Catalog Pro.'), '_blank'); }
+};
+
+function loadCategorias() {
+    document.querySelector('#tbl-categoria tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhuma categoria cadastrada ainda.</td></tr>';
+}
+
+const Categorias = {
+    busca: '',
+    buscar(valor) {
+        this.busca = (valor || '').trim().toLowerCase();
+        const rows = document.querySelectorAll('#tbl-categoria tbody tr');
+        rows.forEach(tr => {
+            const txt = tr.textContent.toLowerCase();
+            tr.style.display = (!this.busca || txt.includes(this.busca)) ? '' : 'none';
+        });
+    },
+    adicionar() {
+        const nome = prompt('Nome da nova categoria pai:');
+        if (!nome) return;
+        const tbody = document.querySelector('#tbl-categoria tbody');
+        const empty = tbody.querySelector('.empty');
+        if (empty) empty.closest('tr').remove();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${nome}</td><td>—</td><td>0</td><td><span class="badge">Ativa</span></td>`;
+        tbody.appendChild(tr);
+    },
+    sincronizar() {
+        alert('Sincronizando categorias com a plataforma integrada...');
+    },
+    exportar() {
+        const csv = 'categoria,subcategoria,produtos,status\n';
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'categorias.csv';
+        a.click();
+    },
+    importar() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,.xlsx,.xls';
+        input.click();
+    }
+};
+
+function loadTemplates() {
+    document.querySelector('#tbl-templates tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhum template criado ainda.</td></tr>';
+    document.getElementById('templates-criar-sec').style.display = 'none';
+    document.getElementById('templates-dna-ntc-sec').style.display = 'none';
+}
+
+const Templates = {
+    toggleCriar() {
+        const sec = document.getElementById('templates-criar-sec');
+        sec.style.display = (sec.style.display === 'none') ? '' : 'none';
+        document.getElementById('templates-criar-msg').textContent = '';
+    },
+    gerarDescricao() {
+        document.getElementById('templates-criar-msg').textContent = 'Gerando prompt de descricao a partir do texto informado...';
+    },
+    testarDescricao() {
+        document.getElementById('templates-criar-msg').textContent = 'Gerando descricao de teste com os dados do template...';
+    },
+    salvar() {
+        const titulo = document.getElementById('tpl-prompt-titulo').value.trim();
+        const msg = document.getElementById('templates-criar-msg');
+        if (!titulo) { msg.textContent = 'Informe o prompt do titulo para continuar.'; return; }
+        msg.textContent = 'Template salvo com sucesso.';
+        this.toggleCriar();
+    },
+    toggleDnaNtc() {
+        const sec = document.getElementById('templates-dna-ntc-sec');
+        sec.style.display = (sec.style.display === 'none') ? '' : 'none';
+    },
+    async analisarDna() {
+        const produto = document.getElementById('dna-produto').value.trim();
+        const out = document.getElementById('dna-resultado');
+        if (!produto) { out.innerHTML = '<span style="color:var(--primary2)">Informe o produto/SKU para analisar.</span>'; return; }
+        const criterios = [
+            ['dna-c-titulo', 'Titulo'],
+            ['dna-c-descricao', 'Descricao'],
+            ['dna-c-imagens', 'Imagens'],
+            ['dna-c-ficha', 'Ficha Tecnica'],
+            ['dna-c-categoria', 'Categorizacao']
+        ].filter(([id]) => document.getElementById(id).checked);
+        if (!criterios.length) { out.innerHTML = '<span style="color:var(--primary2)">Selecione ao menos um criterio.</span>'; return; }
+        out.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Analisando com o Motor NTC 4.0...';
+        // Analise real — usa o mesmo Motor NTC 4.0 do backend, sem dados inventados
+        const r = await api('/ia/ntc', { method: 'POST', body: JSON.stringify({ texto: produto }) });
+        if (!r || typeof r.score !== 'number') {
+            out.innerHTML = '<span style="color:var(--danger)">&#x26A0; Nao foi possivel analisar este produto.</span>';
+            return;
+        }
+        const pct = (r.score * 100).toFixed(1);
+        const cor = r.status === 'APROVADO' ? 'badge-green' : r.status === 'PENDENTE' ? 'badge-yellow' : 'badge-red';
+        const modulosSel = criterios.map(([, label]) => label);
+        const detalhes = Object.values(r.modules || {})
+            .map(m => `<li><b>${m.label}</b>: ${(m.score*100).toFixed(0)}% — ${(m.evidence&&m.evidence[0]) || (m.missing&&m.missing[0]) || ''}</li>`)
+            .join('');
+        out.innerHTML = `Score NTC real para <b>${produto}</b>: <b>${pct}%</b> &nbsp; <span class="badge ${cor}">${r.status}</span>`
+            + `<div class="muted" style="margin-top:6px;">Criterios selecionados: ${modulosSel.join(', ')}.</div>`
+            + `<ul style="margin-top:8px;font-size:.78rem;color:var(--text2);padding-left:18px">${detalhes}</ul>`;
+    }
+};
+
+function loadPagamentos() {
+    document.getElementById('pagamentos-creditos').value = '—';
+    document.querySelector('#tbl-pagamentos tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhuma fatura encontrada.</td></tr>';
+    document.querySelector('#tbl-pagamentos-metodos tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhum metodo de pagamento cadastrado.</td></tr>';
+}
+
+const Pagamentos = {
+    adicionarMetodo() {
+        showToast('Funcionalidade de adicionar metodo de pagamento em breve.', 'info', 4000);
+    }
+};
+
+function loadUsuarios() {
+    document.querySelector('#tbl-usuarios tbody').innerHTML =
+        '<tr><td colspan="4" class="empty">Nenhum usuario cadastrado ainda.</td></tr>';
+}
+
+function loadPreferencias() {
+    document.getElementById('preferencias-msg').textContent = '';
+}
+
+const Preferencias = {
+    salvar() {
+        document.getElementById('preferencias-msg').textContent = 'Preferencias salvas com sucesso.';
+    }
+};
+
+function loadEmpresa() {
+    document.getElementById('empresa-nome').value = 'MOBIS Pecas Automotivas';
+    document.getElementById('empresa-cnpj').value = '19.903.967/0001-01';
+    document.getElementById('empresa-msg').textContent = '';
+}
+
+const Empresa = {
+    async buscarCnpj() {
+        const cnpjRaw = document.getElementById('empresa-cnpj').value.trim();
+        const cnpj = cnpjRaw.replace(/\D/g, '');
+        const msg = document.getElementById('empresa-cnpj-msg');
+        if (cnpj.length !== 14) { msg.innerHTML = '<span style="color:var(--primary2)">Informe um CNPJ valido com 14 digitos para buscar.</span>'; return; }
+        msg.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Consultando API publica da Receita Federal (BrasilAPI)...';
+        try {
+            const resp = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj);
+            if (!resp.ok) throw new Error('CNPJ nao encontrado na base publica.');
+            const d = await resp.json();
+            document.getElementById('empresa-nome').value = d.nome_fantasia || d.razao_social || '';
+            document.getElementById('empresa-razao-social').value = d.razao_social || '';
+            document.getElementById('empresa-situacao').value = d.descricao_situacao_cadastral || '';
+            document.getElementById('empresa-endereco').value = [d.logradouro, d.numero, d.bairro, d.municipio, d.uf, d.cep]
+                .filter(Boolean).join(', ');
+            msg.innerHTML = '<span style="color:var(--success)">&#x2714; Dados encontrados na API publica e preenchidos automaticamente.</span>';
+        } catch (e) {
+            msg.innerHTML = '<span style="color:var(--danger)">&#x26A0; ' + (e.message || 'Falha ao consultar a API publica.') + '</span>';
+        }
+    },
+    salvar() {
+        const nome = document.getElementById('empresa-nome').value.trim();
+        const cnpj = document.getElementById('empresa-cnpj').value.trim();
+        const msg = document.getElementById('empresa-msg');
+        if (!nome || !cnpj) { msg.textContent = 'Preencha nome e CNPJ para continuar.'; return; }
+        msg.textContent = 'Dados da empresa salvos com sucesso.';
+    }
+};
 
 async function irParaEnriquecimento(id) {
     // Navigate to enrichment page

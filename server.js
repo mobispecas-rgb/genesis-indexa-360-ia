@@ -204,6 +204,17 @@ CREATE TABLE IF NOT EXISTS historico_ntc (
   FOREIGN KEY(produto_id) REFERENCES produtos(id)
 );
 
+CREATE TABLE IF NOT EXISTS dados_estimados_ia (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  produto_id INTEGER NOT NULL,
+  campo TEXT,
+  valor TEXT,
+  confianca REAL,
+  observacao TEXT,
+  criado_em TEXT DEFAULT (datetime('now','localtime')),
+  FOREIGN KEY(produto_id) REFERENCES produtos(id)
+);
+
 CREATE TABLE IF NOT EXISTS logs_ia (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   produto_ref TEXT,
@@ -216,6 +227,12 @@ CREATE TABLE IF NOT EXISTS logs_ia (
 
 // Add wix_id column if not exists (migration)
 try { db.exec("ALTER TABLE produtos ADD COLUMN wix_id TEXT"); } catch(e) { /* already exists */ }
+
+// Corrige dados gravados com o mapeamento incorreto 'PERFECT' -> 'Perfect Circle'
+// (eram empresas/marcas distintas; o vinculo era invalido e foi removido de GRUPOS)
+try {
+    db.prepare("UPDATE dna SET grupo_industrial=NULL, origem_pais=NULL WHERE marca='PERFECT' AND grupo_industrial='Perfect Circle'").run();
+} catch (e) { /* tabela ainda nao existe na primeira execucao */ }
 
 // -----------------------------------------------------------
 // SEED DATA
@@ -233,25 +250,27 @@ if (usrCount.c === 0) {
 
 const prodCount = db.prepare('SELECT COUNT(*) as c FROM produtos').get();
 if (prodCount.c === 0) {
-    const insP = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao, status, ntc_score, ntc_status, wix_id) VALUES (?,?,?,?,?,?,?)");
-    const insD = db.prepare("INSERT INTO dna (produto_id, fabricante, grupo_industrial, origem_pais, codigo_dna, marca, linha, familia, status_certificacao, score) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    const insP = db.prepare("INSERT INTO produtos (empresa_id, ref, descricao, status, wix_id) VALUES (?,?,?,?,?)");
+    const insD = db.prepare("INSERT INTO dna (produto_id, fabricante, grupo_industrial, origem_pais, codigo_dna, marca, linha, familia, status_certificacao) VALUES (?,?,?,?,?,?,?,?,?)");
     const insF = db.prepare("INSERT INTO dados_fiscais (produto_id, ncm, cest, origem, ipi, icms, pis, cofins, cfop) VALUES (?,?,?,?,?,?,?,?,?)");
     const insL = db.prepare("INSERT INTO logistica (produto_id, peso_liq, peso_bruto, altura, largura, comprimento) VALUES (?,?,?,?,?,?)");
 
-    const p1 = insP.run(1, 'LUK-6203236', 'KIT DE EMBREAGEM 200MM PLATO/DISCO/ROLAMENTO', 'Ativo', 0.97, 'APROVADO', 'a50f44fe-1c2e-463e-b21c-491a470007c3');
-    insD.run(p1.lastInsertRowid, 'LUK Automotive', 'Schaeffler', 'Alemanha', '6203236000', 'LUK', 'RepSet Pro', 'Embreagem', 'Aprovado', 0.97);
+    const p1 = insP.run(1, 'LUK-6203236', 'KIT DE EMBREAGEM 200MM PLATO/DISCO/ROLAMENTO', 'Ativo', 'a50f44fe-1c2e-463e-b21c-491a470007c3');
+    insD.run(p1.lastInsertRowid, 'LUK Automotive', 'Schaeffler', 'Alemanha', '6203236000', 'LUK', 'RepSet Pro', 'Embreagem', 'Aprovado');
     insF.run(p1.lastInsertRowid, '8708.93.00', '1512200', '0', 0, 12, 0.65, 3, '5102');
     insL.run(p1.lastInsertRowid, 4.2, 4.8, 12, 22, 22);
 
-    const p2 = insP.run(1, 'BOC-0986494131', 'PASTILHA DE FREIO DIANTEIRA CERAMICA', 'Ativo', 0.82, 'PENDENTE', 'd5e27817-e588-4da4-ad9d-fe5585356a21');
-    insD.run(p2.lastInsertRowid, 'Robert Bosch GmbH', 'Robert Bosch GmbH', 'Alemanha', '0986494131', 'Bosch', 'Quietcast', 'Freios', 'Pendente', 0.82);
+    const p2 = insP.run(1, 'BOC-0986494131', 'PASTILHA DE FREIO DIANTEIRA CERAMICA', 'Ativo', 'd5e27817-e588-4da4-ad9d-fe5585356a21');
+    insD.run(p2.lastInsertRowid, 'Robert Bosch GmbH', 'Robert Bosch GmbH', 'Alemanha', '0986494131', 'Bosch', 'Quietcast', 'Freios', 'Pendente');
     insF.run(p2.lastInsertRowid, '8708.10.00', '1512100', '0', 0, 12, 0.65, 3, '5102');
     insL.run(p2.lastInsertRowid, 0.8, 1.0, 5, 15, 20);
 
-    const p3 = insP.run(1, 'SKF-VKBA3569', 'ROLAMENTO RODA TRASEIRA COM ABS', 'Ativo', 0.45, 'REPROVADO', 'ce2aaa9f-ea27-42d4-95d2-7d3553c15380');
-    insD.run(p3.lastInsertRowid, 'SKF AB', 'SKF AB', 'Suecia', 'VKBA3569', 'SKF', 'Bearings', 'Rolamentos', 'Reprovado', 0.45);
+    const p3 = insP.run(1, 'SKF-VKBA3569', 'ROLAMENTO RODA TRASEIRA COM ABS', 'Ativo', 'ce2aaa9f-ea27-42d4-95d2-7d3553c15380');
+    insD.run(p3.lastInsertRowid, 'SKF AB', 'SKF AB', 'Suecia', 'VKBA3569', 'SKF', 'Bearings', 'Rolamentos', 'Reprovado');
     insF.run(p3.lastInsertRowid, '8482.10.10', null, '0', 0, 12, 0.65, 3, '5102');
     insL.run(p3.lastInsertRowid, 1.5, 1.8, 8, 14, 14);
+
+    global.__seedProdutoIds = [p1.lastInsertRowid, p2.lastInsertRowid, p3.lastInsertRowid];
 }
 
 // -----------------------------------------------------------
@@ -285,7 +304,6 @@ const GRUPOS = {
     'mobis': { grupo: 'Hyundai Mobis', origem: 'Coreia', tier: 1 },
     'bendix': { grupo: 'Bendix', origem: 'EUA', tier: 2 },
     'trw': { grupo: 'ZF TRW', origem: 'EUA', tier: 1 },
-    'perfect': { grupo: 'Perfect Circle', origem: 'Brasil', tier: 2 },
     'marelli': { grupo: 'Marelli Holdings', origem: 'Italia', tier: 1 },
     'delphi': { grupo: 'BorgWarner', origem: 'EUA', tier: 1 },
     'gates': { grupo: 'Gates Industrial', origem: 'EUA', tier: 1 },
@@ -297,6 +315,21 @@ const NTC_WEIGHTS = {
     AV: 0.10, MC: 0.05, EC: 0.05, BTA: 0.05,
     CC: 0.05, LG: 0.05, FI: 0.03, FP: 0.02
 };
+
+// O score e status NTC dos produtos de demonstracao nao sao fixados no
+// cadastro: sao calculados e auditados pelo Motor NTC 4.0 a partir dos
+// dados reais (DNA, fiscal, logistica) de cada produto, igual ao fluxo
+// usado para qualquer produto enriquecido pela plataforma.
+if (global.__seedProdutoIds) {
+    for (const id of global.__seedProdutoIds) {
+        const resultado = calcNTCFromId(id);
+        if (resultado) {
+            persistNTC(id, resultado, 'Auditoria inicial do Motor NTC 4.0 no cadastro do produto');
+            db.prepare('UPDATE dna SET score=? WHERE produto_id=?').run(resultado.score, id);
+        }
+    }
+    delete global.__seedProdutoIds;
+}
 
 // -----------------------------------------------------------
 // NTC ENGINE FUNCTIONS
@@ -516,8 +549,8 @@ function calcNTC(text, extraData = {}) {
     else lgMissing.push('Dimensoes nao informadas');
 
     // FI - Fiscal Images (0.03) - CRITICAL RULE: never invent images
-    let fiScore = extraData.imagens && extraData.imagens.length > 0
-        ? Math.min(1, extraData.imagens.length * 0.33) : 0;
+    // Uma unica imagem de boa qualidade ja e suficiente — nao exige multiplos angulos
+    let fiScore = extraData.imagens && extraData.imagens.length > 0 ? 1 : 0;
     const fiEvidence = fiScore > 0 ? [extraData.imagens.length + ' imagem(ns) cadastrada(s)'] : [];
     const fiMissing = fiScore === 0 ? ['Imagens do produto nao cadastradas'] : [];
 
@@ -676,6 +709,9 @@ app.post('/api/produtos', (req, res) => {
         if (hierData) db.prepare("INSERT INTO hierarquia (produto_id,fabricante_original,montadora,distribuidor,importador,marca_propria,lojista) VALUES (?,?,?,?,?,?,?)").run(pid, hierData.fabricante_original||null, hierData.montadora||null, hierData.distribuidor||null, hierData.importador||null, hierData.marca_propria||null, hierData.lojista||null);
         res.status(201).json({ success: true, id: pid });
     } catch (e) {
+        if (/UNIQUE constraint failed: produtos\.empresa_id, produtos\.ref/.test(e.message)) {
+            return res.status(400).json({ error: `Ja existe um produto cadastrado com a referencia "${ref}" para esta empresa. Use uma referencia diferente.` });
+        }
         res.status(400).json({ error: e.message });
     }
 });
@@ -1117,15 +1153,20 @@ app.post('/api/produtos/:id/aprovar', (req, res) => {
     });
 });
 
-// Rejeitar produto — marca imagens como rejeitadas e loga motivo
+// Rejeitar produto — NUNCA bloqueia: envia para a fila de reenriquecimento e
+// dispara o reprocessamento automatico (busca web + IA + recalculo do NTC),
+// conforme a regra do Genesis: produto reprovado/rejeitado e reprocessado, nao travado.
 app.post('/api/produtos/:id/rejeitar', (req, res) => {
     const id = req.params.id;
     const { motivo = 'Rejeitado pelo operador' } = req.body;
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     db.prepare("UPDATE imagens SET status='Rejeitada' WHERE produto_id=? AND status='Pendente'").run(id);
-    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(id, p.ntc_score, p.ntc_score, p.ntc_status, p.ntc_status, 'Rejeitado: ' + motivo);
-    res.json({ success: true, produto: db.prepare('SELECT id,ref,descricao,ntc_score,ntc_status,status FROM produtos WHERE id=?').get(id) });
+    db.prepare("UPDATE produtos SET status='Fila de Reenriquecimento', ntc_status='REPROVADO', atualizado_em=datetime('now','localtime') WHERE id=?").run(id);
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(id, p.ntc_score, p.ntc_score, p.ntc_status, 'REPROVADO', `Rejeitado: ${motivo} — enviado para fila de reenriquecimento`);
+    // Reprocessamento automatico em segundo plano — nao bloqueia a resposta
+    reenriquecerProdutoLeve(id).catch(() => {});
+    res.json({ success: true, produto: db.prepare('SELECT id,ref,descricao,ntc_score,ntc_status,status FROM produtos WHERE id=?').get(id), msg: 'Produto enviado para fila de reenriquecimento — sera reprocessado automaticamente.' });
 });
 
 // Aprovacao em lote
@@ -1242,6 +1283,59 @@ function fetchImageBuffer(url) {
     });
 }
 
+// Verifica via IA de visao se uma imagem encontrada na web realmente corresponde ao produto,
+// ANTES de salva-la no catalogo — evita imagens trazidas pela busca generica que nao tem
+// nenhuma relacao com a autopeca (ex: moveis, decoracao, pessoas, etc.)
+async function verificarRelevanciaImagem(url, p, dna) {
+    let base64, mediaType;
+    try {
+        const { buffer, contentType } = await fetchImageBuffer(url);
+        if (buffer.length > 5 * 1024 * 1024) return { relevante: false, motivo: 'Imagem muito grande' };
+        base64 = buffer.toString('base64');
+        mediaType = (contentType || '').split(';')[0].trim() || imageMediaType(url);
+        if (!/^image\//.test(mediaType)) return { relevante: false, motivo: 'Conteudo nao e imagem' };
+    } catch (e) {
+        return { relevante: false, motivo: 'Falha ao baixar: ' + e.message };
+    }
+
+    const dnaContexto = `Produto: ${p.descricao}\nReferencia/OEM: ${dna?.codigo_dna || p.ref}\nMarca/Fabricante: ${dna?.marca || dna?.fabricante || 'desconhecido'}\nFamilia: ${dna?.familia || 'desconhecida'}`;
+    const systemPrompt = `Voce e um verificador de relevancia de imagens para um catalogo comercial de autopecas (NTC).
+Sua tarefa e dizer se a imagem enviada pode realmente representar o produto abaixo, ou se e uma imagem sem nenhuma relacao (trazida por engano por uma busca generica na web).
+
+${dnaContexto}
+
+Responda SOMENTE com JSON no formato:
+{"relevante": <true ou false>, "confianca": <numero de 0 a 1>, "motivo": "<explicacao curta em portugues>"}
+
+Regras:
+- relevante=false se a imagem mostrar algo claramente diferente do tipo de produto (ex: moveis, decoracao, roupas, pessoas, paisagens, comida, eletronicos nao automotivos)
+- relevante=false tambem se a imagem contiver conteudo impróprio/adulto, violento ou que nao condiz com um catalogo comercial de autopecas
+- relevante=true somente se a imagem puder plausivelmente mostrar a autopeca, sua embalagem, aplicacao ou um item tecnicamente compativel com a descricao
+- Em caso de duvida real (imagem generica, nao especifica), prefira relevante=true com confianca baixa`;
+
+    const userContent = [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: 'Esta imagem pode representar o produto descrito no contexto? Responda no formato JSON pedido.' }
+    ];
+
+    const result = await callClaude(systemPrompt, userContent, 300);
+    if (result.error) return { relevante: true, confianca: null, motivo: 'Verificacao indisponivel: ' + result.error };
+
+    try {
+        const jsonText = (result.text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        const match = jsonText.match(/\{[\s\S]*\}/);
+        if (match) {
+            const parsed = JSON.parse(match[0]);
+            return {
+                relevante: parsed.relevante !== false,
+                confianca: typeof parsed.confianca === 'number' ? parsed.confianca : null,
+                motivo: parsed.motivo || ''
+            };
+        }
+    } catch (e) {}
+    return { relevante: true, confianca: null, motivo: 'Resposta da IA nao pode ser interpretada' };
+}
+
 // Categorias do "Banco de Imagens Certificadas" usadas pela classificacao automatica por IA
 const IMG_CATEGORIAS_IA = {
     Principal: 'Produto isolado em fundo neutro, sem contexto — foto de catalogo padrao',
@@ -1294,6 +1388,29 @@ async function searchDuckDuckGo(query) {
     } catch (e) { return null; }
 }
 
+// Busca resultados reais de paginas na web (titulo + trecho) via DuckDuckGo HTML —
+// a API "Instant Answer" usada acima quase sempre vem vazia para codigos de peca
+// de nicho (ex: "BDJ2513"), pois so cobre verbetes tipo Wikipedia. Esta busca HTML
+// devolve paginas reais (catalogos de fabricante, lojas, fichas tecnicas) que
+// frequentemente contem o dado documental que o produto realmente possui.
+async function searchWebSnippets(query) {
+    try {
+        const q = encodeURIComponent(query);
+        const r = await httpGet(`https://html.duckduckgo.com/html/?q=${q}`, {
+            'Accept-Language': 'pt-BR,pt;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (compatible; Genesis/5.0)'
+        });
+        const results = [];
+        const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+        const strip = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+        let m;
+        while ((m = re.exec(r.body)) && results.length < 5) {
+            results.push({ titulo: strip(m[2]), trecho: strip(m[3]), url: strip(m[1]) });
+        }
+        return results;
+    } catch (e) { return []; }
+}
+
 // Search Open Parts APIs for automotive part data
 async function searchOpenParts(codigo, marca) {
     // Try to get data from known automotive parts databases
@@ -1310,6 +1427,21 @@ async function searchOpenParts(codigo, marca) {
 }
 
 // Bing image search scraper (server-side, no CORS issue)
+// Filtro de seguranca de conteudo — bloqueia imagens impróprias/adultas.
+// Este e um catalogo comercial de autopecas; nenhuma imagem desse tipo
+// pode aparecer nos resultados de busca/enriquecimento.
+const TERMOS_IMPROPRIOS = [
+    'porn', 'pornô', 'sex', 'sexo', 'xxx', 'nude', 'nua', 'nudez', 'naked',
+    'erotic', 'erótic', 'adult', 'nsfw', 'escort', 'acompanhante', 'camgirl',
+    'webcam girl', 'hentai', 'fetish', 'fetiche', 'strip', 'lingerie sexy',
+    'onlyfans', 'redtube', 'xvideos', 'xnxx', 'pornhub', 'brazzers'
+];
+function isImagemImpropria(url) {
+    if (!url) return true;
+    const lower = url.toLowerCase();
+    return TERMOS_IMPROPRIOS.some(t => lower.includes(t));
+}
+
 async function searchBingImages(query) {
     const imgUrls = [];
     // Multiple query variations for better coverage
@@ -1318,20 +1450,20 @@ async function searchBingImages(query) {
         try {
             const encoded = encodeURIComponent(q);
             const r = await httpGet(
-                `https://www.bing.com/images/search?q=${encoded}&form=HDRSC2&first=1&mmasync=1`,
+                `https://www.bing.com/images/search?q=${encoded}&form=HDRSC2&first=1&mmasync=1&adlt=strict&safeSearch=strict`,
                 { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'Mozilla/5.0 (compatible; Genesis/5.0)', 'Referer': 'https://www.bing.com/' }
             );
             const matches = r.body.matchAll(/murl&quot;:&quot;(https?:\/\/[^&"]+\.(?:jpg|jpeg|png|webp))&quot;/gi);
             for (const m of matches) {
                 if (imgUrls.length >= 10) break;
                 const url = m[1].replace(/&amp;/g, '&');
-                if (!imgUrls.includes(url)) imgUrls.push(url);
+                if (!imgUrls.includes(url) && !isImagemImpropria(url)) imgUrls.push(url);
             }
             if (!imgUrls.length) {
                 const matches2 = r.body.matchAll(/"murl":"(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
                 for (const m of matches2) {
                     if (imgUrls.length >= 10) break;
-                    if (!imgUrls.includes(m[1])) imgUrls.push(m[1]);
+                    if (!imgUrls.includes(m[1]) && !isImagemImpropria(m[1])) imgUrls.push(m[1]);
                 }
             }
             if (imgUrls.length >= 4) break; // enough from first query
@@ -1359,8 +1491,8 @@ app.get('/api/produtos/:id/busca-web', async (req, res) => {
 
     // Combine image sources
     const imagens = [];
-    if (ddg && ddg.image) imagens.unshift({ url: ddg.image, fonte: 'DuckDuckGo', tipo: 'Principal' });
-    imgUrls.forEach(url => imagens.push({ url, fonte: 'Bing Images', tipo: 'Principal' }));
+    if (ddg && ddg.image && !isImagemImpropria(ddg.image)) imagens.unshift({ url: ddg.image, fonte: 'DuckDuckGo', tipo: 'Principal' });
+    imgUrls.filter(url => !isImagemImpropria(url)).forEach(url => imagens.push({ url, fonte: 'Bing Images', tipo: 'Principal' }));
 
     res.json({
         query,
@@ -1409,6 +1541,7 @@ app.post('/api/produtos/:id/importar-imagem-web', async (req, res) => {
 // -----------------------------------------------------------
 app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     const id = req.params.id;
+    try {
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
@@ -1421,14 +1554,30 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     const searchQuery = `${oem} ${descTipo} autopeça aplicação veicular`.trim();
     const imgQuery = `"${oem}" ${descTipo} autopeça foto produto`;
 
-    const [ddg, imgUrls] = await Promise.all([
+    const [ddg, imgUrls, paginas, paginas2] = await Promise.all([
         searchDuckDuckGo(searchQuery),
-        searchBingImages(imgQuery)
+        searchBingImages(imgQuery),
+        searchWebSnippets(`${oem} ${marca} ${descTipo}`.trim()),
+        searchWebSnippets(`"${oem}" catalogo ficha tecnica aplicacao`)
     ]);
 
-    // Additional search with just OEM code for better results
-    const ddg2 = await searchDuckDuckGo(oem + ' autopeca especificacao tecnica');
-    const contextoWeb = [ddg?.abstract, ddg2?.abstract].filter(Boolean).join(' | ') || 'sem resultado';
+    // Pesquisas adicionais e mais especificas — aumentam a chance de achar dados
+    // REAIS e confirmaveis (NCM, codigos equivalentes, ficha tecnica), em vez de
+    // deixar campos em branco. A IA continua proibida de inventar — so usa o que
+    // estiver de fato presente no contexto coletado aqui.
+    const [ddg2, ddg3, ddg4] = await Promise.all([
+        searchDuckDuckGo(oem + ' autopeca especificacao tecnica ficha'),
+        searchDuckDuckGo(`${oem} ${marca} NCM classificacao fiscal autopeca`),
+        searchDuckDuckGo(`${oem} codigo equivalente referencia cruzada OEM`)
+    ]);
+    const abstracts = [ddg?.abstract, ddg2?.abstract, ddg3?.abstract, ddg4?.abstract].filter(Boolean).join(' | ');
+    // Resultados de paginas reais (catalogos de fabricante, lojas, fichas tecnicas) —
+    // costumam trazer o dado documental que a Instant Answer API nao cobre
+    const paginasTexto = [...paginas, ...paginas2]
+        .filter(r => r.titulo || r.trecho)
+        .map(r => `[${r.titulo}] ${r.trecho} (${r.url})`)
+        .join(' || ');
+    const contextoWeb = [abstracts, paginasTexto].filter(Boolean).join(' | ') || 'sem resultado';
 
     const contexto = `Produto: ${p.descricao}
 Referencia/OEM: ${oem}
@@ -1439,7 +1588,7 @@ Contexto web encontrado: ${contextoWeb}`;
 TAREFA: Analise o produto e retorne SOMENTE JSON valido (sem markdown, sem texto antes ou depois).
 
 ESTRUTURA EXATA — nao altere os nomes dos campos:
-{"dna":{"fabricante":null,"marca":null,"familia":null,"codigo_oem":null},"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null}
+{"dna":{"fabricante":null,"marca":null,"familia":null,"codigo_oem":null},"aplicacoes":[{"montadora":null,"modelo":null,"versao":null,"motor":null,"cilindrada":null,"combustivel":null,"ano_ini":null,"ano_fim":null}],"codigos_cambiados":[{"tipo":"OEM","codigo":null,"fabricante":null}],"logistica":{"peso_liq":null,"peso_bruto":null,"altura":null,"largura":null,"comprimento":null},"fiscal":{"ncm":null,"cest":null},"especificacoes":{"diametro":null,"estrias":null,"material":null,"componentes":null},"descricao_tecnica":null,"estimativas":[{"campo":null,"valor":null,"confianca":null,"observacao":null}]}
 
 REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 - TIPO DO PRODUTO: determinado EXCLUSIVAMENTE pela descricao fornecida. Se diz "embreagem" e embreagem. Se diz "correia" e correia. NUNCA reclassifique com base no contexto web.
@@ -1450,10 +1599,13 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 - Se contexto web contradiz o tipo do produto da descricao: IGNORE o contexto, retorne null
 - NCM: apenas se compativel com o tipo do produto e com certeza absoluta (formato 0000.00.00)
 - aplicacoes: somente veiculos CONFIRMADOS com montadora+modelo+ano — null se nao confirmado
-- descricao_tecnica: descreva o produto com base APENAS no nome/ref — sem inventar componentes`;
+- descricao_tecnica: descreva o produto com base APENAS no nome/ref — sem inventar componentes
+- IMPORTANTE: o "Contexto web encontrado" abaixo reune VARIAS buscas (geral, especificacao tecnica, classificacao fiscal/NCM, codigos equivalentes). Vasculhe-o com atencao e preencha CADA campo em que houver informacao real e claramente correspondente ao produto — nao deixe um campo null so por preguica de procurar; deixe null APENAS quando a informacao realmente nao aparecer no contexto ou nao tiver certeza
+- ESTIMATIVAS: quando encontrar um dado PLAUSIVEL mas NAO 100% confirmavel (ex: medida tecnica citada em catalogo de terceiro, NCM provavel por familia, codigo equivalente mencionado em apenas uma fonte), NAO o invente nos campos confirmados acima — em vez disso, adicione um item em "estimativas" com: campo (nome do dado, ex: "Diametro do cilindro"), valor (o dado em si), confianca (0 a 1, sua avaliacao honesta de quao confiavel e a fonte) e observacao (de onde veio / por que nao e 100% certo). Use isso para nao perder informacao util, mas deixando claro que precisa confirmacao humana antes de publicar. NUNCA coloque em "estimativas" algo totalmente inventado sem nenhuma base no contexto coletado — so o que tiver alguma evidencia, ainda que fraca`;
 
     const userPrompt = `PRODUTO (tipo nao pode ser alterado): ${p.descricao}\n\nDados para extracao:\n\n${contexto}`;
     const claudeResult = await callClaude(systemPrompt, userPrompt, 1200);
+    if (claudeResult.error) return res.json({ success: false, error: claudeResult.error });
 
     let parsed = null;
     try {
@@ -1467,6 +1619,27 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 
     if (!parsed) return res.json({ success: false, error: 'Parse error', raw: claudeResult.text || claudeResult.error });
 
+    // Filtrar URLs claramente invalidas e bloquear conteudo improprio (catalogo comercial)
+    const candidateUrls = imgUrls.filter(url =>
+        url && url.startsWith('http') &&
+        !url.includes('logo') && !url.includes('favicon') &&
+        !url.includes('banner') && !url.includes('avatar') &&
+        !isImagemImpropria(url)
+    );
+    // Verificar relevancia de cada imagem com IA de visao ANTES de salvar — evita
+    // que a busca generica traga fotos sem nenhuma relacao com a autopeca
+    const dnaAtual = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
+    const aprovadas = [];
+    for (const url of candidateUrls.slice(0, 8)) {
+        if (aprovadas.length >= 6) break;
+        const verif = await verificarRelevanciaImagem(url, p, dnaAtual);
+        if (verif.relevante && (verif.confianca === null || verif.confianca >= 0.4)) {
+            aprovadas.push(url);
+        } else {
+            console.log(`[enriquecer-web] imagem descartada (${url}): ${verif.motivo}`);
+        }
+    }
+
     const txResult = db.transaction(() => {
         // DNA — salvar fabricante, marca, familia, codigo_oem separados (nunca com espacos no OEM)
         const dnaPayload = parsed.dna || {};
@@ -1475,20 +1648,26 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         const dnaMrc  = dnaPayload.marca || marca || null;
         const dnaFam  = dnaPayload.familia || null;
         const dnaOem  = (dnaPayload.codigo_oem || oem || '').split(/\s+/)[0] || null;
+        // Grupo industrial e origem do pais — vem da nossa base interna verificada de marcas
+        // (GRUPOS), nunca de invencao da IA. Se a marca detectada bate com uma marca conhecida,
+        // completa esses campos com dados de referencia confiaveis.
+        const brandRef = dnaMrc ? GRUPOS[dnaMrc.toLowerCase().trim()] : null;
+        const dnaGrupo = brandRef ? brandRef.grupo : null;
+        const dnaOrigem = brandRef ? brandRef.origem : null;
         // Só persiste DNA se codigo_dna + pelo menos marca ou fabricante estiverem presentes
         if (dnaOem && (dnaMrc || dnaFab)) {
             if (existDna) {
-                db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=? WHERE produto_id=?")
-                  .run(dnaFab, dnaMrc, dnaFam, dnaOem, id);
+                db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=?,grupo_industrial=COALESCE(?,grupo_industrial),origem_pais=COALESCE(?,origem_pais) WHERE produto_id=?")
+                  .run(dnaFab, dnaMrc, dnaFam, dnaOem, dnaGrupo, dnaOrigem, id);
             } else {
-                db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna) VALUES (?,?,?,?,?)")
-                  .run(id, dnaFab, dnaMrc, dnaFam, dnaOem);
+                db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna,grupo_industrial,origem_pais) VALUES (?,?,?,?,?,?,?)")
+                  .run(id, dnaFab, dnaMrc, dnaFam, dnaOem, dnaGrupo, dnaOrigem);
             }
         }
 
         // APLICACOES
         if (Array.isArray(parsed.aplicacoes)) {
-            const existSet = new Set(db.prepare('SELECT montadora||"|"||modelo||"|"||COALESCE(ano_ini,"") as k FROM aplicacoes_motor WHERE produto_id=?').all(id).map(r => r.k));
+            const existSet = new Set(db.prepare("SELECT montadora||'|'||modelo||'|'||COALESCE(ano_ini,'') as k FROM aplicacoes_motor WHERE produto_id=?").all(id).map(r => r.k));
             for (const a of parsed.aplicacoes) {
                 if (!a.montadora || !a.modelo) continue;
                 const k = `${a.montadora}|${a.modelo}|${a.ano_ini||''}`;
@@ -1520,23 +1699,27 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
             if (existF) db.prepare("UPDATE dados_fiscais SET ncm=COALESCE(?,ncm),cest=COALESCE(?,cest) WHERE produto_id=?").run(F.ncm||null,F.cest||null,id);
             else db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,cest,origem) VALUES (?,?,?,?)").run(id,F.ncm||null,F.cest||null,'0');
         }
-        // IMAGENS WEB — salvar com status Pendente para revisao humana
+        // IMAGENS WEB — somente as aprovadas pela verificacao de relevancia da IA, com status Pendente para revisao humana
         const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
         const existImgs = new Set(db.prepare('SELECT url FROM imagens WHERE produto_id=?').all(id).map(i => i.url));
         let si = 0;
-        // Filtrar URLs claramente invalidas
-        const validUrls = imgUrls.filter(url =>
-            url && url.startsWith('http') &&
-            !url.includes('logo') && !url.includes('favicon') &&
-            !url.includes('banner') && !url.includes('avatar')
-        );
-        for (const url of validUrls.slice(0, 6)) {
+        for (const url of aprovadas) {
             if (!existImgs.has(url)) {
                 // Status Pendente — precisa aprovacao humana pois busca web pode trazer imagem errada
                 db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(id, slots[si%slots.length], url, 'Web-Auto', 'Pendente');
                 existImgs.add(url);
             }
             si++;
+        }
+        // ESTIMATIVAS — dados plausiveis porem nao confirmados; gravados separados e
+        // sinalizados na interface como "Estimado pela IA — confira antes de publicar"
+        db.prepare('DELETE FROM dados_estimados_ia WHERE produto_id=?').run(id);
+        if (Array.isArray(parsed.estimativas)) {
+            for (const est of parsed.estimativas) {
+                if (!est || !est.campo || est.valor === null || est.valor === undefined || est.valor === '') continue;
+                db.prepare("INSERT INTO dados_estimados_ia (produto_id,campo,valor,confianca,observacao) VALUES (?,?,?,?,?)")
+                  .run(id, String(est.campo), String(est.valor), typeof est.confianca === 'number' ? est.confianca : null, est.observacao || null);
+            }
         }
         // RECALCULAR NTC
         const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
@@ -1557,7 +1740,8 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
             codigos: db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id),
             imagens: db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id),
             logistica: db.prepare('SELECT * FROM logistica WHERE produto_id=?').get(id) || {},
-            fiscal: db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id) || {}
+            fiscal: db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(id) || {},
+            estimativas: db.prepare('SELECT * FROM dados_estimados_ia WHERE produto_id=?').all(id)
         };
     })();
 
@@ -1569,6 +1753,10 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         especificacoes: parsed.especificacoes || {},
         descricao_tecnica: parsed.descricao_tecnica || null
     });
+    } catch (e) {
+        console.error('[enriquecer-web] erro:', e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // -----------------------------------------------------------
@@ -1600,6 +1788,7 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
     const aplicacoes = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(id);
     const codigos = db.prepare('SELECT * FROM codigos_cambiados WHERE produto_id=?').all(id);
     const imagens = db.prepare('SELECT * FROM imagens WHERE produto_id=?').all(id);
+    const estimativas = db.prepare('SELECT * FROM dados_estimados_ia WHERE produto_id=?').all(id);
     const historico = db.prepare('SELECT * FROM historico_ntc WHERE produto_id=? ORDER BY criado_em DESC LIMIT 20').all(id);
 
     // NCT simplified 4-module
@@ -1629,7 +1818,7 @@ app.get('/api/produtos/:id/enriquecimento', async (req, res) => {
 
     res.json({
         produto: p, dna: dna||{}, fiscal: fiscal||{}, logistica: logistica||{},
-        aplicacoes, codigos, imagens,
+        aplicacoes, codigos, imagens, estimativas,
         nct: { score: nctScore, status: nctStatus, modules: { TF: nctTF, FM: nctFM, CO: nctCO, AV: nctAV } },
         imgQuality, historico,
         wix_id: p.wix_id,
@@ -2193,6 +2382,52 @@ app.post('/api/catalogo/scraper', async (req, res) => {
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Reenriquecimento leve de um produto — busca web + IA, grava dados/imagens encontrados
+// e recalcula o NTC. Usado tanto pelo lote automatico quanto pela fila de reprocessamento
+// (produtos REPROVADOS ou rejeitados pelo operador NUNCA ficam travados — sempre voltam
+// para esta rotina de reenriquecimento, conforme a regra: "nao bloquear, reprocessar").
+async function reenriquecerProdutoLeve(produtoId) {
+    const prod = db.prepare('SELECT * FROM produtos WHERE id=?').get(produtoId);
+    if (!prod) return;
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produtoId);
+    const oem = dna?.codigo_dna || prod.ref.replace(/^[A-Z]+-/i, '');
+    const marca = dna?.marca || '';
+    const [ddg, imgUrls] = await Promise.all([searchDuckDuckGo(`${marca} ${oem} ${prod.descricao}`), searchBingImages(`${marca} ${oem} autopeca`)]);
+    const systemPrompt = `Retorne SOMENTE JSON: {"aplicacoes":[{"montadora":"","modelo":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0},"fiscal":{"ncm":""}}. Use null para dados sem certeza.`;
+    const cl = await callClaude(systemPrompt, `Produto: ${prod.descricao}\nMarca: ${marca}\nOEM: ${oem}\nWeb: ${ddg?.abstract||''}`);
+    let parsed = null;
+    try { parsed = JSON.parse((cl.text||'').replace(/```json|```/g,'').trim()); } catch (e) {}
+    if (parsed) {
+        if (parsed.fiscal?.ncm) {
+            const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(produtoId);
+            if (!existF) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,origem) VALUES (?,?,?)").run(produtoId, parsed.fiscal.ncm, '0');
+        }
+        if (Array.isArray(parsed.aplicacoes)) {
+            for (const a of parsed.aplicacoes.slice(0, 5)) {
+                if (!a.montadora || !a.modelo) continue;
+                const ex = db.prepare('SELECT id FROM aplicacoes_motor WHERE produto_id=? AND modelo=?').get(produtoId, a.modelo);
+                if (!ex) db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo,ano_ini,ano_fim) VALUES (?,?,?,?,?)").run(produtoId, a.montadora, a.modelo, a.ano_ini||null, a.ano_fim||null);
+            }
+        }
+    }
+    for (const imgUrl of imgUrls.filter(u => !isImagemImpropria(u)).slice(0,2)) {
+        const ex = db.prepare('SELECT id FROM imagens WHERE produto_id=? AND url=?').get(produtoId, imgUrl);
+        if (!ex) db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(produtoId, 'Principal', imgUrl, 'Lote-Web', 'Aprovada');
+    }
+    // Recalc NTC
+    const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produtoId);
+    const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(produtoId);
+    const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(produtoId);
+    const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
+    const nctFM = prod.descricao?.length > 20 ? 0.85 : 0.30;
+    const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
+    const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
+    const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
+    const ntcStatus = ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
+    db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,status=CASE WHEN status='Fila de Reenriquecimento' THEN 'Ativo' ELSE status END,atualizado_em=datetime('now','localtime') WHERE id=?").run(ntcScore, ntcStatus, produtoId);
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(produtoId, prod.ntc_score, ntcScore, prod.ntc_status, ntcStatus, 'Reenriquecimento automatico (fila de reprocessamento)');
+}
+
 // Enriquecimento em lote — enriquece todos PENDENTES/REPROVADOS com web
 app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
     const { limite = 10 } = req.body;
@@ -2201,46 +2436,7 @@ app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
     // Run enrichment in background (fire-and-forget)
     (async () => {
         for (const p of produtos) {
-            try {
-                const prod = db.prepare('SELECT * FROM produtos WHERE id=?').get(p.id);
-                const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
-                const oem = dna?.codigo_dna || prod.ref.replace(/^[A-Z]+-/i, '');
-                const marca = dna?.marca || '';
-                const [ddg, imgUrls] = await Promise.all([searchDuckDuckGo(`${marca} ${oem} ${prod.descricao}`), searchBingImages(`${marca} ${oem} autopeca`)]);
-                const systemPrompt = `Retorne SOMENTE JSON: {"aplicacoes":[{"montadora":"","modelo":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0},"fiscal":{"ncm":""}}. Use null para dados sem certeza.`;
-                const cl = await callClaude(systemPrompt, `Produto: ${prod.descricao}\nMarca: ${marca}\nOEM: ${oem}\nWeb: ${ddg?.abstract||''}`);
-                let parsed = null;
-                try { parsed = JSON.parse((cl.text||'').replace(/```json|```/g,'').trim()); } catch (e) {}
-                if (parsed) {
-                    // Salvar dados basicos
-                    if (parsed.fiscal?.ncm) {
-                        const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(p.id);
-                        if (!existF) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,origem) VALUES (?,?,?)").run(p.id, parsed.fiscal.ncm, '0');
-                    }
-                    if (Array.isArray(parsed.aplicacoes)) {
-                        for (const a of parsed.aplicacoes.slice(0, 5)) {
-                            if (!a.montadora || !a.modelo) continue;
-                            const ex = db.prepare('SELECT id FROM aplicacoes_motor WHERE produto_id=? AND modelo=?').get(p.id, a.modelo);
-                            if (!ex) db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo,ano_ini,ano_fim) VALUES (?,?,?,?,?)").run(p.id, a.montadora, a.modelo, a.ano_ini||null, a.ano_fim||null);
-                        }
-                    }
-                }
-                for (const imgUrl of imgUrls.slice(0,2)) {
-                    const ex = db.prepare('SELECT id FROM imagens WHERE produto_id=? AND url=?').get(p.id, imgUrl);
-                    if (!ex) db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(p.id, 'Principal', imgUrl, 'Lote-Web', 'Aprovada');
-                }
-                // Recalc NTC
-                const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
-                const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(p.id);
-                const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(p.id);
-                const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
-                const nctFM = prod.descricao?.length > 20 ? 0.85 : 0.30;
-                const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
-                const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
-                const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
-                const ntcStatus = ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
-                db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,atualizado_em=datetime('now','localtime') WHERE id=?").run(ntcScore, ntcStatus, p.id);
-            } catch (e) { /* continue batch */ }
+            try { await reenriquecerProdutoLeve(p.id); } catch (e) { /* continue batch */ }
             await new Promise(r => setTimeout(r, 500));
         }
     })();
@@ -2280,14 +2476,19 @@ app.listen(PORT, () => {
     console.log('Health: http://localhost:' + PORT + '/api/health');
 
     // Keep-alive: ping proprio servidor a cada 14 min para evitar cold start no Render
-    const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+    let APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+    if (!/^https?:\/\//i.test(APP_URL)) APP_URL = 'https://' + APP_URL;
     if (process.env.NODE_ENV === 'production') {
         setInterval(() => {
-            const urlObj = new URL(APP_URL + '/api/health');
-            const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
-            mod.get(APP_URL + '/api/health', (r) => {
-                console.log('[keep-alive] ping ' + r.statusCode);
-            }).on('error', () => {});
+            try {
+                const urlObj = new URL(APP_URL + '/api/health');
+                const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
+                mod.get(urlObj, (r) => {
+                    console.log('[keep-alive] ping ' + r.statusCode);
+                }).on('error', () => {});
+            } catch (e) {
+                console.error('[keep-alive] erro ao montar URL:', e.message);
+            }
         }, 14 * 60 * 1000);
     }
 });
