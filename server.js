@@ -1153,15 +1153,20 @@ app.post('/api/produtos/:id/aprovar', (req, res) => {
     });
 });
 
-// Rejeitar produto — marca imagens como rejeitadas e loga motivo
+// Rejeitar produto — NUNCA bloqueia: envia para a fila de reenriquecimento e
+// dispara o reprocessamento automatico (busca web + IA + recalculo do NTC),
+// conforme a regra do Genesis: produto reprovado/rejeitado e reprocessado, nao travado.
 app.post('/api/produtos/:id/rejeitar', (req, res) => {
     const id = req.params.id;
     const { motivo = 'Rejeitado pelo operador' } = req.body;
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     db.prepare("UPDATE imagens SET status='Rejeitada' WHERE produto_id=? AND status='Pendente'").run(id);
-    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(id, p.ntc_score, p.ntc_score, p.ntc_status, p.ntc_status, 'Rejeitado: ' + motivo);
-    res.json({ success: true, produto: db.prepare('SELECT id,ref,descricao,ntc_score,ntc_status,status FROM produtos WHERE id=?').get(id) });
+    db.prepare("UPDATE produtos SET status='Fila de Reenriquecimento', ntc_status='REPROVADO', atualizado_em=datetime('now','localtime') WHERE id=?").run(id);
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(id, p.ntc_score, p.ntc_score, p.ntc_status, 'REPROVADO', `Rejeitado: ${motivo} — enviado para fila de reenriquecimento`);
+    // Reprocessamento automatico em segundo plano — nao bloqueia a resposta
+    reenriquecerProdutoLeve(id).catch(() => {});
+    res.json({ success: true, produto: db.prepare('SELECT id,ref,descricao,ntc_score,ntc_status,status FROM produtos WHERE id=?').get(id), msg: 'Produto enviado para fila de reenriquecimento — sera reprocessado automaticamente.' });
 });
 
 // Aprovacao em lote
@@ -2377,6 +2382,52 @@ app.post('/api/catalogo/scraper', async (req, res) => {
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Reenriquecimento leve de um produto — busca web + IA, grava dados/imagens encontrados
+// e recalcula o NTC. Usado tanto pelo lote automatico quanto pela fila de reprocessamento
+// (produtos REPROVADOS ou rejeitados pelo operador NUNCA ficam travados — sempre voltam
+// para esta rotina de reenriquecimento, conforme a regra: "nao bloquear, reprocessar").
+async function reenriquecerProdutoLeve(produtoId) {
+    const prod = db.prepare('SELECT * FROM produtos WHERE id=?').get(produtoId);
+    if (!prod) return;
+    const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produtoId);
+    const oem = dna?.codigo_dna || prod.ref.replace(/^[A-Z]+-/i, '');
+    const marca = dna?.marca || '';
+    const [ddg, imgUrls] = await Promise.all([searchDuckDuckGo(`${marca} ${oem} ${prod.descricao}`), searchBingImages(`${marca} ${oem} autopeca`)]);
+    const systemPrompt = `Retorne SOMENTE JSON: {"aplicacoes":[{"montadora":"","modelo":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0},"fiscal":{"ncm":""}}. Use null para dados sem certeza.`;
+    const cl = await callClaude(systemPrompt, `Produto: ${prod.descricao}\nMarca: ${marca}\nOEM: ${oem}\nWeb: ${ddg?.abstract||''}`);
+    let parsed = null;
+    try { parsed = JSON.parse((cl.text||'').replace(/```json|```/g,'').trim()); } catch (e) {}
+    if (parsed) {
+        if (parsed.fiscal?.ncm) {
+            const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(produtoId);
+            if (!existF) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,origem) VALUES (?,?,?)").run(produtoId, parsed.fiscal.ncm, '0');
+        }
+        if (Array.isArray(parsed.aplicacoes)) {
+            for (const a of parsed.aplicacoes.slice(0, 5)) {
+                if (!a.montadora || !a.modelo) continue;
+                const ex = db.prepare('SELECT id FROM aplicacoes_motor WHERE produto_id=? AND modelo=?').get(produtoId, a.modelo);
+                if (!ex) db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo,ano_ini,ano_fim) VALUES (?,?,?,?,?)").run(produtoId, a.montadora, a.modelo, a.ano_ini||null, a.ano_fim||null);
+            }
+        }
+    }
+    for (const imgUrl of imgUrls.filter(u => !isImagemImpropria(u)).slice(0,2)) {
+        const ex = db.prepare('SELECT id FROM imagens WHERE produto_id=? AND url=?').get(produtoId, imgUrl);
+        if (!ex) db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(produtoId, 'Principal', imgUrl, 'Lote-Web', 'Aprovada');
+    }
+    // Recalc NTC
+    const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(produtoId);
+    const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(produtoId);
+    const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(produtoId);
+    const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
+    const nctFM = prod.descricao?.length > 20 ? 0.85 : 0.30;
+    const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
+    const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
+    const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
+    const ntcStatus = ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
+    db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,status=CASE WHEN status='Fila de Reenriquecimento' THEN 'Ativo' ELSE status END,atualizado_em=datetime('now','localtime') WHERE id=?").run(ntcScore, ntcStatus, produtoId);
+    db.prepare("INSERT INTO historico_ntc (produto_id,ntc_anterior,ntc_novo,status_anterior,status_novo,alteracao) VALUES (?,?,?,?,?,?)").run(produtoId, prod.ntc_score, ntcScore, prod.ntc_status, ntcStatus, 'Reenriquecimento automatico (fila de reprocessamento)');
+}
+
 // Enriquecimento em lote — enriquece todos PENDENTES/REPROVADOS com web
 app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
     const { limite = 10 } = req.body;
@@ -2385,46 +2436,7 @@ app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
     // Run enrichment in background (fire-and-forget)
     (async () => {
         for (const p of produtos) {
-            try {
-                const prod = db.prepare('SELECT * FROM produtos WHERE id=?').get(p.id);
-                const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
-                const oem = dna?.codigo_dna || prod.ref.replace(/^[A-Z]+-/i, '');
-                const marca = dna?.marca || '';
-                const [ddg, imgUrls] = await Promise.all([searchDuckDuckGo(`${marca} ${oem} ${prod.descricao}`), searchBingImages(`${marca} ${oem} autopeca`)]);
-                const systemPrompt = `Retorne SOMENTE JSON: {"aplicacoes":[{"montadora":"","modelo":"","ano_ini":0,"ano_fim":0}],"codigos_cambiados":[{"tipo":"OEM","codigo":"","fabricante":""}],"logistica":{"peso_liq":0},"fiscal":{"ncm":""}}. Use null para dados sem certeza.`;
-                const cl = await callClaude(systemPrompt, `Produto: ${prod.descricao}\nMarca: ${marca}\nOEM: ${oem}\nWeb: ${ddg?.abstract||''}`);
-                let parsed = null;
-                try { parsed = JSON.parse((cl.text||'').replace(/```json|```/g,'').trim()); } catch (e) {}
-                if (parsed) {
-                    // Salvar dados basicos
-                    if (parsed.fiscal?.ncm) {
-                        const existF = db.prepare('SELECT id FROM dados_fiscais WHERE produto_id=?').get(p.id);
-                        if (!existF) db.prepare("INSERT INTO dados_fiscais (produto_id,ncm,origem) VALUES (?,?,?)").run(p.id, parsed.fiscal.ncm, '0');
-                    }
-                    if (Array.isArray(parsed.aplicacoes)) {
-                        for (const a of parsed.aplicacoes.slice(0, 5)) {
-                            if (!a.montadora || !a.modelo) continue;
-                            const ex = db.prepare('SELECT id FROM aplicacoes_motor WHERE produto_id=? AND modelo=?').get(p.id, a.modelo);
-                            if (!ex) db.prepare("INSERT INTO aplicacoes_motor (produto_id,montadora,modelo,ano_ini,ano_fim) VALUES (?,?,?,?,?)").run(p.id, a.montadora, a.modelo, a.ano_ini||null, a.ano_fim||null);
-                        }
-                    }
-                }
-                for (const imgUrl of imgUrls.filter(u => !isImagemImpropria(u)).slice(0,2)) {
-                    const ex = db.prepare('SELECT id FROM imagens WHERE produto_id=? AND url=?').get(p.id, imgUrl);
-                    if (!ex) db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(p.id, 'Principal', imgUrl, 'Lote-Web', 'Aprovada');
-                }
-                // Recalc NTC
-                const dnaU = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(p.id);
-                const fiscalU = db.prepare('SELECT * FROM dados_fiscais WHERE produto_id=?').get(p.id);
-                const aplicU = db.prepare('SELECT * FROM aplicacoes_motor WHERE produto_id=?').all(p.id);
-                const nctTF = dnaU?.codigo_dna ? 0.97 : (dnaU?.marca || dnaU?.fabricante ? 0.70 : dnaU?.familia ? 0.50 : 0.10);
-                const nctFM = prod.descricao?.length > 20 ? 0.85 : 0.30;
-                const nctCO = fiscalU?.ncm ? 1.00 : 0.00;
-                const nctAV = aplicU.length >= 5 ? 1.00 : aplicU.length >= 3 ? 0.80 : aplicU.length > 0 ? aplicU.length * 0.20 : 0.00;
-                const ntcScore = parseFloat((nctTF*0.50 + nctFM*0.20 + nctCO*0.20 + nctAV*0.10).toFixed(4));
-                const ntcStatus = ntcScore >= 0.95 ? 'APROVADO' : ntcScore >= 0.60 ? 'PENDENTE' : 'REPROVADO';
-                db.prepare("UPDATE produtos SET ntc_score=?,ntc_status=?,atualizado_em=datetime('now','localtime') WHERE id=?").run(ntcScore, ntcStatus, p.id);
-            } catch (e) { /* continue batch */ }
+            try { await reenriquecerProdutoLeve(p.id); } catch (e) { /* continue batch */ }
             await new Promise(r => setTimeout(r, 500));
         }
     })();
