@@ -1594,14 +1594,20 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         const dnaMrc  = dnaPayload.marca || marca || null;
         const dnaFam  = dnaPayload.familia || null;
         const dnaOem  = (dnaPayload.codigo_oem || oem || '').split(/\s+/)[0] || null;
+        // Grupo industrial e origem do pais — vem da nossa base interna verificada de marcas
+        // (GRUPOS), nunca de invencao da IA. Se a marca detectada bate com uma marca conhecida,
+        // completa esses campos com dados de referencia confiaveis.
+        const brandRef = dnaMrc ? GRUPOS[dnaMrc.toLowerCase().trim()] : null;
+        const dnaGrupo = brandRef ? brandRef.grupo : null;
+        const dnaOrigem = brandRef ? brandRef.origem : null;
         // Só persiste DNA se codigo_dna + pelo menos marca ou fabricante estiverem presentes
         if (dnaOem && (dnaMrc || dnaFab)) {
             if (existDna) {
-                db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=? WHERE produto_id=?")
-                  .run(dnaFab, dnaMrc, dnaFam, dnaOem, id);
+                db.prepare("UPDATE dna SET fabricante=COALESCE(?,fabricante),marca=COALESCE(?,marca),familia=COALESCE(?,familia),codigo_dna=?,grupo_industrial=COALESCE(?,grupo_industrial),origem_pais=COALESCE(?,origem_pais) WHERE produto_id=?")
+                  .run(dnaFab, dnaMrc, dnaFam, dnaOem, dnaGrupo, dnaOrigem, id);
             } else {
-                db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna) VALUES (?,?,?,?,?)")
-                  .run(id, dnaFab, dnaMrc, dnaFam, dnaOem);
+                db.prepare("INSERT INTO dna (produto_id,fabricante,marca,familia,codigo_dna,grupo_industrial,origem_pais) VALUES (?,?,?,?,?,?,?)")
+                  .run(id, dnaFab, dnaMrc, dnaFam, dnaOem, dnaGrupo, dnaOrigem);
             }
         }
 
