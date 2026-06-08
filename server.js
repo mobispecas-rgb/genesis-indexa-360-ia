@@ -549,8 +549,8 @@ function calcNTC(text, extraData = {}) {
     else lgMissing.push('Dimensoes nao informadas');
 
     // FI - Fiscal Images (0.03) - CRITICAL RULE: never invent images
-    let fiScore = extraData.imagens && extraData.imagens.length > 0
-        ? Math.min(1, extraData.imagens.length * 0.33) : 0;
+    // Uma unica imagem de boa qualidade ja e suficiente — nao exige multiplos angulos
+    let fiScore = extraData.imagens && extraData.imagens.length > 0 ? 1 : 0;
     const fiEvidence = fiScore > 0 ? [extraData.imagens.length + ' imagem(ns) cadastrada(s)'] : [];
     const fiMissing = fiScore === 0 ? ['Imagens do produto nao cadastradas'] : [];
 
