@@ -785,6 +785,11 @@ tr:hover td{background:#1c1c1c}
       <!-- Corpo do enriquecimento -->
       <div id="enr-body" style="display:none">
 
+        <div id="enr-loading" style="display:none;text-align:center;padding:40px">
+          <div class="spinner"></div>
+          <div style="margin-top:12px;font-size:.8rem;color:var(--text3)">Carregando dados...</div>
+        </div>
+
         <!-- Linha 1: DNA + NTC lado a lado -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
 
@@ -4268,12 +4273,13 @@ async function loadEnriquecimento() {
     if (!id) { alert('Selecione um produto'); return; }
     currentEnrId = id;
     const body = document.getElementById('enr-body');
-    body.style.display = 'none';
-    body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div><div style="margin-top:12px;font-size:.8rem;color:var(--text3)">Carregando dados...</div></div>';
+    const loading = document.getElementById('enr-loading');
     body.style.display = 'block';
+    if (loading) loading.style.display = 'block';
 
     const d = await api('/produtos/' + id + '/enriquecimento');
     enrData = d;
+    if (loading) loading.style.display = 'none';
     renderEnriquecimento(d);
 }
 
@@ -4722,11 +4728,12 @@ async function buscarOemEnr() {
 async function loadEnriquecimentoPorId(id) {
     currentEnrId = id;
     const body = document.getElementById('enr-body');
-    body.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+    const loading = document.getElementById('enr-loading');
     body.style.display = 'block';
+    if (loading) loading.style.display = 'block';
     const d = await api('/produtos/' + id + '/enriquecimento');
     enrData = d;
-    body.innerHTML = '';
+    if (loading) loading.style.display = 'none';
     renderEnriquecimento(d);
 }
 
