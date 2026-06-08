@@ -1327,6 +1327,21 @@ async function searchOpenParts(codigo, marca) {
 }
 
 // Bing image search scraper (server-side, no CORS issue)
+// Filtro de seguranca de conteudo — bloqueia imagens impróprias/adultas.
+// Este e um catalogo comercial de autopecas; nenhuma imagem desse tipo
+// pode aparecer nos resultados de busca/enriquecimento.
+const TERMOS_IMPROPRIOS = [
+    'porn', 'pornô', 'sex', 'sexo', 'xxx', 'nude', 'nua', 'nudez', 'naked',
+    'erotic', 'erótic', 'adult', 'nsfw', 'escort', 'acompanhante', 'camgirl',
+    'webcam girl', 'hentai', 'fetish', 'fetiche', 'strip', 'lingerie sexy',
+    'onlyfans', 'redtube', 'xvideos', 'xnxx', 'pornhub', 'brazzers'
+];
+function isImagemImpropria(url) {
+    if (!url) return true;
+    const lower = url.toLowerCase();
+    return TERMOS_IMPROPRIOS.some(t => lower.includes(t));
+}
+
 async function searchBingImages(query) {
     const imgUrls = [];
     // Multiple query variations for better coverage
@@ -1335,20 +1350,20 @@ async function searchBingImages(query) {
         try {
             const encoded = encodeURIComponent(q);
             const r = await httpGet(
-                `https://www.bing.com/images/search?q=${encoded}&form=HDRSC2&first=1&mmasync=1`,
+                `https://www.bing.com/images/search?q=${encoded}&form=HDRSC2&first=1&mmasync=1&adlt=strict&safeSearch=strict`,
                 { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'Mozilla/5.0 (compatible; Genesis/5.0)', 'Referer': 'https://www.bing.com/' }
             );
             const matches = r.body.matchAll(/murl&quot;:&quot;(https?:\/\/[^&"]+\.(?:jpg|jpeg|png|webp))&quot;/gi);
             for (const m of matches) {
                 if (imgUrls.length >= 10) break;
                 const url = m[1].replace(/&amp;/g, '&');
-                if (!imgUrls.includes(url)) imgUrls.push(url);
+                if (!imgUrls.includes(url) && !isImagemImpropria(url)) imgUrls.push(url);
             }
             if (!imgUrls.length) {
                 const matches2 = r.body.matchAll(/"murl":"(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi);
                 for (const m of matches2) {
                     if (imgUrls.length >= 10) break;
-                    if (!imgUrls.includes(m[1])) imgUrls.push(m[1]);
+                    if (!imgUrls.includes(m[1]) && !isImagemImpropria(m[1])) imgUrls.push(m[1]);
                 }
             }
             if (imgUrls.length >= 4) break; // enough from first query
@@ -1376,8 +1391,8 @@ app.get('/api/produtos/:id/busca-web', async (req, res) => {
 
     // Combine image sources
     const imagens = [];
-    if (ddg && ddg.image) imagens.unshift({ url: ddg.image, fonte: 'DuckDuckGo', tipo: 'Principal' });
-    imgUrls.forEach(url => imagens.push({ url, fonte: 'Bing Images', tipo: 'Principal' }));
+    if (ddg && ddg.image && !isImagemImpropria(ddg.image)) imagens.unshift({ url: ddg.image, fonte: 'DuckDuckGo', tipo: 'Principal' });
+    imgUrls.filter(url => !isImagemImpropria(url)).forEach(url => imagens.push({ url, fonte: 'Bing Images', tipo: 'Principal' }));
 
     res.json({
         query,
@@ -1543,11 +1558,12 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         const slots = ['Principal','Lateral','Tecnica','Detalhe','Embalagem','Aplicada'];
         const existImgs = new Set(db.prepare('SELECT url FROM imagens WHERE produto_id=?').all(id).map(i => i.url));
         let si = 0;
-        // Filtrar URLs claramente invalidas
+        // Filtrar URLs claramente invalidas e bloquear conteudo improprio (catalogo comercial)
         const validUrls = imgUrls.filter(url =>
             url && url.startsWith('http') &&
             !url.includes('logo') && !url.includes('favicon') &&
-            !url.includes('banner') && !url.includes('avatar')
+            !url.includes('banner') && !url.includes('avatar') &&
+            !isImagemImpropria(url)
         );
         for (const url of validUrls.slice(0, 6)) {
             if (!existImgs.has(url)) {
@@ -2248,7 +2264,7 @@ app.post('/api/catalogo/enriquecer-lote', async (req, res) => {
                         }
                     }
                 }
-                for (const imgUrl of imgUrls.slice(0,2)) {
+                for (const imgUrl of imgUrls.filter(u => !isImagemImpropria(u)).slice(0,2)) {
                     const ex = db.prepare('SELECT id FROM imagens WHERE produto_id=? AND url=?').get(p.id, imgUrl);
                     if (!ex) db.prepare("INSERT INTO imagens (produto_id,tipo,url,origem,status) VALUES (?,?,?,?,?)").run(p.id, 'Principal', imgUrl, 'Lote-Web', 'Aprovada');
                 }
