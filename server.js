@@ -2298,14 +2298,19 @@ app.listen(PORT, () => {
     console.log('Health: http://localhost:' + PORT + '/api/health');
 
     // Keep-alive: ping proprio servidor a cada 14 min para evitar cold start no Render
-    const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+    let APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+    if (!/^https?:\/\//i.test(APP_URL)) APP_URL = 'https://' + APP_URL;
     if (process.env.NODE_ENV === 'production') {
         setInterval(() => {
-            const urlObj = new URL(APP_URL + '/api/health');
-            const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
-            mod.get(APP_URL + '/api/health', (r) => {
-                console.log('[keep-alive] ping ' + r.statusCode);
-            }).on('error', () => {});
+            try {
+                const urlObj = new URL(APP_URL + '/api/health');
+                const mod = urlObj.protocol === 'https:' ? require('https') : require('http');
+                mod.get(urlObj, (r) => {
+                    console.log('[keep-alive] ping ' + r.statusCode);
+                }).on('error', () => {});
+            } catch (e) {
+                console.error('[keep-alive] erro ao montar URL:', e.message);
+            }
         }, 14 * 60 * 1000);
     }
 });
