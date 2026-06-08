@@ -2050,7 +2050,7 @@ function onPageActivate(page) {
     else if (page === 'relatorios') loadRelatorios();
     else if (page === 'wix') loadWixStatus();
     else if (page === 'config') loadConfig();
-    else if (page === 'enriquecimento') populateProductSelects();
+    else if (page === 'enriquecimento') { resetEnriquecimentoOem(); populateProductSelects(); }
     else if (page === 'aprovacao') loadAprovacao();
     else if (page === 'congelados') loadCongelados();
     else if (page === 'catalogo') loadLoteStats();
@@ -4267,6 +4267,21 @@ let currentEnrId = null;
 let vozPerfil = 'tecnico';
 let enrData = {};
 
+function resetEnriquecimentoOem() {
+    currentEnrId = null;
+    enrData = {};
+    const body = document.getElementById('enr-body');
+    const loading = document.getElementById('enr-loading');
+    const input = document.getElementById('enr-oem-input');
+    const st = document.getElementById('enriquecer-web-status');
+    const sel = document.getElementById('enr-prod-select');
+    if (body) body.style.display = 'none';
+    if (loading) loading.style.display = 'none';
+    if (input) input.value = '';
+    if (st) st.innerHTML = '';
+    if (sel) sel.value = '';
+}
+
 async function loadEnriquecimento() {
     const sel = document.getElementById('enr-prod-select');
     const id = sel ? sel.value : null;
@@ -4703,7 +4718,10 @@ async function buscarOemEnr() {
     const res = await api('/produtos?search=' + encodeURIComponent(oem) + '&limit=10');
     const lista = res.data || [];
     const oemUp = oem.toUpperCase();
-    const match = lista.find(p => p.ref && p.ref.toUpperCase().split(/[\s\/,;-]+/).includes(oemUp))
+    const rawUp = raw.toUpperCase();
+    const match = lista.find(p => p.ref && p.ref.toUpperCase() === rawUp)
+        || lista.find(p => p.ref && p.ref.toUpperCase() === oemUp)
+        || lista.find(p => p.ref && p.ref.toUpperCase().split(/[\s\/,;-]+/).includes(oemUp))
         || lista.find(p => p.ref && p.ref.toUpperCase().includes(oemUp));
     if (match) {
         currentEnrId = match.id;
