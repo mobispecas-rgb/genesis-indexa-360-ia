@@ -1515,9 +1515,16 @@ app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
         searchBingImages(imgQuery)
     ]);
 
-    // Additional search with just OEM code for better results
-    const ddg2 = await searchDuckDuckGo(oem + ' autopeca especificacao tecnica');
-    const contextoWeb = [ddg?.abstract, ddg2?.abstract].filter(Boolean).join(' | ') || 'sem resultado';
+    // Pesquisas adicionais e mais especificas — aumentam a chance de achar dados
+    // REAIS e confirmaveis (NCM, codigos equivalentes, ficha tecnica), em vez de
+    // deixar campos em branco. A IA continua proibida de inventar — so usa o que
+    // estiver de fato presente no contexto coletado aqui.
+    const [ddg2, ddg3, ddg4] = await Promise.all([
+        searchDuckDuckGo(oem + ' autopeca especificacao tecnica ficha'),
+        searchDuckDuckGo(`${oem} ${marca} NCM classificacao fiscal autopeca`),
+        searchDuckDuckGo(`${oem} codigo equivalente referencia cruzada OEM`)
+    ]);
+    const contextoWeb = [ddg?.abstract, ddg2?.abstract, ddg3?.abstract, ddg4?.abstract].filter(Boolean).join(' | ') || 'sem resultado';
 
     const contexto = `Produto: ${p.descricao}
 Referencia/OEM: ${oem}
@@ -1539,7 +1546,8 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 - Se contexto web contradiz o tipo do produto da descricao: IGNORE o contexto, retorne null
 - NCM: apenas se compativel com o tipo do produto e com certeza absoluta (formato 0000.00.00)
 - aplicacoes: somente veiculos CONFIRMADOS com montadora+modelo+ano — null se nao confirmado
-- descricao_tecnica: descreva o produto com base APENAS no nome/ref — sem inventar componentes`;
+- descricao_tecnica: descreva o produto com base APENAS no nome/ref — sem inventar componentes
+- IMPORTANTE: o "Contexto web encontrado" abaixo reune VARIAS buscas (geral, especificacao tecnica, classificacao fiscal/NCM, codigos equivalentes). Vasculhe-o com atencao e preencha CADA campo em que houver informacao real e claramente correspondente ao produto — nao deixe um campo null so por preguica de procurar; deixe null APENAS quando a informacao realmente nao aparecer no contexto ou nao tiver certeza`;
 
     const userPrompt = `PRODUTO (tipo nao pode ser alterado): ${p.descricao}\n\nDados para extracao:\n\n${contexto}`;
     const claudeResult = await callClaude(systemPrompt, userPrompt, 1200);
