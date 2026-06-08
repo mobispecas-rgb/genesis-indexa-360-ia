@@ -5511,7 +5511,7 @@ const Templates = {
         const sec = document.getElementById('templates-dna-ntc-sec');
         sec.style.display = (sec.style.display === 'none') ? '' : 'none';
     },
-    analisarDna() {
+    async analisarDna() {
         const produto = document.getElementById('dna-produto').value.trim();
         const out = document.getElementById('dna-resultado');
         if (!produto) { out.innerHTML = '<span style="color:var(--primary2)">Informe o produto/SKU para analisar.</span>'; return; }
@@ -5523,13 +5523,22 @@ const Templates = {
             ['dna-c-categoria', 'Categorizacao']
         ].filter(([id]) => document.getElementById(id).checked);
         if (!criterios.length) { out.innerHTML = '<span style="color:var(--primary2)">Selecione ao menos um criterio.</span>'; return; }
-        const score = (Math.random() * 0.4 + 0.6).toFixed(2);
-        let badge, cor;
-        if (score >= 0.95) { badge = 'APROVADO'; cor = 'badge-green'; }
-        else if (score >= 0.60) { badge = 'PENDENTE'; cor = 'badge-yellow'; }
-        else { badge = 'REPROVADO'; cor = 'badge-red'; }
-        out.innerHTML = `Score NTC para <b>${produto}</b>: <b>${score}</b> &nbsp; <span class="badge ${cor}">${badge}</span>`
-            + `<div class="muted" style="margin-top:6px;">Criterios analisados: ${criterios.map(c => c[1]).join(', ')}.</div>`;
+        out.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px"></div> Analisando com o Motor NTC 4.0...';
+        // Analise real — usa o mesmo Motor NTC 4.0 do backend, sem dados inventados
+        const r = await api('/ia/ntc', { method: 'POST', body: JSON.stringify({ texto: produto }) });
+        if (!r || typeof r.score !== 'number') {
+            out.innerHTML = '<span style="color:var(--danger)">&#x26A0; Nao foi possivel analisar este produto.</span>';
+            return;
+        }
+        const pct = (r.score * 100).toFixed(1);
+        const cor = r.status === 'APROVADO' ? 'badge-green' : r.status === 'PENDENTE' ? 'badge-yellow' : 'badge-red';
+        const modulosSel = criterios.map(([, label]) => label);
+        const detalhes = Object.values(r.modules || {})
+            .map(m => `<li><b>${m.label}</b>: ${(m.score*100).toFixed(0)}% — ${(m.evidence&&m.evidence[0]) || (m.missing&&m.missing[0]) || ''}</li>`)
+            .join('');
+        out.innerHTML = `Score NTC real para <b>${produto}</b>: <b>${pct}%</b> &nbsp; <span class="badge ${cor}">${r.status}</span>`
+            + `<div class="muted" style="margin-top:6px;">Criterios selecionados: ${modulosSel.join(', ')}.</div>`
+            + `<ul style="margin-top:8px;font-size:.78rem;color:var(--text2);padding-left:18px">${detalhes}</ul>`;
     }
 };
 
