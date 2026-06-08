@@ -2705,8 +2705,11 @@ function dprodRenderImagens(imagens) {
     const main = document.getElementById('dprod-img-main');
     const slots = document.getElementById('dprod-img-slots');
     if (!slots) return;
+    const sugestaoBox = document.getElementById('dprod-img-ia-sugestao');
     if (!imagens.length) {
         if (main) main.style.display = 'none';
+        if (sugestaoBox) sugestaoBox.innerHTML = '';
+        dprodSelectedImgId = null;
         slots.innerHTML = '<div class="empty" style="font-size:.78rem">Nenhuma imagem. Use ENRIQUECER NA WEB.</div>';
         return;
     }
