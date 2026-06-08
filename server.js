@@ -228,6 +228,12 @@ CREATE TABLE IF NOT EXISTS logs_ia (
 // Add wix_id column if not exists (migration)
 try { db.exec("ALTER TABLE produtos ADD COLUMN wix_id TEXT"); } catch(e) { /* already exists */ }
 
+// Corrige dados gravados com o mapeamento incorreto 'PERFECT' -> 'Perfect Circle'
+// (eram empresas/marcas distintas; o vinculo era invalido e foi removido de GRUPOS)
+try {
+    db.prepare("UPDATE dna SET grupo_industrial=NULL, origem_pais=NULL WHERE marca='PERFECT' AND grupo_industrial='Perfect Circle'").run();
+} catch (e) { /* tabela ainda nao existe na primeira execucao */ }
+
 // -----------------------------------------------------------
 // SEED DATA
 // -----------------------------------------------------------
@@ -298,7 +304,6 @@ const GRUPOS = {
     'mobis': { grupo: 'Hyundai Mobis', origem: 'Coreia', tier: 1 },
     'bendix': { grupo: 'Bendix', origem: 'EUA', tier: 2 },
     'trw': { grupo: 'ZF TRW', origem: 'EUA', tier: 1 },
-    'perfect': { grupo: 'Perfect Circle', origem: 'Brasil', tier: 2 },
     'marelli': { grupo: 'Marelli Holdings', origem: 'Italia', tier: 1 },
     'delphi': { grupo: 'BorgWarner', origem: 'EUA', tier: 1 },
     'gates': { grupo: 'Gates Industrial', origem: 'EUA', tier: 1 },
