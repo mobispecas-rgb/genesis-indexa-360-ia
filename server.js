@@ -1426,6 +1426,7 @@ app.post('/api/produtos/:id/importar-imagem-web', async (req, res) => {
 // -----------------------------------------------------------
 app.post('/api/produtos/:id/enriquecer-web', async (req, res) => {
     const id = req.params.id;
+    try {
     const p = db.prepare('SELECT * FROM produtos WHERE id=?').get(id);
     if (!p) return res.status(404).json({ error: 'Produto nao encontrado' });
     const dna = db.prepare('SELECT * FROM dna WHERE produto_id=?').get(id);
@@ -1506,7 +1507,7 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 
         // APLICACOES
         if (Array.isArray(parsed.aplicacoes)) {
-            const existSet = new Set(db.prepare('SELECT montadora||"|"||modelo||"|"||COALESCE(ano_ini,"") as k FROM aplicacoes_motor WHERE produto_id=?').all(id).map(r => r.k));
+            const existSet = new Set(db.prepare("SELECT montadora||'|'||modelo||'|'||COALESCE(ano_ini,'') as k FROM aplicacoes_motor WHERE produto_id=?").all(id).map(r => r.k));
             for (const a of parsed.aplicacoes) {
                 if (!a.montadora || !a.modelo) continue;
                 const k = `${a.montadora}|${a.modelo}|${a.ano_ini||''}`;
@@ -1587,6 +1588,10 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
         especificacoes: parsed.especificacoes || {},
         descricao_tecnica: parsed.descricao_tecnica || null
     });
+    } catch (e) {
+        console.error('[enriquecer-web] erro:', e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // -----------------------------------------------------------
