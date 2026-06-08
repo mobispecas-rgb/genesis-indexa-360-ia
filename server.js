@@ -1471,6 +1471,7 @@ REGRAS ABSOLUTAS — VIOLACAO E ERRO CRITICO:
 
     const userPrompt = `PRODUTO (tipo nao pode ser alterado): ${p.descricao}\n\nDados para extracao:\n\n${contexto}`;
     const claudeResult = await callClaude(systemPrompt, userPrompt, 1200);
+    if (claudeResult.error) return res.json({ success: false, error: claudeResult.error });
 
     let parsed = null;
     try {
