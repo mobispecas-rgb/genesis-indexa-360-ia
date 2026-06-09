@@ -163,7 +163,7 @@ tr:hover td{background:#ffffff04}
     <div class="sb-item" onclick="nav('catalogo')"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
     <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Enriquecimento OEM</div>
     <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
-    <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o<span class="sb-badge">12</span></div>
+    <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o<span class="sb-badge" id="badge-aprovacao">0</span></div>
     <div class="sb-item" onclick="nav('aprov-cadastro')"><span class="icon">&#128221;</span>Aprova&ccedil;&atilde;o de Cadastro</div>
     <div class="sb-item" onclick="nav('aprovados')"><span class="icon">&#127775;</span>Aprovados</div>
     <div class="sb-item" onclick="nav('congelados')"><span class="icon">&#10052;&#65039;</span>Congelados</div>
@@ -579,9 +579,43 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         </div>
       </div>
     </div>
-    <div class="page" id="page-aprovacao"><div class="stub-page"><div class="stub-icon">&#9989;</div><h2>Aprova&ccedil;&atilde;o</h2><p>Em desenvolvimento &mdash; Aprova&ccedil;&atilde;o</p></div></div>
-    <div class="page" id="page-aprov-cadastro"><div class="stub-page"><div class="stub-icon">&#128221;</div><h2>Aprova&ccedil;&atilde;o de Cadastro</h2><p>Em desenvolvimento &mdash; Aprova&ccedil;&atilde;o de Cadastro</p></div></div>
-    <div class="page" id="page-aprovados"><div class="stub-page"><div class="stub-icon">&#127775;</div><h2>Aprovados</h2><p>Em desenvolvimento &mdash; Aprovados</p></div></div>
+    <!-- FILA DE APROVAÇÃO -->
+    <div class="page" id="page-aprovacao">
+      <div class="page-title">&#9989; Fila de Aprova&ccedil;&atilde;o</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Produtos salvos aguardam revis&atilde;o. Enrique&ccedil;a at&eacute; atingir qualidade m&iacute;nima para Google CPC / SEO, depois sincronize com ERP, Wix e Mercado Livre.</p>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-secondary aprov-filtro active" onclick="aprovFiltrar('todos',this)">Todos</button>
+        <button class="btn btn-sm btn-secondary aprov-filtro" onclick="aprovFiltrar('REPROVADO',this)" style="color:#f44336">&#9679; Reprovados</button>
+        <button class="btn btn-sm btn-secondary aprov-filtro" onclick="aprovFiltrar('PENDENTE',this)"  style="color:#ff9800">&#9679; Pendentes</button>
+        <button class="btn btn-sm btn-secondary aprov-filtro" onclick="aprovFiltrar('APROVADO',this)"  style="color:#00c853">&#9679; Aprovados</button>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-sm btn-primary" onclick="aprovSincronizarLote()">&#128640; Sincronizar Aprovados</button>
+        </div>
+      </div>
+
+      <div id="aprov-lista"></div>
+    </div>
+
+    <!-- APROVAÇÃO DE CADASTRO (ficha detalhada) -->
+    <div class="page" id="page-aprov-cadastro">
+      <div class="page-title">&#128221; Revis&atilde;o de Cadastro</div>
+      <div id="aprov-cad-conteudo">
+        <p style="color:#555;font-size:13px">Selecione um produto na Fila de Aprova&ccedil;&atilde;o para revisar.</p>
+      </div>
+    </div>
+
+    <!-- APROVADOS -->
+    <div class="page" id="page-aprovados">
+      <div class="page-title">&#127775; Aprovados &mdash; Prontos para Publicar</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Produtos com NTC &#8805; 95% aprovados para publica&ccedil;&atilde;o.</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="aprovPublicarTodos()">&#128640; Publicar Todos no Bling + Wix</button>
+        <button class="btn btn-secondary btn-sm" onclick="aprovPublicarML()">&#128722; Mercado Livre</button>
+      </div>
+      <div id="aprovados-lista"></div>
+    </div>
     <div class="page" id="page-congelados"><div class="stub-page"><div class="stub-icon">&#10052;</div><h2>Congelados</h2><p>Em desenvolvimento &mdash; Congelados</p></div></div>
     <div class="page" id="page-ean"><div class="stub-page"><div class="stub-icon">&#128247;</div><h2>EAN Scanner GS1</h2><p>Em desenvolvimento &mdash; EAN Scanner GS1</p></div></div>
     <div class="page" id="page-aplicacoes"><div class="stub-page"><div class="stub-icon">&#128663;</div><h2>Aplica&ccedil;&otilde;es Motor</h2><p>Em desenvolvimento &mdash; Aplica&ccedil;&otilde;es Motor</p></div></div>
@@ -926,6 +960,8 @@ function nav(page) {
   if (page === 'dashboard') loadDashboard();
   if (page === 'produtos') loadProdutos();
   if (page === 'imagens') loadMinhasImagens();
+  if (page === 'aprovacao') { atualizarBadgeAprovacao(); aprovRenderLista(); }
+  if (page === 'aprovados') aprovRenderAprovados();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -1553,6 +1589,229 @@ function uploadImagemLocal() {
 
 // ===== INDEXADOR DE CATÁLOGO =====
 var _catDados = {};
+
+// ===== FILA DE APROVAÇÃO =====
+var _aprovFiltroAtivo = 'todos';
+
+function atualizarBadgeAprovacao() {
+  var prods = getProds();
+  var pendentes = prods.filter(function(p){ return p.decisao !== 'APROVADO' || !p._publicado; }).length;
+  var badge = document.getElementById('badge-incompletos');
+  var badgeAprov = document.getElementById('badge-aprovacao') || document.querySelector('[onclick*="aprovacao"] .sb-badge');
+  if (badgeAprov) badgeAprov.textContent = pendentes;
+  if (badge) badge.textContent = prods.filter(function(p){ return (p.ntc||0) < 0.95; }).length;
+}
+
+function aprovFiltrar(tipo, btn) {
+  _aprovFiltroAtivo = tipo;
+  document.querySelectorAll('.aprov-filtro').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  aprovRenderLista();
+}
+
+function aprovRenderLista() {
+  var todos = getProds();
+  var prods = _aprovFiltroAtivo === 'todos' ? todos : todos.filter(function(p){ return p.decisao === _aprovFiltroAtivo; });
+  var el = document.getElementById('aprov-lista');
+  if (!el) return;
+  if (!prods.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:#555">Nenhum produto na fila.</div>';
+    return;
+  }
+  el.innerHTML = prods.map(function(p, i) {
+    var idx = todos.indexOf(p);
+    var ntc = Math.round((p.ntc||0)*100);
+    var cor = p.decisao==='APROVADO' ? '#00c853' : p.decisao==='PENDENTE' ? '#ff9800' : '#f44336';
+    // Score bar qualidade SEO / CPC (baseado no NTC + campos de enriquecimento)
+    var seoPct = Math.min(100, Math.round(
+      (p.ncm?15:0) + (p.codigo_oem?15:0) + (p.ean?10:0) + (p.motor?10:0) +
+      (p.material?10:0) + (p.nome && p.nome.length>10?15:0) + ((p.ntc||0)>=0.95?25:((p.ntc||0)>=0.60?12:0))
+    ));
+    var seoCor = seoPct>=80?'#00c853':seoPct>=50?'#ff9800':'#f44336';
+    return '<div style="background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:16px;margin-bottom:10px">'
+      // Cabeçalho
+      + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:180px">'
+      + '<div style="font-size:14px;font-weight:700;color:#fff">' + esc(p.nome||p.codigo_fabricante||'—') + '</div>'
+      + '<div style="font-size:11px;color:#555;margin-top:2px">'
+      + (p.fabricante?'<span style="color:#888">'+esc(p.fabricante)+'</span> &nbsp;':'')
+      + (p.codigo_fabricante?'<code style="color:#ff6b00">'+esc(p.codigo_fabricante)+'</code>':'')
+      + '</div></div>'
+      // NTC
+      + '<div style="text-align:center;min-width:60px">'
+      + '<div style="font-size:22px;font-weight:900;color:'+cor+'">'+ntc+'%</div>'
+      + '<div style="font-size:10px;color:#555">NTC</div>'
+      + '</div>'
+      // SEO/CPC score
+      + '<div style="text-align:center;min-width:60px">'
+      + '<div style="font-size:22px;font-weight:900;color:'+seoCor+'">'+seoPct+'%</div>'
+      + '<div style="font-size:10px;color:#555">SEO/CPC</div>'
+      + '</div>'
+      + badgeHtml(p.decisao)
+      + '</div>'
+      // Barra de qualidade
+      + '<div style="background:#0d0d0d;border-radius:4px;height:6px;margin-bottom:10px;overflow:hidden">'
+      + '<div style="height:100%;width:'+seoPct+'%;background:'+seoCor+';border-radius:4px;transition:width .5s"></div>'
+      + '</div>'
+      // Checklist rápido
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px;margin-bottom:12px">'
+      + checkPill('NCM', p.ncm) + checkPill('OEM', p.codigo_oem) + checkPill('EAN', p.ean)
+      + checkPill('Motor', p.motor) + checkPill('Material', p.material) + checkPill('Imagens', p.iv_foto_principal)
+      + '</div>'
+      // Ações
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovRevisarDetalhe('+idx+')">&#128269; Revisar</button>'
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerProd('+idx+')">&#10024; Enriquecer</button>'
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerImagens('+idx+')">&#128444; Imagens</button>'
+      + (p.decisao!=='APROVADO' ? '<button class="btn btn-sm btn-secondary" onclick="aprovCompletar('+idx+')" style="color:#ff9800">&#127919; Completar NTC</button>' : '')
+      + (p.decisao==='APROVADO' ? '<button class="btn btn-sm btn-primary" onclick="aprovPublicar('+idx+')">&#128640; Publicar</button>' : '')
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovExcluir('+idx+')" style="color:#f44336;margin-left:auto">&#128465; Apagar</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function checkPill(label, val) {
+  var ok = val && String(val).trim().length > 0;
+  return '<span style="padding:2px 8px;border-radius:10px;background:' + (ok?'#00c85320':'#f4433620') + ';color:' + (ok?'#00c853':'#f44336') + '">'
+    + (ok?'✔':'✖') + ' ' + label + '</span>';
+}
+
+function aprovRenderAprovados() {
+  var prods = getProds().filter(function(p){ return p.decisao==='APROVADO'; });
+  var el = document.getElementById('aprovados-lista');
+  if (!el) return;
+  if (!prods.length) { el.innerHTML='<div style="text-align:center;padding:40px;color:#555">Nenhum produto aprovado ainda.</div>'; return; }
+  el.innerHTML = prods.map(function(p, i) {
+    var idx = getProds().indexOf(p);
+    return '<div style="background:#161616;border:1px solid #00c85330;border-radius:10px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
+      + '<div style="flex:1"><div style="font-weight:700;color:#fff">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+      + '<div style="font-size:11px;color:#555">'+esc(p.fabricante||'')+' · <code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></div>'
+      + '<span style="color:#00c853;font-weight:700">'+Math.round((p.ntc||0)*100)+'% NTC</span>'
+      + '<button class="btn btn-sm btn-primary" onclick="aprovPublicar('+idx+')">&#129695; Bling</button>'
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovPublicarWixItem('+idx+')">&#127760; Wix</button>'
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovPublicarML()">&#128722; ML</button>'
+      + '</div>';
+  }).join('');
+}
+
+function aprovRevisarDetalhe(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  nav('aprov-cadastro');
+  var el = document.getElementById('aprov-cad-conteudo');
+  var ntc = Math.round((p.ntc||0)*100);
+  var cor = p.decisao==='APROVADO'?'#00c853':p.decisao==='PENDENTE'?'#ff9800':'#f44336';
+  var campos = [
+    ['Part Number', p.codigo_fabricante], ['Fabricante', p.fabricante], ['Nome', p.nome],
+    ['Família', p.familia_tecnica], ['OEM', p.codigo_oem], ['NCM', p.ncm],
+    ['EAN', p.ean], ['Motor', p.motor], ['Material', p.material],
+    ['Marca Veículo', p.marca], ['Modelo', p.modelo], ['Ano', p.ano_inicial&&p.ano_final?p.ano_inicial+'–'+p.ano_final:null],
+    ['RAST-HASH', p.rast_hash]
+  ];
+  el.innerHTML = '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+    + '<div style="font-size:36px;font-weight:900;color:'+cor+'">'+ntc+'%</div>'
+    + '<div><div style="font-size:16px;font-weight:700;color:#fff">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+    + '<div style="font-size:12px;color:#555">'+esc(p.fabricante||'')+' · '+esc(p.codigo_fabricante||'')+'</div></div>'
+    + badgeHtml(p.decisao)
+    + '</div>'
+    + '<div class="grid2" style="gap:8px;margin-bottom:16px">'
+    + campos.map(function(kv){ return kv[1]?'<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px"><div style="font-size:10px;color:#555;text-transform:uppercase">'+kv[0]+'</div><div style="color:#ccc;font-weight:600;font-size:13px">'+esc(String(kv[1]))+'</div></div>':''; }).join('')
+    + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + '<button class="btn btn-secondary" onclick="aprovEnriquecerProd('+idx+')">&#10024; Enriquecer Novamente</button>'
+    + '<button class="btn btn-secondary" onclick="aprovCompletar('+idx+')">&#127919; Completar NTC</button>'
+    + '<button class="btn btn-secondary" onclick="aprovEnriquecerImagens('+idx+')">&#128444; Imagens</button>'
+    + (p.decisao==='APROVADO'?'<button class="btn btn-primary" onclick="aprovPublicar('+idx+')">&#128640; Publicar</button>':'')
+    + '<button class="btn btn-secondary" onclick="aprovExcluir('+idx+')" style="color:#f44336;margin-left:auto">&#128465; Apagar</button>'
+    + '</div>';
+}
+
+function aprovEnriquecerProd(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  window._catDados = Object.assign({}, p);
+  nav('oem');
+  setTimeout(function() {
+    document.getElementById('oem-input').value = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' ');
+    if (p.codigo_fabricante) document.getElementById('oem-f-sku').value = p.codigo_fabricante;
+    if (p.fabricante)        document.getElementById('oem-f-fab').value = p.fabricante;
+    if (p.nome)              document.getElementById('oem-f-nome').value = p.nome;
+    if (p.familia_tecnica)   document.getElementById('oem-f-familia').value = p.familia_tecnica;
+    if (p.codigo_oem)        document.getElementById('oem-f-oem').value = p.codigo_oem;
+    if (p.ncm)               document.getElementById('oem-f-ncm').value = p.ncm;
+    if (p.ean)               document.getElementById('oem-f-ean').value = p.ean;
+    if (p.motor)             document.getElementById('oem-f-motor').value = p.motor;
+    if (p.material)          document.getElementById('oem-f-material').value = p.material;
+    document.getElementById('oem-resultado').style.display = 'block';
+    oemRecalcularNTC();
+  }, 150);
+}
+
+function aprovCompletar(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  nav('completar-ntc');
+  setTimeout(function() {
+    document.getElementById('cntc-json-area').style.display = 'block';
+    document.getElementById('cntc-json-input').value = JSON.stringify(p, null, 2);
+    cntcAnalisarJSON();
+  }, 200);
+}
+
+function aprovEnriquecerImagens(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  nav('imagens');
+  setTimeout(function() {
+    document.getElementById('img-search-q').value = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' ');
+    buscarImagens();
+  }, 200);
+}
+
+function aprovExcluir(idx) {
+  if (!confirm('Apagar este produto da fila?')) return;
+  var prods = getProds(); prods.splice(idx, 1); saveProds(prods);
+  atualizarStats(); atualizarBadgeAprovacao(); aprovRenderLista();
+}
+
+async function aprovPublicar(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  var btn = event.target; btn.textContent = '⏳'; btn.disabled = true;
+  var erros = [];
+  try { var rb = await api('POST', '/bling/produto', p); if (!rb.ok) erros.push('Bling: '+rb.erro); } catch(e) { erros.push('Bling: '+e.message); }
+  try { var rw = await api('POST', '/wix/produto', { nome: (p.nome||'')+(p.fabricante?' '+p.fabricante:''), sku: p.codigo_fabricante }); if (!rw.ok) erros.push('Wix: '+rw.erro); } catch(e) { erros.push('Wix: '+e.message); }
+  var prods = getProds(); if (prods[idx]) { prods[idx]._publicado = true; prods[idx]._publicado_em = new Date().toISOString(); saveProds(prods); }
+  btn.textContent = erros.length ? '⚠️' : '✅';
+  btn.disabled = false;
+  alert(erros.length ? 'Publicado com avisos:\n' + erros.join('\n') : '✅ Produto enviado ao Bling e Wix!');
+  aprovRenderLista();
+}
+
+async function aprovPublicarWixItem(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  try {
+    var r = await api('POST', '/wix/produto', { nome: (p.nome||'')+(p.fabricante?' '+p.fabricante:''), sku: p.codigo_fabricante });
+    alert(r.ok ? '✅ Enviado ao Wix!' : '✖ Wix: ' + r.erro);
+  } catch(e) { alert('✖ ' + e.message); }
+}
+
+async function aprovSincronizarLote() {
+  var prods = getProds().filter(function(p){ return p.decisao==='APROVADO' && !p._publicado; });
+  if (!prods.length) { alert('Nenhum produto aprovado para sincronizar.'); return; }
+  if (!confirm('Sincronizar ' + prods.length + ' produto(s) aprovado(s) com Bling e Wix?')) return;
+  var ok=0, erros=0;
+  for (var i=0; i<prods.length; i++) {
+    try { var r = await api('POST', '/bling/produto', prods[i]); if (r.ok) ok++; else erros++; } catch(e) { erros++; }
+  }
+  alert('✅ ' + ok + ' enviados · ✖ ' + erros + ' erros');
+  aprovRenderLista();
+}
+
+async function aprovPublicarTodos() { aprovSincronizarLote(); }
+async function aprovPublicarML() { alert('Integração Mercado Livre — configure ML_ACCESS_TOKEN no Render para ativar.'); }
 
 // ===== ENRIQUECIMENTO OEM =====
 var _oemDados = {};
@@ -2431,7 +2690,9 @@ function catSalvar() {
   addProdRow(prod);
   atualizarStats();
   cntcPreencherSelect();
-  document.getElementById('cat-save-status').textContent = '✅ Produto salvo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + (r.decisao||'REPROVADO');
+  document.getElementById('cat-save-status').innerHTML = '✅ Produto enviado para <strong>Fila de Aprovação</strong>! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + (r.decisao||'REPROVADO')
+    + ' &nbsp;<button class="btn btn-sm btn-secondary" onclick="nav(\'aprovacao\')" style="margin-left:8px">Ver Fila ›</button>';
+  atualizarBadgeAprovacao();
 }
 
 function catEnriquecerCadastro() {
