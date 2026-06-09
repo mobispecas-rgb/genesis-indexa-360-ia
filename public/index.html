@@ -406,7 +406,56 @@ tr:hover td{background:#ffffff04}
     <!-- STUB PAGES -->
     <div class="page" id="page-catalogo"><div class="stub-page"><div class="stub-icon">&#128218;</div><h2>Cat&aacute;logo de Produtos</h2><p>Em desenvolvimento &mdash; Cat&aacute;logo de Produtos</p></div></div>
     <div class="page" id="page-oem"><div class="stub-page"><div class="stub-icon">&#10024;</div><h2>Enriquecimento OEM</h2><p>Em desenvolvimento &mdash; Enriquecimento OEM</p></div></div>
-    <div class="page" id="page-massa"><div class="stub-page"><div class="stub-icon">&#128194;</div><h2>Enriquecimento por ID/Massa</h2><p>Em desenvolvimento &mdash; Enriquecimento por ID/Massa</p></div></div>
+    <div class="page" id="page-massa">
+      <div class="page-title">&#128194; Enriquecimento por ID / Massa</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha. O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
+
+      <div class="card">
+        <div class="card-title">&#128203; Lista de C&oacute;digos</div>
+        <div class="form-group">
+          <textarea id="massa-input" rows="8" style="font-family:monospace;font-size:13px;line-height:1.8" placeholder="Cole aqui — um c&oacute;digo por linha:
+
+VKM71809
+KIT9063
+5300512100 INA
+PASTILHA DE FREIO - PF4201 - FREMAX
+93353848"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="massaProcessar()">&#9889; Processar em Lote</button>
+          <button class="btn btn-secondary" onclick="massaLimpar()">Limpar</button>
+          <span id="massa-status" style="font-size:12px;color:#555"></span>
+        </div>
+      </div>
+
+      <div id="massa-resultado" style="display:none">
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <span>&#128202; Resultado do Lote</span>
+            <div style="display:flex;gap:8px">
+              <span id="massa-resumo" style="font-size:12px;color:#888"></span>
+              <button class="btn btn-sm btn-secondary" onclick="massaSalvarAprovados()">&#10003; Salvar Aprovados/Pendentes</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table id="massa-table" style="width:100%;font-size:13px">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">#</th>
+                  <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">C&oacute;digo / Nome</th>
+                  <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Fabricante</th>
+                  <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Fam&iacute;lia</th>
+                  <th style="text-align:center;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">NTC</th>
+                  <th style="text-align:center;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Status</th>
+                  <th style="text-align:center;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">A&ccedil;&atilde;o</th>
+                </tr>
+              </thead>
+              <tbody id="massa-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-aprovacao"><div class="stub-page"><div class="stub-icon">&#9989;</div><h2>Aprova&ccedil;&atilde;o</h2><p>Em desenvolvimento &mdash; Aprova&ccedil;&atilde;o</p></div></div>
     <div class="page" id="page-aprov-cadastro"><div class="stub-page"><div class="stub-icon">&#128221;</div><h2>Aprova&ccedil;&atilde;o de Cadastro</h2><p>Em desenvolvimento &mdash; Aprova&ccedil;&atilde;o de Cadastro</p></div></div>
     <div class="page" id="page-aprovados"><div class="stub-page"><div class="stub-icon">&#127775;</div><h2>Aprovados</h2><p>Em desenvolvimento &mdash; Aprovados</p></div></div>
@@ -1090,6 +1139,99 @@ function uploadImagemLocal() {
 
 // ===== INDEXADOR DE CATÁLOGO =====
 var _catDados = {};
+
+// ===== ENRIQUECIMENTO EM MASSA =====
+var _massaItens = [];
+
+function massaLimpar() {
+  document.getElementById('massa-input').value = '';
+  document.getElementById('massa-resultado').style.display = 'none';
+  document.getElementById('massa-status').textContent = '';
+  _massaItens = [];
+}
+
+async function massaProcessar() {
+  var linhas = (document.getElementById('massa-input').value || '').split('\n')
+    .map(function(l){ return l.trim(); }).filter(Boolean);
+  if (!linhas.length) { alert('Cole ao menos um código.'); return; }
+
+  var status = document.getElementById('massa-status');
+  var tbody  = document.getElementById('massa-tbody');
+  tbody.innerHTML = '';
+  _massaItens = [];
+  document.getElementById('massa-resultado').style.display = 'block';
+
+  var aprov=0, pend=0, repr=0;
+
+  for (var i = 0; i < linhas.length; i++) {
+    var linha = linhas[i];
+    status.textContent = 'Processando ' + (i+1) + ' / ' + linhas.length + ' …';
+
+    var parsed = parseTextoIA(linha);
+    var ntcData = {
+      nome: parsed.descricao || linha,
+      codigo_fabricante: parsed.sku || null,
+      fabricante: parsed.fabricante || null,
+      familia_tecnica: parsed.familia || null
+    };
+
+    var ntc = 0, decisao = 'REPROVADO', rast = '';
+    try {
+      var r = await api('POST', '/motor/nct', ntcData);
+      ntc = r.ntc || 0; decisao = r.decisao || 'REPROVADO'; rast = r.rast_hash || '';
+    } catch(e) { decisao = 'REPROVADO'; }
+
+    if (decisao === 'APROVADO') aprov++;
+    else if (decisao === 'PENDENTE') pend++;
+    else repr++;
+
+    var item = Object.assign({}, ntcData, { ntc: ntc, decisao: decisao, rast_hash: rast, _linha: linha });
+    _massaItens.push(item);
+
+    var cor = decisao === 'APROVADO' ? '#00c853' : decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #1a1a1a';
+    tr.innerHTML = '<td style="padding:8px;color:#555">' + (i+1) + '</td>'
+      + '<td style="padding:8px;color:#ccc"><code style="color:#ff6b00">' + esc(parsed.sku||'—') + '</code><br><span style="font-size:11px;color:#555">' + esc(parsed.descricao||linha) + '</span></td>'
+      + '<td style="padding:8px;color:#aaa">' + esc(parsed.fabricante||'—') + '</td>'
+      + '<td style="padding:8px;color:#888">' + esc(parsed.familia||'—') + '</td>'
+      + '<td style="padding:8px;text-align:center;font-weight:700;color:' + cor + '">' + Math.round(ntc*100) + '%</td>'
+      + '<td style="padding:8px;text-align:center">' + badgeHtml(decisao) + '</td>'
+      + '<td style="padding:8px;text-align:center"><button class="btn btn-sm btn-secondary" onclick="massaCompletarItem(' + i + ')">&#127919; Completar</button></td>';
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('massa-resumo').textContent =
+    '✅ ' + aprov + ' aprovados · ⏳ ' + pend + ' pendentes · ✖ ' + repr + ' reprovados';
+  status.textContent = '✅ Lote concluído — ' + linhas.length + ' itens processados.';
+}
+
+function massaSalvarAprovados() {
+  var prods = getProds();
+  var salvos = 0;
+  _massaItens.forEach(function(item) {
+    if (item.decisao === 'APROVADO' || item.decisao === 'PENDENTE') {
+      prods.push(Object.assign({}, item, { id: 'massa-' + Date.now() + '-' + Math.random(), _fonte: 'massa', ts: Date.now() }));
+      salvos++;
+    }
+  });
+  saveProds(prods);
+  atualizarStats();
+  loadProdutos();
+  document.getElementById('massa-status').textContent = '✅ ' + salvos + ' produtos salvos no catálogo.';
+}
+
+function massaCompletarItem(idx) {
+  var item = _massaItens[idx];
+  if (!item) return;
+  // Carrega no Completar NTC
+  nav('completar-ntc');
+  setTimeout(function() {
+    document.getElementById('cntc-json-area').style.display = 'block';
+    document.getElementById('cntc-json-input').value = JSON.stringify(item, null, 2);
+    cntcAnalisarJSON();
+  }, 200);
+}
 
 function catLimpar() {
   document.getElementById('cat-input').value = '';
