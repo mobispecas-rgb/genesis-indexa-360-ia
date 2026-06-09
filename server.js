@@ -219,10 +219,11 @@ async function getBlingToken() {
   if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
   if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render');
   const https = require('https');
-  const qs = `grant_type=client_credentials&client_id=${process.env.BLING_CLIENT_ID}&client_secret=${process.env.BLING_CLIENT_SECRET}`;
+  const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
+  const qs = 'grant_type=client_credentials';
   const data = await new Promise((resolve, reject) => {
     const req = https.request({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(qs) }
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + creds, 'Content-Length': Buffer.byteLength(qs) }
     }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
     req.on('error', reject); req.write(qs); req.end();
   });
@@ -232,52 +233,164 @@ async function getBlingToken() {
   return _blingToken;
 }
 
+async function blingRequest(method, path, payload) {
+  const token = await getBlingToken();
+  const https = require('https');
+  const body = payload ? JSON.stringify(payload) : null;
+  return new Promise((resolve, reject) => {
+    const opts = { hostname: 'www.bling.com.br', path: '/Api/v3' + path, method,
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json',
+        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) }
+    };
+    const req = https.request(opts, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+    req.on('error', reject); if (body) req.write(body); req.end();
+  });
+}
+
+app.get('/api/bling/status', async (req, res) => {
+  if (!process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
+  try { await getBlingToken(); res.json({ ok: true, configurado: true, mensagem: 'Bling V3 conectado' }); }
+  catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
+});
+
+app.post('/api/bling/token/renovar', (req, res) => { _blingToken = null; _blingTokenExp = 0; res.json({ ok: true, mensagem: 'Cache de token limpo — será renovado automaticamente' }); });
+
+app.get('/api/bling/buscar', async (req, res) => {
+  try {
+    const data = await blingRequest('GET', '/produtos?situacao=A&pagina=1&limite=20');
+    const prods = (data.data || []).map(p => ({ id: p.id, nome: p.nome, codigo: p.codigo, preco: p.preco, situacao: p.situacao }));
+    res.json({ ok: true, produtos: prods, total: prods.length });
+  } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
 app.post('/api/bling/produto', async (req, res) => {
   try {
-    const token = await getBlingToken();
-    const { nome, codigo, ncm, fabricante } = req.body;
-    const payload = JSON.stringify({ nome: nome || codigo, codigo: codigo || '', preco: 0, tipo: 'P', situacao: 'A', formato: 'S', tributacao: { ncm: ncm || '' } });
-    const https = require('https');
-    const data = await new Promise((resolve, reject) => {
-      const req2 = https.request({ hostname: 'www.bling.com.br', path: '/Api/v3/produtos', method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-      }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
-      req2.on('error', reject); req2.write(payload); req2.end();
-    });
-    if (data.data && data.data.id) return res.json({ ok: true, id: data.data.id });
+    const p = req.body;
+    const midia = (p.imagens || []).slice(0, 6).map((url, i) => ({ tipo: 'F', thumbnail: i === 0, url }));
+    const payload = {
+      nome: p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome',
+      codigo: p.codigo_fabricante || p.sku || '',
+      tipo: 'P', situacao: 'A', formato: 'S',
+      descricaoCurta: (p.descricao || p.voz_do_lojista || '').substring(0, 300),
+      descricaoComplementar: p.descricao_tecnica || '',
+      tributacao: { ncm: (p.ncm || '').replace(/\D/g, '').substring(0, 8) },
+      estoque: { minimo: 0, maximo: 0, crossdocking: 0, localizacao: '' },
+      ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
+      ...(midia.length ? { midia } : {}),
+      ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {})
+    };
+    const data = await blingRequest('POST', '/produtos', payload);
+    if (data.data && data.data.id) return res.json({ ok: true, id: data.data.id, plataforma: 'bling' });
     res.json({ ok: false, erro: JSON.stringify(data.error || data) });
-  } catch(e) {
-    res.json({ ok: false, erro: e.message });
-  }
+  } catch(e) { res.json({ ok: false, erro: e.message }); }
+});
+
+app.put('/api/bling/produto/:id', async (req, res) => {
+  try {
+    const p = req.body;
+    const payload = { nome: p.nome, situacao: 'A', descricaoCurta: (p.descricao || '').substring(0, 300) };
+    const data = await blingRequest('PUT', '/produtos/' + req.params.id, payload);
+    res.json({ ok: true, data });
+  } catch(e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ─── WIX STORES — www.mobisautoparts.com.br ───────────────────
+function wixRequest(method, path, payload) {
+  const key = process.env.WIX_API_KEY;
+  const siteId = process.env.WIX_SITE_ID;
+  if (!key || !siteId) throw new Error('Configure WIX_API_KEY e WIX_SITE_ID no Render');
+  const https = require('https');
+  const body = payload ? JSON.stringify(payload) : null;
+  return new Promise((resolve, reject) => {
+    const opts = { hostname: 'www.wixapis.com', path, method,
+      headers: { 'Authorization': key, 'wix-site-id': siteId, 'Content-Type': 'application/json',
+        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) }
+    };
+    const req = https.request(opts, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+    req.on('error', reject); if (body) req.write(body); req.end();
+  });
+}
+
+app.get('/api/wix/status', async (req, res) => {
+  if (!process.env.WIX_API_KEY) return res.json({ ok: false, configurado: false, mensagem: 'Configure WIX_API_KEY e WIX_SITE_ID no Render' });
+  try {
+    await wixRequest('GET', '/stores/v1/products?paging.limit=1');
+    res.json({ ok: true, configurado: true, mensagem: 'Wix Stores conectado — mobisautoparts.com.br' });
+  } catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
 });
 
 app.post('/api/wix/produto', async (req, res) => {
-  const key = process.env.WIX_API_KEY;
-  const siteId = process.env.WIX_SITE_ID;
-  if (!key || !siteId) return res.json({ ok: false, erro: 'Configure WIX_API_KEY e WIX_SITE_ID no Render' });
   try {
-    const { nome, sku } = req.body;
-    const payload = JSON.stringify({ product: { name: nome, productType: 'physical', sku: sku, visible: false, price: { amount: '0.00', currency: 'BRL' } } });
-    const https = require('https');
-    const data = await new Promise((resolve, reject) => {
-      const req2 = https.request({ hostname: 'www.wixapis.com', path: '/stores/v1/products', method: 'POST',
-        headers: { 'Authorization': key, 'wix-site-id': siteId, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-      }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
-      req2.on('error', reject); req2.write(payload); req2.end();
-    });
-    if (data.product && data.product.id) return res.json({ ok: true, id: data.product.id });
+    const p = req.body;
+    const mediaItems = (p.imagens || []).slice(0, 8).map(url => ({ mediaType: 'IMAGE', image: { url } }));
+    const payload = {
+      product: {
+        name: p.nome || p.codigo_fabricante || 'Produto',
+        productType: 'physical',
+        description: p.descricao || p.voz_do_lojista || '',
+        sku: p.codigo_fabricante || p.sku || '',
+        visible: true,
+        ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
+        customTextFields: [
+          ...(p.fabricante ? [{ title: 'Marca', maxLength: 100, mandatory: false }] : []),
+          ...(p.ncm ? [{ title: 'NCM', maxLength: 20, mandatory: false }] : [])
+        ]
+      }
+    };
+    const data = await wixRequest('POST', '/stores/v1/products', payload);
+    if (data.product && data.product.id) return res.json({ ok: true, id: data.product.id, plataforma: 'wix', url: 'https://www.mobisautoparts.com.br' });
     res.json({ ok: false, erro: JSON.stringify(data) });
-  } catch(e) {
-    res.json({ ok: false, erro: e.message });
-  }
+  } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
-// Wix (stub)
-app.get('/api/wix/status', (req, res) => {
-    res.json({ ok: false, erro: 'Configure WIX_API_KEY no Render' });
+app.post('/api/wix/sync/:id', async (req, res) => {
+  try {
+    const p = req.body;
+    const payload = { product: { name: p.nome, description: p.descricao || '', visible: true } };
+    const data = await wixRequest('PUT', '/stores/v1/products/' + req.params.id, payload);
+    res.json({ ok: true, data });
+  } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
-app.post('/api/wix/sync/:id', (req, res) => { res.json({ ok: true }); });
-app.post('/api/wix/sync-lote', (req, res) => { res.json({ ok: true, sincronizados: 0, erros: 0 }); });
+
+// ─── SYNC EM LOTE — Bling + Wix ───────────────────────────────
+app.post('/api/sync/lote', async (req, res) => {
+  const produtos = req.body.produtos || [];
+  if (!produtos.length) return res.json({ ok: false, erro: 'Nenhum produto enviado' });
+  const resultados = [];
+  for (const p of produtos) {
+    const r = { nome: p.nome || p.codigo_fabricante, bling: null, wix: null };
+    try {
+      const b = await (async () => {
+        const midia = (p.imagens||[]).slice(0,6).map((url,i)=>({tipo:'F',thumbnail:i===0,url}));
+        const payload = { nome: p.nome||p.codigo_fabricante||'Produto', codigo: p.codigo_fabricante||'', tipo:'P', situacao:'A', formato:'S',
+          descricaoCurta:(p.descricao||p.voz_do_lojista||'').substring(0,300), tributacao:{ncm:(p.ncm||'').replace(/\D/g,'').substring(0,8)},
+          ...(p.fabricante?{marca:{nome:p.fabricante}}:{}), ...(midia.length?{midia}:{}) };
+        return await blingRequest('POST', '/produtos', payload);
+      })();
+      r.bling = b.data?.id ? { ok: true, id: b.data.id } : { ok: false, erro: JSON.stringify(b.error||b) };
+    } catch(e) { r.bling = { ok: false, erro: e.message }; }
+    try {
+      const mediaItems = (p.imagens||[]).slice(0,8).map(url=>({mediaType:'IMAGE',image:{url}}));
+      const payload = { product: { name: p.nome||p.codigo_fabricante||'Produto', productType:'physical',
+        description: p.descricao||p.voz_do_lojista||'', sku: p.codigo_fabricante||'', visible:true,
+        ...(mediaItems.length?{media:{items:mediaItems}}:{}) }};
+      const w = await wixRequest('POST', '/stores/v1/products', payload);
+      r.wix = w.product?.id ? { ok: true, id: w.product.id } : { ok: false, erro: JSON.stringify(w) };
+    } catch(e) { r.wix = { ok: false, erro: e.message }; }
+    resultados.push(r);
+  }
+  const ok_bling = resultados.filter(r=>r.bling?.ok).length;
+  const ok_wix = resultados.filter(r=>r.wix?.ok).length;
+  res.json({ ok: true, total: produtos.length, bling: { sincronizados: ok_bling, erros: produtos.length-ok_bling }, wix: { sincronizados: ok_wix, erros: produtos.length-ok_wix }, resultados });
+});
+
+app.get('/api/sync/status', (req, res) => {
+  res.json({
+    ok: true,
+    bling: { configurado: !!(process.env.BLING_CLIENT_ID && process.env.BLING_CLIENT_SECRET), nome: 'Bling V3' },
+    wix: { configurado: !!(process.env.WIX_API_KEY && process.env.WIX_SITE_ID), nome: 'Wix Stores — mobisautoparts.com.br' }
+  });
+});
 
 // Massa (stub)
 app.post('/api/massa/upload', (req, res) => { res.json({ ok: false, erro: 'Instale multer e xlsx para upload' }); });
