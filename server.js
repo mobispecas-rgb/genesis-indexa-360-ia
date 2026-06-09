@@ -174,19 +174,42 @@ app.get('/api/imagens/proxy', (req, res) => {
     }
 });
 
-// Busca de Imagens — in-app, sem abrir links externos
+// Busca de Imagens — Serper.dev (primário) ou Google Custom Search (fallback)
 app.get('/api/imagens/buscar', async (req, res) => {
     const { q, fonte } = req.query;
     if (!q) return res.json({ ok: false, erro: 'Parametro q obrigatorio', imagens: [] });
-    // Retorna estrutura de imagens para busca in-app.
-    // Em producao, integrar com API de imagens configurada (ex: Google Custom Search com chave propria).
-    // Por ora, retorna lista vazia com orientacao para configurar.
-    const termo = encodeURIComponent(q);
-    // Se GOOGLE_SEARCH_KEY e GOOGLE_SEARCH_CX estiverem configurados, usa Google Custom Search.
+
+    // 1) Serper.dev — 2.500 buscas grátis, depois $1/1.000 (só 1 chave)
+    if (process.env.SERPER_API_KEY) {
+        try {
+            const https = require('https');
+            const body = JSON.stringify({ q, num: 12 });
+            const data = await new Promise((resolve, reject) => {
+                const req2 = https.request({
+                    hostname: 'google.serper.dev', path: '/images', method: 'POST',
+                    headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+                }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+                req2.on('error', reject);
+                req2.write(body);
+                req2.end();
+            });
+            const imagens = (data.images||[]).map(item => ({
+                url: item.imageUrl,
+                thumb: item.thumbnailUrl || item.imageUrl,
+                titulo: item.title,
+                fonte: item.source
+            }));
+            return res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider: 'serper' });
+        } catch(e) {
+            return res.json({ ok: false, erro: 'Erro Serper: ' + e.message, imagens: [] });
+        }
+    }
+
+    // 2) Google Custom Search — 100 buscas/dia grátis (fallback)
     if (process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
         try {
             const https = require('https');
-            const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${termo}&searchType=image&num=12`;
+            const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&searchType=image&num=12`;
             const data = await new Promise((resolve, reject) => {
                 https.get(url, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); }).on('error',reject);
             });
@@ -196,18 +219,17 @@ app.get('/api/imagens/buscar', async (req, res) => {
                 titulo: item.title,
                 fonte: item.displayLink
             }));
-            return res.json({ ok: true, imagens, total: imagens.length, q, fonte });
+            return res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider: 'google' });
         } catch(e) {
             return res.json({ ok: false, erro: 'Erro Google Search: ' + e.message, imagens: [] });
         }
     }
-    // Sem API configurada — instrucao para o usuario
+
+    // Sem API configurada
     res.json({
-        ok: false,
-        imagens: [],
-        mensagem: 'Configure GOOGLE_SEARCH_KEY e GOOGLE_SEARCH_CX no Render para busca de imagens in-app.',
-        q,
-        fonte
+        ok: false, imagens: [],
+        mensagem: 'Configure SERPER_API_KEY no Render para busca de imagens (2.500 buscas grátis em serper.dev).',
+        q, fonte
     });
 });
 
