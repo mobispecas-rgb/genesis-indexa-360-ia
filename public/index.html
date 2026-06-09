@@ -438,7 +438,83 @@ tr:hover td{background:#ffffff04}
 
     <!-- STUB PAGES -->
     <div class="page" id="page-catalogo"><div class="stub-page"><div class="stub-icon">&#128218;</div><h2>Cat&aacute;logo de Produtos</h2><p>Em desenvolvimento &mdash; Cat&aacute;logo de Produtos</p></div></div>
-    <div class="page" id="page-oem"><div class="stub-page"><div class="stub-icon">&#10024;</div><h2>Enriquecimento OEM</h2><p>Em desenvolvimento &mdash; Enriquecimento OEM</p></div></div>
+    <div class="page" id="page-oem">
+      <div class="page-title">&#10024; Enriquecimento OEM</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google e preenche os campos. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
+
+      <div class="card">
+        <div class="card-title">&#128269; Busca de Enriquecimento</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="oem-input" style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
+          <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
+        </div>
+        <div id="oem-status" style="font-size:12px;color:#555"></div>
+      </div>
+
+      <!-- Resultado da busca -->
+      <div id="oem-resultado" style="display:none">
+
+        <!-- Dados confirmados -->
+        <div class="card" style="border-color:#ff450030">
+          <div class="card-title">&#9989; Dados Confirmados (preenchidos pela busca)</div>
+          <div class="grid2" style="gap:10px;margin-bottom:12px">
+            <div class="form-group"><label>Part Number / SKU *</label><input id="oem-f-sku" placeholder="Ex: VKM71809"></div>
+            <div class="form-group"><label>Fabricante *</label><input id="oem-f-fab" placeholder="Ex: SKF"></div>
+            <div class="form-group"><label>Nome do Produto *</label><input id="oem-f-nome" placeholder="Ex: Tensor de Correia Dentada"></div>
+            <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label>
+              <select id="oem-f-familia">
+                <option value="">— selecione —</option>
+                <option>Motor</option><option>Freios</option><option>Suspens&atilde;o</option>
+                <option>Filtros</option><option>Arrefecimento</option><option>El&eacute;trica</option>
+                <option>Transmiss&atilde;o</option><option>Dire&ccedil;&atilde;o</option>
+              </select>
+            </div>
+            <div class="form-group"><label>C&oacute;digo OEM (principal)</label><input id="oem-f-oem" placeholder="Ex: 93353848"></div>
+            <div class="form-group"><label>NCM</label><input id="oem-f-ncm" placeholder="Ex: 84835010" maxlength="10"></div>
+            <div class="form-group"><label>EAN / GTIN</label><input id="oem-f-ean" placeholder="Ex: 7316572455985" maxlength="14"></div>
+            <div class="form-group"><label>Motor / Aplica&ccedil;&atilde;o</label><input id="oem-f-motor" placeholder="Ex: GM Família I 8V"></div>
+          </div>
+          <div class="form-group"><label>Material / Composi&ccedil;&atilde;o</label><input id="oem-f-material" placeholder="Ex: Aço estampado nitretado | Esferas radiais"></div>
+        </div>
+
+        <!-- Resultados Google -->
+        <div class="card" id="oem-google-card" style="display:none">
+          <div class="card-title">&#127760; Resultados da Busca — Confirme os dados antes de usar</div>
+          <div id="oem-google-results" style="font-size:13px;color:#aaa;line-height:1.8"></div>
+        </div>
+
+        <!-- NTC em tempo real -->
+        <div class="card">
+          <div class="card-title">&#9889; NTC 4.0 — Atualiza em tempo real</div>
+          <div id="oem-ntc-live" style="text-align:center;padding:10px">
+            <div style="font-size:40px;font-weight:900;color:#555" id="oem-ntc-num">0%</div>
+            <div id="oem-ntc-badge"></div>
+            <div style="font-size:11px;color:#444;margin-top:6px" id="oem-ntc-falta"></div>
+          </div>
+        </div>
+
+        <!-- Botões de ação -->
+        <div id="oem-acoes" style="display:none">
+          <div class="card" style="border-color:#00c85330">
+            <div class="card-title" style="color:#00c853">&#128640; Pronto para Publicar</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-primary" style="flex:1" onclick="oemPublicar()">&#128230; Publicar no Cat&aacute;logo</button>
+              <button class="btn btn-secondary" onclick="oemEnviarBling()">&#129695; Enviar ao Bling</button>
+              <button class="btn btn-secondary" onclick="oemEnviarWix()">&#127760; Sincronizar Wix</button>
+            </div>
+          </div>
+        </div>
+        <div id="oem-acoes-bloqueado" style="display:none">
+          <div class="card" style="border-color:#f4433630;background:#f4433608">
+            <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
+            <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
+            <button class="btn btn-secondary" onclick="oemCompletarNTC()">&#127919; Completar NTC para Desbloquear</button>
+          </div>
+        </div>
+
+        <div id="oem-pub-status" style="font-size:12px;color:#555;margin-top:8px"></div>
+      </div>
+    </div>
     <div class="page" id="page-massa">
       <div class="page-title">&#128194; Enriquecimento por ID / Massa</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha. O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
@@ -1255,6 +1331,154 @@ function uploadImagemLocal() {
 // ===== INDEXADOR DE CATÁLOGO =====
 var _catDados = {};
 
+// ===== ENRIQUECIMENTO OEM =====
+var _oemDados = {};
+var _oemNTCTimer = null;
+
+async function oemBuscar() {
+  var q = document.getElementById('oem-input').value.trim();
+  if (!q) return;
+  var status = document.getElementById('oem-status');
+  status.innerHTML = '&#9889; Buscando dados reais...';
+
+  // Parse inicial do texto para pré-preencher campos
+  var parsed = parseTextoIA(q);
+  document.getElementById('oem-f-sku').value    = parsed.sku || '';
+  document.getElementById('oem-f-fab').value    = parsed.fabricante || '';
+  document.getElementById('oem-f-nome').value   = parsed.descricao || q;
+  document.getElementById('oem-f-familia').value = parsed.familia || '';
+
+  document.getElementById('oem-resultado').style.display = 'block';
+
+  // Busca imagens/dados via Google Search (reutiliza endpoint existente)
+  try {
+    var r = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(q) + '&fonte=oem');
+    if (r.ok && r.imagens && r.imagens.length > 0) {
+      var card = document.getElementById('oem-google-card');
+      card.style.display = 'block';
+      document.getElementById('oem-google-results').innerHTML =
+        '<p style="font-size:11px;color:#555;margin-bottom:8px">&#9888;&#65039; Confirme os dados abaixo antes de usar. N&atilde;o preencha campos que n&atilde;o estejam confirmados.</p>'
+        + r.imagens.slice(0,4).map(function(img) {
+          return '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a">'
+            + '<img src="' + img.thumb + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid #1f1f1f" onerror="this.style.display=\'none\'">'
+            + '<div><div style="font-size:12px;color:#ccc">' + esc(img.titulo||'') + '</div>'
+            + '<div style="font-size:11px;color:#555">' + esc(img.fonte||'') + '</div></div>'
+            + '</div>';
+        }).join('');
+    } else {
+      status.innerHTML = r.mensagem
+        ? '&#9888;&#65039; ' + r.mensagem
+        : '&#9888;&#65039; Busca sem resultado. Preencha os campos manualmente.';
+    }
+  } catch(e) {
+    status.textContent = 'Erro na busca: ' + e.message;
+  }
+
+  // Inicia cálculo NTC em tempo real conforme campos são preenchidos
+  ['oem-f-sku','oem-f-fab','oem-f-nome','oem-f-familia','oem-f-oem','oem-f-ncm','oem-f-ean','oem-f-motor','oem-f-material'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.oninput = oemRecalcularNTC; el.onchange = oemRecalcularNTC; }
+  });
+  oemRecalcularNTC();
+  status.textContent = '✅ Campos pré-preenchidos. Confirme os dados e complete o que falta.';
+}
+
+function oemColetar() {
+  return {
+    codigo_fabricante: document.getElementById('oem-f-sku').value.trim() || null,
+    fabricante:        document.getElementById('oem-f-fab').value.trim() || null,
+    nome:              document.getElementById('oem-f-nome').value.trim() || null,
+    familia_tecnica:   document.getElementById('oem-f-familia').value || null,
+    codigo_oem:        document.getElementById('oem-f-oem').value.trim() || null,
+    ncm:               document.getElementById('oem-f-ncm').value.replace(/\D/g,'') || null,
+    ean:               document.getElementById('oem-f-ean').value.replace(/\D/g,'') || null,
+    motor:             document.getElementById('oem-f-motor').value.trim() || null,
+    material:          document.getElementById('oem-f-material').value.trim() || null,
+  };
+}
+
+async function oemRecalcularNTC() {
+  clearTimeout(_oemNTCTimer);
+  _oemNTCTimer = setTimeout(async function() {
+    var dados = oemColetar();
+    try {
+      var r = await api('POST', '/motor/nct', dados);
+      _oemDados = Object.assign({}, dados, { _ntcResult: r });
+      var ntc = r.ntc || 0;
+      var pct = Math.round(ntc * 100);
+      var cor = r.decisao === 'APROVADO' ? '#00c853' : r.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+      document.getElementById('oem-ntc-num').textContent = pct + '%';
+      document.getElementById('oem-ntc-num').style.color = cor;
+      document.getElementById('oem-ntc-badge').innerHTML = badgeHtml(r.decisao);
+
+      // Mostra o que falta
+      var falta = [];
+      if (!dados.codigo_fabricante) falta.push('Part Number');
+      if (!dados.fabricante) falta.push('Fabricante');
+      if (!dados.nome) falta.push('Nome');
+      if (!dados.codigo_oem) falta.push('OEM');
+      if (!dados.ncm) falta.push('NCM');
+      if (!dados.motor) falta.push('Motor/Aplicação');
+      document.getElementById('oem-ntc-falta').textContent = falta.length ? 'Faltando: ' + falta.join(', ') : '';
+
+      // Botões: só libera com NTC ≥ 0.60
+      var bloqueado = ntc < 0.60 || !dados.fabricante || !dados.codigo_fabricante || !dados.nome;
+      document.getElementById('oem-acoes').style.display          = bloqueado ? 'none' : 'block';
+      document.getElementById('oem-acoes-bloqueado').style.display = bloqueado ? 'block' : 'none';
+      if (bloqueado) {
+        var motivos = [];
+        if (ntc < 0.60) motivos.push('NTC ' + pct + '% (mínimo 60%)');
+        if (!dados.fabricante) motivos.push('Fabricante obrigatório');
+        if (!dados.codigo_fabricante) motivos.push('Part Number obrigatório');
+        if (!dados.nome) motivos.push('Nome obrigatório');
+        document.getElementById('oem-bloqueado-motivo').textContent = motivos.join(' · ');
+      }
+    } catch(e) {}
+  }, 400);
+}
+
+async function oemPublicar() {
+  var dados = oemColetar();
+  var r = _oemDados._ntcResult || {};
+  if ((r.ntc || 0) < 0.60) { alert('NTC insuficiente. Complete os campos obrigatórios.'); return; }
+  var prods = getProds();
+  prods.push(Object.assign({}, dados, {
+    ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash,
+    id: 'oem-' + Date.now(), _fonte: 'oem', ts: Date.now()
+  }));
+  saveProds(prods);
+  atualizarStats(); loadProdutos(); cntcPreencherSelect();
+  document.getElementById('oem-pub-status').textContent = '✅ Publicado no catálogo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
+}
+
+async function oemEnviarBling() {
+  var dados = oemColetar();
+  document.getElementById('oem-pub-status').textContent = '⏳ Enviando ao Bling...';
+  try {
+    var r = await api('POST', '/bling/produto', dados);
+    document.getElementById('oem-pub-status').textContent = r.ok ? '✅ Enviado ao Bling! ID: ' + r.id : '✖ Bling: ' + r.erro;
+  } catch(e) { document.getElementById('oem-pub-status').textContent = '✖ ' + e.message; }
+}
+
+async function oemEnviarWix() {
+  var dados = oemColetar();
+  document.getElementById('oem-pub-status').textContent = '⏳ Sincronizando no Wix...';
+  try {
+    var r = await api('POST', '/wix/produto', { nome: dados.nome + ' ' + (dados.fabricante||''), sku: dados.codigo_fabricante });
+    document.getElementById('oem-pub-status').textContent = r.ok ? '✅ Enviado ao Wix!' : '✖ Wix: ' + r.erro;
+  } catch(e) { document.getElementById('oem-pub-status').textContent = '✖ ' + e.message; }
+}
+
+function oemCompletarNTC() {
+  var dados = oemColetar();
+  nav('completar-ntc');
+  setTimeout(function() {
+    document.getElementById('cntc-json-area').style.display = 'block';
+    document.getElementById('cntc-json-input').value = JSON.stringify(dados, null, 2);
+    cntcAnalisarJSON();
+  }, 200);
+}
+
 // ===== ENRIQUECIMENTO EM MASSA =====
 var _massaItens = [];
 
@@ -1757,8 +1981,15 @@ async function catIndexar() {
 }
 
 function catSalvar() {
+  var r = _catDados._ntcResult || {};
+  var ntc = r.ntc || 0;
+  // BLOQUEIO: mínimo PENDENTE (NTC ≥ 0.60) para salvar
   if (!_catDados.fabricante || !_catDados.codigo_fabricante) {
-    document.getElementById('cat-save-status').textContent = '✖ Fabricante e Part Number são obrigatórios.';
+    document.getElementById('cat-save-status').innerHTML = '&#128683; <strong>Fabricante e Part Number obrigatórios.</strong>';
+    return;
+  }
+  if (ntc < 0.60) {
+    document.getElementById('cat-save-status').innerHTML = '&#128683; <strong>NTC insuficiente (' + Math.round(ntc*100) + '%).</strong> Mínimo 60% (PENDENTE) para salvar. Use "Completar NTC" para preencher os campos faltantes.';
     return;
   }
   var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
