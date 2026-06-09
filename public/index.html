@@ -579,6 +579,17 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       <div class="page-title">&#128229; Indexador de Cat&aacute;logo</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Cole o texto de qualquer cat&aacute;logo de pe&ccedil;as. O motor extrai fabricante, c&oacute;digos OEM, aplica&ccedil;&otilde;es, ficha t&eacute;cnica e calcula o NTC 4.0 automaticamente.</p>
 
+      <!-- Template ativo -->
+      <div class="card" style="padding:10px 14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+          <span style="color:#555">&#128221; Template:</span>
+          <select id="cat-template-sel" style="background:#0d0d0d;border:1px solid #333;border-radius:5px;padding:4px 8px;color:#ccc;font-size:12px;flex:1" onchange="catAplicarTemplate()">
+            <option value="">Nenhum (sem template)</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" onclick="nav('templates')">&#43; Criar</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">&#128203; Entrada do Cat&aacute;logo</div>
         <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -650,7 +661,101 @@ MEDIDA LARGURA  25 MM"></textarea>
     <div class="page" id="page-pdv"><div class="stub-page"><div class="stub-icon">&#127978;</div><h2>PDV</h2><p>Em desenvolvimento &mdash; PDV</p></div></div>
     <div class="page" id="page-plataforma-int"><div class="stub-page"><div class="stub-icon">&#128268;</div><h2>Integra&ccedil;&otilde;es de Plataforma</h2><p>Em desenvolvimento &mdash; Integra&ccedil;&otilde;es de Plataforma</p></div></div>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
-    <div class="page" id="page-templates"><div class="stub-page"><div class="stub-icon">&#128221;</div><h2>Templates</h2><p>Em desenvolvimento &mdash; Templates</p></div></div>
+    <div class="page" id="page-templates">
+      <div class="page-title">&#128221; Templates de Enriquecimento</div>
+
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <button class="btn btn-primary" onclick="tplNovo()">&#43; Criar Template</button>
+        <button class="btn btn-secondary" onclick="tplDNA()">&#129750; DNA NTC</button>
+      </div>
+
+      <!-- Lista de templates -->
+      <div class="card" id="tpl-lista-card">
+        <div class="card-title">Templates Salvos</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;font-size:13px" id="tpl-table">
+            <thead><tr>
+              <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Nome</th>
+              <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Tipo</th>
+              <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Atualizado</th>
+              <th style="padding:8px;color:#555;border-bottom:1px solid #1f1f1f">A&ccedil;&otilde;es</th>
+            </tr></thead>
+            <tbody id="tpl-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Editor de template -->
+      <div class="card" id="tpl-editor" style="display:none;border-color:#ff450030">
+        <div class="card-title">&#10024; Criar / Editar Template</div>
+
+        <div class="grid2" style="gap:12px;margin-bottom:12px">
+          <div class="form-group"><label>Nome do Template *</label><input id="tpl-nome" placeholder="Ex: Autopeças Motor Premium"></div>
+          <div class="form-group"><label>Tipo</label>
+            <select id="tpl-tipo">
+              <option value="tecnico">T&eacute;cnico</option>
+              <option value="comercial">Comercial</option>
+              <option value="seo">SEO</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="pmax">P-Max / Ads</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group"><label>Prompt do T&iacute;tulo</label>
+          <input id="tpl-prompt-titulo" placeholder="Ex: [Nome produto] + [Marca] + [dados t&eacute;cnicos]">
+          <div style="font-size:11px;color:#555;margin-top:4px">Vari&aacute;veis: {nome} {marca} {sku} {oem} {ncm} {motor} {familia}</div>
+        </div>
+
+        <div class="form-group"><label>Tom de Voz</label>
+          <select id="tpl-tom">
+            <option value="">Escolha um tom ou escreva abaixo</option>
+            <option value="tecnico formal">T&eacute;cnico Formal</option>
+            <option value="comercial direto">Comercial Direto</option>
+            <option value="especialista autopeças">Especialista Autopeças</option>
+            <option value="vendedor consultivo">Vendedor Consultivo</option>
+          </select>
+          <input id="tpl-tom-custom" style="margin-top:6px" placeholder="Ou descreva o tom personalizado...">
+        </div>
+
+        <div class="grid2" style="gap:12px">
+          <div class="form-group"><label>Palavras Negativas</label>
+            <input id="tpl-neg" placeholder='Ex: "barato", "promo&ccedil;&atilde;o", "usado"'>
+          </div>
+          <div class="form-group"><label>Palavras-chave SEO</label>
+            <input id="tpl-keywords" placeholder="Ex: tensor correia, autopeças originais">
+          </div>
+        </div>
+
+        <div class="form-group"><label>Prompt da Descri&ccedil;&atilde;o</label>
+          <textarea id="tpl-prompt-desc" rows="3" placeholder="Descreva como a descri&ccedil;&atilde;o deve ser gerada. Use {nome}, {marca}, {motor}, {oem} como vari&aacute;veis."></textarea>
+        </div>
+
+        <button class="btn btn-secondary btn-sm" onclick="tplTestar()" style="margin-bottom:12px">&#128064; Testar Descri&ccedil;&atilde;o</button>
+        <div id="tpl-teste-out" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:10px;font-size:13px;color:#aaa;margin-bottom:12px;display:none;white-space:pre-wrap"></div>
+
+        <div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:10px">&#128269; SEO / Meta</div>
+          <div class="form-group"><label>Meta Title <span style="color:#555">(max 60 chars)</span></label>
+            <input id="tpl-meta-title" maxlength="80" placeholder="Ex: {nome} {marca} — Autopeça Original | MOBIS Pe&ccedil;as">
+            <div id="tpl-meta-title-count" style="font-size:10px;color:#555;text-align:right"></div>
+          </div>
+          <div class="form-group"><label>Meta Description <span style="color:#555">(max 160 chars)</span></label>
+            <textarea id="tpl-meta-desc" rows="2" maxlength="200" placeholder="Ex: Compre {nome} da {marca} com garantia. OEM {oem}. Entrega r&aacute;pida para todo o Brasil."></textarea>
+            <div id="tpl-meta-desc-count" style="font-size:10px;color:#555;text-align:right"></div>
+          </div>
+          <div class="form-group"><label>Meta Tags <span style="color:#555">(separadas por v&iacute;rgula)</span></label>
+            <input id="tpl-meta-tags" placeholder="Ex: tensor correia, SKF, autopeças motor, {familia}">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="tplSalvar()">&#10003; Salvar Template</button>
+          <button class="btn btn-secondary" onclick="tplCancelar()">Cancelar</button>
+        </div>
+        <div id="tpl-status" style="font-size:12px;color:#555;margin-top:8px"></div>
+      </div>
+    </div>
     <div class="page" id="page-pagamentos"><div class="stub-page"><div class="stub-icon">&#128179;</div><h2>Pagamentos</h2><p>Em desenvolvimento &mdash; Pagamentos</p></div></div>
     <div class="page" id="page-planos"><div class="stub-page"><div class="stub-icon">&#128176;</div><h2>Planos</h2><p>Em desenvolvimento &mdash; Planos</p></div></div>
     <div class="page" id="page-usuarios"><div class="stub-page"><div class="stub-icon">&#128101;</div><h2>Usu&aacute;rios</h2><p>Em desenvolvimento &mdash; Usu&aacute;rios</p></div></div>
@@ -1572,6 +1677,204 @@ function massaCompletarItem(idx) {
   }, 200);
 }
 
+// ===== TEMPLATES =====
+var _tplEditIdx = -1;
+
+function getTemplates() { return JSON.parse(localStorage.getItem('gn_templates') || '[]'); }
+function saveTemplates(t) { localStorage.setItem('gn_templates', JSON.stringify(t)); }
+
+function tplRenderLista() {
+  var tpls = getTemplates();
+  var tbody = document.getElementById('tpl-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = tpls.length ? tpls.map(function(t, i) {
+    return '<tr style="border-bottom:1px solid #1a1a1a">'
+      + '<td style="padding:8px;color:#ccc">' + esc(t.nome) + '</td>'
+      + '<td style="padding:8px;color:#888">' + esc(t.tipo||'—') + '</td>'
+      + '<td style="padding:8px;color:#555;font-size:11px">' + new Date(t.ts||Date.now()).toLocaleDateString('pt-BR') + '</td>'
+      + '<td style="padding:8px;text-align:center;display:flex;gap:6px;justify-content:center">'
+      + '<button class="btn btn-sm btn-secondary" onclick="tplEditar(' + i + ')">&#9998;</button>'
+      + '<button class="btn btn-sm btn-secondary" onclick="tplExcluir(' + i + ')" style="color:#f44336">&#128465;</button>'
+      + '</td></tr>';
+  }).join('') : '<tr><td colspan="4" style="padding:20px;text-align:center;color:#555">Nenhum template criado ainda.</td></tr>';
+  // Atualiza select no indexador
+  tplAtualizarSelect();
+}
+
+function tplAtualizarSelect() {
+  var sel = document.getElementById('cat-template-sel');
+  if (!sel) return;
+  var tpls = getTemplates();
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">Nenhum (sem template)</option>'
+    + tpls.map(function(t, i) {
+      return '<option value="' + i + '">' + esc(t.nome) + ' (' + (t.tipo||'') + ')</option>';
+    }).join('');
+  sel.value = cur;
+}
+
+function tplNovo() {
+  _tplEditIdx = -1;
+  ['tpl-nome','tpl-prompt-titulo','tpl-tom-custom','tpl-neg','tpl-keywords','tpl-prompt-desc','tpl-meta-title','tpl-meta-desc','tpl-meta-tags'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('tpl-tipo').value = 'tecnico';
+  document.getElementById('tpl-tom').value = '';
+  document.getElementById('tpl-status').textContent = '';
+  document.getElementById('tpl-teste-out').style.display = 'none';
+  document.getElementById('tpl-editor').style.display = 'block';
+  document.getElementById('tpl-editor').scrollIntoView({behavior:'smooth'});
+  // Contador meta
+  tplContadores();
+}
+
+function tplDNA() {
+  tplNovo();
+  document.getElementById('tpl-nome').value = 'Template DNA NTC 4.0';
+  document.getElementById('tpl-tipo').value = 'tecnico';
+  document.getElementById('tpl-prompt-titulo').value = '{nome} — {marca} | {oem}';
+  document.getElementById('tpl-tom-custom').value = 'Técnico especialista em autopeças. Objetivo e preciso.';
+  document.getElementById('tpl-neg').value = 'barato, promoção, usado, paralelo, genérico';
+  document.getElementById('tpl-keywords').value = 'autopeças originais, {familia}, {marca}';
+  document.getElementById('tpl-prompt-desc').value = 'Descreva {nome} da {marca} em até 2 frases técnicas. Use apenas dados confirmados: {motor}, {oem}. Sem inventar.';
+  document.getElementById('tpl-meta-title').value = '{nome} {marca} — Autopeça Original | MOBIS Peças';
+  document.getElementById('tpl-meta-desc').value = 'Compre {nome} {marca} com garantia. OEM {oem}. Entrega rápida para todo o Brasil.';
+  document.getElementById('tpl-meta-tags').value = '{familia}, {marca}, autopeças, {nome}';
+}
+
+function tplContadores() {
+  var mt = document.getElementById('tpl-meta-title');
+  var md = document.getElementById('tpl-meta-desc');
+  var mtc = document.getElementById('tpl-meta-title-count');
+  var mdc = document.getElementById('tpl-meta-desc-count');
+  function upd() {
+    if(mt && mtc) { var n = mt.value.length; mtc.textContent = n + '/60' + (n>60?' ⚠️':''); mtc.style.color = n>60?'#f44336':'#555'; }
+    if(md && mdc) { var n2 = md.value.length; mdc.textContent = n2 + '/160' + (n2>160?' ⚠️':''); mdc.style.color = n2>160?'#f44336':'#555'; }
+  }
+  if(mt) mt.oninput = upd;
+  if(md) md.oninput = upd;
+  upd();
+}
+
+function tplEditar(idx) {
+  var t = getTemplates()[idx];
+  if (!t) return;
+  _tplEditIdx = idx;
+  document.getElementById('tpl-nome').value          = t.nome || '';
+  document.getElementById('tpl-tipo').value          = t.tipo || 'tecnico';
+  document.getElementById('tpl-prompt-titulo').value = t.prompt_titulo || '';
+  document.getElementById('tpl-tom').value           = '';
+  document.getElementById('tpl-tom-custom').value    = t.tom || '';
+  document.getElementById('tpl-neg').value           = t.neg || '';
+  document.getElementById('tpl-keywords').value      = t.keywords || '';
+  document.getElementById('tpl-prompt-desc').value   = t.prompt_desc || '';
+  document.getElementById('tpl-meta-title').value    = t.meta_title || '';
+  document.getElementById('tpl-meta-desc').value     = t.meta_desc || '';
+  document.getElementById('tpl-meta-tags').value     = t.meta_tags || '';
+  document.getElementById('tpl-editor').style.display = 'block';
+  document.getElementById('tpl-editor').scrollIntoView({behavior:'smooth'});
+  tplContadores();
+}
+
+function tplExcluir(idx) {
+  if (!confirm('Excluir este template?')) return;
+  var tpls = getTemplates(); tpls.splice(idx, 1); saveTemplates(tpls); tplRenderLista();
+}
+
+function tplColetar() {
+  return {
+    nome:          document.getElementById('tpl-nome').value.trim(),
+    tipo:          document.getElementById('tpl-tipo').value,
+    prompt_titulo: document.getElementById('tpl-prompt-titulo').value.trim(),
+    tom:           document.getElementById('tpl-tom-custom').value.trim() || document.getElementById('tpl-tom').value,
+    neg:           document.getElementById('tpl-neg').value.trim(),
+    keywords:      document.getElementById('tpl-keywords').value.trim(),
+    prompt_desc:   document.getElementById('tpl-prompt-desc').value.trim(),
+    meta_title:    document.getElementById('tpl-meta-title').value.trim(),
+    meta_desc:     document.getElementById('tpl-meta-desc').value.trim(),
+    meta_tags:     document.getElementById('tpl-meta-tags').value.trim(),
+    ts:            Date.now()
+  };
+}
+
+function tplInterpolate(str, dados) {
+  return (str || '').replace(/\{(\w+)\}/g, function(_, k) { return dados[k] || ''; });
+}
+
+async function tplTestar() {
+  var t = tplColetar();
+  if (!t.prompt_desc) { alert('Preencha o Prompt da Descrição.'); return; }
+  var dados = { nome:'TENSOR DA CORREIA DENTADA', marca:'SKF', sku:'VKM71809', oem:'93353848', familia:'Motor', motor:'GM Família I 8V', ncm:'84835010' };
+  var prompt = 'DADOS DO PRODUTO:\n' + Object.keys(dados).map(function(k){ return k + ': ' + dados[k]; }).join('\n')
+    + '\n\nTom de voz: ' + (t.tom || 'técnico')
+    + '\n\nInstrução: ' + tplInterpolate(t.prompt_desc, dados)
+    + (t.neg ? '\n\nNÃO use as palavras: ' + t.neg : '');
+  var out = document.getElementById('tpl-teste-out');
+  out.style.display = 'block'; out.textContent = '⏳ Gerando...';
+  try {
+    var r = await api('POST', '/motor/voz', { perfil: t.tipo, prompt: prompt });
+    out.textContent = r.ok ? r.texto : '✖ ' + r.erro;
+  } catch(e) { out.textContent = '✖ ' + e.message; }
+}
+
+function tplSalvar() {
+  var t = tplColetar();
+  if (!t.nome) { document.getElementById('tpl-status').textContent = '✖ Nome obrigatório.'; return; }
+  var tpls = getTemplates();
+  if (_tplEditIdx >= 0) tpls[_tplEditIdx] = t;
+  else tpls.push(t);
+  saveTemplates(tpls);
+  tplRenderLista();
+  document.getElementById('tpl-status').textContent = '✅ Template salvo!';
+  setTimeout(function(){ document.getElementById('tpl-editor').style.display = 'none'; }, 800);
+}
+
+function tplCancelar() {
+  document.getElementById('tpl-editor').style.display = 'none';
+}
+
+// Aplica template ativo no indexador (preenche config de geração de voz)
+function catAplicarTemplate() {
+  var idx = document.getElementById('cat-template-sel').value;
+  if (idx === '') return;
+  var t = getTemplates()[parseInt(idx)];
+  if (!t) return;
+  window._catTemplateAtivo = t;
+}
+
+// Usa template no catIndexar para gerar meta após NTC
+async function catAplicarTemplateNaDescricao(dados) {
+  var t = window._catTemplateAtivo;
+  if (!t || !t.prompt_desc) return;
+  var prompt = 'DADOS CONFIRMADOS:\n'
+    + 'nome: ' + (dados.nome||'') + '\nmarca: ' + (dados.fabricante||'') + '\nsku: ' + (dados.codigo_fabricante||'')
+    + '\noem: ' + (dados.codigo_oem||'') + '\nfamilia: ' + (dados.familia_tecnica||'') + '\nmotor: ' + (dados.motor||'') + '\nncm: ' + (dados.ncm||'')
+    + '\n\nTom: ' + (t.tom||'técnico') + '\nInstrução: ' + tplInterpolate(t.prompt_desc, { nome:dados.nome, marca:dados.fabricante, sku:dados.codigo_fabricante, oem:dados.codigo_oem, familia:dados.familia_tecnica, motor:dados.motor, ncm:dados.ncm })
+    + (t.neg ? '\nNÃO use: ' + t.neg : '');
+  try {
+    var r = await api('POST', '/motor/voz', { perfil: t.tipo, prompt: prompt });
+    if (r.ok && r.texto) {
+      // Exibe resultado do template abaixo do NTC
+      var div = document.getElementById('cat-template-result');
+      if (!div) {
+        div = document.createElement('div');
+        div.id = 'cat-template-result';
+        div.className = 'card';
+        document.getElementById('cat-ntc-card').after(div);
+      }
+      var titulo = tplInterpolate(t.prompt_titulo, { nome:dados.nome, marca:dados.fabricante, sku:dados.codigo_fabricante, oem:dados.codigo_oem });
+      var metaTitle = tplInterpolate(t.meta_title, { nome:dados.nome, marca:dados.fabricante, sku:dados.codigo_fabricante, oem:dados.codigo_oem, familia:dados.familia_tecnica });
+      var metaDesc  = tplInterpolate(t.meta_desc,  { nome:dados.nome, marca:dados.fabricante, sku:dados.codigo_fabricante, oem:dados.codigo_oem });
+      div.innerHTML = '<div class="card-title">&#128221; Template: ' + esc(t.nome) + '</div>'
+        + (titulo ? '<div style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:8px">&#127991; ' + esc(titulo) + '</div>' : '')
+        + '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:10px;font-size:13px;color:#aaa;margin-bottom:8px;white-space:pre-wrap">' + esc(r.texto) + '</div>'
+        + (metaTitle ? '<div style="font-size:11px;color:#555">Meta Title: ' + esc(metaTitle) + '</div>' : '')
+        + (metaDesc  ? '<div style="font-size:11px;color:#555">Meta Desc: '  + esc(metaDesc)  + '</div>' : '')
+        + (t.keywords ? '<div style="font-size:11px;color:#555;margin-top:4px">Keywords: ' + esc(t.keywords) + '</div>' : '');
+    }
+  } catch(e) {}
+}
+
 function catLimpar() {
   document.getElementById('cat-input').value = '';
   document.getElementById('cat-preview').style.display = 'none';
@@ -1949,6 +2252,8 @@ async function catIndexar() {
     _catDados._ntcResult = r;
     renderNTC(r, document.getElementById('cat-ntc-result'));
     status.textContent = '✅ Indexado — NTC ' + Math.round(r.ntc * 100) + '% ' + r.decisao;
+    // Aplica template ativo se configurado
+    if (window._catTemplateAtivo) catAplicarTemplateNaDescricao(_catDados);
   } catch(e) {
     status.textContent = 'Erro NTC: ' + e.message;
   }
@@ -2031,6 +2336,9 @@ function catCompletarNTC() {
 
 // ===== INIT =====
 loadDashboard();
+tplRenderLista();
+// Atualiza lista de templates ao navegar para a página
+(function(orig){ window.nav = function(p){ orig(p); if(p==='templates') tplRenderLista(); }; })(nav);
 
 // ===== COMPLETAR NTC =====
 var PESOS_NTC = {DNA:0.25,TF:0.15,FM:0.10,CO:0.10,AV:0.10,MC:0.05,EC:0.05,BTA:0.05,CC:0.05,LG:0.05,IV:0.05,FI:0.03,FP:0.02};
