@@ -403,7 +403,74 @@ tr:hover td{background:#ffffff04}
     <div class="page" id="page-fiscal"><div class="stub-page"><div class="stub-icon">&#128203;</div><h2>Fiscal &amp; Log&iacute;stica</h2><p>Em desenvolvimento &mdash; Fiscal &amp; Log&iacute;stica</p></div></div>
     <div class="page" id="page-ntc"><div class="stub-page"><div class="stub-icon">&#128302;</div><h2>NTC Inspector</h2><p>Em desenvolvimento &mdash; NTC Inspector</p></div></div>
     <div class="page" id="page-relatorios"><div class="stub-page"><div class="stub-icon">&#128200;</div><h2>Relat&oacute;rios</h2><p>Em desenvolvimento &mdash; Relat&oacute;rios</p></div></div>
-    <div class="page" id="page-importar"><div class="stub-page"><div class="stub-icon">&#128229;</div><h2>Importar Cat&aacute;logo</h2><p>Em desenvolvimento &mdash; Importar Cat&aacute;logo</p></div></div>
+    <!-- IMPORTAR CATÁLOGO -->
+    <div class="page" id="page-importar">
+      <div class="page-title">&#128229; Indexador de Cat&aacute;logo</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole o texto de qualquer cat&aacute;logo de pe&ccedil;as. O motor extrai fabricante, c&oacute;digos OEM, aplica&ccedil;&otilde;es, ficha t&eacute;cnica e calcula o NTC 4.0 automaticamente.</p>
+
+      <div class="card">
+        <div class="card-title">&#128203; Texto do Cat&aacute;logo</div>
+        <div class="form-group">
+          <textarea id="cat-input" rows="12" style="font-family:monospace;font-size:12px;line-height:1.6" placeholder="Cole aqui o texto copiado do cat&aacute;logo...
+
+Exemplo:
+KIT DE DISTRIBUICAO / CORREIA DENTADA - 5300512100 - INA
+Pre&ccedil;o R$339,59
+FABRICANTE/MONTADORA  C&Oacute;DIGO
+TOYO  13505-0L010
+Aplica&ccedil;&otilde;es
+TOYOTA  HILUX SRV 4X4  2005  2015
+Ficha T&eacute;cnica
+MARCA  INA
+NUMERO DA PECA  530 0512 100
+QTDE DE DENTES  97
+MEDIDA LARGURA  25 MM"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="catIndexar()">&#9889; Indexar Produto</button>
+          <button class="btn btn-secondary" onclick="catLimpar()">Limpar</button>
+          <span id="cat-status" style="font-size:12px;color:#555;align-self:center"></span>
+        </div>
+      </div>
+
+      <!-- Preview extraído -->
+      <div id="cat-preview" style="display:none">
+        <div class="card" style="border-color:#ff450030">
+          <div class="card-title">&#128270; Dados Extraídos</div>
+          <div class="grid2" id="cat-dados-grid" style="font-size:13px"></div>
+        </div>
+
+        <!-- NTC resultado -->
+        <div class="card" id="cat-ntc-card">
+          <div class="card-title">&#9889; NTC 4.0</div>
+          <div id="cat-ntc-result"></div>
+        </div>
+
+        <!-- Aplicações extraídas -->
+        <div class="card" id="cat-aplic-card" style="display:none">
+          <div class="card-title">&#128663; Aplica&ccedil;&otilde;es Detectadas</div>
+          <div style="overflow-x:auto">
+            <table id="cat-aplic-table">
+              <tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Ano Ini</th><th>Ano Fim</th></tr>
+            </table>
+          </div>
+          <p style="font-size:11px;color:#444;margin-top:8px">* Primeira aplica&ccedil;&atilde;o usada no NTC. Demais ficam no campo de notas.</p>
+        </div>
+
+        <!-- Códigos OEM extraídos -->
+        <div class="card" id="cat-oem-card" style="display:none">
+          <div class="card-title">&#128279; C&oacute;digos OEM Detectados</div>
+          <div id="cat-oem-list" style="font-size:13px;line-height:2"></div>
+        </div>
+
+        <!-- Salvar -->
+        <div style="display:flex;gap:10px;margin-bottom:20px">
+          <button class="btn btn-primary" style="flex:1" onclick="catSalvar()">&#10003; Salvar no Cat&aacute;logo</button>
+          <button class="btn btn-secondary" onclick="catCompletarNTC()">&#127919; Completar NTC</button>
+        </div>
+        <div id="cat-save-status" style="font-size:12px;color:#555;margin-bottom:12px"></div>
+      </div>
+    </div>
     <div class="page" id="page-wix"><div class="stub-page"><div class="stub-icon">&#128279;</div><h2>Wix Stores</h2><p>Em desenvolvimento &mdash; Wix Stores</p></div></div>
     <div class="page" id="page-pdv"><div class="stub-page"><div class="stub-icon">&#127978;</div><h2>PDV</h2><p>Em desenvolvimento &mdash; PDV</p></div></div>
     <div class="page" id="page-plataforma-int"><div class="stub-page"><div class="stub-icon">&#128268;</div><h2>Integra&ccedil;&otilde;es de Plataforma</h2><p>Em desenvolvimento &mdash; Integra&ccedil;&otilde;es de Plataforma</p></div></div>
@@ -912,6 +979,331 @@ function uploadImagemLocal() {
     document.getElementById('upload-preview').style.display = 'none';
   };
   reader.readAsDataURL(file);
+}
+
+// ===== INDEXADOR DE CATÁLOGO =====
+var _catDados = {};
+
+function catLimpar() {
+  document.getElementById('cat-input').value = '';
+  document.getElementById('cat-preview').style.display = 'none';
+  document.getElementById('cat-status').textContent = '';
+  _catDados = {};
+}
+
+function catExtrair(texto) {
+  var d = {};
+  var linhas = texto.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var upper = texto.toUpperCase();
+
+  // ── 1. Linha do título: "DESCRICAO - PARTNUMBER - MARCA" ou "DESCRICAO — PARTNUMBER - MARCA"
+  var tituloRe = /^(.+?)\s*[-—]\s*([A-Z0-9][A-Z0-9\s\.\-\/]{2,29}?)\s*[-—]\s*([A-Z][A-Z\s\-]{1,30})$/m;
+  var mTit = texto.match(tituloRe);
+  if (mTit) {
+    d.nome       = mTit[1].trim();
+    d.codigo_fabricante = mTit[2].trim().replace(/\s+/g,'');
+    d.fabricante = mTit[3].trim();
+  }
+
+  // Helper: próxima linha não-vazia após um label
+  function proxLinha(txt, labelRe) {
+    var m = txt.match(labelRe);
+    if (!m) return null;
+    var pos = m.index + m[0].length;
+    var resto = txt.substring(pos);
+    var linhasR = resto.split('\n');
+    for (var i = 0; i < linhasR.length; i++) {
+      var l = linhasR[i].trim();
+      if (l.length > 0) return l;
+    }
+    return null;
+  }
+
+  // ── 2. Marca/Fabricante da Ficha Técnica
+  var marcaFicha = proxLinha(texto, /^MARCA\s*$/im);
+  if (marcaFicha && /^[A-Z][A-Z\s\-]{0,25}$/.test(marcaFicha)) {
+    d.fabricante = marcaFicha.trim();
+  } else {
+    var mMarca = texto.match(/MARCA[:\s]+([A-Z][A-Z ]{1,20})/i);
+    if (mMarca && !d.fabricante) d.fabricante = mMarca[1].trim();
+  }
+
+  // ── 3. Número da peça (ficha técnica) — pega só até fim da linha
+  var numFicha = proxLinha(texto, /^NUMERO\s+DA\s+PECA\s*$/im)
+              || proxLinha(texto, /^N[ÚU]MERO\s+DA\s+PE[ÇC]A\s*$/im);
+  if (numFicha) d.codigo_fabricante = numFicha.trim().replace(/\s+/g,'');
+
+  // ── 4. Família técnica
+  var descFicha = proxLinha(texto, /^DESCRICAO\s+PRODUTO\s*$/im)
+               || proxLinha(texto, /^DESCRI[ÇC][ÃA]O\s+PRODUTO\s*$/im);
+  var mDesc = descFicha ? [null, descFicha] : texto.match(/DESCRICAO\s+PRODUTO[:\s]+(.+)/i);
+  if (mDesc) {
+    var dProd = mDesc[1].trim();
+    if (dProd.toUpperCase().indexOf('DISTRIBUI') >= 0 || dProd.toUpperCase().indexOf('CORREIA') >= 0) {
+      d.familia_tecnica = 'Motor';
+    } else if (dProd.toUpperCase().indexOf('FREIO') >= 0) {
+      d.familia_tecnica = 'Freios';
+    } else if (dProd.toUpperCase().indexOf('FILTRO') >= 0) {
+      d.familia_tecnica = 'Filtros';
+    }
+    if (!d.nome) d.nome = dProd;
+  }
+
+  // ── Família pelo título/upper
+  if (!d.familia_tecnica) {
+    if (upper.indexOf('DISTRIBUI') >= 0 || upper.indexOf('CORREIA') >= 0) d.familia_tecnica = 'Motor';
+    else if (upper.indexOf('FREIO') >= 0 || upper.indexOf('PASTILHA') >= 0) d.familia_tecnica = 'Freios';
+    else if (upper.indexOf('FILTRO') >= 0) d.familia_tecnica = 'Filtros';
+    else if (upper.indexOf('AMORTECEDOR') >= 0 || upper.indexOf('SUSPENS') >= 0) d.familia_tecnica = 'Suspensao';
+    else if (upper.indexOf('EMBREAGEM') >= 0) d.familia_tecnica = 'Transmissao';
+    else if (upper.indexOf('VELA') >= 0 || upper.indexOf('IGNI') >= 0) d.familia_tecnica = 'Ignicao';
+  }
+
+  // ── 5. Especificações técnicas
+  d.especificacoes = [];
+  var mDentes = texto.match(/(?:QTDE\s+DE\s+DENTES|DENTES)[:\s\n]+(\d+)/i);
+  if (mDentes) d.especificacoes.push('Dentes: ' + mDentes[1]);
+  var mLarg = texto.match(/(?:MEDIDA\s+LARGURA|LARGURA)[:\s\n]+(\d+[\.,]?\d*\s*(?:MM|CM|m))/i);
+  if (mLarg) d.especificacoes.push('Largura: ' + mLarg[1].trim());
+  var mCod = texto.match(/CODIGO\s+ORIGINAL[:\s\n]+([A-Z0-9\-]{5,20})/i);
+  if (mCod) d.especificacoes.push('Codigo original: ' + mCod[1].trim());
+
+  // ── 6. Preço
+  var mPreco = texto.match(/R\$\s*(\d+[\.,]\d{2})/);
+  if (mPreco) d.preco_venda = parseFloat(mPreco[1].replace(',','.'));
+
+  // ── 7. Códigos OEM / Externos
+  // Busca bloco "FABRICANTE/MONTADORA  CÓDIGO" e linhas seguintes
+  d.cc_oem = [];
+  d._oem_table = [];
+  var mOemBloco = texto.match(/FABRICANTE\/MONTADORA[\s\S]*?(?=Aplica|APLICA|Ficha|FICHA|$)/i);
+  if (mOemBloco) {
+    var linhasOem = mOemBloco[0].split('\n').slice(1);
+    linhasOem.forEach(function(l) {
+      var partes = l.trim().split(/\t+|\s{2,}/);
+      if (partes.length >= 2) {
+        var cod = partes[partes.length - 1].trim();
+        var fab = partes.slice(0, partes.length - 1).join(' ').trim();
+        if (cod && /^[A-Z0-9\-]{5,20}$/.test(cod)) {
+          d.cc_oem.push(cod);
+          d._oem_table.push({fab: fab, cod: cod});
+          if (!d.codigo_oem) d.codigo_oem = cod;
+        }
+      }
+    });
+  }
+  // Fallback: busca padrões de código OEM no texto
+  if (!d.codigo_oem) {
+    var mCodOem = texto.match(/\b(1[0-9]{4}-[0-9A-Z]{5,10})\b/);
+    if (mCodOem) { d.codigo_oem = mCodOem[1]; d.cc_oem.push(mCodOem[1]); }
+  }
+
+  // ── 8. Aplicações veiculares
+  // Suporta dois formatos:
+  //   A) Mesma linha: "MODELO - 3.0 L 16V  2005  2011"
+  //   B) Linhas separadas: "MODELO\n\n2005\n\n2011" (formato catálogo mobile)
+  d._aplicacoes = [];
+  var blocoAplic = '';
+  var emAplic = false;
+  // Extrai bloco de aplicações (com linhas vazias)
+  var allLinhas = texto.split('\n');
+  for (var ai = 0; ai < allLinhas.length; ai++) {
+    var al = allLinhas[ai].trim();
+    if (/^Aplica[çc]/i.test(al)) { emAplic = true; continue; }
+    if (/^Ficha|^SOBRE|^FALE|^LINKS/i.test(al)) { emAplic = false; continue; }
+    if (emAplic) blocoAplic += al + '\n';
+  }
+
+  var montadoraAtual = null;
+  // Formato B: juntar grupos separados por linhas vazias
+  // Cada grupo: modelo + motor na 1ª linha, anos nas próximas não-vazias
+  var tokens = blocoAplic.split('\n').map(function(l){ return l.trim(); });
+  var i2 = 0;
+  while (i2 < tokens.length) {
+    var tok = tokens[i2];
+    // Montadora sozinha
+    if (/^(TOYOTA|HONDA|HYUNDAI|KIA|FORD|GM|CHEVROLET|VW|VOLKSWAGEN|FIAT|NISSAN|RENAULT|PEUGEOT|CITROEN|MITSUBISHI|SUZUKI|ISUZU|LAND ROVER|JEEP|RAM|DODGE|CHRYSLER)$/i.test(tok)) {
+      montadoraAtual = tok; i2++; continue;
+    }
+    // Cabeçalho tabela
+    if (/^ANO\s+INICIAL|^MODELO|^VEICULO/i.test(tok)) { i2++; continue; }
+    // Linha de modelo com motor embutido: "HILUX SRV - 3.0 L 16V DOHC L4"
+    if (tok.length > 8 && /[A-Z]/.test(tok[0])) {
+      var mMotorLn = tok.match(/-\s*([\d,\.]+\s*L\s+[\dV]+[A-Z0-9\s]*)/i);
+      var motor2 = mMotorLn ? mMotorLn[1].trim() : null;
+      var modelo2 = tok.replace(mMotorLn ? mMotorLn[0] : '', '').replace(/[-]+$/,'').trim();
+      // Busca anos nas próximas linhas não-vazias
+      var anoIni = null, anoFim = null, j = i2 + 1;
+      while (j < tokens.length && j < i2 + 6) {
+        var t2 = tokens[j].trim();
+        if (/^\d{4}$/.test(t2)) {
+          if (!anoIni) anoIni = parseInt(t2);
+          else if (!anoFim) { anoFim = parseInt(t2); break; }
+        } else if (t2.length > 5 && /[A-Z]/.test(t2[0])) break; // nova linha de modelo
+        j++;
+      }
+      // Formato inline: anos na mesma linha
+      if (!anoIni) {
+        var mAnosLn = tok.match(/(\d{4})\s+(\d{4})/);
+        if (mAnosLn) { anoIni = parseInt(mAnosLn[1]); anoFim = parseInt(mAnosLn[2]); }
+      }
+      if (anoIni && anoFim && modelo2.length > 2) {
+        d._aplicacoes.push({
+          montadora: montadoraAtual || '',
+          modelo: modelo2,
+          motor: motor2 || '',
+          ano_inicial: anoIni,
+          ano_final: anoFim
+        });
+      }
+    }
+    i2++;
+  }
+  // Usa primeira aplicação para campos NTC
+  if (d._aplicacoes.length > 0) {
+    var a = d._aplicacoes[0];
+    if (!d.marca)  d.marca       = a.montadora;
+    if (!d.modelo) d.modelo      = a.modelo.split(' ')[0] || a.modelo;
+    if (!d.motor)  d.motor       = a.motor;
+    if (!d.ano_inicial) d.ano_inicial = a.ano_inicial;
+    if (!d.ano_final)   d.ano_final   = a.ano_final;
+    // Ano mais abrangente
+    d._aplicacoes.forEach(function(ap) {
+      if (ap.ano_inicial < d.ano_inicial) d.ano_inicial = ap.ano_inicial;
+      if (ap.ano_final   > d.ano_final)   d.ano_final   = ap.ano_final;
+    });
+    // Notas com todas as aplicações
+    d.notas_aplicacoes = d._aplicacoes.map(function(ap){
+      return [ap.montadora, ap.modelo, ap.motor, ap.ano_inicial+'-'+ap.ano_final].filter(Boolean).join(' | ');
+    }).join('\n');
+  }
+
+  // ── 9. Campos NTC derivados
+  if (d.fabricante) {
+    d.linhagem_fabricante = d.fabricante;
+    if (d.marca) d.linhagem_montadora = d.marca + ' Motor Corporation';
+  }
+  if (d.cc_oem.length > 0) {
+    d.cc_aftermarket = d.cc_oem.slice(1);
+    d.cc_importadores = d.codigo_fabricante ? [d.codigo_fabricante] : [];
+  }
+  if (d.especificacoes.length > 0) {
+    d.funcao = 'Kit de distribuicao ' + (d.fabricante||'') + ' para motor ' + (d.motor||'');
+  }
+
+  return d;
+}
+
+async function catIndexar() {
+  var texto = document.getElementById('cat-input').value.trim();
+  if (!texto) { alert('Cole o texto do catálogo primeiro.'); return; }
+  var status = document.getElementById('cat-status');
+  status.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #ff4500;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle"></span> Extraindo...';
+
+  _catDados = catExtrair(texto);
+
+  // Renderiza dados extraídos
+  var campos = [
+    ['Fabricante', _catDados.fabricante],
+    ['Part Number', _catDados.codigo_fabricante],
+    ['Nome', _catDados.nome],
+    ['Família', _catDados.familia_tecnica],
+    ['Código OEM', _catDados.codigo_oem],
+    ['Marca Veículo', _catDados.marca],
+    ['Modelo', _catDados.modelo],
+    ['Motor', _catDados.motor],
+    ['Ano', _catDados.ano_inicial && _catDados.ano_final ? _catDados.ano_inicial + ' – ' + _catDados.ano_final : null],
+    ['Preço', _catDados.preco_venda ? 'R$ ' + _catDados.preco_venda.toFixed(2) : null],
+    ['Specs', _catDados.especificacoes && _catDados.especificacoes.length ? _catDados.especificacoes.join(' | ') : null],
+    ['OEM Codes', _catDados.cc_oem && _catDados.cc_oem.length ? _catDados.cc_oem.join(', ') : null],
+  ];
+  var grid = document.getElementById('cat-dados-grid');
+  grid.innerHTML = campos.map(function(kv) {
+    if (!kv[1]) return '';
+    return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px">'
+         + '<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px">' + kv[0] + '</div>'
+         + '<div style="color:#fff;font-weight:600;margin-top:2px;font-size:13px">' + kv[1] + '</div>'
+         + '</div>';
+  }).join('');
+
+  // Aplica NTC
+  status.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #ff4500;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle"></span> Calculando NTC...';
+  try {
+    var r = await api('POST', '/motor/nct', _catDados);
+    _catDados._ntcResult = r;
+    renderNTC(r, document.getElementById('cat-ntc-result'));
+    status.textContent = '✅ Indexado — NTC ' + Math.round(r.ntc * 100) + '% ' + r.decisao;
+  } catch(e) {
+    status.textContent = 'Erro NTC: ' + e.message;
+  }
+
+  // Tabela de aplicações
+  if (_catDados._aplicacoes && _catDados._aplicacoes.length > 0) {
+    var apCard = document.getElementById('cat-aplic-card');
+    var apTable = document.getElementById('cat-aplic-table');
+    apCard.style.display = 'block';
+    // Mantém cabeçalho
+    apTable.innerHTML = '<tr><th>Montadora</th><th>Modelo</th><th>Motor</th><th>Ano Ini</th><th>Ano Fim</th></tr>';
+    _catDados._aplicacoes.forEach(function(ap) {
+      var tr = apTable.insertRow();
+      tr.innerHTML = '<td>' + (ap.montadora||'—') + '</td><td>' + ap.modelo + '</td><td>' + (ap.motor||'—') + '</td><td>' + ap.ano_inicial + '</td><td>' + ap.ano_final + '</td>';
+    });
+  }
+
+  // Tabela OEM
+  if (_catDados._oem_table && _catDados._oem_table.length > 0) {
+    var oemCard = document.getElementById('cat-oem-card');
+    oemCard.style.display = 'block';
+    document.getElementById('cat-oem-list').innerHTML = _catDados._oem_table.map(function(o) {
+      return '<span style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:5px;padding:3px 10px;margin:2px;display:inline-block;font-size:12px">'
+           + '<span style="color:#555">' + o.fab + '</span> &nbsp;<strong style="color:#ff4500">' + o.cod + '</strong>'
+           + '</span>';
+    }).join('');
+  }
+
+  document.getElementById('cat-preview').style.display = 'block';
+}
+
+function catSalvar() {
+  if (!_catDados.fabricante || !_catDados.codigo_fabricante) {
+    document.getElementById('cat-save-status').textContent = '✖ Fabricante e Part Number são obrigatórios.';
+    return;
+  }
+  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
+  var r = _catDados._ntcResult || {};
+  var prod = Object.assign({}, _catDados, {
+    ntc: r.ntc || 0,
+    decisao: r.decisao || 'REPROVADO',
+    rast_hash: r.rast_hash || '',
+    id: 'local-' + Date.now(),
+    _fonte: 'catalogo'
+  });
+  // Remove campos temporários
+  delete prod._ntcResult; delete prod._aplicacoes; delete prod._oem_table;
+  prods.push(prod);
+  localStorage.setItem('gn_prod', JSON.stringify(prods));
+  addProdRow(prod);
+  atualizarStats();
+  cntcPreencherSelect();
+  document.getElementById('cat-save-status').textContent = '✅ Produto salvo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + (r.decisao||'REPROVADO');
+}
+
+function catCompletarNTC() {
+  if (!_catDados.fabricante) return;
+  // Salva temporariamente e abre Completar NTC
+  catSalvar();
+  setTimeout(function() {
+    nav('completar-ntc', document.querySelector('[onclick*="completar-ntc"]'));
+    cntcPreencherSelect();
+    // Seleciona o produto recém-salvo
+    setTimeout(function() {
+      var sel = document.getElementById('cntc-prod-select');
+      if (sel && sel.options.length > 1) {
+        sel.value = String(JSON.parse(localStorage.getItem('gn_prod')||'[]').length - 1);
+        cntcCarregarProduto();
+      }
+    }, 300);
+  }, 400);
 }
 
 // ===== INIT =====
