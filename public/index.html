@@ -409,7 +409,11 @@ tr:hover td{background:#ffffff04}
       <p style="color:#666;font-size:13px;margin-bottom:18px">Cole o texto de qualquer cat&aacute;logo de pe&ccedil;as. O motor extrai fabricante, c&oacute;digos OEM, aplica&ccedil;&otilde;es, ficha t&eacute;cnica e calcula o NTC 4.0 automaticamente.</p>
 
       <div class="card">
-        <div class="card-title">&#128203; Texto do Cat&aacute;logo</div>
+        <div class="card-title">&#128203; Entrada do Cat&aacute;logo</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button id="cat-btn-texto" onclick="catToggleModo('texto')" style="padding:4px 12px;font-size:12px;border-radius:5px;border:1px solid #ff4500;background:#ff450020;color:#ff4500;cursor:pointer;font-weight:600">&#128203; Texto</button>
+          <button id="cat-btn-json"  onclick="catToggleModo('json')"  style="padding:4px 12px;font-size:12px;border-radius:5px;border:1px solid #333;background:transparent;color:#666;cursor:pointer">&#123;&#125; JSON (Bula T&eacute;cnica)</button>
+        </div>
         <div class="form-group">
           <textarea id="cat-input" rows="12" style="font-family:monospace;font-size:12px;line-height:1.6" placeholder="Cole aqui o texto copiado do cat&aacute;logo...
 
@@ -1194,13 +1198,137 @@ function catExtrair(texto) {
   return d;
 }
 
+var _catModo = 'texto';
+function catToggleModo(modo) {
+  _catModo = modo;
+  var btnTxt = document.getElementById('cat-btn-texto');
+  var btnJson = document.getElementById('cat-btn-json');
+  var inp = document.getElementById('cat-input');
+  if (modo === 'json') {
+    btnTxt.style.border = '1px solid #333'; btnTxt.style.background = 'transparent'; btnTxt.style.color = '#666';
+    btnJson.style.border = '1px solid #ff4500'; btnJson.style.background = '#ff450020'; btnJson.style.color = '#ff4500';
+    inp.placeholder = 'Cole aqui o JSON da bula técnica...\n\nExemplo:\n{\n  "bula_tecnica_engenharia": {\n    "identificacao_produto": { "part_number_fabricante": "VKM 71809", "fabricante": "SKF", ... },\n    "intercambiabilidade_cruzada": { "codigos_originais_oem": ["93353848", ...], "equivalentes_premium": { "GATES": "T43144" } }\n  }\n}';
+  } else {
+    btnJson.style.border = '1px solid #333'; btnJson.style.background = 'transparent'; btnJson.style.color = '#666';
+    btnTxt.style.border = '1px solid #ff4500'; btnTxt.style.background = '#ff450020'; btnTxt.style.color = '#ff4500';
+    inp.placeholder = 'Cole aqui o texto copiado do catálogo...';
+  }
+}
+
+function jsonExtrair(obj) {
+  // Suporta envelope bula_tecnica_engenharia ou objeto flat
+  var b = obj.bula_tecnica_engenharia || obj;
+  var id   = b.identificacao_produto || {};
+  var spec = b.especificacoes_meta_mecanicas || {};
+  var inst = b.diretrizes_instalacao_oficina || {};
+  var cruz = b.intercambiabilidade_cruzada || {};
+  var cdc  = b.cdc_auto_observacao_teste || {};
+
+  var d = {};
+
+  // DNA
+  d.codigo_fabricante = id.part_number_fabricante || id.sku || null;
+  d.fabricante        = id.fabricante || null;
+  d.sku               = id.sku || d.codigo_fabricante;
+
+  // Nome enriquecido
+  var partes = [spec.tipo_tensionador, d.codigo_fabricante, d.fabricante].filter(Boolean);
+  d.nome = partes.length > 0 ? partes.join(' ') : null;
+
+  // Família técnica — detecta em todos os campos de texto disponíveis
+  var famTexto = [spec.tipo_tensionador, id.sku, id.part_number_fabricante, id.rast_hash_rastreabilidade, d.nome].filter(Boolean).join(' ').toLowerCase();
+  if (/tensor|correia|distribui|timing|belt/i.test(famTexto))  d.familia_tecnica = 'Motor';
+  else if (/freio|pastilha|disco|brake/i.test(famTexto))       d.familia_tecnica = 'Freios';
+  else if (/filtro|filter/i.test(famTexto))                    d.familia_tecnica = 'Filtros';
+  else if (/bomba|arrefec|cooling|radiador/i.test(famTexto))   d.familia_tecnica = 'Arrefecimento';
+  else if (/suspen|buje|amortec|mola|spring/i.test(famTexto))  d.familia_tecnica = 'Suspensão';
+  else if (/eletri|sensor|bobina|ignição/i.test(famTexto))     d.familia_tecnica = 'Elétrica';
+  else                                                         d.familia_tecnica = null;
+
+  // Fiscal
+  d.ncm = id.ncm ? id.ncm.replace(/\D/g, '') : null;
+  d.ean = id.gtin_ean || null;
+
+  // OEM — codigos_originais_oem
+  var oemsArr = Array.isArray(cruz.codigos_originais_oem) ? cruz.codigos_originais_oem : [];
+  d.codigo_oem = oemsArr[0] || null;
+  d.cc_oem     = oemsArr.length > 0 ? oemsArr : null;
+
+  // Aftermarket (equivalentes_premium)
+  var equiv = cruz.equivalentes_premium || {};
+  var afterArr = Object.keys(equiv).map(function(k){ return k + ':' + equiv[k]; });
+  d.cc_aftermarket  = afterArr.length > 0 ? afterArr : null;
+  d.cc_importadores = d.codigo_fabricante ? [d.codigo_fabricante] : null;
+
+  // _oem_table para exibição (OEM + equivalentes)
+  d._oem_table = oemsArr.map(function(c){ return { fab: 'OEM', cod: c }; })
+    .concat(Object.keys(equiv).map(function(k){ return { fab: k, cod: equiv[k] }; }));
+
+  // Material
+  var matParts = [spec.material_pista, spec.tecnologia_rolamento, spec.tipo_blindagem, spec.especificacao_graxa].filter(Boolean);
+  d.material = matParts.length > 0 ? matParts.join(' | ') : null;
+
+  // Especificações / Engineering
+  var specsArr = [];
+  if (spec.diametro_externo)   specsArr.push('Ø ext: ' + spec.diametro_externo);
+  if (spec.largura_rolete)     specsArr.push('Largura: ' + spec.largura_rolete);
+  if (spec.tipo_tensionador)   specsArr.push('Tipo: ' + spec.tipo_tensionador);
+  if (spec.perfil_pista)       specsArr.push('Perfil: ' + spec.perfil_pista);
+  if (inst.torque_aperto_nominal) specsArr.push('Torque: ' + inst.torque_aperto_nominal);
+  if (inst.sentido_tensionamento) specsArr.push('Sentido: ' + inst.sentido_tensionamento);
+  if (inst.procedimento_ajuste)   specsArr.push('Ajuste: ' + inst.procedimento_ajuste);
+  if (inst.ferramental_obrigatorio) specsArr.push('Ferramental: ' + inst.ferramental_obrigatorio);
+  d.especificacoes = specsArr.length > 0 ? specsArr : null;
+
+  // Dimensoes para NTC EC
+  var dimArr = [];
+  if (spec.diametro_externo) dimArr.push(spec.diametro_externo);
+  if (spec.largura_rolete)   dimArr.push(spec.largura_rolete);
+  d.dimensoes = dimArr.length > 0 ? dimArr : null;
+
+  // Torque
+  d.torque = inst.torque_aperto_nominal || null;
+
+  // Funcao
+  d.funcao = spec.tipo_tensionador || null;
+
+  // Boletins / BTA
+  var bolArr = [];
+  if (cdc.politica_garantia_cdc)      bolArr.push(cdc.politica_garantia_cdc);
+  if (cdc.recomendacao_critica_mobis) bolArr.push(cdc.recomendacao_critica_mobis);
+  if (cdc.diagnostico_falha_prematura) bolArr.push('Diagnóstico: ' + cdc.diagnostico_falha_prematura);
+  d.boletins = bolArr.length > 0 ? bolArr : null;
+
+  // Linhagem
+  d.linhagem_fabricante = d.fabricante || null;
+
+  // Aplicações — JSON de bula técnica geralmente não traz aplicações detalhadas;
+  // motor pode estar embutido no rast_hash (campo MOT:)
+  d._aplicacoes = [];
+  var rastHash = id.rast_hash_rastreabilidade || '';
+  var mMot = rastHash.match(/MOT:([^|]+)/);
+  var mAplic = rastHash.match(/APL:([^|]+)/);
+  if (mMot) d.motor = mMot[1].replace(/-/g, ' ').trim();
+  if (mAplic) {
+    // Não inventa aplicações individuais — coloca na nota apenas
+    d.notas_aplicacoes = mAplic[1].replace(/-/g, ', ').trim();
+  }
+
+  return d;
+}
+
 async function catIndexar() {
   var texto = document.getElementById('cat-input').value.trim();
   if (!texto) { alert('Cole o texto do catálogo primeiro.'); return; }
   var status = document.getElementById('cat-status');
   status.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #ff4500;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle"></span> Extraindo...';
 
-  _catDados = catExtrair(texto);
+  if (_catModo === 'json') {
+    try { _catDados = jsonExtrair(JSON.parse(texto)); }
+    catch(e) { status.textContent = '✖ JSON inválido: ' + e.message; return; }
+  } else {
+    _catDados = catExtrair(texto);
+  }
 
   // Renderiza dados extraídos
   var campos = [
@@ -1209,13 +1337,17 @@ async function catIndexar() {
     ['Nome', _catDados.nome],
     ['Família', _catDados.familia_tecnica],
     ['Código OEM', _catDados.codigo_oem],
+    ['EAN / GTIN', _catDados.ean],
+    ['NCM', _catDados.ncm],
+    ['Motor', _catDados.motor],
     ['Marca Veículo', _catDados.marca],
     ['Modelo', _catDados.modelo],
-    ['Motor', _catDados.motor],
     ['Ano', _catDados.ano_inicial && _catDados.ano_final ? _catDados.ano_inicial + ' – ' + _catDados.ano_final : null],
     ['Preço', _catDados.preco_venda ? 'R$ ' + _catDados.preco_venda.toFixed(2) : null],
+    ['Material', _catDados.material],
     ['Specs', _catDados.especificacoes && _catDados.especificacoes.length ? _catDados.especificacoes.join(' | ') : null],
     ['OEM Codes', _catDados.cc_oem && _catDados.cc_oem.length ? _catDados.cc_oem.join(', ') : null],
+    ['Equivalentes', _catDados.cc_aftermarket && _catDados.cc_aftermarket.length ? _catDados.cc_aftermarket.join(' | ') : null],
   ];
   var grid = document.getElementById('cat-dados-grid');
   grid.innerHTML = campos.map(function(kv) {
