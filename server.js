@@ -244,20 +244,14 @@ app.post('/api/produtos', (req, res) => {
 app.delete('/api/produtos/:id', (req, res) => { res.json({ ok: true }); });
 app.post('/api/produtos/:id/enriquecer', (req, res) => { res.json({ ok: true }); });
 
-// Bling (stub)
-app.get('/api/bling/status', (req, res) => {
-    res.json({ ok: true, mensagem: 'Bling configurado — verifique BLING_CLIENT_SECRET no Render' });
-});
-app.post('/api/bling/token/renovar', (req, res) => { res.json({ ok: true, mensagem: 'Token renovado' }); });
-app.get('/api/bling/buscar', (req, res) => { res.json({ ok: false, produtos: [] }); });
-
 // Bling — token OAuth2
 let _blingToken = null;
 let _blingTokenExp = 0;
 
 async function getBlingToken() {
+  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY;
   if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
-  if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render');
+  if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
   const https = require('https');
   const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
   const qs = 'grant_type=client_credentials';
@@ -334,6 +328,19 @@ app.put('/api/bling/produto/:id', async (req, res) => {
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
+// ─── BLING — Lista de produtos com paginação ─────────────────
+app.get('/api/bling/produtos', async (req, res) => {
+  try {
+    const pagina = parseInt(req.query.pagina) || 1;
+    const limite = Math.min(parseInt(req.query.limite) || 100, 100);
+    const data = await blingRequest('GET', `/produtos?situacao=A&pagina=${pagina}&limite=${limite}`);
+    const prods = (data.data || []).map(p => ({
+      id: p.id, nome: p.nome, codigo: p.codigo, preco: p.preco, situacao: p.situacao
+    }));
+    res.json({ ok: true, produtos: prods, total: prods.length, pagina, temMais: prods.length === limite });
+  } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
 // ─── WIX STORES — www.mobisautoparts.com.br ───────────────────
 function wixRequest(method, path, payload) {
   const key = process.env.WIX_API_KEY;
@@ -354,7 +361,7 @@ function wixRequest(method, path, payload) {
 app.get('/api/wix/status', async (req, res) => {
   if (!process.env.WIX_API_KEY) return res.json({ ok: false, configurado: false, mensagem: 'Configure WIX_API_KEY e WIX_SITE_ID no Render' });
   try {
-    await wixRequest('GET', '/stores/v1/products?paging.limit=1');
+    await wixRequest('POST', '/stores/v3/products/query', { query: { paging: { limit: 1 } } });
     res.json({ ok: true, configurado: true, mensagem: 'Wix Stores conectado — mobisautoparts.com.br' });
   } catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
 });
@@ -392,6 +399,100 @@ app.post('/api/wix/sync/:id', async (req, res) => {
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
+// Wix — listar produtos (V3)
+app.post('/api/wix/produtos', async (req, res) => {
+  try {
+    const limite = Math.min(parseInt(req.body.limite) || 20, 100);
+    const data = await wixRequest('POST', '/stores/v3/products/query', {
+      query: { paging: { limit: limite, offset: 0 } }
+    });
+    const prods = (data.products || []).map(p => ({
+      id: p.id, nome: p.name, preco: p.priceData?.price,
+      estoque: p.stock?.inventoryStatus, visivel: p.visible
+    }));
+    res.json({ ok: true, produtos: prods, total: prods.length });
+  } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
+// ─── BLING → WIX — Importar produtos do Bling para Wix Stores V3 ─────
+app.post('/api/bling-wix/importar', async (req, res) => {
+  try {
+    const pagina  = parseInt(req.body.pagina)  || 1;
+    const limite  = Math.min(parseInt(req.body.limite) || 50, 100);
+
+    // 1. Buscar produtos ativos no Bling
+    const blingData = await blingRequest('GET', `/produtos?situacao=A&pagina=${pagina}&limite=${limite}`);
+    const blingProds = blingData.data || [];
+    if (!blingProds.length) return res.json({ ok: true, criados: 0, ignorados: 0, erros: 0, total: 0, resultados: [] });
+
+    // 2. Buscar todos os nomes de produtos já existentes no Wix (para evitar duplicatas)
+    const wixQuery = await wixRequest('POST', '/stores/v3/products/query', { query: { paging: { limit: 100, offset: 0 } } });
+    const wixNomes = new Set((wixQuery.products || []).map(p => p.name));
+
+    const resultados = [];
+    let criados = 0, ignorados = 0, erros = 0;
+    const novos = blingProds.filter(p => !wixNomes.has(p.nome));
+
+    if (!novos.length) {
+      return res.json({ ok: true, criados: 0, ignorados: blingProds.length, erros: 0, total: blingProds.length,
+        mensagem: 'Todos os produtos já existem no Wix', resultados: [] });
+    }
+
+    // 3. Criar novos produtos no Wix V3 em lotes de 10
+    const LOTE = 10;
+    for (let i = 0; i < novos.length; i += LOTE) {
+      const lote = novos.slice(i, i + LOTE);
+      const products = lote.map((p, idx) => {
+        const preco = p.preco ? String(parseFloat(p.preco).toFixed(2)) : '0.01';
+        return {
+          name: p.nome || p.codigo || 'Produto',
+          visible: true,
+          productType: 'PHYSICAL',
+          physicalProperties: {},
+          variantsInfo: {
+            variants: [{
+              choices: [],
+              price: { actualPrice: { amount: preco } },
+              visible: true,
+              inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
+              physicalProperties: {}
+            }]
+          }
+        };
+      });
+
+      try {
+        const createRes = await wixRequest('POST', '/stores/v3/bulk/products-with-inventory/create', {
+          products,
+          returnEntity: true
+        });
+        const results = createRes.results || createRes.bulkActionMetadata || [];
+        lote.forEach((p, idx) => {
+          const r = Array.isArray(results) ? results[idx] : null;
+          const wixId = r?.product?.id || r?.item?.id || r?.id;
+          if (wixId || (Array.isArray(results) && results.length > 0)) {
+            resultados.push({ nome: p.nome, acao: 'criado', bling_id: p.id });
+            criados++;
+          } else {
+            resultados.push({ nome: p.nome, acao: 'criado (lote)', bling_id: p.id });
+            criados++;
+          }
+        });
+      } catch(e) {
+        lote.forEach(p => {
+          resultados.push({ nome: p.nome, acao: 'erro', erro: e.message.substring(0, 80), bling_id: p.id });
+          erros++;
+        });
+      }
+    }
+
+    ignorados = blingProds.length - novos.length;
+    res.json({ ok: true, criados, ignorados, erros, total: blingProds.length, pagina, resultados });
+  } catch(e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
 // ─── SYNC EM LOTE — Bling + Wix ───────────────────────────────
 app.post('/api/sync/lote', async (req, res) => {
   const produtos = req.body.produtos || [];
@@ -427,7 +528,7 @@ app.post('/api/sync/lote', async (req, res) => {
 app.get('/api/sync/status', (req, res) => {
   res.json({
     ok: true,
-    bling: { configurado: !!(process.env.BLING_CLIENT_ID && process.env.BLING_CLIENT_SECRET), nome: 'Bling V3' },
+    bling: { configurado: !!(process.env.BLING_API_KEY || (process.env.BLING_CLIENT_ID && process.env.BLING_CLIENT_SECRET)), nome: 'Bling V3' },
     wix: { configurado: !!(process.env.WIX_API_KEY && process.env.WIX_SITE_ID), nome: 'Wix Stores — mobisautoparts.com.br' }
   });
 });

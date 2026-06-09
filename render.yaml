@@ -16,6 +16,8 @@ services:
         sync: false
       - key: GOOGLE_SEARCH_CX
         sync: false
+      - key: BLING_API_KEY
+        sync: false
       - key: BLING_CLIENT_ID
         sync: false
       - key: BLING_CLIENT_SECRET
