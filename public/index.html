@@ -6,8 +6,8 @@
 <title>iRollo 360 — Motor NTC 4.0</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#fff;display:flex;height:100vh;overflow:hidden}
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#111}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1a;display:flex;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#e8e8e8}::-webkit-scrollbar-thumb{background:#c0c0c0;border-radius:3px}
 
 /* SIDEBAR */
 #sidebar{width:220px;min-width:220px;background:#111111;height:100vh;display:flex;flex-direction:column;border-right:1px solid #1f1f1f;position:fixed;left:0;top:0;z-index:100;overflow-y:auto;transition:transform .3s}
@@ -27,49 +27,49 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#fff;d
 
 /* MAIN */
 #main{margin-left:220px;flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;transition:margin-left .3s}
-#topbar{background:#111;border-bottom:1px solid #1f1f1f;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+#topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 #hamburger{background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;display:none;padding:4px}
 .health-dot{width:8px;height:8px;background:#00ff88;border-radius:50%;animation:pulse 2s infinite;flex-shrink:0}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 #00ff8855}50%{box-shadow:0 0 0 5px #00ff8800}}
-.health-text{font-size:12px;color:#888}
-.health-text span{color:#00ff88}
-.topbar-right{margin-left:auto;font-size:11px;color:#555}
+.health-text{font-size:12px;color:#6b7280}
+.health-text span{color:#00c96b}
+.topbar-right{margin-left:auto;font-size:11px;color:#9ca3af}
 #content{flex:1;overflow-y:auto;padding:24px}
 .page{display:none}
 .page.active{display:block}
 
 /* CARDS / COMMON */
 .page-title{font-size:20px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px}
-.card{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:18px;margin-bottom:16px}
-.card-title{font-size:13px;font-weight:600;color:#ccc;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#374151;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.stat-card{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:18px;text-align:center}
+.stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;text-align:center}
 .stat-num{font-size:32px;font-weight:800;color:#ff4500}
-.stat-label{font-size:12px;color:#888;margin-top:4px}
+.stat-label{font-size:12px;color:#6b7280;margin-top:4px}
 .btn{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
 .btn-primary{background:#ff4500;color:#fff}
 .btn-primary:hover{background:#ff6b00}
-.btn-secondary{background:#1f1f1f;color:#aaa;border:1px solid #333}
-.btn-secondary:hover{color:#fff;border-color:#555}
+.btn-secondary{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+.btn-secondary:hover{color:#374151;border-color:#9ca3af}
 .btn-sm{padding:5px 10px;font-size:11px}
 .badge{display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700}
 .badge-green{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840}
 .badge-orange{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040}
 .badge-red{background:#ff450020;color:#ff6500;border:1px solid #ff450040}
-input,select,textarea{background:#0d0d0d;border:1px solid #2a2a2a;color:#fff;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
+input,select,textarea{background:#fff;border:1px solid #d1d5db;color:#1a1a1a;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:#ff4500}
-select option{background:#0d0d0d}
-label{font-size:12px;color:#888;display:block;margin-bottom:5px}
+select option{background:#fff;color:#1a1a1a}
+label{font-size:12px;color:#6b7280;display:block;margin-bottom:5px}
 .form-group{margin-bottom:14px}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:9px 12px;color:#666;font-size:11px;font-weight:600;border-bottom:1px solid #1f1f1f;text-transform:uppercase;letter-spacing:.5px}
-td{padding:9px 12px;border-bottom:1px solid #111;color:#ccc}
-tr:hover td{background:#ffffff04}
-.stub-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:#555;gap:16px}
+th{text-align:left;padding:9px 12px;color:#9ca3af;font-size:11px;font-weight:600;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 12px;border-bottom:1px solid #f3f4f6;color:#374151}
+tr:hover td{background:#f9fafb}
+.stub-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:#9ca3af;gap:16px}
 .stub-page .stub-icon{font-size:48px;opacity:.4}
-.stub-page h2{font-size:18px;font-weight:600;color:#444}
+.stub-page h2{font-size:18px;font-weight:600;color:#6b7280}
 
 /* NTC / IA */
 .ntc-big{font-size:72px;font-weight:900;line-height:1;margin-bottom:4px}
@@ -84,28 +84,28 @@ tr:hover td{background:#ffffff04}
 .aprov-table th{text-align:left;padding:10px 8px;color:#555;font-weight:600;border-bottom:2px solid #222;white-space:nowrap;font-size:12px}
 .aprov-table td{padding:9px 8px;border-bottom:1px solid #1a1a1a;vertical-align:middle}
 .aprov-table tr:hover td{background:#ffffff04}
-.aprov-sort-item{padding:8px 14px;font-size:13px;color:#aaa;cursor:pointer;border-radius:5px;white-space:nowrap;display:block}
+.aprov-sort-item{padding:8px 14px;font-size:13px;color:#6b7280;cursor:pointer;border-radius:5px;white-space:nowrap;display:block}
 .aprov-sort-item:hover{background:#ff450015;color:#ff4500}
 .aprov-dd-wrap{position:relative;display:inline-block}
-.aprov-dd-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px 0;z-index:200;min-width:230px;box-shadow:0 8px 32px #00000099}
+.aprov-dd-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:4px 0;z-index:200;min-width:230px;box-shadow:0 8px 32px #0000001a}
 .aprov-dd-menu.open{display:block}
 .aprov-plat-tab-e{background:none;border:1px solid #333;border-radius:20px;padding:4px 14px;font-size:12px;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s;display:inline-block}
 .aprov-plat-tab-e.active{background:#ff450020;border-color:#ff4500;color:#ff4500;font-weight:600}
 .aprov-plat-tab-e:hover{border-color:#555;color:#ccc}
-.module-bar-wrap{height:6px;background:#1f1f1f;border-radius:3px;margin-top:6px;overflow:hidden}
+.module-bar-wrap{height:6px;background:#e5e7eb;border-radius:3px;margin-top:6px;overflow:hidden}
 .module-bar{height:100%;border-radius:3px;transition:width .5s}
-.module-card{background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;margin-bottom:8px}
+.module-card{background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:8px}
 .module-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.module-name{font-size:12px;font-weight:700;color:#ccc}
-.module-score{font-size:11px;color:#888}
-.module-items{font-size:11px;color:#666;margin-top:6px;line-height:1.8}
+.module-name{font-size:12px;font-weight:700;color:#374151}
+.module-score{font-size:11px;color:#6b7280}
+.module-items{font-size:11px;color:#9ca3af;margin-top:6px;line-height:1.8}
 .check-ok{color:#00ff88}
 .check-no{color:#ff6500}
 .dna-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
-.dna-item{background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px}
-.dna-key{color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-.dna-val{color:#fff;font-weight:600;margin-top:2px;word-break:break-all}
-.rast-line{font-family:monospace;font-size:11px;color:#888;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:5px;padding:6px 10px;margin:10px 0}
+.dna-item{background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px}
+.dna-key{color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.dna-val{color:#1a1a1a;font-weight:600;margin-top:2px;word-break:break-all}
+.rast-line{font-family:monospace;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:5px;padding:6px 10px;margin:10px 0}
 
 /* IMAGENS (light page) */
 #page-imagens{background:#ffffff;color:#1a1a1a}
@@ -118,9 +118,9 @@ tr:hover td{background:#ffffff04}
 #page-imagens label{color:#555}
 #page-imagens .btn-secondary{background:#f0f0f0;color:#333;border-color:#ccc}
 #page-imagens .btn-secondary:hover{color:#000}
-.tabs{display:flex;gap:2px;border-bottom:1px solid #2a2a2a;margin-bottom:20px}
-.tab{padding:9px 16px;cursor:pointer;font-size:13px;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
-.tab:hover{color:#ccc}
+.tabs{display:flex;gap:2px;border-bottom:1px solid #e5e7eb;margin-bottom:20px}
+.tab{padding:9px 16px;cursor:pointer;font-size:13px;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:#374151}
 .tab.active{color:#ff4500;border-bottom-color:#ff4500}
 .tab-content{display:none}.tab-content.active{display:block}
 .img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
@@ -142,8 +142,8 @@ tr:hover td{background:#ffffff04}
 .msg-info{padding:12px;background:#fff8f5;border:1px solid #ff450030;border-radius:7px;color:#cc4400;font-size:12px;margin-top:12px}
 
 /* QUICK ACTIONS */
-.qa-btn{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#161616;border:1px solid #1f1f1f;border-radius:8px;cursor:pointer;transition:all .15s;color:#ccc;font-size:13px}
-.qa-btn:hover{border-color:#ff4500;color:#ff4500;background:#ff450008}
+.qa-btn{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;transition:all .15s;color:#374151;font-size:13px}
+.qa-btn:hover{border-color:#ff4500;color:#ff4500;background:#fff8f5}
 
 /* RESPONSIVE */
 @media(max-width:768px){
@@ -358,9 +358,9 @@ tr:hover td{background:#ffffff04}
           <p style="font-size:12px;color:#555;margin-bottom:10px">Gera descri&ccedil;&atilde;o t&eacute;cnica com base no DNA confirmado. <strong style="color:#ff4500">Nunca inventa dados.</strong></p>
 
           <!-- Selector de Template -->
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px">
-            <span style="font-size:11px;color:#555;white-space:nowrap">&#129750; Template:</span>
-            <select id="voz-template-sel" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#ccc;border-radius:5px;padding:5px 8px;font-size:12px" onchange="vozAplicarTemplate()">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:8px">
+            <span style="font-size:11px;color:#6b7280;white-space:nowrap">&#129750; Template:</span>
+            <select id="voz-template-sel" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:5px;padding:5px 8px;font-size:12px" onchange="vozAplicarTemplate()">
               <option value="">&#9651; Padr&atilde;o (T&eacute;cnico / Comercial / SEO)</option>
             </select>
             <button class="btn btn-sm btn-secondary" onclick="nav('templates')" style="white-space:nowrap;font-size:11px">&#43; Criar</button>
@@ -378,18 +378,18 @@ tr:hover td{background:#ffffff04}
             <button class="btn btn-primary btn-sm" onclick="gerarVozComTemplate()" style="width:100%">&#10024; Gerar com Template</button>
           </div>
 
-          <div id="ia-voz-output" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:12px;font-size:13px;color:#ccc;min-height:60px;white-space:pre-wrap">—</div>
-          <div id="ia-voz-status" style="font-size:11px;color:#555;margin-top:6px"></div>
+          <div id="ia-voz-output" style="background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:13px;color:#374151;min-height:60px;white-space:pre-wrap">—</div>
+          <div id="ia-voz-status" style="font-size:11px;color:#6b7280;margin-top:6px"></div>
 
           <!-- Saída SEO/Meta — só aparece quando template tem campos meta -->
-          <div id="ia-voz-meta" style="display:none;margin-top:12px;background:#0d0d0d;border:1px solid #ff450030;border-radius:8px;padding:12px">
+          <div id="ia-voz-meta" style="display:none;margin-top:12px;background:#fff8f5;border:1px solid #ff450030;border-radius:8px;padding:12px">
             <div style="font-size:11px;font-weight:700;color:#ff4500;margin-bottom:8px">&#128269; Meta SEO gerado pelo Template</div>
-            <div style="font-size:11px;color:#666;margin-bottom:4px">Meta Title</div>
-            <div id="ia-voz-meta-title" style="font-size:13px;color:#ccc;background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:8px;margin-bottom:8px"></div>
-            <div style="font-size:11px;color:#666;margin-bottom:4px">Meta Description</div>
-            <div id="ia-voz-meta-desc" style="font-size:13px;color:#ccc;background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:8px;margin-bottom:8px"></div>
-            <div style="font-size:11px;color:#666;margin-bottom:4px">Meta Tags</div>
-            <div id="ia-voz-meta-tags" style="font-size:12px;color:#888;background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:8px"></div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Meta Title</div>
+            <div id="ia-voz-meta-title" style="font-size:13px;color:#374151;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:5px;padding:8px;margin-bottom:8px"></div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Meta Description</div>
+            <div id="ia-voz-meta-desc" style="font-size:13px;color:#374151;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:5px;padding:8px;margin-bottom:8px"></div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Meta Tags</div>
+            <div id="ia-voz-meta-tags" style="font-size:12px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:5px;padding:8px"></div>
           </div>
         </div>
 
@@ -398,32 +398,32 @@ tr:hover td{background:#ffffff04}
           <div class="card-title">&#128230; Gavetas de Indexa&ccedil;&atilde;o</div>
 
           <!-- Bling -->
-          <div style="border:1px solid #1f1f1f;border-radius:8px;margin-bottom:10px;overflow:hidden">
-            <div style="background:#ff450010;border-bottom:1px solid #1f1f1f;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <div style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:10px;overflow:hidden">
+            <div style="background:#fff8f5;border-bottom:1px solid #e5e7eb;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
               <span style="font-size:13px;font-weight:600">&#129695; ERP — Bling v3</span>
               <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();sincronizarBling()">&#128640; Enviar ao Bling</button>
             </div>
-            <div id="gaveta-bling" style="display:none;padding:12px;font-size:12px;font-family:monospace;background:#0d0d0d;white-space:pre-wrap;color:#aaa;max-height:200px;overflow-y:auto"></div>
+            <div id="gaveta-bling" style="display:none;padding:12px;font-size:12px;font-family:monospace;background:#f8f9fa;white-space:pre-wrap;color:#6b7280;max-height:200px;overflow-y:auto"></div>
           </div>
 
           <!-- Wix -->
-          <div style="border:1px solid #1f1f1f;border-radius:8px;margin-bottom:10px;overflow:hidden">
-            <div style="background:#00355510;border-bottom:1px solid #1f1f1f;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <div style="border:1px solid #e5e7eb;border-radius:8px;margin-bottom:10px;overflow:hidden">
+            <div style="background:#f0f9ff;border-bottom:1px solid #e5e7eb;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
               <span style="font-size:13px;font-weight:600">&#127760; Wix Stores</span>
               <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();sincronizarWix()">&#128260; Sincronizar Wix</button>
             </div>
-            <div id="gaveta-wix" style="display:none;padding:12px;font-size:12px;font-family:monospace;background:#0d0d0d;white-space:pre-wrap;color:#aaa;max-height:200px;overflow-y:auto"></div>
+            <div id="gaveta-wix" style="display:none;padding:12px;font-size:12px;font-family:monospace;background:#f8f9fa;white-space:pre-wrap;color:#6b7280;max-height:200px;overflow-y:auto"></div>
           </div>
 
           <!-- Google Shopping -->
-          <div style="border:1px solid #1f1f1f;border-radius:8px;overflow:hidden">
-            <div style="background:#fbbc0510;border-bottom:1px solid #1f1f1f;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+            <div style="background:#fffbf0;border-bottom:1px solid #e5e7eb;padding:10px 14px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
               <span style="font-size:13px;font-weight:600">&#128722; Google Shopping — Merchant Center</span>
             </div>
-            <div id="gaveta-gshop" style="display:none;padding:12px;font-size:12px;font-family:monospace;background:#0d0d0d;white-space:pre-wrap;color:#aaa;max-height:200px;overflow-y:auto"></div>
+            <div id="gaveta-gshop" style="display:none;padding:12px;font-size:12px;font-family:monospace;background:#f8f9fa;white-space:pre-wrap;color:#6b7280;max-height:200px;overflow-y:auto"></div>
           </div>
 
-          <div id="ia-sync-status" style="font-size:12px;margin-top:10px;color:#555"></div>
+          <div id="ia-sync-status" style="font-size:12px;margin-top:10px;color:#6b7280"></div>
         </div>
 
         <div class="card">
@@ -548,10 +548,10 @@ tr:hover td{background:#ffffff04}
           <input type="file" id="cat-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="catalogoFileSelect(this)">
           <span id="catalogo-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
         </div>
-        <div id="catalogo-csv-legend" style="display:none;font-size:11px;color:#888;background:#0d0d0d;border:1px solid #222;border-radius:6px;padding:8px 12px;margin-bottom:8px">
+        <div id="catalogo-csv-legend" style="display:none;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;margin-bottom:8px">
           &#128202; Colunas esperadas: <code style="color:#ff6b00">sku, nome, fabricante, familia, oem, ncm, ean, motor</code>
         </div>
-        <div id="catalogo-xml-legend" style="display:none;font-size:11px;color:#888;background:#0d0d0d;border:1px solid #222;border-radius:6px;padding:8px 12px;margin-bottom:8px">
+        <div id="catalogo-xml-legend" style="display:none;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;margin-bottom:8px">
           &#128278; Formatos suportados: NFe, cat&aacute;logo fornecedor, TOTVS
         </div>
         <div class="form-group">
@@ -600,7 +600,7 @@ tr:hover td{background:#ffffff04}
       <div class="card">
         <div class="card-title">&#128269; Busca de Enriquecimento</div>
         <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input id="oem-input" style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
+          <input id="oem-input" style="flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
           <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
         </div>
         <div id="oem-status" style="font-size:12px;color:#555"></div>
@@ -806,7 +806,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       <!-- Pagination -->
       <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap">
         <span style="font-size:12px;color:#555">Por p&aacute;gina:</span>
-        <select id="aprov-cad-per-page" onchange="aprovCadRender()" style="background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:4px 8px;color:#ccc;font-size:12px">
+        <select id="aprov-cad-per-page" onchange="aprovCadRender()" style="background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:4px 8px;color:#374151;font-size:12px">
           <option value="10">10</option>
           <option value="20" selected>20</option>
           <option value="50">50</option>
@@ -904,7 +904,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       <!-- Pagination -->
       <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap">
         <span style="font-size:12px;color:#555">Por p&aacute;gina:</span>
-        <select id="aprov-enriq-per-page" onchange="aprovEnriqRender()" style="background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:4px 8px;color:#ccc;font-size:12px">
+        <select id="aprov-enriq-per-page" onchange="aprovEnriqRender()" style="background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:4px 8px;color:#374151;font-size:12px">
           <option value="10">10</option>
           <option value="20" selected>20</option>
           <option value="50">50</option>
@@ -965,7 +965,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
           <div class="card">
             <div class="card-title">&#127760; Prefix GS1</div>
             <table style="width:100%;font-size:12px;border-collapse:collapse">
-              <tr><td style="padding:5px 0;color:#666;width:40%">C&oacute;digo digitado</td><td id="ean-raw" style="font-weight:600;font-family:monospace;color:#fff"></td></tr>
+              <tr><td style="padding:5px 0;color:#6b7280;width:40%">C&oacute;digo digitado</td><td id="ean-raw" style="font-weight:600;font-family:monospace;color:#1a1a1a"></td></tr>
               <tr><td style="padding:5px 0;color:#666">GTIN normalizado</td><td id="ean-gtin14" style="font-weight:600;font-family:monospace;color:#ff4500"></td></tr>
               <tr><td style="padding:5px 0;color:#666">Tipo</td><td id="ean-tipo"></td></tr>
               <tr><td style="padding:5px 0;color:#666">Pa&iacute;s/Regi&atilde;o GS1</td><td id="ean-pais"></td></tr>
@@ -1004,7 +1004,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       <div class="card" style="padding:10px 14px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px;font-size:13px">
           <span style="color:#555">&#128221; Template:</span>
-          <select id="cat-template-sel" style="background:#0d0d0d;border:1px solid #333;border-radius:5px;padding:4px 8px;color:#ccc;font-size:12px;flex:1" onchange="catAplicarTemplate()">
+          <select id="cat-template-sel" style="background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:4px 8px;color:#374151;font-size:12px;flex:1" onchange="catAplicarTemplate()">
             <option value="">Nenhum (sem template)</option>
           </select>
           <button class="btn btn-sm btn-secondary" onclick="nav('templates')">&#43; Criar</button>
@@ -1115,21 +1115,21 @@ MEDIDA LARGURA  25 MM"></textarea>
         <hr style="border-color:#1f1f1f;margin:20px 0">
         <div style="font-size:18px;font-weight:700;margin-bottom:6px">Editar Template</div>
         <p style="font-size:13px;color:#666;margin-bottom:20px">Crie seu template a partir de um modelo pronto ou descreva o que precisa, e a IA faz o resto!</p>
-        <hr style="border-color:#1f1f1f;margin-bottom:20px">
+        <hr style="border-color:#e5e7eb;margin-bottom:20px">
 
         <!-- Prompt do Título -->
         <div style="margin-bottom:20px">
-          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Prompt do T&iacute;tulo</h2>
-          <textarea id="tpl-prompt-titulo" rows="2" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical" placeholder="EX: [Nome produto] + [Marca] + [dados t&eacute;cnicos]"></textarea>
-          <div style="font-size:11px;color:#555;margin-top:4px">Vari&aacute;veis: {nome} {marca} {sku} {oem} {ncm} {motor} {familia}</div>
+          <h2 style="font-size:14px;font-weight:700;color:#374151;margin-bottom:10px">Prompt do T&iacute;tulo</h2>
+          <textarea id="tpl-prompt-titulo" rows="2" style="width:100%;max-width:600px;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical" placeholder="EX: [Nome produto] + [Marca] + [dados t&eacute;cnicos]"></textarea>
+          <div style="font-size:11px;color:#9ca3af;margin-top:4px">Vari&aacute;veis: {nome} {marca} {sku} {oem} {ncm} {motor} {familia}</div>
         </div>
 
         <!-- Tom de Voz -->
         <div style="margin-bottom:20px;display:flex;flex-direction:column;gap:8px;max-width:600px">
-          <label style="font-size:13px;color:#aaa;font-weight:600">Tom de voz</label>
+          <label style="font-size:13px;color:#6b7280;font-weight:600">Tom de voz</label>
           <input id="tpl-tom-custom" name="prompt_voice_tone" list="tpl-tom-list"
             placeholder="Escolha um tom de voz ou escreva um novo"
-            style="padding:10px 14px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;color:#ccc;font-size:13px;font-family:inherit">
+            style="padding:10px 14px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#374151;font-size:13px;font-family:inherit">
           <datalist id="tpl-tom-list">
             <option value="Profissional e direto">Crie de forma objetiva, t&eacute;cnica e sem rodeios. N&atilde;o use emojis nem frases desnecess&aacute;rias.</option>
             <option value="Did&aacute;tico">Explique de forma simples, linguagem acess&iacute;vel e v&aacute; direto ao ponto.</option>
@@ -1143,22 +1143,22 @@ MEDIDA LARGURA  25 MM"></textarea>
 
         <!-- Palavras Negativas -->
         <div style="margin-bottom:20px;max-width:600px">
-          <label style="font-size:13px;color:#aaa;font-weight:600;display:block;margin-bottom:6px">Palavras negativas</label>
-          <textarea id="tpl-neg" rows="3" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+          <label style="font-size:13px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px">Palavras negativas</label>
+          <textarea id="tpl-neg" rows="3" style="width:100%;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
             placeholder='Insira termos que n&atilde;o devem aparecer no conte&uacute;do gerado. Ex: "barato", "promo&ccedil;&atilde;o", "usado".'></textarea>
         </div>
 
         <!-- Palavras-chave -->
         <div style="margin-bottom:20px;max-width:600px">
-          <label style="font-size:13px;color:#aaa;font-weight:600;display:block;margin-bottom:6px">Palavras-chave</label>
-          <textarea id="tpl-keywords" rows="3" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+          <label style="font-size:13px;color:#6b7280;font-weight:600;display:block;margin-bottom:6px">Palavras-chave</label>
+          <textarea id="tpl-keywords" rows="3" style="width:100%;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
             placeholder="Defina os termos que voc&ecirc; deseja destacar no conte&uacute;do. Eles ser&atilde;o inclu&iacute;dos de forma estrat&eacute;gica para melhorar seu SEO."></textarea>
         </div>
 
         <!-- Prompt da Descrição -->
         <div style="margin-bottom:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-            <h2 style="font-size:14px;font-weight:700;color:#ccc">Prompt da descri&ccedil;&atilde;o</h2>
+            <h2 style="font-size:14px;font-weight:700;color:#374151">Prompt da descri&ccedil;&atilde;o</h2>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <button class="btn btn-secondary btn-sm" onclick="tplGerarDesc()" style="display:flex;align-items:center;gap:6px;font-size:12px">
                 &#128196; Gerar a partir de uma descri&ccedil;&atilde;o
@@ -1168,22 +1168,22 @@ MEDIDA LARGURA  25 MM"></textarea>
               </button>
             </div>
           </div>
-          <textarea id="tpl-prompt-desc" rows="5" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+          <textarea id="tpl-prompt-desc" rows="5" style="width:100%;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
             placeholder="Descreva como a descri&ccedil;&atilde;o do produto deve ser gerada. Use {nome}, {marca}, {motor}, {oem} como vari&aacute;veis."></textarea>
         </div>
 
         <!-- Meta Title -->
         <div style="margin-bottom:20px">
-          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Meta Title</h2>
-          <textarea id="tpl-meta-title" rows="2" maxlength="80" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+          <h2 style="font-size:14px;font-weight:700;color:#374151;margin-bottom:10px">Meta Title</h2>
+          <textarea id="tpl-meta-title" rows="2" maxlength="80" style="width:100%;max-width:600px;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
             placeholder="Exemplo pr&aacute;tico: Crie um meta title com at&eacute; 60 caracteres, destacando o nome do produto, sua principal vantagem e uma palavra-chave relevante para SEO."></textarea>
-          <div id="tpl-meta-title-count" style="font-size:10px;color:#555;text-align:right;max-width:600px"></div>
+          <div id="tpl-meta-title-count" style="font-size:10px;color:#9ca3af;text-align:right;max-width:600px"></div>
         </div>
 
         <!-- Meta Description -->
         <div style="margin-bottom:20px">
-          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Meta Description</h2>
-          <textarea id="tpl-meta-desc" rows="4" maxlength="200" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+          <h2 style="font-size:14px;font-weight:700;color:#374151;margin-bottom:10px">Meta Description</h2>
+          <textarea id="tpl-meta-desc" rows="4" maxlength="200" style="width:100%;max-width:600px;background:#fff;border:1px solid #d1d5db;color:#374151;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
             placeholder="Exemplo pr&aacute;tico: Crie uma meta description com at&eacute; 160 caracteres, destacando o nome do produto, seus principais benef&iacute;cios e incentivando o clique."></textarea>
           <div id="tpl-meta-desc-count" style="font-size:10px;color:#555;text-align:right;max-width:600px"></div>
         </div>
