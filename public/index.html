@@ -76,6 +76,22 @@ tr:hover td{background:#ffffff04}
 .ntc-aprovado{color:#00ff88}
 .ntc-pendente{color:#ffaa00}
 .ntc-reprovado{color:#ff6500}
+/* APPROVAL TABLES */
+.aprov-plat-tab{background:none;border:1px solid #333;border-radius:20px;padding:4px 14px;font-size:12px;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s;display:inline-block}
+.aprov-plat-tab.active{background:#ff450020;border-color:#ff4500;color:#ff4500;font-weight:600}
+.aprov-plat-tab:hover{border-color:#555;color:#ccc}
+.aprov-table{width:100%;border-collapse:collapse;font-size:13px}
+.aprov-table th{text-align:left;padding:10px 8px;color:#555;font-weight:600;border-bottom:2px solid #222;white-space:nowrap;font-size:12px}
+.aprov-table td{padding:9px 8px;border-bottom:1px solid #1a1a1a;vertical-align:middle}
+.aprov-table tr:hover td{background:#ffffff04}
+.aprov-sort-item{padding:8px 14px;font-size:13px;color:#aaa;cursor:pointer;border-radius:5px;white-space:nowrap;display:block}
+.aprov-sort-item:hover{background:#ff450015;color:#ff4500}
+.aprov-dd-wrap{position:relative;display:inline-block}
+.aprov-dd-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:4px 0;z-index:200;min-width:230px;box-shadow:0 8px 32px #00000099}
+.aprov-dd-menu.open{display:block}
+.aprov-plat-tab-e{background:none;border:1px solid #333;border-radius:20px;padding:4px 14px;font-size:12px;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s;display:inline-block}
+.aprov-plat-tab-e.active{background:#ff450020;border-color:#ff4500;color:#ff4500;font-weight:600}
+.aprov-plat-tab-e:hover{border-color:#555;color:#ccc}
 .module-bar-wrap{height:6px;background:#1f1f1f;border-radius:3px;margin-top:6px;overflow:hidden}
 .module-bar{height:100%;border-radius:3px;transition:width .5s}
 .module-card{background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;margin-bottom:8px}
@@ -185,8 +201,8 @@ tr:hover td{background:#ffffff04}
     <div class="sb-item" onclick="nav('catalogo')"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
     <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Enriquecimento OEM</div>
     <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
-    <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o<span class="sb-badge" id="badge-aprovacao">0</span></div>
-    <div class="sb-item" onclick="nav('aprov-cadastro')"><span class="icon">&#128221;</span>Aprova&ccedil;&atilde;o de Cadastro</div>
+    <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
+    <div class="sb-item" onclick="nav('aprovacao-enriq')"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o de Enriquecimento</div>
     <div class="sb-item" onclick="nav('aprovados')"><span class="icon">&#127775;</span>Aprovados</div>
     <div class="sb-item" onclick="nav('congelados')"><span class="icon">&#10052;&#65039;</span>Congelados</div>
   </div>
@@ -715,30 +731,191 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         </div>
       </div>
     </div>
-    <!-- FILA DE APROVAÇÃO -->
+    <!-- APROVAÇÃO DE CADASTRO -->
     <div class="page" id="page-aprovacao">
-      <div class="page-title">&#9989; Fila de Aprova&ccedil;&atilde;o</div>
-      <p style="color:#666;font-size:13px;margin-bottom:16px">Produtos salvos aguardam revis&atilde;o. Enrique&ccedil;a at&eacute; atingir qualidade m&iacute;nima para Google CPC / SEO, depois sincronize com ERP, Wix e Mercado Livre.</p>
+      <div class="page-title">&#9989; Aprova&ccedil;&atilde;o de Cadastro</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Revise os produtos cadastrados, aprove ou reprove e sincronize com as plataformas integradas. Sem cobran&ccedil;a de token &mdash; 100% local.</p>
 
-      <!-- Filtros -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="btn btn-sm btn-secondary aprov-filtro active" onclick="aprovFiltrar('todos',this)">Todos</button>
-        <button class="btn btn-sm btn-secondary aprov-filtro" onclick="aprovFiltrar('REPROVADO',this)" style="color:#f44336">&#9679; Reprovados</button>
-        <button class="btn btn-sm btn-secondary aprov-filtro" onclick="aprovFiltrar('PENDENTE',this)"  style="color:#ff9800">&#9679; Pendentes</button>
-        <button class="btn btn-sm btn-secondary aprov-filtro" onclick="aprovFiltrar('APROVADO',this)"  style="color:#00c853">&#9679; Aprovados</button>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <button class="btn btn-sm btn-primary" onclick="aprovSincronizarLote()">&#128640; Sincronizar Aprovados</button>
+      <!-- Toolbar -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <div class="aprov-dd-wrap">
+          <button class="btn btn-sm btn-secondary" onclick="aprovCadToggleDd(this)">&#8597; Ordenar por</button>
+          <div class="aprov-dd-menu" id="aprov-cad-dd">
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('date-desc',this)">Mais recente primeiro</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('date-asc',this)">Mais antigo primeiro</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('name-asc',this)">Nome (A-Z)</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('name-desc',this)">Nome (Z-A)</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('img-yes',this)">Com imagem</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('img-no',this)">Sem imagem</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('cat-asc',this)">Categoria (A-Z)</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('cat-desc',this)">Categoria (Z-A)</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('brand-asc',this)">Marca (A-Z)</span>
+            <span class="aprov-sort-item" onclick="aprovCadOrdenar('brand-desc',this)">Marca (Z-A)</span>
+          </div>
         </div>
+        <button class="btn btn-sm btn-secondary" onclick="aprovCadExportar()">&#8593; Exportar dados</button>
+        <button class="btn btn-sm btn-secondary" onclick="aprovCadImportar()">&#8595; Importar dados</button>
+        <button class="btn btn-sm btn-primary" onclick="aprovCadAprovarSelecionados()">&#10003; Aprovar selecionados</button>
+        <span style="margin-left:auto;font-size:12px;color:#555" id="aprov-cad-count"></span>
       </div>
 
-      <div id="aprov-lista"></div>
+      <!-- Platform Tabs -->
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid #1f1f1f;flex-wrap:nowrap">
+        <span class="aprov-plat-tab active" onclick="aprovCadSetTab('principal',this)">Produto principal</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('mercadolivre',this)">MercadoLivre</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('vtex',this)">VTEX</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('shopify',this)">Shopify</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('magento2',this)">Magento 2</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('tray',this)">Tray</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('lojaintegrada',this)">Loja Integrada</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('bagy',this)">Bagy</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('nuvemshop',this)">Nuvemshop</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('hostgator',this)">HostGator</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('bling',this)">Bling</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('tiny',this)">Tiny</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('idworks',this)">idworks</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('alternativa',this)">Alternativa</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('arius',this)">Arius</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('conectahub',this)">ConectaHub</span>
+        <span class="aprov-plat-tab" onclick="aprovCadSetTab('climba',this)">Climba</span>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto">
+        <table class="aprov-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="aprov-cad-chk-all" onclick="aprovCadSelAll(this)"></th>
+              <th>#</th>
+              <th>Imagem</th>
+              <th>Nome / SKU</th>
+              <th>Marca</th>
+              <th>Categoria</th>
+              <th style="text-align:center">NTC</th>
+              <th style="text-align:center">Status</th>
+              <th>A&ccedil;&otilde;es</th>
+            </tr>
+          </thead>
+          <tbody id="aprov-cad-tbody">
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:#555">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#555">Por p&aacute;gina:</span>
+        <select id="aprov-cad-per-page" onchange="aprovCadRender()" style="background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:4px 8px;color:#ccc;font-size:12px">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+        </select>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <button id="aprov-cad-prev" class="btn btn-sm btn-secondary" onclick="aprovCadPgChange(-1)">&#8592; Anterior</button>
+          <span id="aprov-cad-pg-info" style="font-size:12px;color:#555;min-width:90px;text-align:center"></span>
+          <button id="aprov-cad-next" class="btn btn-sm btn-secondary" onclick="aprovCadPgChange(1)">Pr&oacute;xima &#8594;</button>
+        </div>
+      </div>
     </div>
 
-    <!-- APROVAÇÃO DE CADASTRO (ficha detalhada) -->
+    <!-- REVISÃO DE CADASTRO (detalhe por produto) -->
     <div class="page" id="page-aprov-cadastro">
       <div class="page-title">&#128221; Revis&atilde;o de Cadastro</div>
       <div id="aprov-cad-conteudo">
-        <p style="color:#555;font-size:13px">Selecione um produto na Fila de Aprova&ccedil;&atilde;o para revisar.</p>
+        <p style="color:#555;font-size:13px">Selecione um produto na Aprova&ccedil;&atilde;o para revisar.</p>
+      </div>
+    </div>
+
+    <!-- APROVAÇÃO DE ENRIQUECIMENTO -->
+    <div class="page" id="page-aprovacao-enriq">
+      <div class="page-title">&#128204; Aprova&ccedil;&atilde;o de Enriquecimento</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Revise os produtos enriquecidos pelo Motor NTC 4.0. Valide descri&ccedil;&atilde;o, imagens e dados t&eacute;cnicos antes de publicar nas plataformas.</p>
+
+      <!-- Toolbar -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <div class="aprov-dd-wrap">
+          <button class="btn btn-sm btn-secondary" onclick="aprovEnriqToggleDd(this)">&#8597; Ordenar por</button>
+          <div class="aprov-dd-menu" id="aprov-enriq-dd">
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('date-desc',this)">Mais recente primeiro</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('date-asc',this)">Mais antigo primeiro</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('name-asc',this)">Nome (A-Z)</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('name-desc',this)">Nome (Z-A)</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('img-yes',this)">Com imagem</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('img-no',this)">Sem imagem</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('cat-asc',this)">Categoria (A-Z)</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('cat-desc',this)">Categoria (Z-A)</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('brand-asc',this)">Marca (A-Z)</span>
+            <span class="aprov-sort-item" onclick="aprovEnriqOrdenar('brand-desc',this)">Marca (Z-A)</span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="aprovEnriqExportar()">&#8593; Exportar dados</button>
+        <button class="btn btn-sm btn-secondary" onclick="aprovEnriqImportar()">&#8595; Importar dados</button>
+        <button class="btn btn-sm btn-primary" onclick="aprovEnriqAprovarSelecionados()">&#10003; Aprovar selecionados</button>
+        <span style="margin-left:auto;font-size:12px;color:#555" id="aprov-enriq-count"></span>
+      </div>
+
+      <!-- Platform Tabs -->
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid #1f1f1f;flex-wrap:nowrap">
+        <span class="aprov-plat-tab-e active" onclick="aprovEnriqSetTab('principal',this)">Produto principal</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('mercadolivre',this)">MercadoLivre</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('vtex',this)">VTEX</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('shopify',this)">Shopify</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('magento2',this)">Magento 2</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('tray',this)">Tray</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('lojaintegrada',this)">Loja Integrada</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('bagy',this)">Bagy</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('nuvemshop',this)">Nuvemshop</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('hostgator',this)">HostGator</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('bling',this)">Bling</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('tiny',this)">Tiny</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('idworks',this)">idworks</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('alternativa',this)">Alternativa</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('arius',this)">Arius</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('conectahub',this)">ConectaHub</span>
+        <span class="aprov-plat-tab-e" onclick="aprovEnriqSetTab('climba',this)">Climba</span>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto">
+        <table class="aprov-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="aprov-enriq-chk-all" onclick="aprovEnriqSelAll(this)"></th>
+              <th>#</th>
+              <th>Imagem</th>
+              <th>Nome / SKU</th>
+              <th>Marca</th>
+              <th>Categoria</th>
+              <th style="text-align:center">NTC</th>
+              <th style="text-align:center">Status</th>
+              <th>A&ccedil;&otilde;es</th>
+            </tr>
+          </thead>
+          <tbody id="aprov-enriq-tbody">
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:#555">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#555">Por p&aacute;gina:</span>
+        <select id="aprov-enriq-per-page" onchange="aprovEnriqRender()" style="background:#1a1a1a;border:1px solid #333;border-radius:5px;padding:4px 8px;color:#ccc;font-size:12px">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+        </select>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <button id="aprov-enriq-prev" class="btn btn-sm btn-secondary" onclick="aprovEnriqPgChange(-1)">&#8592; Anterior</button>
+          <span id="aprov-enriq-pg-info" style="font-size:12px;color:#555;min-width:90px;text-align:center"></span>
+          <button id="aprov-enriq-next" class="btn btn-sm btn-secondary" onclick="aprovEnriqPgChange(1)">Pr&oacute;xima &#8594;</button>
+        </div>
       </div>
     </div>
 
@@ -3943,6 +4120,298 @@ function eanPreencherProduto() {
     ? '<span style="color:#00ff88">&#10003; EAN ' + val + ' preenchido no produto</span>'
     : '<span style="color:#888">EAN copiado: ' + val + ' — cole no campo desejado</span>';
 }
+
+// ===== APROVAÇÃO DE CADASTRO =====
+var _aprovCadTab = 'principal';
+var _aprovCadSort = 'date-desc';
+var _aprovCadPage = 0;
+
+function aprovCadToggleDd(btn) {
+  var dd = document.getElementById('aprov-cad-dd');
+  if (dd) dd.classList.toggle('open');
+  document.addEventListener('click', function handler(e) {
+    if (!btn.contains(e.target) && !dd.contains(e.target)) {
+      dd.classList.remove('open');
+      document.removeEventListener('click', handler);
+    }
+  });
+}
+
+function aprovCadSetTab(tab, btn) {
+  _aprovCadTab = tab;
+  document.querySelectorAll('.aprov-plat-tab').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  aprovCadRender();
+}
+
+function aprovCadOrdenar(sort, el) {
+  _aprovCadSort = sort;
+  _aprovCadPage = 0;
+  var dd = document.getElementById('aprov-cad-dd');
+  if (dd) dd.classList.remove('open');
+  aprovCadRender();
+}
+
+function aprovCadPgChange(dir) {
+  var all = aprovCadGetSorted();
+  var perPage = parseInt((document.getElementById('aprov-cad-per-page')||{}).value||20);
+  var maxPage = Math.max(0, Math.ceil(all.length / perPage) - 1);
+  _aprovCadPage = Math.max(0, Math.min(maxPage, _aprovCadPage + dir));
+  aprovCadRender();
+}
+
+function aprovCadGetSorted() {
+  var prods = getProds().slice();
+  var s = _aprovCadSort;
+  if (s === 'date-desc') prods.sort(function(a,b){ return (b._ts||0)-(a._ts||0); });
+  else if (s === 'date-asc') prods.sort(function(a,b){ return (a._ts||0)-(b._ts||0); });
+  else if (s === 'name-asc') prods.sort(function(a,b){ return (a.nome||'').localeCompare(b.nome||''); });
+  else if (s === 'name-desc') prods.sort(function(a,b){ return (b.nome||'').localeCompare(a.nome||''); });
+  else if (s === 'img-yes') prods.sort(function(a,b){ return (b.imagens||[]).length-(a.imagens||[]).length; });
+  else if (s === 'img-no') prods.sort(function(a,b){ return (a.imagens||[]).length-(b.imagens||[]).length; });
+  else if (s === 'cat-asc') prods.sort(function(a,b){ return (a.categoria||'').localeCompare(b.categoria||''); });
+  else if (s === 'cat-desc') prods.sort(function(a,b){ return (b.categoria||'').localeCompare(a.categoria||''); });
+  else if (s === 'brand-asc') prods.sort(function(a,b){ return (a.fabricante||'').localeCompare(b.fabricante||''); });
+  else if (s === 'brand-desc') prods.sort(function(a,b){ return (b.fabricante||'').localeCompare(a.fabricante||''); });
+  return prods;
+}
+
+function aprovCadRender() {
+  var all = aprovCadGetSorted();
+  var perPage = parseInt((document.getElementById('aprov-cad-per-page')||{}).value||20);
+  var total = all.length;
+  var maxPage = Math.max(0, Math.ceil(total/perPage)-1);
+  if (_aprovCadPage > maxPage) _aprovCadPage = maxPage;
+  var start = _aprovCadPage * perPage;
+  var prods = all.slice(start, start+perPage);
+  var countEl = document.getElementById('aprov-cad-count');
+  if (countEl) countEl.textContent = total + ' produto(s)';
+  var pgInfo = document.getElementById('aprov-cad-pg-info');
+  if (pgInfo) pgInfo.textContent = 'Pág. ' + (_aprovCadPage+1) + ' / ' + Math.max(1,maxPage+1);
+  var prevBtn = document.getElementById('aprov-cad-prev');
+  var nextBtn = document.getElementById('aprov-cad-next');
+  if (prevBtn) prevBtn.disabled = _aprovCadPage <= 0;
+  if (nextBtn) nextBtn.disabled = _aprovCadPage >= maxPage;
+  var tbody = document.getElementById('aprov-cad-tbody');
+  if (!tbody) return;
+  if (!prods.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#555">Nenhum produto na fila.<br><small>Cadastre produtos via Enriquecimento OEM ou Indexador de Catálogo.</small></td></tr>';
+    return;
+  }
+  tbody.innerHTML = prods.map(function(p,i){
+    var gi = start+i;
+    var ntcPct = Math.round((p.ntc||0)*100);
+    var ntcClr = ntcPct>=95?'#00ff88':ntcPct>=70?'#ffaa00':'#ff6500';
+    var stClr = p.decisao==='APROVADO'?'#00c853':p.decisao==='REPROVADO'?'#f44336':'#ff9800';
+    var stLbl = p.decisao==='APROVADO'?'Aprovado':p.decisao==='REPROVADO'?'Reprovado':'Pendente';
+    var img = (p.imagens&&p.imagens[0])?'<img src="'+esc(p.imagens[0])+'" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #333">'
+      :'<div style="width:36px;height:36px;background:#1a1a1a;border-radius:4px;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:16px">📷</div>';
+    return '<tr>'
+      +'<td style="padding:8px 6px;text-align:center"><input type="checkbox" class="aprov-cad-chk" data-gi="'+gi+'"></td>'
+      +'<td style="padding:8px 6px;color:#555;font-size:12px">'+(start+i+1)+'</td>'
+      +'<td style="padding:8px 6px">'+img+'</td>'
+      +'<td style="padding:8px 6px"><div style="font-size:13px;font-weight:600">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+      +'<div style="font-size:11px;color:#555"><code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></td>'
+      +'<td style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(p.fabricante||'—')+'</td>'
+      +'<td style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(p.categoria||'—')+'</td>'
+      +'<td style="padding:8px 6px;text-align:center"><span style="font-weight:700;color:'+ntcClr+'">'+ntcPct+'%</span></td>'
+      +'<td style="padding:8px 6px;text-align:center"><span style="color:'+stClr+';font-size:12px">&#9679; '+stLbl+'</span></td>'
+      +'<td style="padding:8px 6px;white-space:nowrap">'
+      +'<button class="btn btn-sm" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;margin-right:4px" onclick="aprovCadAprovar('+gi+')">&#10003; Aprovar</button>'
+      +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640;margin-right:4px" onclick="aprovCadReprovar('+gi+')">&#10006; Reprovar</button>'
+      +'<button class="btn btn-sm btn-secondary" onclick="aprovRevisarDetalhe('+gi+')">&#128393; Revisar</button>'
+      +'</td></tr>';
+  }).join('');
+}
+
+function aprovCadAprovar(idx) {
+  var prods=getProds(); if(!prods[idx]) return;
+  prods[idx].decisao='APROVADO'; prods[idx]._aprovadoEm=Date.now();
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+}
+function aprovCadReprovar(idx) {
+  var prods=getProds(); if(!prods[idx]) return;
+  prods[idx].decisao='REPROVADO';
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+}
+function aprovCadSelAll(chk) {
+  document.querySelectorAll('.aprov-cad-chk').forEach(function(c){ c.checked=chk.checked; });
+}
+function aprovCadAprovarSelecionados() {
+  var idxs=[]; document.querySelectorAll('.aprov-cad-chk:checked').forEach(function(c){ idxs.push(parseInt(c.dataset.gi)); });
+  if(!idxs.length){ alert('Selecione ao menos um produto.'); return; }
+  var prods=getProds();
+  idxs.forEach(function(i){ if(prods[i]){ prods[i].decisao='APROVADO'; prods[i]._aprovadoEm=Date.now(); } });
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+}
+function aprovCadExportar() {
+  var prods=getProds();
+  if(!prods.length){ alert('Nenhum produto para exportar.'); return; }
+  var blob=new Blob([JSON.stringify(prods,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='iRollo360_cadastro_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+function aprovCadImportar() {
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=function(){
+    var f=this.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(e){
+      try{
+        var d=JSON.parse(e.target.result); if(!Array.isArray(d)) d=[d];
+        var prods=getProds(); d.forEach(function(p){ prods.push(p); });
+        saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+        alert('✔ '+d.length+' produto(s) importado(s).');
+      }catch(ex){ alert('Erro ao importar: '+ex.message); }
+    }; r.readAsText(f);
+  }; inp.click();
+}
+
+// ===== APROVAÇÃO DE ENRIQUECIMENTO =====
+var _aprovEnriqTab = 'principal';
+var _aprovEnriqSort = 'date-desc';
+var _aprovEnriqPage = 0;
+
+function aprovEnriqToggleDd(btn) {
+  var dd=document.getElementById('aprov-enriq-dd');
+  if(dd) dd.classList.toggle('open');
+  document.addEventListener('click',function handler(e){
+    if(!btn.contains(e.target)&&!dd.contains(e.target)){ dd.classList.remove('open'); document.removeEventListener('click',handler); }
+  });
+}
+function aprovEnriqSetTab(tab,btn){
+  _aprovEnriqTab=tab;
+  document.querySelectorAll('.aprov-plat-tab-e').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  aprovEnriqRender();
+}
+function aprovEnriqOrdenar(sort,el){
+  _aprovEnriqSort=sort; _aprovEnriqPage=0;
+  var dd=document.getElementById('aprov-enriq-dd'); if(dd) dd.classList.remove('open');
+  aprovEnriqRender();
+}
+function aprovEnriqPgChange(dir){
+  var all=aprovEnriqGetSorted();
+  var perPage=parseInt((document.getElementById('aprov-enriq-per-page')||{}).value||20);
+  var maxPage=Math.max(0,Math.ceil(all.length/perPage)-1);
+  _aprovEnriqPage=Math.max(0,Math.min(maxPage,_aprovEnriqPage+dir));
+  aprovEnriqRender();
+}
+function aprovEnriqGetSorted(){
+  var prods=getProds().filter(function(p){ return p.descricao||p.voz_do_lojista||((p.ntc||0)>=0.5); });
+  var s=_aprovEnriqSort;
+  if(s==='date-desc') prods.sort(function(a,b){ return (b._ts||0)-(a._ts||0); });
+  else if(s==='date-asc') prods.sort(function(a,b){ return (a._ts||0)-(b._ts||0); });
+  else if(s==='name-asc') prods.sort(function(a,b){ return (a.nome||'').localeCompare(b.nome||''); });
+  else if(s==='name-desc') prods.sort(function(a,b){ return (b.nome||'').localeCompare(a.nome||''); });
+  else if(s==='img-yes') prods.sort(function(a,b){ return (b.imagens||[]).length-(a.imagens||[]).length; });
+  else if(s==='img-no') prods.sort(function(a,b){ return (a.imagens||[]).length-(b.imagens||[]).length; });
+  else if(s==='cat-asc') prods.sort(function(a,b){ return (a.categoria||'').localeCompare(b.categoria||''); });
+  else if(s==='cat-desc') prods.sort(function(a,b){ return (b.categoria||'').localeCompare(a.categoria||''); });
+  else if(s==='brand-asc') prods.sort(function(a,b){ return (a.fabricante||'').localeCompare(b.fabricante||''); });
+  else if(s==='brand-desc') prods.sort(function(a,b){ return (b.fabricante||'').localeCompare(a.fabricante||''); });
+  return prods;
+}
+function aprovEnriqRender(){
+  var all=aprovEnriqGetSorted();
+  var perPage=parseInt((document.getElementById('aprov-enriq-per-page')||{}).value||20);
+  var total=all.length;
+  var maxPage=Math.max(0,Math.ceil(total/perPage)-1);
+  if(_aprovEnriqPage>maxPage) _aprovEnriqPage=maxPage;
+  var start=_aprovEnriqPage*perPage;
+  var prods=all.slice(start,start+perPage);
+  var cEl=document.getElementById('aprov-enriq-count'); if(cEl) cEl.textContent=total+' produto(s)';
+  var pgInfo=document.getElementById('aprov-enriq-pg-info'); if(pgInfo) pgInfo.textContent='Pág. '+(_aprovEnriqPage+1)+' / '+Math.max(1,maxPage+1);
+  var prev=document.getElementById('aprov-enriq-prev'); if(prev) prev.disabled=_aprovEnriqPage<=0;
+  var next=document.getElementById('aprov-enriq-next'); if(next) next.disabled=_aprovEnriqPage>=maxPage;
+  var tbody=document.getElementById('aprov-enriq-tbody'); if(!tbody) return;
+  if(!prods.length){
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:#555">Nenhum produto enriquecido.<br><small>Enriqueça produtos via Voz do Lojista ou Enriquecimento OEM.</small></td></tr>';
+    return;
+  }
+  tbody.innerHTML=prods.map(function(p,i){
+    var gi=getProds().indexOf(p);
+    var ntcPct=Math.round((p.ntc||0)*100);
+    var ntcClr=ntcPct>=95?'#00ff88':ntcPct>=70?'#ffaa00':'#ff6500';
+    var stClr=p.decisao==='APROVADO'?'#00c853':p.decisao==='REPROVADO'?'#f44336':'#ff9800';
+    var stLbl=p.decisao==='APROVADO'?'Aprovado':p.decisao==='REPROVADO'?'Reprovado':'Pendente';
+    var hasDesc=!!(p.descricao||p.voz_do_lojista);
+    var img=(p.imagens&&p.imagens[0])?'<img src="'+esc(p.imagens[0])+'" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #333">'
+      :'<div style="width:36px;height:36px;background:#1a1a1a;border-radius:4px;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:16px">📷</div>';
+    return '<tr>'
+      +'<td style="padding:8px 6px;text-align:center"><input type="checkbox" class="aprov-enriq-chk" data-gi="'+gi+'"></td>'
+      +'<td style="padding:8px 6px;color:#555;font-size:12px">'+(start+i+1)+'</td>'
+      +'<td style="padding:8px 6px">'+img+'</td>'
+      +'<td style="padding:8px 6px"><div style="font-size:13px;font-weight:600">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+      +'<div style="font-size:11px;color:#555">'+(hasDesc?'<span style="color:#00c853">&#10003; Desc</span>':'<span style="color:#666">Sem desc</span>')+' · <code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></td>'
+      +'<td style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(p.fabricante||'—')+'</td>'
+      +'<td style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(p.categoria||'—')+'</td>'
+      +'<td style="padding:8px 6px;text-align:center"><span style="font-weight:700;color:'+ntcClr+'">'+ntcPct+'%</span></td>'
+      +'<td style="padding:8px 6px;text-align:center"><span style="color:'+stClr+';font-size:12px">&#9679; '+stLbl+'</span></td>'
+      +'<td style="padding:8px 6px;white-space:nowrap">'
+      +'<button class="btn btn-sm" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;margin-right:4px" onclick="aprovEnriqAprovar('+gi+')">&#10003; Aprovar</button>'
+      +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640;margin-right:4px" onclick="aprovEnriqReprovar('+gi+')">&#10006; Reprovar</button>'
+      +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriqVerDesc('+gi+')">&#128065; Ver</button>'
+      +'</td></tr>';
+  }).join('');
+}
+function aprovEnriqAprovar(idx){
+  var prods=getProds(); if(!prods[idx]) return;
+  prods[idx].decisao='APROVADO'; prods[idx]._aprovadoEm=Date.now();
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovEnriqRender();
+}
+function aprovEnriqReprovar(idx){
+  var prods=getProds(); if(!prods[idx]) return;
+  prods[idx].decisao='REPROVADO';
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovEnriqRender();
+}
+function aprovEnriqSelAll(chk){
+  document.querySelectorAll('.aprov-enriq-chk').forEach(function(c){ c.checked=chk.checked; });
+}
+function aprovEnriqAprovarSelecionados(){
+  var idxs=[]; document.querySelectorAll('.aprov-enriq-chk:checked').forEach(function(c){ idxs.push(parseInt(c.dataset.gi)); });
+  if(!idxs.length){ alert('Selecione ao menos um produto.'); return; }
+  var prods=getProds();
+  idxs.forEach(function(i){ if(prods[i]){ prods[i].decisao='APROVADO'; prods[i]._aprovadoEm=Date.now(); } });
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovEnriqRender();
+}
+function aprovEnriqExportar(){
+  var prods=aprovEnriqGetSorted();
+  if(!prods.length){ alert('Nenhum produto enriquecido para exportar.'); return; }
+  var blob=new Blob([JSON.stringify(prods,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='iRollo360_enriquecimento_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+function aprovEnriqImportar(){
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=function(){
+    var f=this.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(e){
+      try{
+        var d=JSON.parse(e.target.result); if(!Array.isArray(d)) d=[d];
+        var prods=getProds(); d.forEach(function(p){ prods.push(p); });
+        saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovEnriqRender();
+        alert('✔ '+d.length+' produto(s) importado(s).');
+      }catch(ex){ alert('Erro ao importar: '+ex.message); }
+    }; r.readAsText(f);
+  }; inp.click();
+}
+function aprovEnriqVerDesc(idx){
+  var p=getProds()[idx]; if(!p) return;
+  var desc=p.descricao||p.voz_do_lojista||'(sem descrição)';
+  alert(esc(p.nome||p.codigo_fabricante||'Produto')+'\n\n'+desc);
+}
+
+// Refresh approval tables when navigating to them
+(function(){
+  var origNav=window.nav;
+  if(origNav) window.nav=function(pg){
+    origNav(pg);
+    if(pg==='aprovacao') setTimeout(aprovCadRender,50);
+    if(pg==='aprovacao-enriq') setTimeout(aprovEnriqRender,50);
+  };
+})();
 
 function imgFiltrarCat(cat, btn) {
   document.querySelectorAll('.img-cat-btn').forEach(function(b) {
