@@ -156,6 +156,24 @@ app.post('/api/motor/enriquecer', (req, res) => {
     });
 });
 
+// Proxy de imagem — evita bloqueio por hotlinking/CORS no navegador
+app.get('/api/imagens/proxy', (req, res) => {
+    const imgUrl = req.query.url;
+    if (!imgUrl) return res.status(400).end();
+    try {
+        const parsed = new URL(imgUrl);
+        const proto = parsed.protocol === 'https:' ? require('https') : require('http');
+        const opts = { hostname: parsed.hostname, path: parsed.pathname + parsed.search, headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': parsed.origin } };
+        proto.get(opts, imgRes => {
+            res.setHeader('Content-Type', imgRes.headers['content-type'] || 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            imgRes.pipe(res);
+        }).on('error', () => res.status(502).end());
+    } catch(e) {
+        res.status(400).end();
+    }
+});
+
 // Busca de Imagens — in-app, sem abrir links externos
 app.get('/api/imagens/buscar', async (req, res) => {
     const { q, fonte } = req.query;
