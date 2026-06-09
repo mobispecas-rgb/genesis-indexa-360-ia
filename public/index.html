@@ -340,13 +340,41 @@ tr:hover td{background:#ffffff04}
         <div class="card" id="ia-voz-card" style="display:none">
           <div class="card-title">&#127908; Voz do Lojista — Descri&ccedil;&atilde;o IA</div>
           <p style="font-size:12px;color:#555;margin-bottom:10px">Gera descri&ccedil;&atilde;o t&eacute;cnica com base no DNA confirmado. <strong style="color:#ff4500">Nunca inventa dados.</strong></p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+
+          <!-- Selector de Template -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px">
+            <span style="font-size:11px;color:#555;white-space:nowrap">&#129750; Template:</span>
+            <select id="voz-template-sel" style="flex:1;background:#111;border:1px solid #2a2a2a;color:#ccc;border-radius:5px;padding:5px 8px;font-size:12px" onchange="vozAplicarTemplate()">
+              <option value="">&#9651; Padr&atilde;o (T&eacute;cnico / Comercial / SEO)</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" onclick="nav('templates')" style="white-space:nowrap;font-size:11px">&#43; Criar</button>
+          </div>
+
+          <!-- Botões padrão (ocultados quando template ativo) -->
+          <div id="voz-btns-padrao" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
             <button class="btn btn-sm btn-secondary" onclick="gerarVozIA('tecnico')">&#9881;&#65039; T&eacute;cnico</button>
             <button class="btn btn-sm btn-secondary" onclick="gerarVozIA('comercial')">&#128188; Comercial</button>
             <button class="btn btn-sm btn-secondary" onclick="gerarVozIA('seo')">&#128269; SEO</button>
           </div>
+
+          <!-- Botão template (visível quando template selecionado) -->
+          <div id="voz-btn-template" style="display:none;margin-bottom:10px">
+            <button class="btn btn-primary btn-sm" onclick="gerarVozComTemplate()" style="width:100%">&#10024; Gerar com Template</button>
+          </div>
+
           <div id="ia-voz-output" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:12px;font-size:13px;color:#ccc;min-height:60px;white-space:pre-wrap">—</div>
           <div id="ia-voz-status" style="font-size:11px;color:#555;margin-top:6px"></div>
+
+          <!-- Saída SEO/Meta — só aparece quando template tem campos meta -->
+          <div id="ia-voz-meta" style="display:none;margin-top:12px;background:#0d0d0d;border:1px solid #ff450030;border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:700;color:#ff4500;margin-bottom:8px">&#128269; Meta SEO gerado pelo Template</div>
+            <div style="font-size:11px;color:#666;margin-bottom:4px">Meta Title</div>
+            <div id="ia-voz-meta-title" style="font-size:13px;color:#ccc;background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:8px;margin-bottom:8px"></div>
+            <div style="font-size:11px;color:#666;margin-bottom:4px">Meta Description</div>
+            <div id="ia-voz-meta-desc" style="font-size:13px;color:#ccc;background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:8px;margin-bottom:8px"></div>
+            <div style="font-size:11px;color:#666;margin-bottom:4px">Meta Tags</div>
+            <div id="ia-voz-meta-tags" style="font-size:12px;color:#888;background:#111;border:1px solid #1f1f1f;border-radius:5px;padding:8px"></div>
+          </div>
         </div>
 
         <!-- GAVETAS DE INDEXAÇÃO -->
@@ -880,8 +908,9 @@ MEDIDA LARGURA  25 MM"></textarea>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
     <div class="page" id="page-templates">
       <div class="page-title">&#128221; Templates de Enriquecimento</div>
+      <p style="font-size:13px;color:#666;margin-bottom:18px">Crie seu template a partir de um modelo pronto ou descreva o que precisa, e a IA faz o resto!</p>
 
-      <div style="display:flex;gap:10px;margin-bottom:18px">
+      <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="tplNovo()">&#43; Criar Template</button>
         <button class="btn btn-secondary" onclick="tplDNA()">&#129750; DNA NTC</button>
       </div>
@@ -890,88 +919,161 @@ MEDIDA LARGURA  25 MM"></textarea>
       <div class="card" id="tpl-lista-card">
         <div class="card-title">Templates Salvos</div>
         <div style="overflow-x:auto">
-          <table style="width:100%;font-size:13px" id="tpl-table">
+          <table style="width:100%;font-size:13px;border-collapse:collapse" id="tpl-table">
             <thead><tr>
-              <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Nome</th>
-              <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Tipo</th>
-              <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Atualizado</th>
-              <th style="padding:8px;color:#555;border-bottom:1px solid #1f1f1f">A&ccedil;&otilde;es</th>
+              <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #1f1f1f">Nome</th>
+              <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #1f1f1f">Tipo</th>
+              <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #1f1f1f">Atualizado</th>
+              <th style="padding:8px 12px;color:#555;border-bottom:1px solid #1f1f1f;text-align:center">A&ccedil;&otilde;es</th>
             </tr></thead>
             <tbody id="tpl-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Editor de template -->
-      <div class="card" id="tpl-editor" style="display:none;border-color:#ff450030">
-        <div class="card-title">&#10024; Criar / Editar Template</div>
+      <!-- Editor de template — estilo IndexaAI -->
+      <div id="tpl-editor" style="display:none">
 
-        <div class="grid2" style="gap:12px;margin-bottom:12px">
-          <div class="form-group"><label>Nome do Template *</label><input id="tpl-nome" placeholder="Ex: Autopeças Motor Premium"></div>
-          <div class="form-group"><label>Tipo</label>
-            <select id="tpl-tipo">
-              <option value="tecnico">T&eacute;cnico</option>
-              <option value="comercial">Comercial</option>
-              <option value="seo">SEO</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="pmax">P-Max / Ads</option>
-            </select>
-          </div>
-        </div>
+        <hr style="border-color:#1f1f1f;margin:20px 0">
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px">Editar Template</div>
+        <p style="font-size:13px;color:#666;margin-bottom:20px">Crie seu template a partir de um modelo pronto ou descreva o que precisa, e a IA faz o resto!</p>
+        <hr style="border-color:#1f1f1f;margin-bottom:20px">
 
-        <div class="form-group"><label>Prompt do T&iacute;tulo</label>
-          <input id="tpl-prompt-titulo" placeholder="Ex: [Nome produto] + [Marca] + [dados t&eacute;cnicos]">
+        <!-- Prompt do Título -->
+        <div style="margin-bottom:20px">
+          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Prompt do T&iacute;tulo</h2>
+          <textarea id="tpl-prompt-titulo" rows="2" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical" placeholder="EX: [Nome produto] + [Marca] + [dados t&eacute;cnicos]"></textarea>
           <div style="font-size:11px;color:#555;margin-top:4px">Vari&aacute;veis: {nome} {marca} {sku} {oem} {ncm} {motor} {familia}</div>
         </div>
 
-        <div class="form-group"><label>Tom de Voz</label>
-          <select id="tpl-tom">
-            <option value="">Escolha um tom ou escreva abaixo</option>
-            <option value="tecnico formal">T&eacute;cnico Formal</option>
-            <option value="comercial direto">Comercial Direto</option>
-            <option value="especialista autopeças">Especialista Autopeças</option>
-            <option value="vendedor consultivo">Vendedor Consultivo</option>
-          </select>
-          <input id="tpl-tom-custom" style="margin-top:6px" placeholder="Ou descreva o tom personalizado...">
+        <!-- Tom de Voz -->
+        <div style="margin-bottom:20px;display:flex;flex-direction:column;gap:8px;max-width:600px">
+          <label style="font-size:13px;color:#aaa;font-weight:600">Tom de voz</label>
+          <input id="tpl-tom-custom" name="prompt_voice_tone" list="tpl-tom-list"
+            placeholder="Escolha um tom de voz ou escreva um novo"
+            style="padding:10px 14px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;color:#ccc;font-size:13px;font-family:inherit">
+          <datalist id="tpl-tom-list">
+            <option value="Profissional e direto">Crie de forma objetiva, t&eacute;cnica e sem rodeios. N&atilde;o use emojis nem frases desnecess&aacute;rias.</option>
+            <option value="Did&aacute;tico">Explique de forma simples, linguagem acess&iacute;vel e v&aacute; direto ao ponto.</option>
+            <option value="Especialista Autope&ccedil;as">Voz t&eacute;cnica de quem entende profundamente de autope&ccedil;as e componentes veiculares.</option>
+            <option value="Comercial direto">Vendedor consultivo que destaca benef&iacute;cios e incentiva a compra sem for&ccedil;ar.</option>
+            <option value="Inspirador/motivacional">Tom encorajador e motivacional, focado em confian&ccedil;a e qualidade.</option>
+            <option value="Executivo">Conciso, estrat&eacute;gico, foca em impacto e tomada de decis&atilde;o.</option>
+            <option value="C&eacute;tico e questionador">Tom que questiona premissas, explora riscos e fala sem floreios.</option>
+          </datalist>
         </div>
 
-        <div class="grid2" style="gap:12px">
-          <div class="form-group"><label>Palavras Negativas</label>
-            <input id="tpl-neg" placeholder='Ex: "barato", "promo&ccedil;&atilde;o", "usado"'>
-          </div>
-          <div class="form-group"><label>Palavras-chave SEO</label>
-            <input id="tpl-keywords" placeholder="Ex: tensor correia, autopeças originais">
-          </div>
+        <!-- Palavras Negativas -->
+        <div style="margin-bottom:20px;max-width:600px">
+          <label style="font-size:13px;color:#aaa;font-weight:600;display:block;margin-bottom:6px">Palavras negativas</label>
+          <textarea id="tpl-neg" rows="3" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+            placeholder='Insira termos que n&atilde;o devem aparecer no conte&uacute;do gerado. Ex: "barato", "promo&ccedil;&atilde;o", "usado".'></textarea>
         </div>
 
-        <div class="form-group"><label>Prompt da Descri&ccedil;&atilde;o</label>
-          <textarea id="tpl-prompt-desc" rows="3" placeholder="Descreva como a descri&ccedil;&atilde;o deve ser gerada. Use {nome}, {marca}, {motor}, {oem} como vari&aacute;veis."></textarea>
+        <!-- Palavras-chave -->
+        <div style="margin-bottom:20px;max-width:600px">
+          <label style="font-size:13px;color:#aaa;font-weight:600;display:block;margin-bottom:6px">Palavras-chave</label>
+          <textarea id="tpl-keywords" rows="3" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+            placeholder="Defina os termos que voc&ecirc; deseja destacar no conte&uacute;do. Eles ser&atilde;o inclu&iacute;dos de forma estrat&eacute;gica para melhorar seu SEO."></textarea>
         </div>
 
-        <button class="btn btn-secondary btn-sm" onclick="tplTestar()" style="margin-bottom:12px">&#128064; Testar Descri&ccedil;&atilde;o</button>
-        <div id="tpl-teste-out" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:10px;font-size:13px;color:#aaa;margin-bottom:12px;display:none;white-space:pre-wrap"></div>
-
-        <div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:14px;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:10px">&#128269; SEO / Meta</div>
-          <div class="form-group"><label>Meta Title <span style="color:#555">(max 60 chars)</span></label>
-            <input id="tpl-meta-title" maxlength="80" placeholder="Ex: {nome} {marca} — Autopeça Original | iRollo 360">
-            <div id="tpl-meta-title-count" style="font-size:10px;color:#555;text-align:right"></div>
+        <!-- Prompt da Descrição -->
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <h2 style="font-size:14px;font-weight:700;color:#ccc">Prompt da descri&ccedil;&atilde;o</h2>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" onclick="tplGerarDesc()" style="display:flex;align-items:center;gap:6px;font-size:12px">
+                &#128196; Gerar a partir de uma descri&ccedil;&atilde;o
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="tplAbrirTestar()" style="font-size:12px">
+                &#128064; Testar Descri&ccedil;&atilde;o
+              </button>
+            </div>
           </div>
-          <div class="form-group"><label>Meta Description <span style="color:#555">(max 160 chars)</span></label>
-            <textarea id="tpl-meta-desc" rows="2" maxlength="200" placeholder="Ex: Compre {nome} da {marca} com garantia. OEM {oem}. Entrega r&aacute;pida para todo o Brasil."></textarea>
-            <div id="tpl-meta-desc-count" style="font-size:10px;color:#555;text-align:right"></div>
-          </div>
-          <div class="form-group"><label>Meta Tags <span style="color:#555">(separadas por v&iacute;rgula)</span></label>
-            <input id="tpl-meta-tags" placeholder="Ex: tensor correia, SKF, autopeças motor, {familia}">
-          </div>
+          <textarea id="tpl-prompt-desc" rows="5" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+            placeholder="Descreva como a descri&ccedil;&atilde;o do produto deve ser gerada. Use {nome}, {marca}, {motor}, {oem} como vari&aacute;veis."></textarea>
         </div>
 
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-primary" onclick="tplSalvar()">&#10003; Salvar Template</button>
-          <button class="btn btn-secondary" onclick="tplCancelar()">Cancelar</button>
+        <!-- Meta Title -->
+        <div style="margin-bottom:20px">
+          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Meta Title</h2>
+          <textarea id="tpl-meta-title" rows="2" maxlength="80" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+            placeholder="Exemplo pr&aacute;tico: Crie um meta title com at&eacute; 60 caracteres, destacando o nome do produto, sua principal vantagem e uma palavra-chave relevante para SEO."></textarea>
+          <div id="tpl-meta-title-count" style="font-size:10px;color:#555;text-align:right;max-width:600px"></div>
+        </div>
+
+        <!-- Meta Description -->
+        <div style="margin-bottom:20px">
+          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Meta Description</h2>
+          <textarea id="tpl-meta-desc" rows="4" maxlength="200" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+            placeholder="Exemplo pr&aacute;tico: Crie uma meta description com at&eacute; 160 caracteres, destacando o nome do produto, seus principais benef&iacute;cios e incentivando o clique."></textarea>
+          <div id="tpl-meta-desc-count" style="font-size:10px;color:#555;text-align:right;max-width:600px"></div>
+        </div>
+
+        <!-- Meta Tags -->
+        <div style="margin-bottom:24px">
+          <h2 style="font-size:14px;font-weight:700;color:#ccc;margin-bottom:10px">Meta Tags</h2>
+          <textarea id="tpl-meta-tags" rows="4" style="width:100%;max-width:600px;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical"
+            placeholder="Exemplo pr&aacute;tico: Liste meta tags separadas por v&iacute;rgula, incluindo o nome do produto, categoria e palavras-chave relacionadas ao uso ou benef&iacute;cio."></textarea>
+        </div>
+
+        <!-- Tipo (oculto, mantém compatibilidade) -->
+        <select id="tpl-tipo" style="display:none">
+          <option value="tecnico">T&eacute;cnico</option>
+          <option value="comercial">Comercial</option>
+          <option value="seo">SEO</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="pmax">P-Max / Ads</option>
+        </select>
+
+        <!-- Botão Aprovar -->
+        <div style="margin-top:20px">
+          <button class="btn btn-primary" onclick="tplAbrirSalvar()" style="padding:10px 28px;font-size:14px">&#10003; Aprovar altera&ccedil;&otilde;es</button>
+          <button class="btn btn-secondary" onclick="tplCancelar()" style="margin-left:10px">Cancelar</button>
         </div>
         <div id="tpl-status" style="font-size:12px;color:#555;margin-top:8px"></div>
+
+        <hr style="border-color:#1f1f1f;margin:24px 0">
       </div>
+
+      <!-- DIALOG: Testar Descrição -->
+      <dialog id="tpl-dialog-test" style="background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;padding:24px;min-width:320px;max-width:520px;width:90%">
+        <h4 style="font-size:16px;font-weight:700;margin-bottom:16px">Teste de Descri&ccedil;&atilde;o</h4>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+          <div>
+            <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Nome do Produto</label>
+            <input id="tpl-test-nome" type="text" autofocus placeholder="EX: Tensor da Correia Dentada"
+              style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:9px 12px;font-size:13px;font-family:inherit">
+          </div>
+          <div>
+            <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Marca do Produto</label>
+            <input id="tpl-test-marca" type="text" placeholder="EX: SKF"
+              style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:9px 12px;font-size:13px;font-family:inherit">
+          </div>
+        </div>
+        <div id="tpl-test-output" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:7px;padding:12px;font-size:13px;color:#aaa;min-height:60px;white-space:pre-wrap;margin-bottom:16px;display:none"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between">
+          <button class="btn btn-secondary" onclick="document.getElementById('tpl-dialog-test').close()">Continuar editando</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="tplTestar()">&#9654; Gerar descri&ccedil;&atilde;o de teste</button>
+            <button class="btn btn-primary" onclick="tplAbrirSalvar();document.getElementById('tpl-dialog-test').close()">&#10003; Aprovar altera&ccedil;&otilde;es</button>
+          </div>
+        </div>
+      </dialog>
+
+      <!-- DIALOG: Salvar / Nomear template -->
+      <dialog id="tpl-dialog-save" style="background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;padding:24px;min-width:300px;max-width:420px;width:90%">
+        <div style="font-size:15px;font-weight:700;margin-bottom:14px">&#128190; Salvar Template</div>
+        <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Nome do template</label>
+        <input id="tpl-nome" type="text" placeholder="EX: Modelo — Motor Premium"
+          style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:10px 12px;font-size:13px;font-family:inherit;margin-bottom:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="tplSalvar()">&#10003; Salvar Altera&ccedil;&otilde;es</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('tpl-dialog-save').close()">Cancelar</button>
+        </div>
+        <div id="tpl-save-status" style="font-size:12px;color:#888;margin-top:8px"></div>
+      </dialog>
+
     </div>
     <div class="page" id="page-pagamentos"><div class="stub-page"><div class="stub-icon">&#128179;</div><h2>Pagamentos</h2><p>Em desenvolvimento &mdash; Pagamentos</p></div></div>
     <div class="page" id="page-planos"><div class="stub-page"><div class="stub-icon">&#128176;</div><h2>Planos</h2><p>Em desenvolvimento &mdash; Planos</p></div></div>
@@ -1451,6 +1553,83 @@ function renderIAResults(result, texto) {
 }
 
 // Geração de voz IA — EXIGE DNA confirmado, nunca inventa dados
+// Atualiza selector de template no card Voz do Lojista
+function vozAtualizarSelect() {
+  var sel = document.getElementById('voz-template-sel');
+  if (!sel) return;
+  var tpls = getTemplates ? getTemplates() : [];
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">&#9651; Padrão (Técnico / Comercial / SEO)</option>'
+    + tpls.map(function(t, i) {
+      return '<option value="' + i + '">' + esc(t.nome) + ' (' + (t.tipo||'') + ')</option>';
+    }).join('');
+  sel.value = cur;
+}
+
+function vozAplicarTemplate() {
+  var sel = document.getElementById('voz-template-sel');
+  var hasTpl = sel && sel.value !== '';
+  document.getElementById('voz-btns-padrao').style.display = hasTpl ? 'none' : 'flex';
+  document.getElementById('voz-btn-template').style.display = hasTpl ? 'block' : 'none';
+  document.getElementById('ia-voz-meta').style.display = 'none';
+}
+
+async function gerarVozComTemplate() {
+  var sel = document.getElementById('voz-template-sel');
+  if (!sel || sel.value === '') { gerarVozIA('tecnico'); return; }
+  var t = (getTemplates ? getTemplates() : [])[parseInt(sel.value)];
+  if (!t) return;
+  var p = window._iaVozParsed;
+  if (!p || !p.fabricante || !p.sku) {
+    document.getElementById('ia-voz-status').textContent = '✖ DNA não confirmado — Fabricante e SKU obrigatórios.';
+    return;
+  }
+  var out = document.getElementById('ia-voz-output');
+  var status = document.getElementById('ia-voz-status');
+  out.textContent = '⏳ Gerando com template "' + t.nome + '"...';
+  status.textContent = '';
+
+  var dados = {
+    nome: p.descricao || '', marca: p.fabricante || '', sku: p.sku || '',
+    oem: p.codigo_oem || '', ncm: p.ncm || '', motor: p.motor || '',
+    familia: p.familia || '', ean: p.ean || '', material: p.material || ''
+  };
+
+  function interp(str) {
+    return (str||'').replace(/\{(\w+)\}/g, function(_, k){ return dados[k] || ''; });
+  }
+
+  var prompt = 'DADOS CONFIRMADOS DO PRODUTO (use SOMENTE estes):\n'
+    + Object.keys(dados).filter(function(k){ return dados[k]; }).map(function(k){ return k + ': ' + dados[k]; }).join('\n')
+    + '\n\nTom de voz: ' + (t.tom || 'técnico especialista em autopeças')
+    + '\n\nInstrução: ' + interp(t.prompt_desc || 'Descreva o produto em 2 frases técnicas.')
+    + (t.neg ? '\n\nNÃO use as palavras: ' + t.neg : '')
+    + (t.keywords ? '\n\nDestaque as palavras-chave: ' + interp(t.keywords) : '')
+    + '\n\nIMPORTANTE: Use SOMENTE os dados confirmados acima. Nunca invente.';
+
+  try {
+    var r = await api('POST', '/motor/voz', { perfil: t.tipo || 'tecnico', prompt: prompt });
+    if (r.ok && r.texto) {
+      out.textContent = r.texto;
+      status.textContent = '✅ Gerado · Template: ' + t.nome;
+
+      // Preenche meta SEO se template tiver campos
+      if (t.meta_title || t.meta_desc || t.meta_tags) {
+        document.getElementById('ia-voz-meta-title').textContent = interp(t.meta_title) || '—';
+        document.getElementById('ia-voz-meta-desc').textContent  = interp(t.meta_desc)  || '—';
+        document.getElementById('ia-voz-meta-tags').textContent  = interp(t.meta_tags)  || '—';
+        document.getElementById('ia-voz-meta').style.display = 'block';
+      }
+    } else {
+      out.textContent = '—';
+      status.textContent = '✖ ' + (r.erro || 'Erro na geração');
+    }
+  } catch(e) {
+    out.textContent = '—';
+    status.textContent = '✖ ' + e.message;
+  }
+}
+
 async function gerarVozIA(perfil) {
   var p = window._iaVozParsed;
   if (!p || !p.fabricante || !p.sku) {
@@ -1461,11 +1640,11 @@ async function gerarVozIA(perfil) {
   var status = document.getElementById('ia-voz-status');
   out.textContent = '⏳ Gerando...';
   status.textContent = '';
+  document.getElementById('ia-voz-meta').style.display = 'none';
 
   var nomeCompleto = [p.descricao, p.sku, p.fabricante].filter(Boolean).join(' — ');
   var perfilLabel = { tecnico: 'técnico especialista em autopeças', comercial: 'vendedor comercial', seo: 'especialista SEO para autopeças' }[perfil] || 'técnico';
 
-  // Prompt estritamente baseado nos dados confirmados — NUNCA inventa
   var dadosConfirmados = 'Produto: ' + nomeCompleto + '\n'
     + (p.familia  ? 'Família: '    + p.familia + '\n' : '')
     + (p.componentes && p.componentes.length ? 'Componentes: ' + p.componentes.join(', ') + '\n' : '');
@@ -2277,8 +2456,9 @@ function tplRenderLista() {
       + '<button class="btn btn-sm btn-secondary" onclick="tplExcluir(' + i + ')" style="color:#f44336">&#128465;</button>'
       + '</td></tr>';
   }).join('') : '<tr><td colspan="4" style="padding:20px;text-align:center;color:#555">Nenhum template criado ainda.</td></tr>';
-  // Atualiza select no indexador
+  // Atualiza select no indexador e no card Voz do Lojista
   tplAtualizarSelect();
+  vozAtualizarSelect();
 }
 
 function tplAtualizarSelect() {
@@ -2298,28 +2478,29 @@ function tplNovo() {
   ['tpl-nome','tpl-prompt-titulo','tpl-tom-custom','tpl-neg','tpl-keywords','tpl-prompt-desc','tpl-meta-title','tpl-meta-desc','tpl-meta-tags'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.value = '';
   });
-  document.getElementById('tpl-tipo').value = 'tecnico';
-  document.getElementById('tpl-tom').value = '';
-  document.getElementById('tpl-status').textContent = '';
-  document.getElementById('tpl-teste-out').style.display = 'none';
+  var tipo = document.getElementById('tpl-tipo'); if(tipo) tipo.value = 'tecnico';
+  var st = document.getElementById('tpl-status'); if(st) st.textContent = '';
+  var to = document.getElementById('tpl-teste-out'); if(to) to.style.display = 'none';
   document.getElementById('tpl-editor').style.display = 'block';
   document.getElementById('tpl-editor').scrollIntoView({behavior:'smooth'});
-  // Contador meta
   tplContadores();
 }
 
 function tplDNA() {
   tplNovo();
-  document.getElementById('tpl-nome').value = 'Template DNA NTC 4.0';
-  document.getElementById('tpl-tipo').value = 'tecnico';
-  document.getElementById('tpl-prompt-titulo').value = '{nome} — {marca} | {oem}';
-  document.getElementById('tpl-tom-custom').value = 'Técnico especialista em autopeças. Objetivo e preciso.';
-  document.getElementById('tpl-neg').value = 'barato, promoção, usado, paralelo, genérico';
-  document.getElementById('tpl-keywords').value = 'autopeças originais, {familia}, {marca}';
-  document.getElementById('tpl-prompt-desc').value = 'Descreva {nome} da {marca} em até 2 frases técnicas. Use apenas dados confirmados: {motor}, {oem}. Sem inventar.';
-  document.getElementById('tpl-meta-title').value = '{nome} {marca} — Autopeça Original | iRollo 360';
-  document.getElementById('tpl-meta-desc').value = 'Compre {nome} {marca} com garantia. OEM {oem}. Entrega rápida para todo o Brasil.';
-  document.getElementById('tpl-meta-tags').value = '{familia}, {marca}, autopeças, {nome}';
+  setTimeout(function() {
+    document.getElementById('tpl-prompt-titulo').value = '{nome} — {marca} | {oem}';
+    document.getElementById('tpl-tom-custom').value = 'Especialista Autopeças';
+    document.getElementById('tpl-neg').value = 'barato, promoção, usado, paralelo, genérico';
+    document.getElementById('tpl-keywords').value = 'autopeças originais, {familia}, {marca}';
+    document.getElementById('tpl-prompt-desc').value = 'Descreva {nome} da {marca} em até 2 frases técnicas. Use apenas dados confirmados: {motor}, {oem}. Sem inventar.';
+    document.getElementById('tpl-meta-title').value = '{nome} {marca} — Autopeça Original | iRollo 360';
+    document.getElementById('tpl-meta-desc').value = 'Compre {nome} {marca} com garantia. OEM {oem}. Entrega rápida para todo o Brasil.';
+    document.getElementById('tpl-meta-tags').value = '{familia}, {marca}, autopeças, {nome}';
+    tplContadores();
+    // Preenche nome no dialog quando salvar
+    var n = document.getElementById('tpl-nome'); if(n) n.value = 'Template DNA NTC 4.0';
+  }, 50);
 }
 
 function tplContadores() {
@@ -2340,10 +2521,9 @@ function tplEditar(idx) {
   var t = getTemplates()[idx];
   if (!t) return;
   _tplEditIdx = idx;
+  var tipo = document.getElementById('tpl-tipo'); if(tipo) tipo.value = t.tipo || 'tecnico';
   document.getElementById('tpl-nome').value          = t.nome || '';
-  document.getElementById('tpl-tipo').value          = t.tipo || 'tecnico';
   document.getElementById('tpl-prompt-titulo').value = t.prompt_titulo || '';
-  document.getElementById('tpl-tom').value           = '';
   document.getElementById('tpl-tom-custom').value    = t.tom || '';
   document.getElementById('tpl-neg').value           = t.neg || '';
   document.getElementById('tpl-keywords').value      = t.keywords || '';
@@ -2362,11 +2542,12 @@ function tplExcluir(idx) {
 }
 
 function tplColetar() {
+  var tipo = document.getElementById('tpl-tipo');
   return {
-    nome:          document.getElementById('tpl-nome').value.trim(),
-    tipo:          document.getElementById('tpl-tipo').value,
+    nome:          (document.getElementById('tpl-nome')||{value:''}).value.trim(),
+    tipo:          tipo ? tipo.value : 'tecnico',
     prompt_titulo: document.getElementById('tpl-prompt-titulo').value.trim(),
-    tom:           document.getElementById('tpl-tom-custom').value.trim() || document.getElementById('tpl-tom').value,
+    tom:           document.getElementById('tpl-tom-custom').value.trim(),
     neg:           document.getElementById('tpl-neg').value.trim(),
     keywords:      document.getElementById('tpl-keywords').value.trim(),
     prompt_desc:   document.getElementById('tpl-prompt-desc').value.trim(),
@@ -2381,32 +2562,56 @@ function tplInterpolate(str, dados) {
   return (str || '').replace(/\{(\w+)\}/g, function(_, k) { return dados[k] || ''; });
 }
 
+function tplAbrirTestar() {
+  var d = document.getElementById('tpl-dialog-test');
+  if (d) { document.getElementById('tpl-test-output').style.display='none'; d.showModal(); }
+}
+
+function tplGerarDesc() {
+  var descInput = prompt('Cole ou descreva o produto para gerar o prompt da descrição:');
+  if (!descInput) return;
+  var el = document.getElementById('tpl-prompt-desc');
+  if (el) el.value = descInput;
+}
+
 async function tplTestar() {
   var t = tplColetar();
   if (!t.prompt_desc) { alert('Preencha o Prompt da Descrição.'); return; }
-  var dados = { nome:'TENSOR DA CORREIA DENTADA', marca:'SKF', sku:'VKM71809', oem:'93353848', familia:'Motor', motor:'GM Família I 8V', ncm:'84835010' };
+  var nomeProd = (document.getElementById('tpl-test-nome')||{}).value || 'TENSOR DA CORREIA DENTADA';
+  var marcaProd = (document.getElementById('tpl-test-marca')||{}).value || 'SKF';
+  var dados = { nome: nomeProd, marca: marcaProd, sku:'VKM71809', oem:'93353848', familia:'Motor', motor:'GM Família I 8V', ncm:'84835010' };
   var prompt = 'DADOS DO PRODUTO:\n' + Object.keys(dados).map(function(k){ return k + ': ' + dados[k]; }).join('\n')
     + '\n\nTom de voz: ' + (t.tom || 'técnico')
     + '\n\nInstrução: ' + tplInterpolate(t.prompt_desc, dados)
     + (t.neg ? '\n\nNÃO use as palavras: ' + t.neg : '');
-  var out = document.getElementById('tpl-teste-out');
-  out.style.display = 'block'; out.textContent = '⏳ Gerando...';
+  var out = document.getElementById('tpl-test-output');
+  if (out) { out.style.display='block'; out.textContent = '⏳ Gerando...'; }
   try {
-    var r = await api('POST', '/motor/voz', { perfil: t.tipo, prompt: prompt });
-    out.textContent = r.ok ? r.texto : '✖ ' + r.erro;
-  } catch(e) { out.textContent = '✖ ' + e.message; }
+    var r = await api('POST', '/motor/voz', { perfil: t.tipo||'tecnico', prompt: prompt });
+    if (out) out.textContent = r.ok ? r.texto : '✖ ' + r.erro;
+  } catch(e) { if (out) out.textContent = '✖ ' + e.message; }
+}
+
+function tplAbrirSalvar() {
+  var d = document.getElementById('tpl-dialog-save');
+  if (d) d.showModal();
 }
 
 function tplSalvar() {
   var t = tplColetar();
-  if (!t.nome) { document.getElementById('tpl-status').textContent = '✖ Nome obrigatório.'; return; }
+  if (!t.nome) {
+    var s = document.getElementById('tpl-save-status'); if(s) s.textContent = '✖ Nome obrigatório.';
+    return;
+  }
   var tpls = getTemplates();
   if (_tplEditIdx >= 0) tpls[_tplEditIdx] = t;
   else tpls.push(t);
   saveTemplates(tpls);
   tplRenderLista();
-  document.getElementById('tpl-status').textContent = '✅ Template salvo!';
-  setTimeout(function(){ document.getElementById('tpl-editor').style.display = 'none'; }, 800);
+  var d = document.getElementById('tpl-dialog-save');
+  if (d) d.close();
+  document.getElementById('tpl-editor').style.display = 'none';
+  var st = document.getElementById('tpl-status'); if(st) { st.textContent = '✅ Template salvo!'; }
 }
 
 function tplCancelar() {
@@ -2959,7 +3164,7 @@ loadDashboard();
 tplRenderLista();
 imgCarregarSlots();
 // Atualiza lista de templates ao navegar para a página
-(function(orig){ window.nav = function(p){ orig(p); if(p==='templates') tplRenderLista(); }; })(nav);
+(function(orig){ window.nav = function(p){ orig(p); if(p==='templates') tplRenderLista(); if(p==='ia') vozAtualizarSelect(); }; })(nav);
 
 // ===== COMPLETAR NTC =====
 var PESOS_NTC = {DNA:0.25,TF:0.15,FM:0.10,CO:0.10,AV:0.10,MC:0.05,EC:0.05,BTA:0.05,CC:0.05,LG:0.05,IV:0.05,FI:0.03,FP:0.02};
