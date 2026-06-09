@@ -83,8 +83,8 @@ app.post('/api/motor/voz', async (req, res) => {
         const Anthropic = require('@anthropic-ai/sdk');
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 300,
+            model: 'claude-sonnet-4-6',
+            max_tokens: 400,
             system: `Você é um redator técnico de autopeças. Regras absolutas:
 1. USE SOMENTE os dados fornecidos pelo usuário. NUNCA invente.
 2. Se um campo não estiver nos dados: NÃO mencione, NÃO estime, NÃO deduza.
