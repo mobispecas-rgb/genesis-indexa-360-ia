@@ -204,6 +204,11 @@ tr:hover td{background:#ffffff04}
   </div>
 
   <div class="sb-section">
+    <div class="sb-section-label">NTC Tools</div>
+    <div class="sb-item" onclick="nav('completar-ntc')"><span class="icon">&#127919;</span>Completar NTC<span class="sb-badge" id="badge-incompletos">0</span></div>
+  </div>
+
+  <div class="sb-section">
     <div class="sb-section-label">Sistema</div>
     <div class="sb-item" onclick="nav('config')"><span class="icon">&#9881;&#65039;</span>Configura&ccedil;&otilde;es</div>
   </div>
@@ -410,6 +415,63 @@ tr:hover td{background:#ffffff04}
     <div class="page" id="page-empresa"><div class="stub-page"><div class="stub-icon">&#127970;</div><h2>Empresa</h2><p>Em desenvolvimento &mdash; Empresa</p></div></div>
     <div class="page" id="page-preferencias"><div class="stub-page"><div class="stub-icon">&#127925;</div><h2>Prefer&ecirc;ncias</h2><p>Em desenvolvimento &mdash; Prefer&ecirc;ncias</p></div></div>
     <div class="page" id="page-config"><div class="stub-page"><div class="stub-icon">&#9881;</div><h2>Configura&ccedil;&otilde;es</h2><p>Em desenvolvimento &mdash; Configura&ccedil;&otilde;es</p></div></div>
+
+    <!-- COMPLETAR NTC -->
+    <div class="page" id="page-completar-ntc">
+      <div class="page-title">&#127919; Completar NTC &mdash; Preenchimento Guiado</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Selecione um produto com NTC incompleto. O sistema mostra <strong style="color:#ff4500">somente os campos faltantes</strong> por módulo, com progresso em tempo real.</p>
+
+      <!-- Selecionar produto -->
+      <div class="card" id="cntc-select-card">
+        <div class="card-title">&#128270; Selecionar Produto</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <select id="cntc-prod-select" style="flex:1" onchange="cntcCarregarProduto()">
+            <option value="">— Selecione um produto —</option>
+          </select>
+          <button class="btn btn-secondary" onclick="cntcPopularJSON()">ou colar JSON</button>
+        </div>
+        <div id="cntc-json-area" style="display:none">
+          <div class="form-group"><label>JSON do produto (cole aqui)</label><textarea id="cntc-json-input" rows="4" style="font-family:monospace;font-size:12px" placeholder='{"fabricante":"NYTRON","codigo_fabricante":"KIT9063","familia_tecnica":"Motor",...}'></textarea></div>
+          <button class="btn btn-primary" onclick="cntcAnalisarJSON()">Analisar JSON</button>
+        </div>
+      </div>
+
+      <!-- Barra NTC em tempo real -->
+      <div id="cntc-ntc-bar" style="display:none" class="card">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div>
+            <div id="cntc-ntc-pct" style="font-size:42px;font-weight:900;color:#ff6500;line-height:1">0%</div>
+            <div style="font-size:12px;color:#666">NTC atual</div>
+          </div>
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
+              <span id="cntc-decisao-label">REPROVADO</span>
+              <span>Meta: 95% APROVADO</span>
+            </div>
+            <div style="height:12px;background:#1f1f1f;border-radius:6px;overflow:hidden;position:relative">
+              <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:6px;transition:width .4s,background .4s"></div>
+              <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:3px"><span>0%</span><span>60%</span><span style="color:#00ff88">95%</span><span>100%</span></div>
+          </div>
+          <div style="text-align:right">
+            <div id="cntc-ganho-label" style="font-size:12px;color:#00ff88"></div>
+            <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Módulos incompletos -->
+      <div id="cntc-modulos"></div>
+
+      <!-- Botão salvar -->
+      <div id="cntc-save-bar" style="display:none;position:sticky;bottom:0;background:#0d0d0d;border-top:1px solid #1f1f1f;padding:12px 0;margin-top:8px">
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn btn-primary" style="flex:1" onclick="cntcSalvar()">&#10003; Salvar Produto Completado</button>
+          <div id="cntc-save-status" style="font-size:12px;color:#555"></div>
+        </div>
+      </div>
+    </div>
 
   </div><!-- /content -->
 </div><!-- /main -->
@@ -821,6 +883,352 @@ function uploadImagemLocal() {
 
 // ===== INIT =====
 loadDashboard();
+
+// ===== COMPLETAR NTC =====
+var PESOS_NTC = {DNA:0.25,TF:0.15,FM:0.10,CO:0.10,AV:0.10,MC:0.05,EC:0.05,BTA:0.05,CC:0.05,LG:0.05,IV:0.05,FI:0.03,FP:0.02};
+
+// Definição dos campos por módulo — só aparece quando score < 1.0
+var CNTC_CAMPOS = {
+  AV: {
+    label: 'AV — Aplicação Veicular',
+    desc: 'Nasce do motor. Versão e código motor são obrigatórios para 100%.',
+    cor: '#ffaa00',
+    campos: [
+      {id:'cntc-av-marca',    key:'marca',       label:'Marca do Veículo',   ph:'Toyota, Honda...'},
+      {id:'cntc-av-modelo',   key:'modelo',      label:'Modelo',             ph:'Hilux, Civic...'},
+      {id:'cntc-av-versao',   key:'versao',      label:'Versão',             ph:'SR, EXL, Sport...'},
+      {id:'cntc-av-motor',    key:'motor',       label:'Motor (obrigatório)',  ph:'2.8 TDI, 1.0 TSI...'},
+      {id:'cntc-av-codmot',   key:'codigo_motor',label:'Código Motor',        ph:'1GD-FTV, EA211...'},
+      {id:'cntc-av-cil',      key:'cilindrada',  label:'Cilindrada',          ph:'2800, 1000...'},
+      {id:'cntc-av-anoi',     key:'ano_inicial', label:'Ano Inicial',         ph:'2016', tipo:'number'},
+      {id:'cntc-av-anof',     key:'ano_final',   label:'Ano Final',           ph:'2023', tipo:'number'},
+    ]
+  },
+  MC: {
+    label: 'MC — Material Construtivo',
+    desc: 'Informe o material do produto conforme documentação técnica.',
+    cor: '#ff8800',
+    campos: [
+      {id:'cntc-mc-mat', key:'material', label:'Material / Composição', ph:'Borracha EPDM e Aço temperado...'},
+    ]
+  },
+  EC: {
+    label: 'EC — Engenharia e Componentes',
+    desc: 'Função técnica e especificações do produto.',
+    cor: '#ff8800',
+    campos: [
+      {id:'cntc-ec-funcao', key:'funcao', label:'Função Técnica', ph:'Kit completo de distribuição com correia dentada...'},
+      {id:'cntc-ec-espec',  key:'_especificacoes_txt', label:'Especificações (uma por linha)', ph:'Correia EPDM\nTensor hidráulico\nDentes: 130', tipo:'textarea'},
+    ]
+  },
+  BTA: {
+    label: 'BTA — Boletim Técnico Aplicado',
+    desc: 'Boletins técnicos, revisões e substituições documentadas.',
+    cor: '#ff8800',
+    campos: [
+      {id:'cntc-bta-boletins', key:'_boletins_txt',    label:'Boletins Técnicos (um por linha)', ph:'Boletim NYTRON BT-2023-001\nHomologado Toyota Hilux GD', tipo:'textarea'},
+      {id:'cntc-bta-rev',      key:'_revisoes_txt',    label:'Revisões (opcional)',              ph:'Rev.01 Jun/2023', tipo:'textarea'},
+      {id:'cntc-bta-subst',    key:'_substituicoes_txt',label:'Substituições (opcional)',        ph:'KIT9063A', tipo:'textarea'},
+    ]
+  },
+  CC: {
+    label: 'CC — Códigos Cambiados',
+    desc: 'Nunca misturar fabricantes. OEM, aftermarket e importadores separados.',
+    cor: '#ff8800',
+    campos: [
+      {id:'cntc-cc-oem',    key:'_cc_oem_txt',    label:'Códigos OEM (um por linha)',          ph:'58101-2BA70'},
+      {id:'cntc-cc-after',  key:'_cc_after_txt',  label:'Aftermarket (um por linha)',          ph:'Gates K015642XS\nDayco KTB1009\nContiTech CT1162K3\nINA 530 0453 10', tipo:'textarea'},
+      {id:'cntc-cc-import', key:'_cc_import_txt', label:'Importadores (um por linha)',         ph:'NYTRON-BR-KIT9063'},
+    ]
+  },
+  LG: {
+    label: 'LG — Linhagem Genealógica',
+    desc: 'Cadeia: fabricante → montadora → distribuidor → importador → marketplace.',
+    cor: '#ff8800',
+    campos: [
+      {id:'cntc-lg-fab',   key:'linhagem_fabricante',   label:'Fabricante Original',   ph:'NYTRON'},
+      {id:'cntc-lg-mont',  key:'linhagem_montadora',    label:'Montadora',             ph:'Toyota Motor Corporation'},
+      {id:'cntc-lg-dist',  key:'linhagem_distribuidor', label:'Distribuidor',          ph:'MOBIS Pecas Automotivas'},
+      {id:'cntc-lg-imp',   key:'linhagem_importador',   label:'Importador (opcional)', ph:''},
+    ]
+  },
+  IV: {
+    label: 'IV — Integridade Visual',
+    desc: 'Mínimo 4 fotos reais do produto. IV ≥ 0.80 obrigatório para publicar.',
+    cor: '#ff4500',
+    campos: [
+      {id:'cntc-iv-fp',  key:'iv_foto_principal', label:'Foto principal confirmada?', tipo:'check'},
+      {id:'cntc-iv-emb', key:'iv_embalagem',      label:'Foto da embalagem?',         tipo:'check'},
+      {id:'cntc-iv-et',  key:'iv_etiqueta',       label:'Foto da etiqueta/código?',   tipo:'check'},
+      {id:'cntc-iv-ocr', key:'iv_ocr',            label:'OCR / leitura de código?',   tipo:'check'},
+      {id:'cntc-iv-ang', key:'iv_angulos',         label:'Qtd de ângulos/fotos',       ph:'6', tipo:'number'},
+    ]
+  },
+  FM: {
+    label: 'FM — Fiscal & NCM',
+    desc: 'NCM de 8 dígitos, CEST, CST e origem ICMS.',
+    cor: '#ffaa00',
+    campos: [
+      {id:'cntc-fm-ncm',    key:'ncm',    label:'NCM (8 dígitos)',    ph:'84091900', maxlen:'12'},
+      {id:'cntc-fm-cest',   key:'cest',   label:'CEST',               ph:'01.065.00', maxlen:'10'},
+      {id:'cntc-fm-cst',    key:'cst',    label:'CST',                ph:'000'},
+      {id:'cntc-fm-origem', key:'origem', label:'Origem ICMS',        ph:'0 = Nacional', tipo:'select',
+       opcoes:[{v:'',l:'Selecione...'},{v:'0',l:'0-Nacional'},{v:'1',l:'1-Importado direto'},{v:'2',l:'2-Adquirido merc.int.'},{v:'3',l:'3-Nacional>40%'},{v:'4',l:'4-Processos básicos'},{v:'5',l:'5-Nacional≤40%'},{v:'6',l:'6-Importado c/similar'},{v:'7',l:'7-Sem similar'},{v:'8',l:'8-Nacional>70%'}]},
+    ]
+  },
+  CO: {
+    label: 'CO — Código OEM / Referência',
+    desc: 'Código de referência do fabricante.',
+    cor: '#ffaa00',
+    campos: [
+      {id:'cntc-co-oem', key:'codigo_oem', label:'Código OEM / Part Number', ph:'KIT9063, 58101-2BA70...'},
+      {id:'cntc-co-ean', key:'ean',        label:'EAN / GTIN (se houver na embalagem)', ph:'7891234567890', maxlen:'14'},
+    ]
+  },
+  FI: {
+    label: 'FI — Ficha Física / Pesos',
+    desc: 'Peso bruto e líquido com base em documentação.',
+    cor: '#888',
+    campos: [
+      {id:'cntc-fi-pesob', key:'peso_bruto',   label:'Peso Bruto (kg)',   ph:'1.200', tipo:'number'},
+      {id:'cntc-fi-pesol', key:'peso_liquido', label:'Peso Líquido (kg)', ph:'1.000', tipo:'number'},
+    ]
+  },
+  FP: {
+    label: 'FP — Dimensões Físicas',
+    desc: 'Comprimento, largura e altura em cm.',
+    cor: '#888',
+    campos: [
+      {id:'cntc-fp-comp', key:'comprimento', label:'Comprimento (cm)', ph:'35.0', tipo:'number'},
+      {id:'cntc-fp-larg', key:'largura',     label:'Largura (cm)',     ph:'20.0', tipo:'number'},
+      {id:'cntc-fp-alt',  key:'altura',      label:'Altura (cm)',      ph:'10.0', tipo:'number'},
+    ]
+  },
+};
+
+var _cntcDados = {};   // dados acumulados do produto em edição
+
+function cntcPreencherSelect() {
+  var sel = document.getElementById('cntc-prod-select');
+  if (!sel) return;
+  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
+  sel.innerHTML = '<option value="">— Selecione um produto —</option>';
+  var incompletos = 0;
+  prods.forEach(function(p, i) {
+    var ntc = p.ntc || 0;
+    if (ntc < 0.95) incompletos++;
+    var label = (p.sku || p.codigo_fabricante || 'Produto ' + i) + ' — ' + (p.nome || '') + ' — NTC ' + Math.round(ntc*100) + '%';
+    sel.innerHTML += '<option value="' + i + '">' + label + '</option>';
+  });
+  var badge = document.getElementById('badge-incompletos');
+  if (badge) badge.textContent = incompletos;
+}
+
+function cntcCarregarProduto() {
+  var idx = document.getElementById('cntc-prod-select').value;
+  if (idx === '') return;
+  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
+  _cntcDados = Object.assign({}, prods[parseInt(idx)]);
+  _cntcRenderModulos();
+}
+
+function cntcPopularJSON() {
+  var area = document.getElementById('cntc-json-area');
+  area.style.display = area.style.display === 'none' ? 'block' : 'none';
+}
+
+function cntcAnalisarJSON() {
+  try {
+    _cntcDados = JSON.parse(document.getElementById('cntc-json-input').value);
+    _cntcRenderModulos();
+    document.getElementById('cntc-json-area').style.display = 'none';
+  } catch(e) {
+    alert('JSON inválido: ' + e.message);
+  }
+}
+
+async function _cntcRenderModulos() {
+  // Busca scores atuais no backend
+  var r;
+  try { r = await api('POST', '/motor/nct', _cntcDados); } catch(e) { r = {ntc:0,decisao:'REPROVADO',scores:{}}; }
+  var scores = r.scores || {};
+
+  // Atualiza barra NTC
+  _cntcAtualizarBarra(r.ntc, r.decisao);
+  document.getElementById('cntc-ntc-bar').style.display = 'block';
+  document.getElementById('cntc-save-bar').style.display = 'block';
+
+  // Módulos incompletos primeiro, completos no fim
+  var modOrdem = Object.keys(PESOS_NTC);
+  var incompletos = modOrdem.filter(function(m){ return (scores[m]||0) < 0.99; });
+  var completos   = modOrdem.filter(function(m){ return (scores[m]||0) >= 0.99; });
+
+  var html = '';
+
+  if (incompletos.length === 0) {
+    html += '<div class="card" style="border-color:#00ff8840;background:#00ff8808"><div style="text-align:center;padding:20px"><div style="font-size:48px">✅</div><div style="color:#00ff88;font-size:18px;font-weight:700;margin-top:8px">NTC APROVADO — Produto Completo!</div></div></div>';
+  } else {
+    html += '<div style="font-size:12px;color:#666;margin-bottom:12px">&#9888; ' + incompletos.length + ' módulo(s) incompleto(s) &mdash; preencha abaixo para atingir NTC ≥ 95%</div>';
+    incompletos.forEach(function(mod) {
+      var meta = CNTC_CAMPOS[mod];
+      if (!meta) return;
+      var sc = scores[mod] || 0;
+      var peso = PESOS_NTC[mod] || 0;
+      var ganhoMax = ((1 - sc) * peso * 100).toFixed(1);
+      html += _cntcCampoHtml(mod, meta, sc, ganhoMax);
+    });
+  }
+
+  // Completos (colapsados)
+  if (completos.length > 0) {
+    html += '<details style="margin-top:12px"><summary style="cursor:pointer;color:#444;font-size:12px;padding:8px 0">&#10003; ' + completos.length + ' módulo(s) completo(s)</summary><div style="margin-top:8px">';
+    completos.forEach(function(mod) {
+      var sc = scores[mod] || 0;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:7px;margin-bottom:6px">'
+            + '<span style="color:#00ff88;font-size:14px">&#10004;</span>'
+            + '<span style="font-size:12px;color:#555;flex:1">' + mod + ' &mdash; ' + (CNTC_CAMPOS[mod]||{label:mod}).label.split(' — ')[1] + '</span>'
+            + '<span style="font-size:11px;color:#00ff88">' + Math.round(sc*100) + '%</span>'
+            + '</div>';
+    });
+    html += '</div></details>';
+  }
+
+  document.getElementById('cntc-modulos').innerHTML = html;
+
+  // Adiciona listeners em tempo real
+  incompletos.forEach(function(mod) {
+    var meta = CNTC_CAMPOS[mod];
+    if (!meta) return;
+    meta.campos.forEach(function(c) {
+      var el = document.getElementById(c.id);
+      if (!el) return;
+      el.addEventListener('input', _cntcOnInput);
+      el.addEventListener('change', _cntcOnInput);
+      // Pré-preenche com dado existente
+      var val = _cntcDados[c.key];
+      if (val != null) {
+        if (c.tipo === 'check') { el.checked = !!val; }
+        else { el.value = Array.isArray(val) ? val.join('\n') : val; }
+      }
+    });
+  });
+}
+
+function _cntcCampoHtml(mod, meta, sc, ganhoMax) {
+  var cor = meta.cor || '#ff8800';
+  var html = '<div class="card" style="border-left:3px solid ' + cor + ';margin-bottom:10px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    + '<div><strong style="font-size:13px;color:#ccc">' + meta.label + '</strong>'
+    + '<div style="font-size:11px;color:#666;margin-top:2px">' + meta.desc + '</div></div>'
+    + '<div style="text-align:right"><div style="font-size:11px;color:' + cor + '">+' + ganhoMax + '% possível</div>'
+    + '<div style="font-size:10px;color:#444">atual: ' + Math.round(sc*100) + '%</div></div>'
+    + '</div>'
+    + '<div class="grid2">';
+
+  meta.campos.forEach(function(c) {
+    html += '<div class="form-group" style="' + (c.tipo==='textarea'?'grid-column:1/-1':'') + '">'
+          + '<label>' + c.label + '</label>';
+    if (c.tipo === 'check') {
+      html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#ccc;font-size:13px">'
+            + '<input type="checkbox" id="' + c.id + '" style="width:16px;height:16px;accent-color:#ff4500"> Confirmado</label>';
+    } else if (c.tipo === 'textarea') {
+      html += '<textarea id="' + c.id + '" placeholder="' + (c.ph||'') + '" rows="3" style="font-size:12px"></textarea>';
+    } else if (c.tipo === 'select') {
+      html += '<select id="' + c.id + '">' + c.opcoes.map(function(o){ return '<option value="'+o.v+'">'+o.l+'</option>'; }).join('') + '</select>';
+    } else {
+      html += '<input id="' + c.id + '" type="' + (c.tipo||'text') + '" placeholder="' + (c.ph||'') + '"' + (c.maxlen?' maxlength="'+c.maxlen+'"':'') + '>';
+    }
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+var _cntcDebounce = null;
+function _cntcOnInput() {
+  clearTimeout(_cntcDebounce);
+  _cntcDebounce = setTimeout(_cntcRecalcular, 500);
+}
+
+async function _cntcRecalcular() {
+  // Lê todos os campos preenchidos
+  Object.keys(CNTC_CAMPOS).forEach(function(mod) {
+    var meta = CNTC_CAMPOS[mod];
+    meta.campos.forEach(function(c) {
+      var el = document.getElementById(c.id);
+      if (!el) return;
+      var val;
+      if (c.tipo === 'check') { val = el.checked || false; }
+      else if (c.tipo === 'number') { val = el.value ? parseFloat(el.value) : null; }
+      else { val = el.value.trim() || null; }
+
+      // Converte campos _txt em arrays
+      if (c.key.endsWith('_txt') && val) {
+        var realKey = c.key.replace(/^_(.+)_txt$/, function(m, k) {
+          var map = {
+            especificacoes_txt:'especificacoes', boletins_txt:'boletins',
+            revisoes_txt:'revisoes', substituicoes_txt:'substituicoes',
+            cc_oem_txt:'cc_oem', cc_after_txt:'cc_aftermarket', cc_import_txt:'cc_importadores'
+          };
+          return map[k+'_txt'] || k;
+        });
+        _cntcDados[realKey] = val.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+      } else if (val !== null) {
+        _cntcDados[c.key] = val;
+      }
+    });
+  });
+
+  // Recalcula NTC via backend
+  try {
+    var r = await api('POST', '/motor/nct', _cntcDados);
+    _cntcAtualizarBarra(r.ntc, r.decisao);
+  } catch(e) {}
+}
+
+function _cntcAtualizarBarra(ntc, decisao) {
+  var pct = Math.round((ntc||0) * 100);
+  var cor = pct >= 95 ? '#00ff88' : pct >= 60 ? '#ffaa00' : '#ff6500';
+  var el = document.getElementById('cntc-ntc-pct');
+  var fill = document.getElementById('cntc-ntc-fill');
+  var dec = document.getElementById('cntc-decisao-label');
+  var ganho = document.getElementById('cntc-ganho-label');
+  var faltam = document.getElementById('cntc-faltam-label');
+  if (el) { el.textContent = pct + '%'; el.style.color = cor; }
+  if (fill) { fill.style.width = pct + '%'; fill.style.background = cor; }
+  if (dec) { dec.textContent = decisao || 'REPROVADO'; dec.style.color = cor; }
+  if (ganho && pct < 95) { ganho.textContent = '+' + (95 - pct) + '% para APROVADO'; }
+  else if (ganho) { ganho.textContent = '✅ APROVADO!'; }
+  if (faltam && pct < 95) { faltam.textContent = 'Faltam ' + (95 - pct) + ' pontos'; }
+  else if (faltam) { faltam.textContent = 'Pode publicar no marketplace'; }
+}
+
+async function cntcSalvar() {
+  var status = document.getElementById('cntc-save-status');
+  status.textContent = 'Salvando...';
+  var r;
+  try { r = await api('POST', '/motor/nct', _cntcDados); } catch(e) { status.textContent = 'Erro: ' + e.message; return; }
+
+  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
+  var idx = prods.findIndex(function(p){
+    return p.codigo_fabricante === _cntcDados.codigo_fabricante && p.fabricante === _cntcDados.fabricante;
+  });
+  var prod = Object.assign({}, _cntcDados, {ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash});
+  if (idx >= 0) { prods[idx] = prod; } else { prods.push(prod); }
+  localStorage.setItem('gn_prod', JSON.stringify(prods));
+  atualizarStats();
+  cntcPreencherSelect();
+  status.textContent = '✅ Salvo! NTC: ' + Math.round(r.ntc*100) + '% — ' + r.decisao;
+  _cntcRenderModulos();
+}
+
+// Carregar select ao entrar na página completar-ntc
+var _origNav = nav;
+nav = function(id, btn) {
+  _origNav(id, btn);
+  if (id === 'completar-ntc') cntcPreencherSelect();
+};
 </script>
 </body>
 </html>
