@@ -2050,7 +2050,7 @@ async function buscarImagens() {
     if (!data.ok || !data.imagens || !data.imagens.length) {
       status.innerHTML = data.mensagem
         ? '&#9888;&#65039; ' + esc(data.mensagem)
-        : '&#9888;&#65039; Nenhuma imagem encontrada. Configure <strong>GOOGLE_SEARCH_KEY</strong> e <strong>GOOGLE_SEARCH_CX</strong> no Render para busca real.';
+        : '&#9888;&#65039; Nenhuma imagem encontrada. Configure <strong>SERPER_API_KEY</strong> no Render (2.500 buscas grátis em serper.dev).';
       return;
     }
     resultsDiv.style.display = 'block';
