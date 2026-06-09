@@ -1062,13 +1062,13 @@ async function gerarVozIA(perfil) {
   var nomeCompleto = [p.descricao, p.sku, p.fabricante].filter(Boolean).join(' — ');
   var perfilLabel = { tecnico: 'técnico especialista em autopeças', comercial: 'vendedor comercial', seo: 'especialista SEO para autopeças' }[perfil] || 'técnico';
 
-  // Prompt com dados reais apenas — sem inventar nada
-  var prompt = 'Você é um ' + perfilLabel + '. Escreva uma descrição curta (máximo 3 frases) para o produto abaixo.\n'
-    + 'USE APENAS os dados fornecidos. NÃO invente especificações, aplicações, OEM ou NCM que não estejam listados.\n'
-    + 'Se um dado não estiver disponível, não mencione.\n\n'
-    + 'Produto: ' + nomeCompleto + '\n'
-    + (p.familia ? 'Família: ' + p.familia + '\n' : '')
+  // Prompt estritamente baseado nos dados confirmados — NUNCA inventa
+  var dadosConfirmados = 'Produto: ' + nomeCompleto + '\n'
+    + (p.familia  ? 'Família: '    + p.familia + '\n' : '')
     + (p.componentes && p.componentes.length ? 'Componentes: ' + p.componentes.join(', ') + '\n' : '');
+  var prompt = 'DADOS CONFIRMADOS DO PRODUTO (use SOMENTE estes):\n' + dadosConfirmados
+    + '\nPerfil de saída: ' + perfilLabel + '.\n'
+    + 'IMPORTANTE: Se os dados acima forem insuficientes, responda apenas: "Dados insuficientes."';
 
   try {
     var r = await api('POST', '/motor/voz', { perfil: perfil, prompt: prompt });
