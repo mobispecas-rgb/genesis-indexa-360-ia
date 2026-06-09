@@ -614,14 +614,47 @@ function deleteProduto(i) {
 
 // ===== IA ANALYZER =====
 function parseTextoIA(texto) {
-  var segs = texto.split(' - ').map(function(s){ return s.trim(); }).filter(Boolean);
+  // Normaliza separadores: travessão —, hífen -, barra /
+  // Suporta: "DESC - SKU - MARCA", "SKU — DESC", "SKU - DESC", "DESC/VARIANTE - SKU - MARCA"
+  var separador = /\s*[—–]\s*|\s+-\s+/;
+  var segs = texto.split(separador).map(function(s){ return s.trim(); }).filter(Boolean);
   var marca = null, sku = null, descricao = texto;
+
   if (segs.length >= 2) {
-    marca = segs[segs.length - 1];
-    if (segs.length >= 3 && /^[A-Z0-9\-]{2,20}$/.test(segs[segs.length-2])) {
-      sku = segs[segs.length - 2];
+    var ultimo = segs[segs.length - 1];
+    var penultimo = segs.length >= 2 ? segs[segs.length - 2] : '';
+
+    // Detecta SKU: sequência alfanumérica curta sem espaços (ex: KIT9063, MOB-006)
+    var reSKU = /^[A-Z0-9][A-Z0-9\-]{1,19}$/;
+
+    // Formato A: DESCRICAO - SKU - MARCA  (marca no final, SKU no penúltimo)
+    if (segs.length >= 3 && reSKU.test(penultimo) && !/\s/.test(ultimo)) {
+      sku    = penultimo;
+      marca  = ultimo;
+      descricao = segs.slice(0, segs.length - 2).join(' — ');
     }
-    descricao = segs[0];
+    // Formato B: DESCRICAO - SKU  (somente 2 segmentos, SKU no final)
+    else if (segs.length === 2 && reSKU.test(ultimo)) {
+      sku       = ultimo;
+      descricao = segs[0];
+    }
+    // Formato C: SKU — DESCRICAO  (SKU no início)
+    else if (reSKU.test(segs[0]) && segs.length >= 2) {
+      sku       = segs[0];
+      descricao = segs.slice(1).join(' — ');
+    }
+    // Formato D: DESCRICAO - MARCA  (sem SKU detectável)
+    else {
+      marca     = ultimo;
+      descricao = segs.slice(0, segs.length - 1).join(' — ');
+    }
+  } else {
+    // Texto sem separador: tenta detectar SKU no início (ex: "KIT9063 KIT DISTRIBUICAO")
+    var primPalavra = texto.trim().split(/\s+/)[0];
+    if (/^[A-Z0-9][A-Z0-9\-]{2,19}$/.test(primPalavra)) {
+      sku = primPalavra;
+      descricao = texto.trim().substring(primPalavra.length).trim() || texto;
+    }
   }
   var desc_upper = (descricao + ' ' + texto).toUpperCase();
   var familia = null, componentes = [];
