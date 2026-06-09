@@ -1,5 +1,5 @@
 // ============================================================
-// GENESIS INDEXA 360 IA v4.0 — SERVIDOR PRINCIPAL
+// INDEXAAI CATALOG PRO — Motor NTC 4.0 Enterprise — SERVIDOR PRINCIPAL
 // Node.js + Express | MOBIS Pecas Automotivas
 // ============================================================
 require('dotenv').config();
@@ -36,7 +36,7 @@ app.get('/api/health', (req, res) => {
     res.json({
           ok: true,
           status: 'online',
-          sistema: 'Genesis Indexa 360 IA v4.0',
+          sistema: 'IndexaAI Catalog PRO — Motor NTC 4.0 Enterprise',
           uptime: Math.round(process.uptime()),
           timestamp: new Date().toISOString()
     });
@@ -47,7 +47,7 @@ app.get('/api/status', (req, res) => {
     res.json({
           ok: true,
           versao: '4.0.0',
-          sistema: 'Genesis Indexa 360 IA',
+          sistema: 'IndexaAI Catalog PRO',
           empresa: 'MOBIS Pecas Automotivas'
     });
 });
@@ -133,7 +133,7 @@ app.post('/api/motor/enriquecer', (req, res) => {
         ...resultado,
         nct: resultado.ntc,
         nct_componentes: resultado.componentes,
-        modelo_ia: 'Genesis NTC Engine v4.0',
+        modelo_ia: 'IndexaAI NTC Engine v4.0',
         enriquecimento: {
             nome_enriquecido:        dados.nome          || null,
             ncm_sugerido:            dados.ncm           || null,
@@ -278,7 +278,7 @@ app.get('*', (req, res) => {
 // -----------------------------------------------------------
 app.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(60));
-    console.log('  GENESIS INDEXA 360 IA v4.0   ONLINE');
+    console.log('  INDEXAAI CATALOG PRO — NTC 4.0 ENTERPRISE   ONLINE');
     console.log('  MOBIS Pecas Automotivas');
     console.log(`  http://localhost:${PORT}`);
     console.log('='.repeat(60));
