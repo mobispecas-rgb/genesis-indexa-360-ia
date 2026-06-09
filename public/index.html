@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IndexaAí.com — Motor NTC 4.0</title>
+<title>iRollo 360 — Motor NTC 4.0</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#fff;display:flex;height:100vh;overflow:hidden}
@@ -137,6 +137,28 @@ tr:hover td{background:#ffffff04}
   #main{margin-left:0}
   .grid4{grid-template-columns:1fr 1fr}
   .grid3{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  #content{padding:12px}
+  .card{padding:12px}
+  .page-title{font-size:16px}
+  .stat-num{font-size:24px}
+  .btn{padding:10px 14px;font-size:14px}
+  input,select,textarea{font-size:15px;padding:10px 12px}
+  #img-slots-grid{grid-template-columns:repeat(2,1fr)!important}
+  #img-google-grid{grid-template-columns:repeat(2,1fr)!important}
+  .tabs{overflow-x:auto;white-space:nowrap}
+  .tab{display:inline-block;padding:8px 12px;font-size:12px}
+  #topbar{padding:8px 12px;gap:8px}
+  .sb-item{padding:9px 14px;font-size:13px}
+  .img-cat-btn{padding:6px 12px!important;font-size:12px!important}
+}
+@media(max-width:480px){
+  #img-slots-grid{grid-template-columns:1fr 1fr!important}
+  .grid4{grid-template-columns:1fr}
+  .stat-card{padding:12px}
+  .stat-num{font-size:20px}
+  .qa-btn{padding:10px 12px;font-size:12px}
+  #img-cat-bar{gap:4px}
 }
 </style>
 </head>
@@ -147,8 +169,8 @@ tr:hover td{background:#ffffff04}
   <div class="sb-logo">
     <div class="logo-icon">&#9889;</div>
     <div>
-      <div class="logo-text">IndexaAí.com</div>
-      <div class="logo-sub">Motor NTC 4.0 &bull; MOBIS Pe&ccedil;as</div>
+      <div class="logo-text">iRollo 360</div>
+      <div class="logo-sub">Motor NTC 4.0 &bull; iRollo</div>
     </div>
   </div>
 
@@ -214,7 +236,7 @@ tr:hover td{background:#ffffff04}
   </div>
 
   <div class="sb-footer">
-    Administrador<br>MOBIS Pecas Automotivas
+    Administrador<br>iRollo 360
   </div>
 </nav>
 
@@ -223,7 +245,7 @@ tr:hover td{background:#ffffff04}
   <div id="topbar">
     <button id="hamburger" onclick="toggleSidebar()">&#9776;</button>
     <div class="health-dot" id="healthDot"></div>
-    <div class="health-text" id="healthText">Sistema Online &mdash; <span>IndexaAí.com &bull; Motor NTC 4.0</span></div>
+    <div class="health-text" id="healthText">Sistema Online &mdash; <span>iRollo 360 &bull; Motor NTC 4.0</span></div>
     <div class="topbar-right" id="uptimeText">Uptime: --</div>
   </div>
 
@@ -389,6 +411,16 @@ tr:hover td{background:#ffffff04}
           <div class="tab" onclick="imgTab('minhas',this)" style="color:#888">&#128444;&#65039; Minhas Imagens</div>
           <div class="tab" onclick="imgTab('upload',this)" style="color:#888">&#128228; Upload</div>
         </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;padding:10px 0;border-bottom:1px solid #eee" id="img-cat-bar">
+          <span style="font-size:11px;color:#888;align-self:center;margin-right:4px">Categoria:</span>
+          <button class="img-cat-btn active-cat" onclick="imgFiltrarCat('',this)" style="padding:4px 10px;background:#ff4500;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">Todas</button>
+          <button class="img-cat-btn" onclick="imgFiltrarCat('logistica',this)" style="padding:4px 10px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer">&#128666; Log&iacute;stica</button>
+          <button class="img-cat-btn" onclick="imgFiltrarCat('engenharia',this)" style="padding:4px 10px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer">&#9881;&#65039; Engenharia</button>
+          <button class="img-cat-btn" onclick="imgFiltrarCat('materiais',this)" style="padding:4px 10px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer">&#128295; Materiais</button>
+          <button class="img-cat-btn" onclick="imgFiltrarCat('boletins',this)" style="padding:4px 10px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer">&#128196; Boletins</button>
+          <button class="img-cat-btn" onclick="imgFiltrarCat('fiscal',this)" style="padding:4px 10px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer">&#128203; Fiscal</button>
+          <button class="img-cat-btn" onclick="imgFiltrarCat('seo',this)" style="padding:4px 10px;background:#f0f0f0;color:#333;border:1px solid #ddd;border-radius:5px;font-size:11px;cursor:pointer">&#128269; SEO</button>
+        </div>
 
         <div class="tab-content active" id="itab-busca">
           <!-- Barra de busca -->
@@ -437,10 +469,12 @@ tr:hover td{background:#ffffff04}
             <div class="form-group"><label style="color:#555">Refer&ecirc;ncia / ID Produto</label><input id="up-ref" placeholder="ex: KIT9063" style="background:#fff;border-color:#ccc;color:#1a1a1a"></div>
             <div class="form-group"><label style="color:#555">Tipo</label>
               <select id="up-tipo" style="background:#fff;border-color:#ccc;color:#1a1a1a">
-                <option value="tecnica">T&eacute;cnica</option>
-                <option value="comercial">Comercial</option>
-                <option value="embalagem">Embalagem</option>
-                <option value="detalhe">Detalhe</option>
+                <option value="logistica">&#128666; Log&iacute;stica</option>
+                <option value="engenharia">&#9881;&#65039; Engenharia</option>
+                <option value="materiais">&#128295; Materiais</option>
+                <option value="boletins">&#128196; Boletins</option>
+                <option value="fiscal">&#128203; Fiscal</option>
+                <option value="seo">&#128269; SEO</option>
               </select>
             </div>
           </div>
@@ -691,7 +725,66 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       <div id="aprovados-lista"></div>
     </div>
     <div class="page" id="page-congelados"><div class="stub-page"><div class="stub-icon">&#10052;</div><h2>Congelados</h2><p>Em desenvolvimento &mdash; Congelados</p></div></div>
-    <div class="page" id="page-ean"><div class="stub-page"><div class="stub-icon">&#128247;</div><h2>EAN Scanner GS1</h2><p>Em desenvolvimento &mdash; EAN Scanner GS1</p></div></div>
+    <div class="page" id="page-ean">
+      <div class="page-title">&#128247; EAN Scanner GS1</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Valide e decodifique c&oacute;digos EAN-13, GTIN-8/12/14 e GS1-128 conforme padr&atilde;o GS1 Brasil. Preencha os campos do produto automaticamente.</p>
+      <div class="card">
+        <div class="card-title">&#128269; Entrada do C&oacute;digo</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="ean-input" placeholder="Cole ou digite o EAN/GTIN (8, 12, 13 ou 14 d&iacute;gitos)..." style="flex:1;min-width:240px" maxlength="18" oninput="eanLimpar()" onkeydown="if(event.key==='Enter')eanValidar()">
+          <button class="btn btn-primary" onclick="eanValidar()">&#128269; Validar</button>
+          <button class="btn btn-secondary" onclick="eanLimpar()">&#10005; Limpar</button>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#555">
+          Exemplos: <span style="cursor:pointer;color:#ff4500" onclick="document.getElementById('ean-input').value='7316572455985';eanValidar()">7316572455985</span>
+          &nbsp;|&nbsp;<span style="cursor:pointer;color:#ff4500" onclick="document.getElementById('ean-input').value='04007750015023';eanValidar()">04007750015023</span>
+          &nbsp;|&nbsp;<span style="cursor:pointer;color:#ff4500" onclick="document.getElementById('ean-input').value='12345670';eanValidar()">12345670</span>
+        </div>
+      </div>
+      <div id="ean-resultado" style="display:none">
+        <div class="card" id="ean-card-status">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="ean-valido-icon" style="font-size:32px"></div>
+            <div>
+              <div id="ean-valido-label" style="font-size:16px;font-weight:700"></div>
+              <div id="ean-valido-sub" style="font-size:12px;color:#888;margin-top:2px"></div>
+            </div>
+            <div style="margin-left:auto;text-align:right">
+              <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px">D&iacute;gito verificador</div>
+              <div id="ean-check-digit" style="font-size:24px;font-weight:800;color:#ff4500"></div>
+            </div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">&#127760; Prefix GS1</div>
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <tr><td style="padding:5px 0;color:#666;width:40%">C&oacute;digo digitado</td><td id="ean-raw" style="font-weight:600;font-family:monospace;color:#fff"></td></tr>
+              <tr><td style="padding:5px 0;color:#666">GTIN normalizado</td><td id="ean-gtin14" style="font-weight:600;font-family:monospace;color:#ff4500"></td></tr>
+              <tr><td style="padding:5px 0;color:#666">Tipo</td><td id="ean-tipo"></td></tr>
+              <tr><td style="padding:5px 0;color:#666">Pa&iacute;s/Regi&atilde;o GS1</td><td id="ean-pais"></td></tr>
+              <tr><td style="padding:5px 0;color:#666">Empresa GS1</td><td id="ean-empresa"></td></tr>
+              <tr><td style="padding:5px 0;color:#666">Produto</td><td id="ean-produto-ref"></td></tr>
+              <tr><td style="padding:5px 0;color:#666">Check digit OK?</td><td id="ean-check-ok"></td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">&#9881;&#65039; Usar no Produto</div>
+            <p style="font-size:12px;color:#666;margin-bottom:12px">Preenche automaticamente o campo EAN/GTIN no produto selecionado.</p>
+            <div class="form-group">
+              <label>GTIN-13 validado</label>
+              <input id="ean-fill-value" readonly style="font-family:monospace;font-weight:700;color:#ff4500">
+            </div>
+            <button class="btn btn-primary" onclick="eanPreencherProduto()" id="ean-btn-usar" disabled>&#10003; Usar neste produto</button>
+            <div id="ean-fill-status" style="font-size:12px;margin-top:8px;color:#888"></div>
+          </div>
+        </div>
+        <div class="card" id="ean-card-gs1-info">
+          <div class="card-title">&#128196; Informa&ccedil;&otilde;es GS1 Brasil</div>
+          <div id="ean-gs1-detalhe" style="font-size:12px;color:#aaa;line-height:1.7"></div>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-aplicacoes"><div class="stub-page"><div class="stub-icon">&#128663;</div><h2>Aplica&ccedil;&otilde;es Motor</h2><p>Em desenvolvimento &mdash; Aplica&ccedil;&otilde;es Motor</p></div></div>
     <div class="page" id="page-fiscal"><div class="stub-page"><div class="stub-icon">&#128203;</div><h2>Fiscal &amp; Log&iacute;stica</h2><p>Em desenvolvimento &mdash; Fiscal &amp; Log&iacute;stica</p></div></div>
     <div class="page" id="page-ntc"><div class="stub-page"><div class="stub-icon">&#128302;</div><h2>NTC Inspector</h2><p>Em desenvolvimento &mdash; NTC Inspector</p></div></div>
@@ -861,7 +954,7 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:14px;margin-bottom:12px">
           <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:10px">&#128269; SEO / Meta</div>
           <div class="form-group"><label>Meta Title <span style="color:#555">(max 60 chars)</span></label>
-            <input id="tpl-meta-title" maxlength="80" placeholder="Ex: {nome} {marca} — Autopeça Original | MOBIS Pe&ccedil;as">
+            <input id="tpl-meta-title" maxlength="80" placeholder="Ex: {nome} {marca} — Autopeça Original | iRollo 360">
             <div id="tpl-meta-title-count" style="font-size:10px;color:#555;text-align:right"></div>
           </div>
           <div class="form-group"><label>Meta Description <span style="color:#555">(max 160 chars)</span></label>
@@ -959,7 +1052,10 @@ function simpleHash(str) {
 }
 
 async function api(method, path, body) {
-  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('gn_token') || '') } };
+  var headers = { 'Content-Type': 'application/json' };
+  var tok = localStorage.getItem('gn_token') || '';
+  if (tok) headers['Authorization'] = 'Bearer ' + tok;
+  var opts = { method: method, headers: headers };
   if (body) opts.body = JSON.stringify(body);
   try {
     var r = await fetch('/api' + path, opts);
@@ -1052,7 +1148,7 @@ async function checkHealth() {
     var r = await fetch('/api/health');
     await r.json();
     document.getElementById('healthDot').style.background = '#00ff88';
-    document.getElementById('healthText').innerHTML = 'Sistema Online &mdash; <span>IndexaAí.com &bull; Motor NTC 4.0</span>';
+    document.getElementById('healthText').innerHTML = 'Sistema Online &mdash; <span>iRollo 360 &bull; Motor NTC 4.0</span>';
   } catch(e) {
     document.getElementById('healthDot').style.background = '#ff4500';
     document.getElementById('healthText').innerHTML = '<span style="color:#ff6500">Sistema Offline</span>';
@@ -1438,7 +1534,7 @@ async function uploadImagem() {
     msg.textContent = 'Enviando...'; msg.style.color='#888';
     var r = await fetch('/api/imagens/upload', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('gn_token') || '') },
+      headers: (function(){ var h={}; var t=localStorage.getItem('gn_token')||''; if(t) h['Authorization']='Bearer '+t; return h; })(),
       body: formData
     });
     var d = await r.json();
@@ -2221,7 +2317,7 @@ function tplDNA() {
   document.getElementById('tpl-neg').value = 'barato, promoção, usado, paralelo, genérico';
   document.getElementById('tpl-keywords').value = 'autopeças originais, {familia}, {marca}';
   document.getElementById('tpl-prompt-desc').value = 'Descreva {nome} da {marca} em até 2 frases técnicas. Use apenas dados confirmados: {motor}, {oem}. Sem inventar.';
-  document.getElementById('tpl-meta-title').value = '{nome} {marca} — Autopeça Original | MOBIS Peças';
+  document.getElementById('tpl-meta-title').value = '{nome} {marca} — Autopeça Original | iRollo 360';
   document.getElementById('tpl-meta-desc').value = 'Compre {nome} {marca} com garantia. OEM {oem}. Entrega rápida para todo o Brasil.';
   document.getElementById('tpl-meta-tags').value = '{familia}, {marca}, autopeças, {nome}';
 }
@@ -2929,7 +3025,7 @@ var CNTC_CAMPOS = {
     campos: [
       {id:'cntc-lg-fab',   key:'linhagem_fabricante',   label:'Fabricante Original',   ph:'NYTRON'},
       {id:'cntc-lg-mont',  key:'linhagem_montadora',    label:'Montadora',             ph:'Toyota Motor Corporation'},
-      {id:'cntc-lg-dist',  key:'linhagem_distribuidor', label:'Distribuidor',          ph:'MOBIS Pecas Automotivas'},
+      {id:'cntc-lg-dist',  key:'linhagem_distribuidor', label:'Distribuidor',          ph:'iRollo 360'},
       {id:'cntc-lg-imp',   key:'linhagem_importador',   label:'Importador (opcional)', ph:''},
     ]
   },
@@ -3456,6 +3552,206 @@ function massaFileSelect(input) {
   };
   reader.readAsText(file, 'UTF-8');
 }
+
+// ===== EAN SCANNER GS1 =====
+var GS1_PREFIXES = {
+  '000':'EUA / Canadá','001':'EUA / Canadá','002':'EUA / Canadá','003':'EUA / Canadá',
+  '004':'EUA / Canadá','005':'EUA / Canadá','006':'EUA / Canadá','007':'EUA / Canadá',
+  '008':'EUA / Canadá','009':'EUA / Canadá','010':'EUA / Canadá','019':'EUA / Canadá',
+  '020':'Uso restrito','021':'Uso restrito','029':'Uso restrito',
+  '030':'França','031':'França','039':'França',
+  '040':'Uso interno','041':'Uso interno','049':'Uso interno',
+  '050':'Cupons','059':'Cupons',
+  '060':'EUA / Canadá','069':'EUA / Canadá',
+  '070':'EUA / Canadá','079':'EUA / Canadá',
+  '080':'EUA / Canadá','089':'EUA / Canadá',
+  '090':'Austrália / Nova Zelândia','099':'Austrália / Nova Zelândia',
+  '100':'EUA / Canadá','139':'EUA / Canadá',
+  '200':'Uso restrito','299':'Uso restrito',
+  '300':'França','379':'França',
+  '380':'Bulgária','383':'Eslovênia','385':'Croácia','387':'BiH',
+  '400':'Alemanha','440':'Alemanha',
+  '450':'Japão','459':'Japão',
+  '460':'Rússia','469':'Rússia',
+  '470':'Quirguistão','471':'Taiwan','474':'Estônia','475':'Letônia',
+  '476':'Azerbaijão','477':'Lituânia','478':'Uzbequistão','479':'Sri Lanka',
+  '480':'Filipinas','481':'Belarus','482':'Ucrânia','484':'Moldávia',
+  '485':'Armênia','486':'Geórgia','487':'Cazaquistão','488':'Tajiquistão',
+  '489':'Hong Kong','490':'Japão','499':'Japão',
+  '500':'Reino Unido','509':'Reino Unido',
+  '520':'Chipre / Grécia','527':'Chipre',
+  '528':'Líbano','529':'Chipre',
+  '530':'Albânia','531':'Macedônia','535':'Malta','539':'Irlanda',
+  '540':'Bélgica / Luxemburgo','549':'Bélgica / Luxemburgo',
+  '560':'Portugal','569':'Portugal',
+  '570':'Dinamarca','579':'Dinamarca',
+  '590':'Polônia','594':'Romênia','599':'Hungria',
+  '600':'África do Sul','601':'África do Sul',
+  '603':'Gana','604':'Senegal','608':'Bahrein','609':'Ilhas Maurício',
+  '611':'Marrocos','613':'Argélia','615':'Nigéria','616':'Quênia',
+  '617':'Camarões','618':'Costa do Marfim','619':'Tunísia',
+  '621':'Síria','622':'Egito','624':'Líbia','625':'Jordânia',
+  '626':'Irã','627':'Kuwait','628':'Arábia Saudita','629':'Emirados Árabes',
+  '640':'Finlândia','649':'Finlândia',
+  '690':'China','691':'China','692':'China','693':'China','694':'China','695':'China','699':'China',
+  '700':'Noruega','709':'Noruega',
+  '729':'Israel',
+  '730':'Suécia','739':'Suécia',
+  '740':'Guatemala','741':'El Salvador','742':'Honduras','743':'Nicarágua',
+  '744':'Costa Rica','745':'Panamá','746':'Rep. Dominicana',
+  '750':'México',
+  '754':'Canadá','755':'Canadá',
+  '759':'Venezuela',
+  '760':'Suíça','769':'Suíça',
+  '770':'Colômbia','771':'Colômbia',
+  '773':'Uruguai','775':'Peru','777':'Bolívia','778':'Argentina','779':'Argentina',
+  '780':'Chile','784':'Paraguai','786':'Equador',
+  '789':'Brasil','790':'Brasil',
+  '800':'Itália','839':'Itália',
+  '840':'Espanha','849':'Espanha',
+  '850':'Cuba','858':'Eslováquia','859':'República Checa','860':'Sérvia',
+  '865':'Mongólia','867':'Coreia do Norte',
+  '868':'Turquia','869':'Turquia',
+  '870':'Holanda','879':'Holanda',
+  '880':'Coreia do Sul',
+  '884':'Camboja','885':'Tailândia','888':'Singapura',
+  '890':'Índia','893':'Vietnã','896':'Paquistão','899':'Indonésia',
+  '900':'Áustria','919':'Áustria',
+  '930':'Austrália','939':'Austrália',
+  '940':'Nova Zelândia','949':'Nova Zelândia',
+  '950':'GS1 Global','951':'GS1 EPCglobal',
+  '955':'Malásia','958':'Macau',
+  '960':'GS1 UK','969':'GS1 UK',
+  '977':'ISSN (periódicos)','978':'ISBN (livros)','979':'ISBN / ISMN',
+  '980':'Notas de refinanciamento','981':'Notas valor comum','982':'Notas valor comum',
+  '990':'Cupons','999':'Cupons'
+};
+
+function gs1GetPais(code) {
+  var num = parseInt(code.substring(0,3));
+  // Try exact 3-digit
+  var k3 = code.substring(0,3);
+  if (GS1_PREFIXES[k3]) return GS1_PREFIXES[k3];
+  // Try 2-digit range
+  var k2 = code.substring(0,2);
+  for (var p in GS1_PREFIXES) {
+    if (p.substring(0,2) === k2) return GS1_PREFIXES[p];
+  }
+  return 'Desconhecido';
+}
+
+function eanCalcCheckDigit(digits) {
+  var sum = 0;
+  for (var i = 0; i < digits.length; i++) {
+    sum += parseInt(digits[i]) * ((i % 2 === 0) ? 1 : 3);
+  }
+  var mod = sum % 10;
+  return mod === 0 ? 0 : 10 - mod;
+}
+
+function eanNormalizar(code) {
+  code = code.replace(/\D/g, '');
+  if (code.length === 8)  return { tipo: 'EAN-8 / GTIN-8',   gtin14: '000000' + code };
+  if (code.length === 12) return { tipo: 'UPC-A / GTIN-12',  gtin14: '00' + code };
+  if (code.length === 13) return { tipo: 'EAN-13 / GTIN-13', gtin14: '0' + code };
+  if (code.length === 14) return { tipo: 'GTIN-14',           gtin14: code };
+  return null;
+}
+
+function eanValidar() {
+  var raw = document.getElementById('ean-input').value.replace(/\s/g,'');
+  var res = document.getElementById('ean-resultado');
+  if (!raw) { res.style.display='none'; return; }
+
+  var info = eanNormalizar(raw);
+  if (!info) {
+    document.getElementById('ean-card-status').style.background = '#ff450010';
+    document.getElementById('ean-valido-icon').textContent = '✖';
+    document.getElementById('ean-valido-label').textContent = 'Código inválido';
+    document.getElementById('ean-valido-sub').textContent = 'Esperado: 8, 12, 13 ou 14 dígitos numéricos. Recebido: ' + raw.length + ' caracteres';
+    document.getElementById('ean-check-digit').textContent = '—';
+    res.style.display = 'block';
+    return;
+  }
+
+  var digits = raw.replace(/\D/g,'');
+  var bodyDigits = digits.substring(0, digits.length - 1);
+  var providedCheck = parseInt(digits[digits.length - 1]);
+  var calcCheck = eanCalcCheckDigit(bodyDigits);
+  var isValid = providedCheck === calcCheck;
+
+  document.getElementById('ean-raw').textContent = raw;
+  document.getElementById('ean-gtin14').textContent = info.gtin14;
+  document.getElementById('ean-tipo').textContent = info.tipo;
+  document.getElementById('ean-check-digit').textContent = providedCheck;
+  document.getElementById('ean-check-ok').innerHTML = isValid
+    ? '<span style="color:#00ff88">&#10003; Correto</span>'
+    : '<span style="color:#ff4500">&#10007; Incorreto (esperado: ' + calcCheck + ')</span>';
+
+  var pais = gs1GetPais(digits);
+  document.getElementById('ean-pais').textContent = pais;
+  
+  // Empresa e produto refs
+  var isBrasil = digits.startsWith('789') || digits.startsWith('790');
+  document.getElementById('ean-empresa').textContent = digits.substring(0, digits.length <= 8 ? 4 : 7);
+  document.getElementById('ean-produto-ref').textContent = digits.substring(digits.length <= 8 ? 4 : 7, digits.length - 1);
+
+  // Card de status
+  document.getElementById('ean-card-status').style.background = isValid ? '#00ff8808' : '#ff450010';
+  document.getElementById('ean-valido-icon').textContent = isValid ? '✅' : '⚠️';
+  document.getElementById('ean-valido-label').style.color = isValid ? '#00ff88' : '#ff6500';
+  document.getElementById('ean-valido-label').textContent = isValid ? 'Código válido' : 'Check digit incorreto';
+  document.getElementById('ean-valido-sub').textContent = info.tipo + ' — ' + pais;
+
+  // Fill value
+  var fill13 = digits.length >= 13 ? digits.substring(0, 13) : digits.padStart(13, '0');
+  document.getElementById('ean-fill-value').value = fill13;
+  document.getElementById('ean-btn-usar').disabled = !isValid;
+
+  // GS1 detalhe
+  document.getElementById('ean-gs1-detalhe').innerHTML = [
+    '<strong>Prefixo GS1:</strong> ' + digits.substring(0,3) + ' → ' + pais,
+    '<strong>Empresa (GCP):</strong> ' + digits.substring(0, digits.length <= 8 ? 4 : 7),
+    '<strong>Referência produto:</strong> ' + digits.substring(digits.length <= 8 ? 4 : 7, digits.length - 1),
+    '<strong>Dígito verificador:</strong> ' + providedCheck + (isValid ? ' ✅' : ' ⚠️ (calc: ' + calcCheck + ')'),
+    isBrasil ? '<strong style="color:#00ff88">&#127463;&#127479; Produto registrado no GS1 Brasil</strong>' : ''
+  ].filter(Boolean).join('<br>');
+
+  res.style.display = 'block';
+}
+
+function eanLimpar() {
+  document.getElementById('ean-resultado').style.display = 'none';
+}
+
+function eanPreencherProduto() {
+  var val = document.getElementById('ean-fill-value').value;
+  var status = document.getElementById('ean-fill-status');
+  // Tenta preencher EAN no produto atual (OEM page ou catálogo)
+  var filled = false;
+  ['oem-f-ean','cat-ean'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.value = val; filled = true; }
+  });
+  if (window._iaVozParsed) { window._iaVozParsed.ean = val; }
+  status.innerHTML = filled
+    ? '<span style="color:#00ff88">&#10003; EAN ' + val + ' preenchido no produto</span>'
+    : '<span style="color:#888">EAN copiado: ' + val + ' — cole no campo desejado</span>';
+}
+
+function imgFiltrarCat(cat, btn) {
+  document.querySelectorAll('.img-cat-btn').forEach(function(b) {
+    b.style.background = '#f0f0f0'; b.style.color = '#333'; b.style.border = '1px solid #ddd';
+  });
+  btn.style.background = '#ff4500'; btn.style.color = '#fff'; btn.style.border = 'none';
+  var grid = document.getElementById('minhas-imagens-grid');
+  if (!grid) return;
+  grid.querySelectorAll('.img-item').forEach(function(item) {
+    var itemCat = item.getAttribute('data-cat') || '';
+    item.style.display = (!cat || itemCat === cat) ? '' : 'none';
+  });
+}
+
 </script>
 </body>
 </html>
