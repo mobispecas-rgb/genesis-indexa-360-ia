@@ -450,8 +450,71 @@ tr:hover td{background:#ffffff04}
       </div>
     </div>
 
-    <!-- STUB PAGES -->
-    <div class="page" id="page-catalogo"><div class="stub-page"><div class="stub-icon">&#128218;</div><h2>Cat&aacute;logo de Produtos</h2><p>Em desenvolvimento &mdash; Cat&aacute;logo de Produtos</p></div></div>
+    <!-- CATÁLOGO DE PRODUTOS -->
+    <div class="page" id="page-catalogo">
+      <div class="page-title">&#128194; Cat&aacute;logo de Produtos</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Importe produtos em qualquer formato &mdash; texto, JSON, CSV, XML ou cole direto</p>
+
+      <div class="card">
+        <div class="card-title">&#128203; Formato de Entrada</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn btn-sm cat-import-btn active-mode" id="cat-import-btn-texto" onclick="catalogoToggleModo('texto')">&#128196; Texto</button>
+          <button class="btn btn-sm cat-import-btn" id="cat-import-btn-json" onclick="catalogoToggleModo('json')">&#123;&#125; JSON</button>
+          <button class="btn btn-sm cat-import-btn" id="cat-import-btn-csv" onclick="catalogoToggleModo('csv')">&#128202; CSV</button>
+          <button class="btn btn-sm cat-import-btn" id="cat-import-btn-xml" onclick="catalogoToggleModo('xml')">&#128278; XML</button>
+          <button class="btn btn-sm cat-import-btn" id="cat-import-btn-cole" onclick="catalogoToggleModo('cole')">&#128203; Cole Direto</button>
+        </div>
+        <div class="cat-drop-zone" onclick="document.getElementById('cat-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;color:#555;font-size:13px">
+          &#128196; Arraste o arquivo aqui ou clique para selecionar
+          <div style="font-size:11px;color:#444;margin-top:4px">Suporta .txt .json .csv .xml .pdf</div>
+          <input type="file" id="cat-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="catalogoFileSelect(this)">
+          <span id="catalogo-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+        </div>
+        <div id="catalogo-csv-legend" style="display:none;font-size:11px;color:#888;background:#0d0d0d;border:1px solid #222;border-radius:6px;padding:8px 12px;margin-bottom:8px">
+          &#128202; Colunas esperadas: <code style="color:#ff6b00">sku, nome, fabricante, familia, oem, ncm, ean, motor</code>
+        </div>
+        <div id="catalogo-xml-legend" style="display:none;font-size:11px;color:#888;background:#0d0d0d;border:1px solid #222;border-radius:6px;padding:8px 12px;margin-bottom:8px">
+          &#128278; Formatos suportados: NFe, cat&aacute;logo fornecedor, TOTVS
+        </div>
+        <div class="form-group">
+          <textarea id="catalogo-input" rows="10" style="font-family:monospace;font-size:12px;line-height:1.6" placeholder="Cole texto livre:&#10;&#10;CORREIA DENTADA - CT1028K1 - DAYCO&#10;Aplica&#231;&#227;o: GM COBALT 1.8 8V 2012-2015&#10;OEM: 93353848&#10;NCM: 4010.35.00"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="catalogoProcessar()">&#9889; Processar</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('catalogo-input').value='';document.getElementById('catalogo-resultado').style.display='none';document.getElementById('catalogo-file-status').textContent=''">&#128465; Limpar</button>
+          <span id="catalogo-status" style="font-size:12px;color:#555;align-self:center"></span>
+        </div>
+      </div>
+
+      <div id="catalogo-resultado" style="display:none">
+        <div class="card" style="border-color:#ff450030">
+          <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span>&#128202; Resultado da Importa&ccedil;&atilde;o</span>
+            <span id="catalogo-resumo" style="font-size:12px;color:#888"></span>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;font-size:13px">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">#</th>
+                  <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">SKU</th>
+                  <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Nome</th>
+                  <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Fabricante</th>
+                  <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Fam&iacute;lia</th>
+                  <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">NTC%</th>
+                  <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">Status</th>
+                  <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #1f1f1f">A&ccedil;&atilde;o</th>
+                </tr>
+              </thead>
+              <tbody id="catalogo-tbody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px">
+            <button class="btn btn-primary" onclick="catalogoEnviarFila()">&#10003; Enviar aprovados para Fila de Aprova&ccedil;&atilde;o</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-oem">
       <div class="page-title">&#10024; Enriquecimento OEM</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google e preenche os campos. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
@@ -531,10 +594,21 @@ tr:hover td{background:#ffffff04}
     </div>
     <div class="page" id="page-massa">
       <div class="page-title">&#128194; Enriquecimento por ID / Massa</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha. O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha &mdash; ou importe arquivo JSON, CSV ou XML. O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
 
       <div class="card">
         <div class="card-title">&#128203; Lista de C&oacute;digos</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button class="btn btn-sm cat-import-btn active-mode" id="massa-btn-texto" onclick="massaToggleModo('texto')">&#128196; Texto</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-json" onclick="massaToggleModo('json')">{ } JSON</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-csv" onclick="massaToggleModo('csv')">&#128202; CSV</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-xml" onclick="massaToggleModo('xml')">&#128278; XML</button>
+        </div>
+        <div class="cat-drop-zone" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
+          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml)
+          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml" onchange="massaFileSelect(this)">
+          <span id="massa-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+        </div>
         <div class="form-group">
           <textarea id="massa-input" rows="8" style="font-family:monospace;font-size:13px;line-height:1.8" placeholder="Cole aqui — um c&oacute;digo por linha:
 
@@ -1972,7 +2046,40 @@ function massaLimpar() {
 }
 
 async function massaProcessar() {
-  var linhas = (document.getElementById('massa-input').value || '').split('\n')
+  var texto = document.getElementById('massa-input').value || '';
+  var modo = typeof _massaModo !== 'undefined' ? _massaModo : 'texto';
+
+  // For CSV/XML/JSON modes, extract structured items first
+  if (modo === 'json') {
+    try {
+      var parsed = JSON.parse(texto.trim());
+      var arr = Array.isArray(parsed) ? parsed : [parsed];
+      var itensEstruturados = [];
+      arr.forEach(function(obj) {
+        if (obj.bula_tecnica_engenharia && typeof jsonExtrair === 'function') {
+          itensEstruturados.push(jsonExtrair(obj));
+        } else if (obj.sku || obj.nome || obj.codigo_fabricante) {
+          itensEstruturados.push(obj);
+        } else if (typeof obj === 'string') {
+          itensEstruturados.push({ _linha: obj });
+        }
+      });
+      // rebuild textarea as JSON lines for common processing path
+      var linhas = itensEstruturados.map(function(o){ return o.sku || o.codigo_fabricante || o.nome || JSON.stringify(o); });
+      texto = linhas.join('\n');
+    } catch(e) {
+      document.getElementById('massa-status').textContent = '❌ JSON inválido: ' + e.message;
+      return;
+    }
+  } else if (modo === 'csv') {
+    var csvItens = typeof catalogoProcessarCSV === 'function' ? catalogoProcessarCSV(texto) : [];
+    texto = csvItens.map(function(o){ return [o.sku||'', o.nome||'', o.fabricante||''].filter(Boolean).join(' - '); }).join('\n');
+  } else if (modo === 'xml') {
+    var xmlItens = typeof catalogoProcessarXML === 'function' ? catalogoProcessarXML(texto) : [];
+    texto = xmlItens.map(function(o){ return [o.sku||'', o.nome||'', o.fabricante||''].filter(Boolean).join(' - '); }).join('\n');
+  }
+
+  var linhas = texto.split('\n')
     .map(function(l){ return l.trim(); }).filter(Boolean);
   if (!linhas.length) { alert('Cole ao menos um código.'); return; }
 
@@ -3103,6 +3210,252 @@ nav = function(id, btn) {
   _origNav(id, btn);
   if (id === 'completar-ntc') cntcPreencherSelect();
 };
+
+// =============================================
+// CATÁLOGO DE PRODUTOS — multi-format import
+// =============================================
+var _catModoImport = 'texto';
+var _catalogoItens = [];
+
+// CSS for active-mode toggle
+(function() {
+  var s = document.createElement('style');
+  s.textContent = '.cat-import-btn{background:#1a1a1a;color:#888;border:1px solid #333}.cat-import-btn.active-mode{background:#ff450020;color:#ff4500;border-color:#ff4500}';
+  document.head.appendChild(s);
+})();
+
+function catalogoToggleModo(modo) {
+  _catModoImport = modo;
+  document.querySelectorAll('.cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
+  var active = document.getElementById('cat-import-btn-' + modo);
+  if (active) active.classList.add('active-mode');
+  var placeholders = {
+    texto: 'Cole texto livre:\n\nCORREIA DENTADA - CT1028K1 - DAYCO\nAplicação: GM COBALT 1.8 8V 2012-2015\nOEM: 93353848\nNCM: 4010.35.00',
+    json: 'Cole o JSON da bula técnica (bula_tecnica_engenharia {...})',
+    csv: 'sku,nome,fabricante,familia,oem,ncm,ean,motor\nCT1028K1,Correia Dentada,DAYCO,Correia Dentada,93353848,4010.35.00,,GM COBALT 1.8',
+    xml: '<?xml version="1.0"?>\n<catalogo>\n  <produto>\n    <sku>CT1028K1</sku>\n    <nome>Correia Dentada</nome>\n  </produto>\n</catalogo>',
+    cole: 'Cole qualquer conteúdo — o motor detecta o formato automaticamente'
+  };
+  var ta = document.getElementById('catalogo-input');
+  if (ta) ta.placeholder = placeholders[modo] || '';
+  var csvLeg = document.getElementById('catalogo-csv-legend');
+  var xmlLeg = document.getElementById('catalogo-xml-legend');
+  if (csvLeg) csvLeg.style.display = modo === 'csv' ? 'block' : 'none';
+  if (xmlLeg) xmlLeg.style.display = modo === 'xml' ? 'block' : 'none';
+}
+
+function catalogoFileSelect(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('catalogo-input').value = e.target.result;
+    var name = file.name.toLowerCase();
+    if (name.endsWith('.json')) catalogoToggleModo('json');
+    else if (name.endsWith('.csv')) catalogoToggleModo('csv');
+    else if (name.endsWith('.xml')) catalogoToggleModo('xml');
+    else catalogoToggleModo('texto');
+    document.getElementById('catalogo-file-status').textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function catalogoProcessarCSV(texto) {
+  var linhas = texto.trim().split('\n');
+  var header = linhas[0].split(',').map(function(h){ return h.trim().toLowerCase(); });
+  var resultados = [];
+  for (var i = 1; i < linhas.length; i++) {
+    var cols = linhas[i].split(',');
+    var obj = {};
+    header.forEach(function(h, j){ obj[h] = (cols[j]||'').trim(); });
+    if (!obj.sku && !obj.nome) continue;
+    resultados.push({
+      sku: obj.sku||null,
+      nome: obj.nome||null,
+      fabricante: obj.fabricante||obj.marca||null,
+      familia: obj.familia||null,
+      codigo_oem: obj.oem||null,
+      ncm: obj.ncm||null,
+      ean: obj.ean||null,
+      motor: obj.motor||null,
+      _fonte: 'csv'
+    });
+  }
+  return resultados;
+}
+
+function catalogoProcessarXML(texto) {
+  var resultados = [];
+  try {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(texto, 'text/xml');
+    var prods = doc.querySelectorAll('produto, item, prod');
+    prods.forEach(function(p) {
+      var get = function(tag) {
+        var el = p.querySelector(tag);
+        return el ? el.textContent.trim() : null;
+      };
+      var obj = {
+        sku: get('sku') || get('cProd') || get('codigo'),
+        nome: get('nome') || get('xProd') || get('descricao'),
+        fabricante: get('fabricante') || get('marca'),
+        familia: get('familia') || get('categoria'),
+        ncm: get('ncm') || get('NCM'),
+        ean: get('ean') || get('cEAN') || get('gtin'),
+        codigo_oem: get('oem') || get('codigoOEM'),
+        motor: get('motor') || get('aplicacao'),
+        _fonte: 'xml'
+      };
+      if (obj.sku || obj.nome) resultados.push(obj);
+    });
+  } catch(e) {}
+  return resultados;
+}
+
+function catalogoAutoDetect(texto) {
+  var t = texto.trim();
+  if (t.startsWith('{') || t.startsWith('[')) return 'json';
+  if (t.startsWith('<?xml') || t.startsWith('<')) return 'xml';
+  if (t.split('\n')[0].toLowerCase().includes(',') && t.split('\n')[0].toLowerCase().match(/sku|nome|fabricante/)) return 'csv';
+  return 'texto';
+}
+
+function catalogoProcessar() {
+  var texto = document.getElementById('catalogo-input').value.trim();
+  if (!texto) return;
+  var modo = _catModoImport === 'cole' ? catalogoAutoDetect(texto) : _catModoImport;
+  var itens = [];
+  if (modo === 'json') {
+    try {
+      var parsed = JSON.parse(texto);
+      var arr = Array.isArray(parsed) ? parsed : [parsed];
+      arr.forEach(function(obj) {
+        var extracted;
+        if (obj.bula_tecnica_engenharia) extracted = jsonExtrair(obj);
+        else if (obj.sku || obj.nome) extracted = obj;
+        if (extracted) itens.push(Object.assign({_fonte:'json'}, extracted));
+      });
+    } catch(e) {
+      document.getElementById('catalogo-file-status').textContent = '❌ JSON inválido: ' + e.message;
+      return;
+    }
+  } else if (modo === 'csv') {
+    itens = catalogoProcessarCSV(texto);
+  } else if (modo === 'xml') {
+    itens = catalogoProcessarXML(texto);
+  } else {
+    var blocos = texto.split(/\n\s*\n/);
+    blocos.forEach(function(bloco) {
+      if (bloco.trim()) {
+        var d = catExtrair(bloco.trim());
+        if (d && (d.sku || d.nome)) itens.push(Object.assign({_fonte:'texto'}, d));
+      }
+    });
+    if (itens.length === 0) {
+      texto.split('\n').forEach(function(line) {
+        line = line.trim();
+        if (!line) return;
+        var d = catExtrair(line);
+        if (d && (d.sku || d.nome)) itens.push(Object.assign({_fonte:'texto'}, d));
+      });
+    }
+  }
+  _catalogoItens = itens.map(function(item) {
+    if (item.ntc == null && typeof ntcEngine !== 'undefined') {
+      var r = ntcEngine.processar(item);
+      return Object.assign({}, item, { ntc: r.score, decisao: r.decisao, _ntcModulos: r.modulos });
+    }
+    return item;
+  });
+  catalogoRenderResultado();
+}
+
+function catalogoRenderResultado() {
+  var res = document.getElementById('catalogo-resultado');
+  var tbody = document.getElementById('catalogo-tbody');
+  if (!res || !tbody) return;
+  res.style.display = 'block';
+  var aprovados = _catalogoItens.filter(function(i){ return (i.ntc||0) >= 0.6; }).length;
+  document.getElementById('catalogo-resumo').textContent = _catalogoItens.length + ' produto(s) encontrado(s) — ' + aprovados + ' com NTC≥60% prontos para fila';
+  tbody.innerHTML = _catalogoItens.map(function(item, i) {
+    var ntcPct = item.ntc != null ? Math.round(item.ntc*100) : 0;
+    var cor = item.decisao === 'APROVADO' ? '#00e676' : item.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+    return '<tr>' +
+      '<td style="padding:6px;color:#555">' + (i+1) + '</td>' +
+      '<td style="padding:6px"><code style="color:#ff6b00;font-size:11px">' + esc(item.sku||'—') + '</code></td>' +
+      '<td style="padding:6px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(item.nome||'—') + '</td>' +
+      '<td style="padding:6px">' + esc(item.fabricante||item.marca||'—') + '</td>' +
+      '<td style="padding:6px">' + esc(item.familia||'—') + '</td>' +
+      '<td style="padding:6px;text-align:center;color:' + cor + ';font-weight:700">' + ntcPct + '%</td>' +
+      '<td style="padding:6px;text-align:center"><span style="background:' + cor + '22;color:' + cor + ';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">' + (item.decisao||'REPROVADO') + '</span></td>' +
+      '<td style="padding:6px;text-align:center">' +
+        '<button class="btn btn-sm btn-secondary" onclick="catalogoEnviarUm(' + i + ')">&#10003;</button> ' +
+        '<button class="btn btn-sm" style="background:#1a1a1a;color:#888;border:1px solid #333" onclick="catalogoDescartar(' + i + ')">&#128465;</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function catalogoEnviarUm(idx) {
+  var item = _catalogoItens[idx];
+  if (!item) return;
+  if ((item.ntc||0) < 0.6) { alert('NTC abaixo de 60% — enriqueça antes de enviar.'); return; }
+  var prods = getProds();
+  prods.push(Object.assign({}, item, { id: 'cat-' + Date.now(), ts: Date.now() }));
+  saveProds(prods);
+  _catalogoItens.splice(idx, 1);
+  catalogoRenderResultado();
+  atualizarBadgeAprovacao();
+}
+
+function catalogoDescartar(idx) {
+  _catalogoItens.splice(idx, 1);
+  catalogoRenderResultado();
+}
+
+function catalogoEnviarFila() {
+  var prods = getProds();
+  var enviados = 0;
+  _catalogoItens.forEach(function(item) {
+    if ((item.ntc||0) >= 0.6) {
+      prods.push(Object.assign({}, item, { id: 'cat-' + Date.now() + '-' + enviados, ts: Date.now() }));
+      enviados++;
+    }
+  });
+  saveProds(prods);
+  atualizarBadgeAprovacao();
+  _catalogoItens = _catalogoItens.filter(function(i){ return (i.ntc||0) < 0.6; });
+  catalogoRenderResultado();
+  document.getElementById('catalogo-file-status').textContent = '✅ ' + enviados + ' produto(s) enviado(s) para a Fila de Aprovação';
+}
+
+// =============================================
+// MASSA — multi-format toggle
+// =============================================
+var _massaModo = 'texto';
+
+function massaToggleModo(modo) {
+  _massaModo = modo;
+  document.querySelectorAll('#page-massa .cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
+  var btn = document.getElementById('massa-btn-' + modo);
+  if (btn) btn.classList.add('active-mode');
+}
+
+function massaFileSelect(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('massa-input').value = e.target.result;
+    var name = file.name.toLowerCase();
+    if (name.endsWith('.json')) massaToggleModo('json');
+    else if (name.endsWith('.csv')) massaToggleModo('csv');
+    else if (name.endsWith('.xml')) massaToggleModo('xml');
+    else massaToggleModo('texto');
+    document.getElementById('massa-file-status').textContent = '📎 ' + file.name;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
 </script>
 </body>
 </html>
