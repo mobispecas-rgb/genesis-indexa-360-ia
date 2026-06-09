@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IndexaAI Catalog PRO — Motor NTC 4.0 Enterprise</title>
+<title>IndexaAí.com — Motor NTC 4.0</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#fff;display:flex;height:100vh;overflow:hidden}
@@ -147,8 +147,8 @@ tr:hover td{background:#ffffff04}
   <div class="sb-logo">
     <div class="logo-icon">&#9889;</div>
     <div>
-      <div class="logo-text">IndexaAI Catalog PRO</div>
-      <div class="logo-sub">Motor NTC 4.0 &bull; Enterprise</div>
+      <div class="logo-text">IndexaAí.com</div>
+      <div class="logo-sub">Motor NTC 4.0 &bull; MOBIS Pe&ccedil;as</div>
     </div>
   </div>
 
@@ -223,7 +223,7 @@ tr:hover td{background:#ffffff04}
   <div id="topbar">
     <button id="hamburger" onclick="toggleSidebar()">&#9776;</button>
     <div class="health-dot" id="healthDot"></div>
-    <div class="health-text" id="healthText">Sistema Online &mdash; <span>IndexaAI Catalog PRO &bull; NTC 4.0 Enterprise</span></div>
+    <div class="health-text" id="healthText">Sistema Online &mdash; <span>IndexaAí.com &bull; Motor NTC 4.0</span></div>
     <div class="topbar-right" id="uptimeText">Uptime: --</div>
   </div>
 
@@ -821,7 +821,7 @@ async function checkHealth() {
     var r = await fetch('/api/health');
     await r.json();
     document.getElementById('healthDot').style.background = '#00ff88';
-    document.getElementById('healthText').innerHTML = 'Sistema Online &mdash; <span>IndexaAI Catalog PRO &bull; NTC 4.0 Enterprise</span>';
+    document.getElementById('healthText').innerHTML = 'Sistema Online &mdash; <span>IndexaAí.com &bull; Motor NTC 4.0</span>';
   } catch(e) {
     document.getElementById('healthDot').style.background = '#ff4500';
     document.getElementById('healthText').innerHTML = '<span style="color:#ff6500">Sistema Offline</span>';
