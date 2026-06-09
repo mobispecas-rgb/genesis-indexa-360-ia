@@ -150,6 +150,43 @@ app.post('/api/motor/enriquecer', (req, res) => {
     });
 });
 
+// Busca de Imagens — in-app, sem abrir links externos
+app.get('/api/imagens/buscar', async (req, res) => {
+    const { q, fonte } = req.query;
+    if (!q) return res.json({ ok: false, erro: 'Parametro q obrigatorio', imagens: [] });
+    // Retorna estrutura de imagens para busca in-app.
+    // Em producao, integrar com API de imagens configurada (ex: Google Custom Search com chave propria).
+    // Por ora, retorna lista vazia com orientacao para configurar.
+    const termo = encodeURIComponent(q);
+    // Se GOOGLE_SEARCH_KEY e GOOGLE_SEARCH_CX estiverem configurados, usa Google Custom Search.
+    if (process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
+        try {
+            const https = require('https');
+            const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${termo}&searchType=image&num=12`;
+            const data = await new Promise((resolve, reject) => {
+                https.get(url, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); }).on('error',reject);
+            });
+            const imagens = (data.items||[]).map(item => ({
+                url: item.link,
+                thumb: item.image && item.image.thumbnailLink,
+                titulo: item.title,
+                fonte: item.displayLink
+            }));
+            return res.json({ ok: true, imagens, total: imagens.length, q, fonte });
+        } catch(e) {
+            return res.json({ ok: false, erro: 'Erro Google Search: ' + e.message, imagens: [] });
+        }
+    }
+    // Sem API configurada — instrucao para o usuario
+    res.json({
+        ok: false,
+        imagens: [],
+        mensagem: 'Configure GOOGLE_SEARCH_KEY e GOOGLE_SEARCH_CX no Render para busca de imagens in-app.',
+        q,
+        fonte
+    });
+});
+
 // Produtos (stub)
 app.get('/api/produtos', (req, res) => {
     res.json({ ok: true, produtos: [], total: 0 });

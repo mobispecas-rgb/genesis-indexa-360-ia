@@ -7,120 +7,746 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#0d0d0d;color:#fff;min-height:100vh}
-header{background:linear-gradient(135deg,#ff4500,#ff6b00);padding:18px 32px;display:flex;align-items:center;gap:16px}
-header h1{font-size:1.5rem;font-weight:700}
-header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;border-radius:20px;font-size:0.8rem}
-.wrap{max-width:1100px;margin:0 auto;padding:28px 20px}
-.bar{background:#1a1a1a;border:1px solid #ff4500;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;align-items:center;gap:10px}
-.dot{width:11px;height:11px;background:#00ff88;border-radius:50%;animation:p 2s infinite}
+header{background:linear-gradient(135deg,#ff4500,#ff6b00);padding:14px 28px;display:flex;align-items:center;gap:14px}
+header h1{font-size:1.4rem;font-weight:700}
+header .badge{margin-left:auto;background:rgba(0,0,0,0.3);padding:4px 14px;border-radius:20px;font-size:.78rem}
+.wrap{max-width:1200px;margin:0 auto;padding:22px 18px}
+.bar{background:#1a1a1a;border:1px solid #ff4500;border-radius:10px;padding:12px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.dot{width:10px;height:10px;background:#00ff88;border-radius:50%;animation:p 2s infinite}
 @keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
-.ok{color:#00ff88;font-weight:700;font-size:.9rem}
-.info{margin-left:auto;color:#666;font-size:.8rem}
-.nav{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
-.nb{padding:7px 18px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:.85rem;transition:all .2s}
+.ok{color:#00ff88;font-weight:700;font-size:.88rem}
+.info{margin-left:auto;color:#555;font-size:.78rem}
+.nav{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.nb{padding:7px 16px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#aaa;cursor:pointer;font-size:.82rem;transition:all .2s}
 .nb:hover,.nb.on{border-color:#ff4500;color:#ff4500;background:#ff450011}
 .pg{display:none}.pg.on{display:block}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:24px}
-.card{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:20px;cursor:pointer;transition:all .3s}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:20px}
+.card{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:18px;cursor:pointer;transition:all .3s}
 .card:hover{border-color:#ff4500;transform:translateY(-2px)}
-.ci{font-size:2rem;margin-bottom:10px}
-.ct{font-size:1rem;font-weight:700;margin-bottom:4px}
-.cd{font-size:.82rem;color:#777;line-height:1.5}
-.sec{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:22px;margin-bottom:20px}
-.sec h2{font-size:1rem;font-weight:700;margin-bottom:16px;color:#ff4500}
-.fg{margin-bottom:14px}
-.fg label{display:block;font-size:.82rem;color:#aaa;margin-bottom:5px}
-.fg input,.fg select,.fg textarea{width:100%;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none}
-.fg input:focus,.fg select:focus{border-color:#ff4500}
-.fg textarea{min-height:80px;resize:vertical}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.btn{background:linear-gradient(135deg,#ff4500,#ff6b00);color:#fff;border:none;padding:11px 24px;border-radius:7px;font-size:.92rem;font-weight:700;cursor:pointer;width:100%}
-table{width:100%;border-collapse:collapse;font-size:.88rem}
-th{text-align:left;padding:9px 12px;background:#111;color:#ff4500;font-size:.78rem;text-transform:uppercase}
-td{padding:9px 12px;border-bottom:1px solid #222;color:#ccc}
-tr:hover td{background:#1f1f1f}
-.tag{display:inline-block;background:#ff450015;color:#ff6500;border:1px solid #ff450030;padding:2px 9px;border-radius:15px;font-size:.72rem;font-weight:700}
-.al{padding:10px 14px;border-radius:7px;margin-bottom:12px;font-size:.88rem}
-.al-ok{background:#00ff8815;border:1px solid #00ff8830;color:#00ff88}
-.al-err{background:#ff450015;border:1px solid #ff450030;color:#ff6b00}
-footer{text-align:center;padding:20px;color:#333;font-size:.78rem;margin-top:24px;border-top:1px solid #111}
+.ci{font-size:1.9rem;margin-bottom:8px}
+.ct{font-size:.95rem;font-weight:700;margin-bottom:4px}
+.cd{font-size:.78rem;color:#666;line-height:1.5}
+.sec{background:#1a1a1a;border:1px solid #222;border-radius:12px;padding:20px;margin-bottom:18px}
+.sec h2{font-size:.95rem;font-weight:700;margin-bottom:14px;color:#ff4500;text-transform:uppercase;letter-spacing:.5px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:.78rem;color:#999;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.fg input,.fg select,.fg textarea{width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:8px 11px;color:#fff;font-size:.88rem;outline:none;transition:border .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:#ff4500}
+.fg textarea{min-height:70px;resize:vertical}
+.fg select option{background:#1a1a1a}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.btn{background:linear-gradient(135deg,#ff4500,#ff6b00);color:#fff;border:none;padding:10px 22px;border-radius:7px;font-size:.88rem;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn:hover{opacity:.9}
+.btn-sec{background:#1f1f1f;color:#ff4500;border:1px solid #ff4500;padding:8px 18px;border-radius:7px;font-size:.82rem;cursor:pointer;transition:all .2s}
+.btn-sec:hover{background:#ff450011}
+.btn-sm{padding:6px 14px;font-size:.78rem}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th{text-align:left;padding:8px 11px;background:#111;color:#ff4500;font-size:.74rem;text-transform:uppercase;letter-spacing:.3px}
+td{padding:8px 11px;border-bottom:1px solid #1f1f1f;color:#bbb}
+tr:hover td{background:#1d1d1d}
+.tag{display:inline-block;padding:2px 9px;border-radius:14px;font-size:.7rem;font-weight:700}
+.tag-ok{background:#00ff8815;color:#00ff88;border:1px solid #00ff8830}
+.tag-warn{background:#ffaa0015;color:#ffaa00;border:1px solid #ffaa0030}
+.tag-err{background:#ff450015;color:#ff6500;border:1px solid #ff450030}
+.al{padding:10px 14px;border-radius:7px;margin-bottom:12px;font-size:.84rem}
+.al-ok{background:#00ff8812;border:1px solid #00ff8830;color:#00ff88}
+.al-err{background:#ff450012;border:1px solid #ff450030;color:#ff6b00}
+.al-warn{background:#ffaa0012;border:1px solid #ffaa0030;color:#ffaa00}
+
+/* NTC 4.0 */
+.ntc-box{background:#111;border:1px solid #ff450030;border-radius:10px;padding:16px;margin-bottom:16px}
+.ntc-score{font-size:2.4rem;font-weight:900;color:#ff4500;text-align:center;margin-bottom:4px}
+.ntc-label{text-align:center;font-size:.78rem;color:#777;margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px}
+.ntc-status{text-align:center;padding:6px 18px;border-radius:20px;display:inline-block;font-size:.82rem;font-weight:700;margin:0 auto 14px;display:block;width:fit-content}
+.ntc-status.aprovado{background:#00ff8815;color:#00ff88;border:1px solid #00ff8840}
+.ntc-status.pendente{background:#ffaa0015;color:#ffaa00;border:1px solid #ffaa0040}
+.ntc-status.reprovado{background:#ff450015;color:#ff6500;border:1px solid #ff450040}
+.ntc-bars{display:grid;gap:6px}
+.ntc-bar-row{display:flex;align-items:center;gap:8px;font-size:.74rem}
+.ntc-bar-label{width:36px;color:#666;text-align:right;font-weight:700;flex-shrink:0}
+.ntc-bar-track{flex:1;height:6px;background:#222;border-radius:3px;overflow:hidden}
+.ntc-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+.ntc-bar-val{width:32px;color:#aaa;text-align:left;font-size:.7rem;flex-shrink:0}
+.ntc-flags{font-size:.75rem;color:#666;margin-top:10px;line-height:1.6}
+
+/* Imagens */
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.img-slot{aspect-ratio:1;background:#111;border:1.5px dashed #333;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;cursor:pointer;position:relative;overflow:hidden;font-size:.72rem;color:#555;transition:border .2s}
+.img-slot:hover{border-color:#ff4500}
+.img-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:7px}
+.img-slot .rm{position:absolute;top:3px;right:3px;background:#ff4500;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;display:none;align-items:center;justify-content:center}
+.img-slot:hover .rm{display:flex}
+.img-search-panel{background:#111;border:1px solid #333;border-radius:10px;padding:14px;margin-top:10px}
+.img-search-controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.img-search-controls input{flex:1;min-width:120px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:7px 10px;color:#fff;font-size:.82rem;outline:none}
+.img-search-controls select{background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:7px 10px;color:#fff;font-size:.82rem;outline:none}
+.img-results{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:260px;overflow-y:auto}
+.img-result-item{aspect-ratio:1;background:#0d0d0d;border:1px solid #222;border-radius:6px;overflow:hidden;cursor:pointer;position:relative;transition:border .2s}
+.img-result-item:hover{border-color:#ff4500}
+.img-result-item img{width:100%;height:100%;object-fit:cover}
+.img-result-item .sel-btn{position:absolute;bottom:3px;right:3px;background:#ff4500;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.65rem;cursor:pointer;opacity:0;transition:opacity .2s}
+.img-result-item:hover .sel-btn{opacity:1}
+.img-result-status{text-align:center;color:#555;font-size:.8rem;padding:20px}
+
+/* Módulos */
+.mod-sec{border-left:3px solid #ff4500;padding-left:12px;margin-bottom:16px}
+.mod-sec h3{font-size:.82rem;color:#ff4500;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;font-weight:700}
+
+footer{text-align:center;padding:18px;color:#333;font-size:.74rem;margin-top:20px;border-top:1px solid #111}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #ff4500;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sep{border:none;border-top:1px solid #1f1f1f;margin:16px 0}
 </style>
 </head>
 <body>
 <header>
-<span style="font-size:1.6rem">&#9889;</span>
+<span style="font-size:1.5rem">&#9889;</span>
 <h1>Genesis Indexa 360 IA v4.0</h1>
-<span class="badge">MOBIS Pecas Automotivas</span>
+<span class="badge" id="hb">MOBIS Pecas</span>
 </header>
 <div class="wrap">
-<div class="bar"><div class="dot"></div><span class="ok" id="st">Sistema Online</span><span class="info" id="si">verificando...</span></div>
+<div class="bar"><div class="dot"></div><span class="ok" id="st">Conectando...</span><span class="info" id="si"></span></div>
 <div class="nav">
-<button class="nb on" onclick="pg('dash',this)">Dashboard</button>
-<button class="nb" onclick="pg('prod',this)">Catalogo</button>
-<button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
-<button class="nb" onclick="pg('sobre',this)">Sobre</button>
+  <button class="nb on" onclick="pg('dash',this)">Dashboard</button>
+  <button class="nb" onclick="pg('cad',this)">+ Cadastro</button>
+  <button class="nb" onclick="pg('prod',this)">Catalogo</button>
+  <button class="nb" onclick="pg('ntc',this)">Motor NTC</button>
+  <button class="nb" onclick="pg('img',this)">Imagens</button>
+  <button class="nb" onclick="pg('cfg',this)">Config</button>
+  <button class="nb" onclick="pg('sobre',this)">Sobre</button>
 </div>
+
+<!-- DASHBOARD -->
 <div class="pg on" id="pg-dash">
-<div class="cards">
-<div class="card" onclick="pg('prod',document.querySelectorAll('.nb')[1])"><div class="ci">&#128230;</div><div class="ct">Catalogo de Produtos</div><div class="cd">Gerencie pecas automotivas.</div></div>
-<div class="card" onclick="pg('cad',document.querySelectorAll('.nb')[2])"><div class="ci">&#10133;</div><div class="ct">Cadastro Universal</div><div class="cd">Cadastre novos produtos e pecas.</div></div>
-<div class="card"><div class="ci">&#129302;</div><div class="ct">IA de Indexacao</div><div class="cd">Motor inteligente de estoque.</div></div>
-<div class="card"><div class="ci">&#128202;</div><div class="ct">Relatorios</div><div class="cd">Dados de estoque em tempo real.</div></div>
+  <div class="cards">
+    <div class="card" onclick="pg('cad',document.querySelectorAll('.nb')[1])"><div class="ci">&#10133;</div><div class="ct">Cadastro Universal</div><div class="cd">NTC 4.0 · 13 modulos · DNA obrigatorio</div></div>
+    <div class="card" onclick="pg('prod',document.querySelectorAll('.nb')[2])"><div class="ci">&#128230;</div><div class="ct">Catalogo</div><div class="cd">Gerencie pecas automotivas MOBIS</div></div>
+    <div class="card" onclick="pg('ntc',document.querySelectorAll('.nb')[3])"><div class="ci">&#128200;</div><div class="ct">Motor NTC</div><div class="cd">Triangulacao certificada NTC 4.0</div></div>
+    <div class="card" onclick="pg('img',document.querySelectorAll('.nb')[4])"><div class="ci">&#128247;</div><div class="ct">Busca de Imagens</div><div class="cd">Busca in-app · sem links externos</div></div>
+  </div>
+  <div class="sec"><h2>Genesis Indexa 360 IA v4.0</h2><p style="color:#666;line-height:1.9;font-size:.88rem">
+    Motor NTC 4.0 com 13 modulos de triangulacao certificada.<br>
+    <strong style="color:#ff4500">DNA confirmado</strong> é obrigatorio para cadastro.<br>
+    <strong style="color:#ff4500">NUNCA</strong> inventa OEM, NCM, EAN, aplicacao, motor, peso, medida ou imagem.<br>
+    Sem evidencia → <code style="color:#00ff88">null</code>
+  </p></div>
 </div>
-<div class="sec"><h2>Genesis Indexa 360 IA v4.0 - ONLINE</h2><p style="color:#777;line-height:1.8">Bem-vindo ao sistema de catalogacao de pecas automotivas MOBIS. Use o menu para navegar.</p></div>
-</div>
-<div class="pg" id="pg-prod">
-<div class="sec"><h2>Catalogo de Produtos</h2>
-<div style="display:flex;gap:10px;margin-bottom:16px">
-<input id="busca" type="text" placeholder="Buscar produto..." style="flex:1;background:#0d0d0d;border:1px solid #333;border-radius:7px;padding:9px 12px;color:#fff;font-size:.9rem;outline:none" oninput="filtrar()">
-<button class="btn" style="width:auto;padding:9px 18px" onclick="pg('cad',document.querySelectorAll('.nb')[2])">+ Novo</button>
-</div>
-<div style="overflow-x:auto"><table id="tb">
-<tr><th>Ref</th><th>Descricao</th><th>Marca</th><th>Categoria</th><th>Status</th></tr>
-<tr><td><span class="tag">MOB-001</span></td><td>Pastilha de Freio Dianteira</td><td>MOBIS</td><td>Freios</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-002</span></td><td>Filtro de Oleo Motor</td><td>MOBIS</td><td>Filtros</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-003</span></td><td>Correia Dentada Kit</td><td>MOBIS</td><td>Motor</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-004</span></td><td>Amortecedor Traseiro</td><td>MOBIS</td><td>Suspensao</td><td><span class="tag">Ativo</span></td></tr>
-<tr><td><span class="tag">MOB-005</span></td><td>Vela de Ignicao NGK</td><td>NGK</td><td>Ignicao</td><td><span class="tag">Ativo</span></td></tr>
-</table></div></div>
-</div>
+
+<!-- CADASTRO -->
 <div class="pg" id="pg-cad">
-<div class="sec"><h2>Novo Cadastro Universal</h2>
-<div id="al"></div>
-<div class="row2">
-<div class="fg"><label>Referencia</label><input id="iref" type="text" placeholder="MOB-006"></div>
-<div class="fg"><label>Categoria</label><select id="icat"><option value="">Selecione...</option><option>Freios</option><option>Filtros</option><option>Motor</option><option>Suspensao</option><option>Ignicao</option><option>Eletrica</option><option>Transmissao</option><option>Outros</option></select></div>
+  <div id="al-cad"></div>
+
+  <!-- DNA -->
+  <div class="sec">
+    <h2>&#129516; DNA — Identidade Molecular</h2>
+    <div class="mod-sec">
+      <h3>Fabricante Original</h3>
+      <div class="row3">
+        <div class="fg"><label>Fabricante (OEM)</label><input id="dna_fab" placeholder="ex: MOBIS, Toyota, Bosch"></div>
+        <div class="fg"><label>Codigo Fabricante (Part Number)</label><input id="dna_cod" placeholder="ex: 58101-2BA70"></div>
+        <div class="fg"><label>Familia Tecnica</label><input id="dna_fam" placeholder="ex: FREIOS, SUSPENSAO, MOTOR"></div>
+      </div>
+    </div>
+    <div class="mod-sec">
+      <h3>Identificacao</h3>
+      <div class="row2">
+        <div class="fg"><label>Nome / Descricao</label><input id="dna_nome" placeholder="ex: Pastilha de Freio Dianteira"></div>
+        <div class="fg"><label>SKU / Referencia Interna</label><input id="dna_sku" placeholder="ex: MOB-006"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TF / FM -->
+  <div class="sec">
+    <h2>&#128268; TF — Triangulacao Fiscal | FM — Fiscal Marketplace</h2>
+    <div class="row4">
+      <div class="fg"><label>NCM</label><input id="tf_ncm" placeholder="8409.91.90" maxlength="12"></div>
+      <div class="fg"><label>CEST</label><input id="co_cest" placeholder="01.065.00" maxlength="10"></div>
+      <div class="fg"><label>CST (ICMS)</label><input id="co_cst" placeholder="000"></div>
+      <div class="fg"><label>Origem</label><select id="co_origem"><option value="">Selecione...</option><option value="0">0-Nacional</option><option value="1">1-Importado direto</option><option value="2">2-Importado adquirido merc. int.</option><option value="3">3-Nacional c/ imp.>40%</option><option value="4">4-Nacional processos prod. basicos</option><option value="5">5-Nacional c/ imp.≤40%</option><option value="6">6-Importado c/ similar nacional</option><option value="7">7-Adquirido merc. int. sem similar</option><option value="8">8-Nacional c/ imp.>70%</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>EAN / GTIN (somente se existir na embalagem)</label><input id="tf_ean" placeholder="7891234567890" maxlength="14"></div>
+      <div class="fg"><label>Unidade de Medida</label><select id="tf_um"><option value="">Selecione...</option><option>UN</option><option>PC</option><option>KIT</option><option>PAR</option><option>CJ</option><option>MT</option><option>LT</option><option>KG</option></select></div>
+    </div>
+  </div>
+
+  <!-- AV -->
+  <div class="sec">
+    <h2>&#128664; AV — Aplicacao Veicular (nasce do MOTOR)</h2>
+    <div class="row4">
+      <div class="fg"><label>Marca do Veiculo</label><input id="av_marca" placeholder="Toyota, Honda, Hyundai..."></div>
+      <div class="fg"><label>Modelo</label><input id="av_modelo" placeholder="Hilux, Civic, HB20..."></div>
+      <div class="fg"><label>Versao</label><input id="av_versao" placeholder="SR, EXL, Sport..."></div>
+      <div class="fg"><label>Tipo Carroceria</label><input id="av_carroceria" placeholder="Pickup, Sedan, Hatch..."></div>
+    </div>
+    <div class="row4">
+      <div class="fg"><label>Motor (obrigatorio)</label><input id="av_motor" placeholder="2.8 TDI, 1.0 TSI..."></div>
+      <div class="fg"><label>Cilindrada</label><input id="av_cil" placeholder="2800, 1000..."></div>
+      <div class="fg"><label>Codigo Motor</label><input id="av_codmotor" placeholder="1GD-FTV, EA211..."></div>
+      <div class="fg"><label>Combustivel</label><select id="av_comb"><option value="">Selecione...</option><option>Diesel</option><option>Gasolina</option><option>Etanol</option><option>Flex</option><option>Hibrido</option><option>Eletrico</option><option>GNV</option></select></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Ano Inicial</label><input id="av_anoi" type="number" placeholder="2016" min="1950" max="2030"></div>
+      <div class="fg"><label>Ano Final</label><input id="av_anof" type="number" placeholder="2023" min="1950" max="2030"></div>
+    </div>
+  </div>
+
+  <!-- MC / EC -->
+  <div class="sec">
+    <h2>&#128290; MC — Metrologia | EC — Embalagem Comercial</h2>
+    <div class="row4">
+      <div class="fg"><label>Peso Bruto (kg)</label><input id="mc_pesob" type="number" step="0.001" placeholder="0.000"></div>
+      <div class="fg"><label>Peso Liquido (kg)</label><input id="mc_pesol" type="number" step="0.001" placeholder="0.000"></div>
+      <div class="fg"><label>Comprimento (cm)</label><input id="mc_comp" type="number" step="0.1" placeholder="0.0"></div>
+      <div class="fg"><label>Largura (cm)</label><input id="mc_larg" type="number" step="0.1" placeholder="0.0"></div>
+    </div>
+    <div class="row4">
+      <div class="fg"><label>Altura (cm)</label><input id="mc_alt" type="number" step="0.1" placeholder="0.0"></div>
+      <div class="fg"><label>Qtd por Embalagem</label><input id="ec_qtd" type="number" placeholder="1" min="1"></div>
+      <div class="fg"><label>Tipo Embalagem</label><select id="ec_tipo"><option value="">Selecione...</option><option>Caixa</option><option>Saco</option><option>Blister</option><option>Bolsa</option><option>Bag</option></select></div>
+      <div class="fg"><label>Material Composicao</label><input id="ec_mat" placeholder="Aco, Borracha, Polimero..."></div>
+    </div>
+  </div>
+
+  <!-- CC -->
+  <div class="sec">
+    <h2>&#128279; CC — Codigos Cruzados (nao misturar fabricantes)</h2>
+    <div class="row2">
+      <div class="fg"><label>OEM (fabricante original)</label><input id="cc_oem" placeholder="58101-2BA70"></div>
+      <div class="fg"><label>DNA Code (proprio)</label><input id="cc_dna" placeholder="MOBIS-58101-2BA70"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Aftermarket / Alternativo</label><input id="cc_after" placeholder="Bosch, Continental, Dayco..."></div>
+      <div class="fg"><label>Importadores / Distribuidores</label><input id="cc_import" placeholder="Codigos de importadores"></div>
+    </div>
+  </div>
+
+  <!-- FI / FP -->
+  <div class="sec">
+    <h2>&#128176; FI — Financeiro | FP — Precificacao</h2>
+    <div class="row4">
+      <div class="fg"><label>Preco Custo (R$)</label><input id="fi_custo" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label>Preco Venda (R$)</label><input id="fi_venda" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label>Margem (%)</label><input id="fi_margem" type="number" step="0.1" placeholder="0.0" readonly></div>
+      <div class="fg"><label>Estoque</label><input id="fi_estq" type="number" placeholder="0" min="0"></div>
+    </div>
+  </div>
+
+  <!-- Voz IA -->
+  <div class="sec">
+    <h2>&#129302; Descricao — Voz do Lojista (IA)</h2>
+    <div class="fg"><label>Descricao Gerada pela IA</label><textarea id="voz_texto" placeholder="Clique em Gerar para criar descricao inteligente..."></textarea></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sec" onclick="gerarVozIA()">&#129302; Gerar com IA</button>
+      <span id="voz_status" style="color:#555;font-size:.78rem;align-self:center"></span>
+    </div>
+  </div>
+
+  <!-- Imagens no Cadastro -->
+  <div class="sec">
+    <h2>&#128247; Imagens (IV)</h2>
+    <div class="img-grid" id="slots-cad">
+      <div class="img-slot" onclick="abrirBuscaImg(0,'cad')" data-slot="0"><span style="font-size:1.4rem">+</span><span>Foto 1</span></div>
+      <div class="img-slot" onclick="abrirBuscaImg(1,'cad')" data-slot="1"><span style="font-size:1.4rem">+</span><span>Foto 2</span></div>
+      <div class="img-slot" onclick="abrirBuscaImg(2,'cad')" data-slot="2"><span style="font-size:1.4rem">+</span><span>Foto 3</span></div>
+      <div class="img-slot" onclick="abrirBuscaImg(3,'cad')" data-slot="3"><span style="font-size:1.4rem">+</span><span>Foto 4</span></div>
+      <div class="img-slot" onclick="abrirBuscaImg(4,'cad')" data-slot="4"><span style="font-size:1.4rem">+</span><span>Foto 5</span></div>
+      <div class="img-slot" onclick="abrirBuscaImg(5,'cad')" data-slot="5"><span style="font-size:1.4rem">+</span><span>Foto 6</span></div>
+    </div>
+    <div class="img-search-panel" id="isp-cad" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong style="font-size:.82rem;color:#ff4500">Busca de Imagens — In-App</strong>
+        <button class="btn-sec btn-sm" onclick="fecharBuscaImg('cad')">Fechar</button>
+      </div>
+      <div class="img-search-controls">
+        <input id="iq-cad" placeholder="OEM / DNA / Descricao / EAN / SKU...">
+        <select id="ifonte-cad">
+          <option value="oem">Por OEM</option>
+          <option value="dna">Por DNA</option>
+          <option value="descricao">Por Descricao</option>
+          <option value="ean">Por EAN</option>
+          <option value="sku">Por SKU</option>
+        </select>
+        <button class="btn btn-sm" onclick="buscarImagensInApp('cad')">Buscar</button>
+      </div>
+      <div class="img-results" id="ir-cad"><div class="img-result-status">Digite um termo e clique em Buscar</div></div>
+    </div>
+    <p style="color:#444;font-size:.72rem;margin-top:6px">* Imagens buscadas e selecionadas dentro do app. Nenhum link externo e aberto.</p>
+  </div>
+
+  <!-- NTC Preview -->
+  <div class="sec">
+    <h2>&#9889; Pontuacao NTC 4.0 (Preview)</h2>
+    <div id="ntc-preview-cad">
+      <p style="color:#444;font-size:.82rem">Preencha os campos para calcular o NTC em tempo real.</p>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn-sec" onclick="calcNTC()">&#128200; Calcular NTC</button>
+      <button class="btn" onclick="salvarProduto()">Salvar Produto</button>
+    </div>
+  </div>
 </div>
-<div class="fg"><label>Descricao</label><input id="idesc" type="text" placeholder="Ex: Pastilha de Freio Dianteira Honda Civic"></div>
-<div class="row2">
-<div class="fg"><label>Marca</label><input id="imarca" type="text" placeholder="MOBIS, Bosch, NGK..."></div>
-<div class="fg"><label>Aplicacao</label><input id="iaplic" type="text" placeholder="Honda Civic 2018-2022"></div>
+
+<!-- CATALOGO -->
+<div class="pg" id="pg-prod">
+  <div class="sec"><h2>Catalogo de Produtos</h2>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input id="busca" type="text" placeholder="Buscar produto..." style="flex:1;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:8px 11px;color:#fff;font-size:.86rem;outline:none" oninput="filtrar()">
+      <button class="btn" style="width:auto" onclick="pg('cad',document.querySelectorAll('.nb')[1])">+ Novo</button>
+    </div>
+    <div style="overflow-x:auto"><table id="tb">
+      <tr><th>Ref / DNA</th><th>Descricao</th><th>Fabricante</th><th>Familia</th><th>Motor/Aplicacao</th><th>NTC</th><th>Status</th></tr>
+      <tr id="tb-empty"><td colspan="7" style="text-align:center;color:#444;padding:24px">Nenhum produto cadastrado ainda.</td></tr>
+    </table></div>
+  </div>
 </div>
-<div class="row2">
-<div class="fg"><label>Preco (R$)</label><input id="ipreco" type="number" placeholder="0,00" step="0.01"></div>
-<div class="fg"><label>Estoque</label><input id="iest" type="number" placeholder="0"></div>
+
+<!-- MOTOR NTC -->
+<div class="pg" id="pg-ntc">
+  <div class="sec"><h2>&#128200; Motor NTC 4.0 — Triangulacao Certificada</h2>
+    <p style="color:#555;font-size:.8rem;margin-bottom:16px">Cole um JSON de produto ou use o formulario de cadastro. O motor processa os 13 modulos e retorna o score NTC.</p>
+    <div class="fg"><label>JSON do Produto</label><textarea id="ntc_json" style="min-height:120px;font-family:monospace;font-size:.78rem" placeholder='{"dna_fab":"MOBIS","dna_cod":"58101-2BA70","dna_nome":"Pastilha de Freio","tf_ncm":"8708.30.90","av_motor":"2.0 GDI"}'></textarea></div>
+    <button class="btn" onclick="processarNTC()">&#9889; Processar NTC</button>
+    <div id="ntc-resultado" style="margin-top:16px"></div>
+  </div>
+  <div class="sec"><h2>Arquitetura NTC 4.0 — 13 Modulos</h2>
+    <table>
+      <tr><th>Modulo</th><th>Peso</th><th>Descricao</th></tr>
+      <tr><td><span class="tag tag-ok">DNA</span></td><td>25%</td><td>Identidade molecular — fabricante + codigo + familia</td></tr>
+      <tr><td><span class="tag tag-ok">TF</span></td><td>15%</td><td>Triangulacao Fiscal — NCM + EAN + CEST</td></tr>
+      <tr><td><span class="tag tag-warn">FM</span></td><td>10%</td><td>Fiscal Marketplace — NCM confirmado + unidade</td></tr>
+      <tr><td><span class="tag tag-warn">CO</span></td><td>10%</td><td>Codigos Origem — CST + CEST + origem ICMS</td></tr>
+      <tr><td><span class="tag tag-warn">AV</span></td><td>10%</td><td>Aplicacao Veicular — nasce do MOTOR, nao do veiculo</td></tr>
+      <tr><td><span class="tag tag-warn">MC</span></td><td>5%</td><td>Metrologia Certificada — peso + dimensoes</td></tr>
+      <tr><td><span class="tag tag-warn">EC</span></td><td>5%</td><td>Embalagem Comercial — qtd + tipo + material</td></tr>
+      <tr><td><span class="tag tag-warn">BTA</span></td><td>5%</td><td>Base Tecnica Aplicada — motor + cilindrada + codigo</td></tr>
+      <tr><td><span class="tag tag-warn">CC</span></td><td>5%</td><td>Codigos Cruzados — OEM/aftermarket/importadores separados</td></tr>
+      <tr><td><span class="tag tag-warn">LG</span></td><td>5%</td><td>Logistica — prazo + frete + disponibilidade</td></tr>
+      <tr><td><span class="tag tag-err">IV</span></td><td>5%</td><td>Indexacao Visual — fotos reais confirmadas (min 4)</td></tr>
+      <tr><td><span class="tag tag-err">FI</span></td><td>3%</td><td>Financeiro — custo + venda + margem</td></tr>
+      <tr><td><span class="tag tag-err">FP</span></td><td>2%</td><td>Precificacao — estrategia de preco</td></tr>
+      <tr style="background:#1a1a1a"><td colspan="2"><strong style="color:#ff4500">APROVADO</strong></td><td>NTC ≥ 0.95</td></tr>
+      <tr><td colspan="2"><strong style="color:#ffaa00">PENDENTE</strong></td><td>NTC ≥ 0.60</td></tr>
+      <tr><td colspan="2"><strong style="color:#ff6500">REPROVADO</strong></td><td>NTC < 0.60</td></tr>
+    </table>
+  </div>
 </div>
-<div class="fg"><label>Observacoes</label><textarea id="iobs" placeholder="Codigo OEM, compatibilidades..."></textarea></div>
-<button class="btn" onclick="salvar()">Salvar Produto</button>
+
+<!-- BUSCA DE IMAGENS -->
+<div class="pg" id="pg-img">
+  <div class="sec"><h2>&#128247; Busca de Imagens — In-App</h2>
+    <p style="color:#555;font-size:.8rem;margin-bottom:14px">Busque por OEM, DNA, descricao, EAN ou SKU. Os resultados aparecem aqui na mesma tela. Nenhum link externo e aberto.</p>
+    <div class="img-search-controls" style="margin-bottom:12px">
+      <input id="iq-main" placeholder="OEM / DNA / Descricao / EAN / SKU..." style="flex:1;min-width:180px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:8px 11px;color:#fff;font-size:.86rem;outline:none">
+      <select id="ifonte-main" style="background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:8px 11px;color:#fff;font-size:.86rem;outline:none">
+        <option value="oem">Por OEM</option>
+        <option value="dna">Por DNA</option>
+        <option value="descricao">Por Descricao</option>
+        <option value="ean">Por EAN</option>
+        <option value="sku">Por SKU</option>
+      </select>
+      <button class="btn" onclick="buscarImagensInApp('main')">&#128269; Buscar</button>
+    </div>
+    <div class="img-results" id="ir-main" style="max-height:400px"><div class="img-result-status">Digite um termo e clique em Buscar</div></div>
+    <div id="img-selecionadas" style="margin-top:16px;display:none">
+      <strong style="font-size:.82rem;color:#ff4500">Imagens Selecionadas</strong>
+      <div class="img-grid" id="imgs-sel" style="margin-top:8px"></div>
+    </div>
+  </div>
 </div>
+
+<!-- CONFIG -->
+<div class="pg" id="pg-cfg">
+  <div class="sec"><h2>Configuracoes</h2>
+    <div class="fg"><label>Email da Empresa</label><input id="cfg_email" value="mobispecas@gmail.com" readonly></div>
+    <div class="fg"><label>Perfil</label><select id="cfg_perfil"><option value="AUTOPECAS">Autopecas</option><option value="GENERICO">Generico</option></select></div>
+    <div class="fg"><label>NTC Minimo para Cadastro</label><input id="cfg_ntcmin" value="0.60" type="number" step="0.01" min="0" max="1"></div>
+    <div class="fg"><label>NTC Minimo para Publicacao</label><input id="cfg_ntcpub" value="0.95" type="number" step="0.01" min="0" max="1"></div>
+    <button class="btn" onclick="salvarCfg()">Salvar Config</button>
+  </div>
+  <div class="sec"><h2>Integrações</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-sec" onclick="testBling()">Testar Bling</button>
+      <button class="btn-sec" onclick="testWix()">Testar Wix</button>
+      <button class="btn-sec" onclick="testCNPJ()">Consultar CNPJ</button>
+    </div>
+    <div id="cfg-result" style="margin-top:12px"></div>
+  </div>
 </div>
+
+<!-- SOBRE -->
 <div class="pg" id="pg-sobre">
-<div class="sec"><h2>Sobre o Sistema</h2><p style="color:#777;line-height:1.9">
-<strong style="color:#ff4500">Genesis Indexa 360 IA v4.0</strong><br><br>
-Plataforma de catalogacao para MOBIS Pecas Automotivas.<br><br>
-Versao: 4.0.0 | Servidor: Render.com | Tecnologia: Node.js + Express
-</p></div>
+  <div class="sec"><h2>Sobre</h2>
+    <p style="color:#666;line-height:2;font-size:.88rem">
+      <strong style="color:#ff4500">Genesis Indexa 360 IA v4.0</strong><br><br>
+      Motor NTC 4.0 · 13 modulos · Triangulacao Certificada<br>
+      RAST-HASH: md5(DNA|OEM|Fab|Motor|Aplicacao|NCM|EAN|Data)[:16]<br>
+      Aprovado ≥ 0.95 · Pendente ≥ 0.60 · Reprovado < 0.60<br><br>
+      <strong style="color:#aaa">Empresa:</strong> MOBIS Pecas Automotivas<br>
+      <strong style="color:#aaa">Versao:</strong> 4.0.0<br>
+      <strong style="color:#aaa">Servidor:</strong> Render.com · Node.js + Express<br>
+      <strong style="color:#aaa">IA:</strong> Anthropic claude-haiku-4-5-20251001<br><br>
+      <strong style="color:#ff4500">PROIBICOES ABSOLUTAS</strong><br>
+      NUNCA inventar OEM, NCM, EAN, GTIN, CEST, aplicacao, motor,<br>
+      peso, medida, imagem, codigo cambiado ou fabricante.<br>
+      Sem evidencia → null
+    </p>
+  </div>
 </div>
-</div>
-<footer>Genesis Indexa 360 IA v4.0 - MOBIS Pecas Automotivas 2026</footer>
+
+</div><!-- /wrap -->
+<footer>Genesis Indexa 360 IA v4.0 — MOBIS Pecas Automotivas 2026</footer>
+
 <script>
-function pg(id,btn){document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+id).classList.add('on');if(btn)btn.classList.add('on');}
-async function check(){try{const r=await fetch('/api/health');const d=await r.json();document.getElementById('st').textContent='Online - '+d.sistema;document.getElementById('si').textContent='Uptime: '+d.uptime+'s';}catch(e){document.getElementById('st').textContent='Conectando...';}}
-function filtrar(){const q=document.getElementById('busca').value.toLowerCase();document.querySelectorAll('#tb tr:not(:first-child)').forEach(r=>{r.style.display=r.innerText.toLowerCase().includes(q)?'':'none';});}
+// ── Helpers ──────────────────────────────────────────────────
+const BASE = '';
+async function api(method, path, body){
+  const opts = { method, headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('gn_token')||''} };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(BASE+'/api'+path, opts);
+  return r.json();
+}
+
+function pg(id,btn){
+  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  if(btn) btn.classList.add('on');
+}
+
+function al(elId,msg,tipo){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  el.innerHTML=msg?`<div class="al al-${tipo||'ok'}">${msg}</div>`:'';
+  if(msg) setTimeout(()=>{if(el)el.innerHTML=''},4000);
+}
+
+function ntcColor(v){
+  if(v>=0.95)return '#00ff88';
+  if(v>=0.60)return '#ffaa00';
+  return '#ff6500';
+}
+
+function ntcStatusClass(d){
+  if(d==='APROVADO')return 'aprovado';
+  if(d==='PENDENTE')return 'pendente';
+  return 'reprovado';
+}
+
+// ── Health Check ──────────────────────────────────────────────
+async function check(){
+  try{
+    const d=await api('GET','/health');
+    document.getElementById('st').textContent='Online — '+d.sistema;
+    document.getElementById('si').textContent='Uptime: '+d.uptime+'s';
+  }catch(e){
+    document.getElementById('st').textContent='Conectando...';
+  }
+}
+
+// ── NTC Render ────────────────────────────────────────────────
+const MOD_LABELS = ['DNA','TF','FM','CO','AV','MC','EC','BTA','CC','LG','IV','FI','FP'];
+const MOD_PESOS  = [0.25,0.15,0.10,0.10,0.10,0.05,0.05,0.05,0.05,0.05,0.05,0.03,0.02];
+
+function renderNTCBox(r, elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const ntc=r.ntc||0;
+  const dec=r.decisao||'REPROVADO';
+  const comps=r.componentes||r.scores||{};
+  const cls=ntcStatusClass(dec);
+  const col=ntcColor(ntc);
+  let barsHtml='';
+  MOD_LABELS.forEach(m=>{
+    const v=comps[m]!=null?comps[m]:0;
+    const pct=Math.round(v*100);
+    const c=v>=0.95?'#00ff88':v>=0.60?'#ffaa00':'#ff6500';
+    barsHtml+=`<div class="ntc-bar-row">
+      <span class="ntc-bar-label">${m}</span>
+      <div class="ntc-bar-track"><div class="ntc-bar-fill" style="width:${pct}%;background:${c}"></div></div>
+      <span class="ntc-bar-val">${pct}%</span>
+    </div>`;
+  });
+  const flags=(r.impedimentos||r.bloqueios||[]).map(b=>`• ${b}`).join('<br>');
+  el.innerHTML=`<div class="ntc-box">
+    <div class="ntc-score" style="color:${col}">${(ntc*100).toFixed(1)}%</div>
+    <div class="ntc-label">NTC 4.0 — Nucleo de Triangulacao Certificada</div>
+    <div class="ntc-status ${cls}">${dec}</div>
+    <div class="ntc-bars">${barsHtml}</div>
+    ${flags?`<div class="ntc-flags">${flags}</div>`:''}
+    <div style="margin-top:10px;display:flex;gap:8px;font-size:.74rem">
+      <span style="color:${r.podeCadastrar?'#00ff88':'#ff6500'}">&#128221; ${r.podeCadastrar?'Pode cadastrar':'Nao pode cadastrar'}</span>
+      <span style="color:${r.podePublicar||r.publicavel?'#00ff88':'#ff6500'}">&#128248; ${r.podePublicar||r.publicavel?'Pode publicar':'Nao pode publicar'}</span>
+    </div>
+    ${r.rast_hash?`<div style="margin-top:8px;font-size:.68rem;color:#333;font-family:monospace">RAST-HASH: ${r.rast_hash}</div>`:''}
+  </div>`;
+}
+
+// ── calcNTC (do formulario de cadastro) ──────────────────────
+async function calcNTC(){
+  const dados=coletarFormulario();
+  try{
+    const r=await api('POST','/motor/nct',dados);
+    renderNTCBox(r,'ntc-preview-cad');
+  }catch(e){
+    al('al-cad','Erro ao calcular NTC: '+e.message,'err');
+  }
+}
+
+function coletarFormulario(){
+  function v(id){const el=document.getElementById(id);return el?el.value.trim()||null:null;}
+  function n(id){const el=document.getElementById(id);const val=parseFloat(el&&el.value);return isNaN(val)?null:val;}
+  const imgs=[];
+  document.querySelectorAll('#slots-cad .img-slot img').forEach(i=>imgs.push(i.src));
+  return {
+    dna_fab:v('dna_fab'), dna_cod:v('dna_cod'), dna_fam:v('dna_fam'),
+    nome:v('dna_nome')||null, sku:v('dna_sku'),
+    ncm:v('tf_ncm'), ean:v('tf_ean'), um:v('tf_um'),
+    cest:v('co_cest'), cst:v('co_cst'), origem:v('co_origem'),
+    marca:v('av_marca'), modelo:v('av_modelo'), versao:v('av_versao'), carroceria:v('av_carroceria'),
+    motor:v('av_motor'), cilindrada:v('av_cil'), codigo_motor:v('av_codmotor'), combustivel:v('av_comb'),
+    ano_inicial:n('av_anoi'), ano_final:n('av_anof'),
+    peso_bruto:n('mc_pesob'), peso_liquido:n('mc_pesol'),
+    comprimento:n('mc_comp'), largura:n('mc_larg'), altura:n('mc_alt'),
+    qtd_emb:n('ec_qtd'), tipo_emb:v('ec_tipo'), material:v('ec_mat'),
+    cc_oem:v('cc_oem'), codigo_oem:v('cc_oem'),
+    cc_dna:v('cc_dna'), cc_after:v('cc_after'), cc_import:v('cc_import'),
+    preco_custo:n('fi_custo'), preco_venda:n('fi_venda'), estoque:n('fi_estq'),
+    imagens: imgs.length>0?imgs:null,
+    descricao_voz:v('voz_texto')
+  };
+}
+
+// ── Salvar Produto ────────────────────────────────────────────
 var lista=JSON.parse(localStorage.getItem('gn_prod')||'[]');
-function salvar(){const ref=document.getElementById('iref').value.trim();const desc=document.getElementById('idesc').value.trim();if(!ref||!desc){document.getElementById('al').innerHTML='<div class="al al-err">Referencia e Descricao sao obrigatorios!</div>';return;}const p={ref,desc,marca:document.getElementById('imarca').value,cat:document.getElementById('icat').value};lista.push(p);localStorage.setItem('gn_prod',JSON.stringify(lista));document.getElementById('al').innerHTML='<div class="al al-ok">Produto cadastrado!</div>';addRow(p);['iref','idesc','imarca','iaplic','ipreco','iest','iobs'].forEach(x=>document.getElementById(x).value='');document.getElementById('icat').value='';setTimeout(()=>document.getElementById('al').innerHTML='',3000);}
-function addRow(p){const tb=document.getElementById('tb');const tr=document.createElement('tr');tr.innerHTML='<td><span class="tag">'+p.ref+'</span></td><td>'+p.desc+'</td><td>'+(p.marca||'-')+'</td><td>'+(p.cat||'-')+'</td><td><span class="tag">Ativo</span></td>';tb.appendChild(tr);}
-lista.forEach(p=>addRow(p));check();setInterval(check,30000);
+
+async function salvarProduto(){
+  const dados=coletarFormulario();
+  if(!dados.dna_fab||!dados.dna_cod){
+    al('al-cad','DNA obrigatorio: informe Fabricante e Codigo Fabricante.','err');
+    return;
+  }
+  if(!dados.motor){
+    al('al-cad','Motor obrigatorio para aplicacao veicular.','err');
+    return;
+  }
+  let ntcResult={};
+  try{ ntcResult=await api('POST','/motor/nct',dados); }catch(e){}
+  if(!ntcResult.podeCadastrar){
+    al('al-cad','NTC insuficiente para cadastro. Preencha DNA + TF + AV (motor).','err');
+    return;
+  }
+  const prod={...dados, ntc:ntcResult.ntc, decisao:ntcResult.decisao, rast_hash:ntcResult.rast_hash, id:'local-'+Date.now()};
+  lista.push(prod);
+  localStorage.setItem('gn_prod',JSON.stringify(lista));
+  addProdRow(prod);
+  al('al-cad','Produto cadastrado! NTC: '+(prod.ntc*100).toFixed(1)+'% — '+prod.decisao,'ok');
+  limparForm();
+}
+
+function addProdRow(p){
+  const tb=document.getElementById('tb');
+  const empty=document.getElementById('tb-empty');
+  if(empty)empty.remove();
+  const tr=document.createElement('tr');
+  const ntcPct=p.ntc!=null?(p.ntc*100).toFixed(0)+'%':'—';
+  const dec=p.decisao||'—';
+  const cls=dec==='APROVADO'?'tag-ok':dec==='PENDENTE'?'tag-warn':'tag-err';
+  tr.innerHTML=`<td><span class="tag tag-warn">${p.sku||p.dna_cod||'—'}</span></td>
+    <td>${p.nome||'—'}</td>
+    <td>${p.dna_fab||'—'}</td>
+    <td>${p.dna_fam||'—'}</td>
+    <td>${p.motor||'—'}${p.av_marca?' / '+p.av_marca:''}</td>
+    <td><strong style="color:${ntcColor(p.ntc||0)}">${ntcPct}</strong></td>
+    <td><span class="tag ${cls}">${dec}</span></td>`;
+  tb.appendChild(tr);
+}
+
+function limparForm(){
+  const ids=['dna_fab','dna_cod','dna_fam','dna_nome','dna_sku','tf_ncm','tf_ean','tf_um',
+    'co_cest','co_cst','co_origem','av_marca','av_modelo','av_versao','av_carroceria',
+    'av_motor','av_cil','av_codmotor','av_comb','av_anoi','av_anof',
+    'mc_pesob','mc_pesol','mc_comp','mc_larg','mc_alt','ec_qtd','ec_tipo','ec_mat',
+    'cc_oem','cc_dna','cc_after','cc_import','fi_custo','fi_venda','fi_margem','fi_estq','voz_texto'];
+  ids.forEach(id=>{const el=document.getElementById(id);if(el){el.value='';} });
+  document.getElementById('slots-cad').querySelectorAll('img').forEach(i=>i.remove());
+  document.getElementById('ntc-preview-cad').innerHTML='<p style="color:#444;font-size:.82rem">Preencha os campos para calcular o NTC em tempo real.</p>';
+}
+
+function filtrar(){
+  const q=document.getElementById('busca').value.toLowerCase();
+  document.querySelectorAll('#tb tr:not(:first-child)').forEach(r=>{
+    if(r.id==='tb-empty')return;
+    r.style.display=r.innerText.toLowerCase().includes(q)?'':'none';
+  });
+}
+
+// ── Voz IA ────────────────────────────────────────────────────
+async function gerarVozIA(){
+  const nome=document.getElementById('dna_nome').value;
+  const fab=document.getElementById('dna_fab').value;
+  const motor=document.getElementById('av_motor').value;
+  const marca=document.getElementById('av_marca').value;
+  const modelo=document.getElementById('av_modelo').value;
+  if(!nome&&!fab){al('al-cad','Informe ao menos o Nome ou Fabricante para gerar descricao.','err');return;}
+  const prompt=`Gere uma descricao tecnica profissional e objetiva para o catalogo de autopecas, para o produto: ${nome||'peca automotiva'}, fabricante ${fab||'nao informado'}, aplicacao: ${motor?motor+' ':''} ${marca?marca+' ':''} ${modelo||''}. Maximo 3 paragrafos, sem inventar especificacoes tecnicas.`;
+  document.getElementById('voz_status').innerHTML='<span class="spinner"></span>Gerando...';
+  try{
+    const r=await api('POST','/motor/voz',{perfil:'AUTOPECAS',prompt});
+    if(r.ok){
+      document.getElementById('voz_texto').value=r.texto;
+      document.getElementById('voz_status').textContent='✓ Gerado';
+    } else {
+      document.getElementById('voz_status').textContent='Erro IA: '+(r.erro||'Verifique ANTHROPIC_API_KEY no Render');
+    }
+  }catch(e){
+    document.getElementById('voz_status').textContent='Erro IA: '+e.message;
+  }
+}
+
+// ── Motor NTC (pagina NTC) ────────────────────────────────────
+async function processarNTC(){
+  let dados={};
+  try{ dados=JSON.parse(document.getElementById('ntc_json').value||'{}'); }
+  catch(e){ al('al-cad','JSON invalido','err'); return; }
+  const el=document.getElementById('ntc-resultado');
+  el.innerHTML='<span class="spinner"></span>Processando...';
+  try{
+    const r=await api('POST','/motor/nct',dados);
+    el.innerHTML='';
+    renderNTCBox(r,'ntc-resultado');
+    const newEl=document.createElement('div');
+    newEl.id='ntc-resultado';
+    el.parentNode.insertBefore(newEl,el.nextSibling);
+    renderNTCBox(r,'ntc-resultado');
+  }catch(e){
+    el.innerHTML=`<div class="al al-err">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── Busca de Imagens (in-app) ─────────────────────────────────
+var _imgSlotAtivo={idx:0,ctx:'cad'};
+var imgsSelecionadas=[];
+
+function abrirBuscaImg(slotIdx, ctx){
+  _imgSlotAtivo={idx:slotIdx,ctx};
+  const panel=document.getElementById('isp-'+ctx);
+  if(panel){panel.style.display='block';}
+  const iq=document.getElementById('iq-'+ctx);
+  if(iq){
+    // Pre-preenche com OEM ou DNA ou descricao
+    const oem=document.getElementById('cc_oem')||document.getElementById('dna_cod');
+    const nome=document.getElementById('dna_nome');
+    iq.value=(oem&&oem.value)||( nome&&nome.value)||'';
+    iq.focus();
+  }
+}
+
+function fecharBuscaImg(ctx){
+  const panel=document.getElementById('isp-'+ctx);
+  if(panel)panel.style.display='none';
+}
+
+async function buscarImagensInApp(ctx){
+  const q=(document.getElementById('iq-'+ctx)||{}).value||'';
+  const fonte=(document.getElementById('ifonte-'+ctx)||{}).value||'oem';
+  const container=document.getElementById('ir-'+ctx);
+  if(!q.trim()){container.innerHTML='<div class="img-result-status">Digite um termo de busca.</div>';return;}
+  container.innerHTML='<div class="img-result-status"><span class="spinner"></span>Buscando imagens...</div>';
+  try{
+    const r=await api('GET',`/imagens/buscar?q=${encodeURIComponent(q)}&fonte=${fonte}`);
+    if(!r.ok||!r.imagens||r.imagens.length===0){
+      container.innerHTML='<div class="img-result-status">Nenhuma imagem encontrada. Tente outro termo.</div>';
+      return;
+    }
+    container.innerHTML='';
+    r.imagens.forEach((img,i)=>{
+      const div=document.createElement('div');
+      div.className='img-result-item';
+      div.innerHTML=`<img src="${img.thumb||img.url}" alt="${img.titulo||q}" loading="lazy" onerror="this.parentNode.style.display='none'">
+        <button class="sel-btn" onclick="selecionarImgBusca('${img.url}','${ctx}')">Usar</button>`;
+      container.appendChild(div);
+    });
+  }catch(e){
+    container.innerHTML=`<div class="img-result-status">Erro: ${e.message}</div>`;
+  }
+}
+
+function selecionarImgBusca(url, ctx){
+  if(ctx==='cad'||ctx==='main'){
+    if(ctx==='cad'){
+      const slots=document.querySelectorAll('#slots-cad .img-slot');
+      const slot=slots[_imgSlotAtivo.idx];
+      if(slot){
+        slot.innerHTML=`<img src="${url}" alt="foto"><button class="rm" onclick="removerSlotImg(this,${_imgSlotAtivo.idx},'cad')">×</button>`;
+        fecharBuscaImg('cad');
+      }
+    }
+    if(ctx==='main'){
+      const container=document.getElementById('imgs-sel');
+      const wrap=document.getElementById('img-selecionadas');
+      wrap.style.display='block';
+      const div=document.createElement('div');
+      div.className='img-slot';
+      div.style.cursor='default';
+      div.innerHTML=`<img src="${url}" alt="selecionada">`;
+      container.appendChild(div);
+    }
+    imgsSelecionadas.push(url);
+  }
+}
+
+function removerSlotImg(btn,idx,ctx){
+  const slot=btn.closest('.img-slot');
+  if(slot){
+    slot.innerHTML=`<span style="font-size:1.4rem">+</span><span>Foto ${idx+1}</span>`;
+    slot.onclick=()=>abrirBuscaImg(idx,ctx);
+  }
+}
+
+// ── Config ────────────────────────────────────────────────────
+function salvarCfg(){
+  localStorage.setItem('gn_cfg',JSON.stringify({
+    perfil:document.getElementById('cfg_perfil').value,
+    ntcMin:parseFloat(document.getElementById('cfg_ntcmin').value),
+    ntcPub:parseFloat(document.getElementById('cfg_ntcpub').value)
+  }));
+  al('cfg-result','Configuracoes salvas!','ok');
+}
+
+async function testBling(){
+  const r=await api('GET','/bling/status');
+  al('cfg-result',r.mensagem||r.erro||(r.ok?'Bling OK':'Erro Bling'),r.ok?'ok':'err');
+}
+async function testWix(){
+  const r=await api('GET','/wix/status');
+  al('cfg-result',r.erro||r.mensagem||(r.ok?'Wix OK':'Wix nao configurado'),r.ok?'ok':'warn');
+}
+async function testCNPJ(){
+  const cnpj=prompt('Digite o CNPJ (so numeros):');
+  if(!cnpj)return;
+  const r=await api('POST','/empresa/consultar-cnpj',{cnpj});
+  al('cfg-result',r.mensagem||(r.ok?'OK':'Erro: '+(r.erro||'')),r.ok?'ok':'err');
+}
+
+// ── Calculo de margem ─────────────────────────────────────────
+['fi_custo','fi_venda'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input',()=>{
+    const c=parseFloat(document.getElementById('fi_custo').value)||0;
+    const v=parseFloat(document.getElementById('fi_venda').value)||0;
+    const m=c>0&&v>0?((v-c)/c*100).toFixed(1):'';
+    document.getElementById('fi_margem').value=m;
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────
+lista.forEach(p=>addProdRow(p));
+check();
+setInterval(check,30000);
 </script>
 </body>
-          </html>
+</html>
