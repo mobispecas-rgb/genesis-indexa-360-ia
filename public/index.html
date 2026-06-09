@@ -391,18 +391,28 @@ tr:hover td{background:#ffffff04}
         </div>
 
         <div class="tab-content active" id="itab-busca">
-          <div class="search-bar-light">
-            <input id="img-search-q" placeholder="Buscar produto por OEM, SKU, EAN ou descri&ccedil;&atilde;o...">
-            <select id="img-search-fonte">
-              <option value="oem">OEM</option>
-              <option value="dna">DNA</option>
-              <option value="descricao">Descri&ccedil;&atilde;o</option>
-              <option value="ean">EAN</option>
-              <option value="sku">SKU</option>
-            </select>
-            <button class="btn btn-primary" onclick="buscarImagens()">Buscar</button>
+          <!-- Barra de busca -->
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <input id="img-search-q" style="flex:1;min-width:200px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1a1a1a" placeholder="OEM, SKU, EAN ou nome do produto..." onkeydown="if(event.key==='Enter')buscarImagens()">
+            <button style="padding:10px 20px;background:#ff4500;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="buscarImagens()">&#128269; Buscar Google</button>
+            <button style="padding:10px 14px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;font-size:12px;color:#555;cursor:pointer" onclick="imgLimparSlots()">&#10005; Limpar</button>
           </div>
-          <div id="img-busca-results"></div>
+
+          <!-- Status da busca -->
+          <div id="img-busca-status" style="font-size:12px;color:#888;margin-bottom:12px"></div>
+
+          <!-- 6 blocos de seleção -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="img-slots-grid">
+            <!-- Gerado por JS -->
+          </div>
+
+          <!-- Grid de resultados Google -->
+          <div id="img-busca-results" style="display:none">
+            <div style="font-size:12px;color:#888;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #eee">
+              &#9888;&#65039; Confirme que as imagens s&atilde;o do produto correto antes de selecionar. Clique em uma imagem para adicion&aacute;-la a um slot.
+            </div>
+            <div id="img-google-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+          </div>
         </div>
 
         <div class="tab-content" id="itab-minhas">
@@ -1369,24 +1379,110 @@ function deleteImagem(i) {
   loadMinhasImagens();
 }
 
+// ===== IMAGENS — 6 SLOTS + BUSCA GOOGLE =====
+var _imgSlots = [null, null, null, null, null, null]; // 6 slots
+
+function imgInitSlots() {
+  var grid = document.getElementById('img-slots-grid');
+  if (!grid) return;
+  grid.innerHTML = _imgSlots.map(function(slot, i) {
+    var filled = slot && slot.url;
+    return '<div id="img-slot-' + i + '" onclick="imgSlotClick(' + i + ')" style="'
+      + 'aspect-ratio:1;border:2px dashed ' + (filled ? '#ff4500' : '#ddd') + ';border-radius:10px;'
+      + 'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      + 'cursor:pointer;overflow:hidden;position:relative;background:' + (filled ? '#fff' : '#f9f9f9') + ';'
+      + 'transition:border-color .2s">'
+      + (filled
+        ? '<img src="' + esc(slot.thumb||slot.url) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.src=\'' + esc(slot.url) + '\'">'
+          + '<div style="position:absolute;top:4px;right:4px;background:#ff4500;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer" onclick="event.stopPropagation();imgSlotRemover(' + i + ')">&#10005;</div>'
+          + '<div style="position:absolute;bottom:0;left:0;right:0;background:#ff450099;color:#fff;font-size:10px;text-align:center;padding:2px">' + (i+1) + '</div>'
+        : '<div style="font-size:28px;color:#ccc">&#43;</div>'
+          + '<div style="font-size:11px;color:#bbb;margin-top:4px">Imagem ' + (i+1) + '</div>')
+      + '</div>';
+  }).join('');
+}
+
+var _imgSlotAtivo = 0;
+function imgSlotClick(idx) {
+  _imgSlotAtivo = idx;
+  // Destaca slot ativo
+  for (var i = 0; i < 6; i++) {
+    var el = document.getElementById('img-slot-' + i);
+    if (el) el.style.borderColor = i === idx ? '#ff4500' : (_imgSlots[i] ? '#ff4500' : '#ddd');
+  }
+  var status = document.getElementById('img-busca-status');
+  if (status) status.textContent = 'Slot ' + (idx+1) + ' selecionado. Busque uma imagem abaixo para preencher.';
+}
+
+function imgSlotRemover(idx) {
+  _imgSlots[idx] = null;
+  imgInitSlots();
+  imgSalvarSlots();
+}
+
+function imgSlotPreencher(url, thumb, titulo) {
+  _imgSlots[_imgSlotAtivo] = { url: url, thumb: thumb || url, titulo: titulo };
+  imgInitSlots();
+  imgSalvarSlots();
+  // Avança para próximo slot vazio
+  for (var i = 0; i < 6; i++) {
+    if (!_imgSlots[i]) { _imgSlotAtivo = i; break; }
+  }
+  var status = document.getElementById('img-busca-status');
+  var preenchidos = _imgSlots.filter(Boolean).length;
+  if (status) status.textContent = '✅ ' + preenchidos + '/6 imagens selecionadas' + (preenchidos < 6 ? ' — Slot ' + (_imgSlotAtivo+1) + ' aguardando' : ' — Conjunto completo!');
+}
+
+function imgLimparSlots() {
+  _imgSlots = [null,null,null,null,null,null];
+  imgInitSlots();
+  imgSalvarSlots();
+  document.getElementById('img-busca-results').style.display = 'none';
+  document.getElementById('img-google-grid').innerHTML = '';
+  document.getElementById('img-busca-status').textContent = '';
+}
+
+function imgSalvarSlots() {
+  localStorage.setItem('gn_img_slots', JSON.stringify(_imgSlots));
+}
+
+function imgCarregarSlots() {
+  try { _imgSlots = JSON.parse(localStorage.getItem('gn_img_slots') || 'null') || [null,null,null,null,null,null]; } catch(e) {}
+  imgInitSlots();
+}
+
 async function buscarImagens() {
   var q = document.getElementById('img-search-q').value.trim();
-  var fonte = document.getElementById('img-search-fonte').value;
-  var res = document.getElementById('img-busca-results');
-  if (!q) { res.innerHTML = '<div class="msg-info">Digite um termo para buscar.</div>'; return; }
-  res.innerHTML = '<div style="color:#888;font-size:13px">Buscando...</div>';
+  if (!q) { document.getElementById('img-busca-status').textContent = 'Digite um termo para buscar.'; return; }
+  var status = document.getElementById('img-busca-status');
+  var googleGrid = document.getElementById('img-google-grid');
+  var resultsDiv = document.getElementById('img-busca-results');
+  status.textContent = '⏳ Buscando imagens no Google...';
+  googleGrid.innerHTML = '';
+  resultsDiv.style.display = 'none';
   try {
-    var data = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(q) + '&fonte=' + fonte);
-    if (data.error) throw new Error(data.error);
-    if (!data.imagens || !data.imagens.length) {
-      res.innerHTML = '<div class="msg-info">Nenhuma imagem encontrada para esta busca.</div>';
+    var data = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(q) + '&fonte=google');
+    if (!data.ok || !data.imagens || !data.imagens.length) {
+      status.innerHTML = data.mensagem
+        ? '&#9888;&#65039; ' + esc(data.mensagem)
+        : '&#9888;&#65039; Nenhuma imagem encontrada. Configure <strong>GOOGLE_SEARCH_KEY</strong> e <strong>GOOGLE_SEARCH_CX</strong> no Render para busca real.';
       return;
     }
-    res.innerHTML = '<div class="img-result-grid">' + data.imagens.map(function(img){
-      return '<div class="img-result-card"><img src="' + esc(img.url) + '" alt="' + esc(img.ref||q) + '" loading="lazy" onerror="this.style.display=\'none\'"><div class="img-result-info"><div style="font-weight:600;color:#222">' + esc(img.ref||'&mdash;') + '</div><div>' + esc(img.tipo||'&mdash;') + '</div></div></div>';
-    }).join('') + '</div>';
+    resultsDiv.style.display = 'block';
+    status.textContent = data.imagens.length + ' imagens encontradas. Clique para adicionar ao slot selecionado.';
+    googleGrid.innerHTML = data.imagens.map(function(img) {
+      var thumb = img.thumb || img.url;
+      var url   = img.url;
+      var titulo = img.titulo || q;
+      return '<div onclick="imgSlotPreencher(\'' + esc(url) + '\',\'' + esc(thumb) + '\',\'' + esc(titulo.replace(/'/g,'\\'+'\'')) + '\')" '
+        + 'style="cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color .15s;position:relative" '
+        + 'onmouseover="this.style.borderColor=\'#ff4500\'" onmouseout="this.style.borderColor=\'transparent\'">'
+        + '<img src="' + esc(thumb) + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" onerror="this.parentElement.style.display=\'none\'">'
+        + '<div style="position:absolute;bottom:0;left:0;right:0;background:#00000088;color:#fff;font-size:9px;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(img.fonte||'') + '</div>'
+        + '</div>';
+    }).join('');
   } catch(e) {
-    res.innerHTML = '<div class="msg-info">A busca de imagens requer configuração da API no servidor (/api/imagens/buscar). Nenhuma busca é feita diretamente para provedores externos a partir do navegador.</div>';
+    status.textContent = '✖ Erro: ' + e.message;
   }
 }
 
@@ -2337,6 +2433,7 @@ function catCompletarNTC() {
 // ===== INIT =====
 loadDashboard();
 tplRenderLista();
+imgCarregarSlots();
 // Atualiza lista de templates ao navegar para a página
 (function(orig){ window.nav = function(p){ orig(p); if(p==='templates') tplRenderLista(); }; })(nav);
 
