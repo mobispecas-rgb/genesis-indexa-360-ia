@@ -401,7 +401,11 @@ tr:hover td{background:#ffffff04}
           <!-- Status da busca -->
           <div id="img-busca-status" style="font-size:12px;color:#888;margin-bottom:12px"></div>
 
-          <!-- 6 blocos de seleção -->
+          <!-- 6 blocos de seleção + botão enriquecer -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:13px;color:#888">Selecione um slot e busque a imagem no Google</div>
+            <button onclick="imgEnriquecerComProduto()" style="padding:6px 14px;background:#fff;border:1px solid #ff4500;border-radius:6px;color:#ff4500;font-size:12px;font-weight:600;cursor:pointer">&#10024; Enriquecer Imagens</button>
+          </div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px" id="img-slots-grid">
             <!-- Gerado por JS -->
           </div>
@@ -659,10 +663,12 @@ MEDIDA LARGURA  25 MM"></textarea>
           <div id="cat-oem-list" style="font-size:13px;line-height:2"></div>
         </div>
 
-        <!-- Salvar -->
-        <div style="display:flex;gap:10px;margin-bottom:20px">
-          <button class="btn btn-primary" style="flex:1" onclick="catSalvar()">&#10003; Salvar no Cat&aacute;logo</button>
+        <!-- Salvar / Enriquecer -->
+        <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" style="flex:1;min-width:160px" onclick="catSalvar()">&#10003; Salvar no Cat&aacute;logo</button>
+          <button class="btn btn-secondary" style="flex:1;min-width:160px" onclick="catEnriquecerCadastro()">&#10024; Enriquecer Cadastro</button>
           <button class="btn btn-secondary" onclick="catCompletarNTC()">&#127919; Completar NTC</button>
+          <button class="btn btn-secondary" onclick="catEnriquecerImagens()">&#128444;&#65039; Imagens</button>
         </div>
         <div id="cat-save-status" style="font-size:12px;color:#555;margin-bottom:12px"></div>
       </div>
@@ -1449,6 +1455,22 @@ function imgSalvarSlots() {
 function imgCarregarSlots() {
   try { _imgSlots = JSON.parse(localStorage.getItem('gn_img_slots') || 'null') || [null,null,null,null,null,null]; } catch(e) {}
   imgInitSlots();
+}
+
+function imgEnriquecerComProduto() {
+  // Usa produto do indexador ou último salvo
+  var q = '';
+  if (window._catDados && (_catDados.codigo_fabricante || _catDados.fabricante)) {
+    q = [_catDados.codigo_fabricante, _catDados.fabricante, _catDados.nome].filter(Boolean).slice(0,2).join(' ');
+  } else if (window._oemDados && (_oemDados.codigo_fabricante || _oemDados.fabricante)) {
+    q = [_oemDados.codigo_fabricante, _oemDados.fabricante, _oemDados.nome].filter(Boolean).slice(0,2).join(' ');
+  } else {
+    var prods = getProds();
+    if (prods.length) { var p = prods[prods.length-1]; q = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' '); }
+  }
+  if (!q) { alert('Nenhum produto ativo. Indexe ou enriqueça um produto primeiro.'); return; }
+  document.getElementById('img-search-q').value = q;
+  buscarImagens();
 }
 
 async function buscarImagens() {
@@ -2410,6 +2432,44 @@ function catSalvar() {
   atualizarStats();
   cntcPreencherSelect();
   document.getElementById('cat-save-status').textContent = '✅ Produto salvo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + (r.decisao||'REPROVADO');
+}
+
+function catEnriquecerCadastro() {
+  if (!_catDados.fabricante && !_catDados.codigo_fabricante) {
+    alert('Indexe um produto primeiro.');
+    return;
+  }
+  // Abre Enriquecimento OEM com os dados atuais pré-preenchidos
+  nav('oem');
+  setTimeout(function() {
+    var q = [_catDados.codigo_fabricante, _catDados.fabricante, _catDados.nome].filter(Boolean).join(' ');
+    document.getElementById('oem-input').value = q;
+    // Pré-preenche campos
+    if (_catDados.codigo_fabricante) document.getElementById('oem-f-sku').value    = _catDados.codigo_fabricante;
+    if (_catDados.fabricante)        document.getElementById('oem-f-fab').value    = _catDados.fabricante;
+    if (_catDados.nome)              document.getElementById('oem-f-nome').value   = _catDados.nome;
+    if (_catDados.familia_tecnica)   document.getElementById('oem-f-familia').value = _catDados.familia_tecnica;
+    if (_catDados.codigo_oem)        document.getElementById('oem-f-oem').value    = _catDados.codigo_oem;
+    if (_catDados.ncm)               document.getElementById('oem-f-ncm').value    = _catDados.ncm;
+    if (_catDados.ean)               document.getElementById('oem-f-ean').value    = _catDados.ean;
+    if (_catDados.motor)             document.getElementById('oem-f-motor').value  = _catDados.motor;
+    if (_catDados.material)          document.getElementById('oem-f-material').value = _catDados.material;
+    document.getElementById('oem-resultado').style.display = 'block';
+    oemRecalcularNTC();
+  }, 150);
+}
+
+function catEnriquecerImagens() {
+  if (!_catDados.fabricante && !_catDados.codigo_fabricante) {
+    alert('Indexe um produto primeiro.');
+    return;
+  }
+  var q = [_catDados.codigo_fabricante, _catDados.fabricante, _catDados.nome].filter(Boolean).slice(0,2).join(' ');
+  nav('imagens');
+  setTimeout(function() {
+    document.getElementById('img-search-q').value = q;
+    buscarImagens();
+  }, 200);
 }
 
 function catCompletarNTC() {
