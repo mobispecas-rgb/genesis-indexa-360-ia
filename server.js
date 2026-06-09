@@ -205,6 +205,67 @@ app.get('/api/bling/status', (req, res) => {
 app.post('/api/bling/token/renovar', (req, res) => { res.json({ ok: true, mensagem: 'Token renovado' }); });
 app.get('/api/bling/buscar', (req, res) => { res.json({ ok: false, produtos: [] }); });
 
+// Bling — token OAuth2
+let _blingToken = null;
+let _blingTokenExp = 0;
+
+async function getBlingToken() {
+  if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
+  if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render');
+  const https = require('https');
+  const qs = `grant_type=client_credentials&client_id=${process.env.BLING_CLIENT_ID}&client_secret=${process.env.BLING_CLIENT_SECRET}`;
+  const data = await new Promise((resolve, reject) => {
+    const req = https.request({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(qs) }
+    }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+    req.on('error', reject); req.write(qs); req.end();
+  });
+  if (!data.access_token) throw new Error('Bling token inválido: ' + JSON.stringify(data));
+  _blingToken = data.access_token;
+  _blingTokenExp = Date.now() + (data.expires_in || 3600) * 1000 - 60000;
+  return _blingToken;
+}
+
+app.post('/api/bling/produto', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    const { nome, codigo, ncm, fabricante } = req.body;
+    const payload = JSON.stringify({ nome: nome || codigo, codigo: codigo || '', preco: 0, tipo: 'P', situacao: 'A', formato: 'S', tributacao: { ncm: ncm || '' } });
+    const https = require('https');
+    const data = await new Promise((resolve, reject) => {
+      const req2 = https.request({ hostname: 'www.bling.com.br', path: '/Api/v3/produtos', method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+      }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+      req2.on('error', reject); req2.write(payload); req2.end();
+    });
+    if (data.data && data.data.id) return res.json({ ok: true, id: data.data.id });
+    res.json({ ok: false, erro: JSON.stringify(data.error || data) });
+  } catch(e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
+app.post('/api/wix/produto', async (req, res) => {
+  const key = process.env.WIX_API_KEY;
+  const siteId = process.env.WIX_SITE_ID;
+  if (!key || !siteId) return res.json({ ok: false, erro: 'Configure WIX_API_KEY e WIX_SITE_ID no Render' });
+  try {
+    const { nome, sku } = req.body;
+    const payload = JSON.stringify({ product: { name: nome, productType: 'physical', sku: sku, visible: false, price: { amount: '0.00', currency: 'BRL' } } });
+    const https = require('https');
+    const data = await new Promise((resolve, reject) => {
+      const req2 = https.request({ hostname: 'www.wixapis.com', path: '/stores/v1/products', method: 'POST',
+        headers: { 'Authorization': key, 'wix-site-id': siteId, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+      }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+      req2.on('error', reject); req2.write(payload); req2.end();
+    });
+    if (data.product && data.product.id) return res.json({ ok: true, id: data.product.id });
+    res.json({ ok: false, erro: JSON.stringify(data) });
+  } catch(e) {
+    res.json({ ok: false, erro: e.message });
+  }
+});
+
 // Wix (stub)
 app.get('/api/wix/status', (req, res) => {
     res.json({ ok: false, erro: 'Configure WIX_API_KEY no Render' });
