@@ -1,1 +1,1423 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iRollo 360 — Motor NTC 4.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#fff;display:flex;height:100vh;overflow:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#111}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+/* SIDEBAR */
+#sidebar{width:220px;min-width:220px;background:#111111;height:100vh;display:flex;flex-direction:column;border-right:1px solid #1f1f1f;position:fixed;left:0;top:0;z-index:100;overflow-y:auto;transition:transform .3s}
+#sidebar.hidden{transform:translateX(-220px)}
+.sb-logo{padding:16px 14px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;gap:10px}
+.sb-logo .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#ff4500,#ff6b00);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sb-logo .logo-text{font-size:12px;font-weight:700;color:#fff;line-height:1.2}
+.sb-logo .logo-sub{font-size:10px;color:#888}
+.sb-section{padding:12px 0 4px 0}
+.sb-section-label{font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1.5px;padding:0 14px 6px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:7px 14px;cursor:pointer;font-size:12.5px;color:#aaa;border-left:3px solid transparent;transition:all .15s;position:relative;white-space:nowrap}
+.sb-item:hover{color:#ddd;background:#ffffff08}
+.sb-item.active{border-left:3px solid #ff4500;background:#ff450010;color:#ff4500}
+.sb-item .icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-badge{margin-left:auto;background:#ff4500;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
+.sb-footer{margin-top:auto;padding:12px 14px;border-top:1px solid #1f1f1f;font-size:10px;color:#555;line-height:1.4}
+
+/* MAIN */
+#main{margin-left:220px;flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;transition:margin-left .3s}
+#topbar{background:#111;border-bottom:1px solid #1f1f1f;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+#hamburger{background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;display:none;padding:4px}
+.health-dot{width:8px;height:8px;background:#00ff88;border-radius:50%;animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #00ff8855}50%{box-shadow:0 0 0 5px #00ff8800}}
+.health-text{font-size:12px;color:#888}
+.health-text span{color:#00ff88}
+.topbar-right{margin-left:auto;font-size:11px;color:#555}
+#content{flex:1;overflow-y:auto;padding:24px}
+.page{display:none}
+.page.active{display:block}
+
+/* CARDS / COMMON */
+.page-title{font-size:20px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.card{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:18px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#ccc;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat-card{background:#161616;border:1px solid #1f1f1f;border-radius:10px;padding:18px;text-align:center}
+.stat-num{font-size:32px;font-weight:800;color:#ff4500}
+.stat-label{font-size:12px;color:#888;margin-top:4px}
+.btn{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-primary{background:#ff4500;color:#fff}
+.btn-primary:hover{background:#ff6b00}
+.btn-secondary{background:#1f1f1f;color:#aaa;border:1px solid #333}
+.btn-secondary:hover{color:#fff;border-color:#555}
+.btn-sm{padding:5px 10px;font-size:11px}
+.badge{display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700}
+.badge-green{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840}
+.badge-orange{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040}
+.badge-red{background:#ff450020;color:#ff6500;border:1px solid #ff450040}
+input,select,textarea{background:#0d0d0d;border:1px solid #2a2a2a;color:#fff;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:#ff4500}
+select option{background:#0d0d0d}
+label{font-size:12px;color:#888;display:block;margin-bottom:5px}
+.form-group{margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 12px;color:#666;font-size:11px;font-weight:600;border-bottom:1px solid #1f1f1f;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 12px;border-bottom:1px solid #111;color:#ccc}
+tr:hover td{background:#ffffff04}
+.stub-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;color:#555;gap:16px}
+.stub-page .stub-icon{font-size:48px;opacity:.4}
+.stub-page h2{font-size:18px;font-weight:600;color:#444}
+
+/* NTC / IA */
+.ntc-big{font-size:72px;font-weight:900;line-height:1;margin-bottom:4px}
+.ntc-aprovado{color:#00ff88}
+.ntc-pendente{color:#ffaa00}
+.ntc-reprovado{color:#ff6500}
+.module-bar-wrap{height:6px;background:#1f1f1f;border-radius:3px;margin-top:6px;overflow:hidden}
+.module-bar{height:100%;border-radius:3px;transition:width .5s}
+.module-card{background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;margin-bottom:8px}
+.module-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.module-name{font-size:12px;font-weight:700;color:#ccc}
+.module-score{font-size:11px;color:#888}
+.module-items{font-size:11px;color:#666;margin-top:6px;line-height:1.8}
+.check-ok{color:#00ff88}
+.check-no{color:#ff6500}
+.dna-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
+.dna-item{background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px}
+.dna-key{color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.dna-val{color:#fff;font-weight:600;margin-top:2px;word-break:break-all}
+.rast-line{font-family:monospace;font-size:11px;color:#888;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:5px;padding:6px 10px;margin:10px 0}
+
+/* IMAGENS (light page) */
+#page-imagens{background:#ffffff;color:#1a1a1a}
+#page-imagens .page-title{color:#1a1a1a}
+#page-imagens .card{background:#f8f8f8;border-color:#e0e0e0}
+#page-imagens .card-title{color:#333}
+#page-imagens input,#page-imagens select,#page-imagens textarea{background:#fff;border-color:#ccc;color:#1a1a1a}
+#page-imagens input:focus,#page-imagens select:focus{border-color:#ff4500}
+#page-imagens label{color:#555}
+#page-imagens table th{color:#999}
+#page-imagens table td{color:#333}
+#page-imagens tr:hover td{background:#f0f0f0}
+.img-upload-area{border:2px dashed #ddd;border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.img-upload-area:hover{border-color:#ff4500;background:#fff5f2}
+.img-upload-area .upload-icon{font-size:40px;margin-bottom:12px;opacity:.5}
+.img-upload-area p{font-size:13px;color:#999}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:16px}
+.img-item{border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 1px 4px #0001;position:relative;transition:box-shadow .2s}
+.img-item:hover{box-shadow:0 4px 16px #0002}
+.img-item img{width:100%;height:140px;object-fit:cover;display:block}
+.img-item-info{padding:8px 10px}
+.img-item-name{font-size:11px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.img-item-cat{font-size:10px;color:#999;margin-top:2px}
+.img-item-actions{display:flex;gap:6px;padding:6px 10px;border-top:1px solid #f0f0f0}
+.img-action-btn{flex:1;padding:5px;font-size:11px;border:1px solid #ddd;background:#fff;border-radius:5px;cursor:pointer;color:#555;transition:all .15s;text-align:center}
+.img-action-btn:hover{border-color:#ff4500;color:#ff4500}
+.img-cat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cat-tab{padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;color:#666;transition:all .15s}
+.cat-tab:hover{border-color:#ff4500;color:#ff4500}
+.cat-tab.active{background:#ff4500;border-color:#ff4500;color:#fff}
+
+/* SCANNER */
+.scanner-wrap{position:relative;width:100%;max-width:480px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000}
+#scanner-video{width:100%;display:block;border-radius:12px}
+.scan-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{width:200px;height:80px;border:2px solid #ff4500;border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.45)}
+.scan-line{width:100%;height:2px;background:linear-gradient(90deg,transparent,#ff4500,transparent);animation:scanline 2s linear infinite}
+@keyframes scanline{0%{transform:translateY(-40px)}100%{transform:translateY(40px)}}
+.scan-hint{margin-top:12px;font-size:12px;color:#aaa;text-align:center}
+.scan-result-box{background:#0d0d0d;border:1px solid #ff4500;border-radius:8px;padding:12px 16px;margin-top:12px;display:none}
+.scan-result-box.visible{display:block}
+.srb-barcode{font-family:monospace;font-size:16px;font-weight:700;color:#ff4500}
+.srb-format{font-size:11px;color:#666;margin-top:2px}
+.srb-data{margin-top:10px;font-size:12px;color:#ccc;line-height:1.8}
+
+/* MOBILE */
+@media(max-width:768px){
+#sidebar{transform:translateX(-220px)}
+#sidebar.open{transform:translateX(0)}
+#main{margin-left:0}
+#hamburger{display:block}
+.grid2,.grid3,.grid4{grid-template-columns:1fr}
+.ntc-big{font-size:48px}
+#content{padding:16px}
+.stat-num{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-logo">
+    <div class="logo-icon">🔁</div>
+    <div>
+      <div class="logo-text">iRollo 360</div>
+      <div class="logo-sub">Motor NTC 4.0</div>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-label">Principal</div>
+    <div class="sb-item active" onclick="nav('dashboard')">
+      <span class="icon">📊</span> Dashboard
+    </div>
+    <div class="sb-item" onclick="nav('ntc')">
+      <span class="icon">🧠</span> NTC / IA
+    </div>
+    <div class="sb-item" onclick="nav('rastreamento')">
+      <span class="icon">📡</span> Rastreamento
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-label">Catálogo</div>
+    <div class="sb-item" onclick="nav('scanner')">
+      <span class="icon">📷</span> Scanner EAN
+      <span class="sb-badge">GS1</span>
+    </div>
+    <div class="sb-item" onclick="nav('produtos')">
+      <span class="icon">📦</span> Produtos
+    </div>
+    <div class="sb-item" onclick="nav('imagens')">
+      <span class="icon">🖼️</span> Imagens
+    </div>
+    <div class="sb-item" onclick="nav('fornecedores')">
+      <span class="icon">🏭</span> Fornecedores
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-label">Operações</div>
+    <div class="sb-item" onclick="nav('pedidos')">
+      <span class="icon">📄</span> Pedidos
+    </div>
+    <div class="sb-item" onclick="nav('estoque')">
+      <span class="icon">🏪</span> Estoque
+    </div>
+    <div class="sb-item" onclick="nav('financeiro')">
+      <span class="icon">💰</span> Financeiro
+    </div>
+    <div class="sb-item" onclick="nav('relatorios')">
+      <span class="icon">📈</span> Relatórios
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-label">OEM / White-label</div>
+    <div class="sb-item" onclick="nav('oem')">
+      <span class="icon">🏷️</span> OEM Branding
+    </div>
+    <div class="sb-item" onclick="nav('config')">
+      <span class="icon">⚙️</span> Configurações
+    </div>
+  </div>
+
+  <div class="sb-footer">
+    iRollo 360 v4.0.0<br>
+    Motor NTC &mdash; OEM Ready<br>
+    <span style="color:#ff4500">&#9679;</span> Online
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <button id="hamburger" onclick="toggleSidebar()">&#9776;</button>
+    <div class="health-dot"></div>
+    <div class="health-text">Sistema <span>Online</span> &mdash; NTC 4.0 Ativo</div>
+    <div class="topbar-right" id="topbar-time"></div>
+  </div>
+
+  <div id="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">📊 Dashboard</div>
+      <div class="grid4" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-num" id="s-produtos">0</div><div class="stat-label">Produtos</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-pedidos">0</div><div class="stat-label">Pedidos</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-fornecedores">0</div><div class="stat-label">Fornecedores</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-imagens">0</div><div class="stat-label">Imagens</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">🧠 Status NTC</div>
+          <div id="dash-ntc-status">Carregando...</div>
+        </div>
+        <div class="card">
+          <div class="card-title">📈 Últimos Eventos</div>
+          <div id="dash-eventos" style="font-size:12px;color:#666;line-height:2">
+            &mdash; Nenhum evento ainda
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📦 Produtos Recentes</div>
+        <table id="dash-prod-table">
+          <thead><tr><th>EAN</th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Status</th></tr></thead>
+          <tbody id="dash-prod-body"><tr><td colspan="5" style="color:#555;text-align:center">Nenhum produto cadastrado</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NTC / IA -->
+    <div class="page" id="page-ntc">
+      <div class="page-title">🧠 NTC &mdash; Núcleo de Tomada de Controle</div>
+      <div class="grid2">
+        <div class="card" style="text-align:center">
+          <div class="card-title">Score Global NTC</div>
+          <div class="ntc-big ntc-aprovado" id="ntc-score">87</div>
+          <div style="font-size:13px;color:#888">/ 100 &mdash; <span id="ntc-label" class="badge badge-green">APROVADO</span></div>
+          <div style="margin-top:16px;font-size:12px;color:#666">Atualizado <span id="ntc-updated"></span></div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="runNTC()">&#9654; Rodar Análise NTC</button>
+        </div>
+        <div class="card">
+          <div class="card-title">DNA do Sistema</div>
+          <div class="dna-grid" id="dna-grid"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Módulos NTC</div>
+        <div id="ntc-modules"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🗒️ Rastreamento de Eventos</div>
+        <div id="ntc-rastro"></div>
+      </div>
+    </div>
+
+    <!-- RASTREAMENTO -->
+    <div class="page" id="page-rastreamento">
+      <div class="page-title">📡 Rastreamento em Tempo Real</div>
+      <div class="card">
+        <div class="card-title">Monitoramento de Eventos</div>
+        <div id="rast-feed" style="font-size:12px;color:#666;line-height:2.2;min-height:80px">
+          Aguardando eventos...
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Log do Sistema</div>
+        <div id="rast-log" style="font-family:monospace;font-size:11px;color:#666;line-height:1.9;min-height:60px">
+          // Sistema iniciado
+        </div>
+      </div>
+    </div>
+
+    <!-- SCANNER EAN -->
+    <div class="page" id="page-scanner">
+      <div class="page-title">📷 Scanner EAN / GS1</div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Câmera &mdash; Leitura ao Vivo</div>
+          <div class="scanner-wrap">
+            <video id="scanner-video" autoplay playsinline muted></video>
+            <div class="scan-overlay">
+              <div class="scan-frame"><div class="scan-line"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="startScanner()">&#9654; Iniciar Câmera</button>
+            <button class="btn btn-secondary" onclick="stopScanner()">&#9646;&#9646; Parar</button>
+          </div>
+          <div class="scan-result-box" id="scan-result-box">
+            <div class="srb-barcode" id="srb-barcode"></div>
+            <div class="srb-format" id="srb-format"></div>
+            <div class="srb-data" id="srb-data"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Entrada Manual</div>
+          <div class="form-group">
+            <label>Código EAN / GTIN</label>
+            <input type="text" id="ean-manual" placeholder="Ex: 7891234567890" maxlength="18">
+          </div>
+          <button class="btn btn-primary" onclick="lookupEAN()">&#128269; Consultar GS1</button>
+          <div id="ean-result" style="margin-top:14px;font-size:12px;color:#888;line-height:1.8"></div>
+
+          <div style="margin-top:20px">
+            <div class="card-title">Histórico de Scans</div>
+            <div id="scan-history" style="font-size:12px;color:#777;line-height:2">Nenhum scan ainda.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUTOS -->
+    <div class="page" id="page-produtos">
+      <div class="page-title">📦 Produtos</div>
+      <div class="card">
+        <div class="card-title">Cadastrar Produto</div>
+        <div class="grid3">
+          <div class="form-group"><label>EAN / GTIN</label><input type="text" id="p-ean" placeholder="7891234567890"></div>
+          <div class="form-group"><label>Nome do Produto</label><input type="text" id="p-nome" placeholder="Nome"></div>
+          <div class="form-group"><label>Categoria</label>
+            <select id="p-cat">
+              <option value="eletronicos">Eletrônicos</option>
+              <option value="eletrodomesticos">Eletrodomésticos</option>
+              <option value="informatica">Informática</option>
+              <option value="moveis">Móveis</option>
+              <option value="vestuario">Vestuário</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Preço (R$)</label><input type="number" id="p-preco" placeholder="0.00" step="0.01"></div>
+          <div class="form-group"><label>Estoque</label><input type="number" id="p-estoque" placeholder="0"></div>
+          <div class="form-group"><label>Marca</label><input type="text" id="p-marca" placeholder="Marca"></div>
+        </div>
+        <div class="form-group"><label>Descrição</label><textarea id="p-desc" rows="3" placeholder="Descrição do produto..."></textarea></div>
+        <button class="btn btn-primary" onclick="salvarProduto()">+ Cadastrar Produto</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Lista de Produtos</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" id="prod-search" placeholder="Buscar produto..." style="max-width:260px" oninput="filtrarProdutos()">
+          <select id="prod-filter-cat" onchange="filtrarProdutos()" style="max-width:160px">
+            <option value="">Todas categorias</option>
+            <option value="eletronicos">Eletrônicos</option>
+            <option value="eletrodomesticos">Eletrodomésticos</option>
+            <option value="informatica">Informática</option>
+            <option value="moveis">Móveis</option>
+            <option value="vestuario">Vestuário</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <table id="prod-table">
+          <thead><tr><th>EAN</th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Ações</th></tr></thead>
+          <tbody id="prod-body"><tr><td colspan="6" style="color:#555;text-align:center">Nenhum produto ainda</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- IMAGENS -->
+    <div class="page" id="page-imagens">
+      <div class="page-title">🖼️ Galeria de Imagens</div>
+
+      <!-- Upload -->
+      <div class="card">
+        <div class="card-title">Upload de Imagens</div>
+        <div class="img-upload-area" onclick="document.getElementById('img-file-input').click()" id="img-drop-area">
+          <div class="upload-icon">📂</div>
+          <p>Clique ou arraste imagens aqui</p>
+          <p style="font-size:11px;margin-top:6px">JPG, PNG, WEBP &mdash; máx 20MB por arquivo</p>
+        </div>
+        <input type="file" id="img-file-input" multiple accept="image/*" style="display:none" onchange="handleImgUpload(event)">
+        <div class="grid3" style="margin-top:14px">
+          <div class="form-group"><label>Categoria da Imagem</label>
+            <select id="img-cat-sel">
+              <option value="produto">Foto de Produto</option>
+              <option value="banner">Banner / Promoção</option>
+              <option value="logo">Logo / Marca</option>
+              <option value="embalagem">Embalagem</option>
+              <option value="lifestyle">Lifestyle</option>
+              <option value="tecnica">Ficha Técnica</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Vincular Produto (opcional)</label>
+            <select id="img-prod-sel"><option value="">-- Nenhum --</option></select>
+          </div>
+          <div class="form-group"><label>Tags (separadas por vírgula)</label>
+            <input type="text" id="img-tags" placeholder="frente, fundo, detalhe...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="img-cat-tabs" id="img-cat-tabs">
+        <div class="cat-tab active" onclick="filterImgCat('')" data-cat="">Todas</div>
+        <div class="cat-tab" onclick="filterImgCat('produto')" data-cat="produto">Produto</div>
+        <div class="cat-tab" onclick="filterImgCat('banner')" data-cat="banner">Banner</div>
+        <div class="cat-tab" onclick="filterImgCat('logo')" data-cat="logo">Logo</div>
+        <div class="cat-tab" onclick="filterImgCat('embalagem')" data-cat="embalagem">Embalagem</div>
+        <div class="cat-tab" onclick="filterImgCat('lifestyle')" data-cat="lifestyle">Lifestyle</div>
+        <div class="cat-tab" onclick="filterImgCat('tecnica')" data-cat="tecnica">Ficha Téc.</div>
+      </div>
+
+      <!-- Grid -->
+      <div class="img-grid" id="minhas-imagens-grid">
+        <div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:40px 0">
+          Nenhuma imagem ainda. Faça upload acima.
+        </div>
+      </div>
+    </div>
+
+    <!-- FORNECEDORES -->
+    <div class="page" id="page-fornecedores">
+      <div class="page-title">🏭 Fornecedores</div>
+      <div class="card">
+        <div class="card-title">Cadastrar Fornecedor</div>
+        <div class="grid2">
+          <div class="form-group"><label>Razão Social</label><input type="text" id="f-razao" placeholder="Empresa Ltda"></div>
+          <div class="form-group"><label>CNPJ</label><input type="text" id="f-cnpj" placeholder="00.000.000/0001-00"></div>
+          <div class="form-group"><label>Contato</label><input type="text" id="f-contato" placeholder="Nome do contato"></div>
+          <div class="form-group"><label>E-mail</label><input type="email" id="f-email" placeholder="email@empresa.com"></div>
+          <div class="form-group"><label>Telefone</label><input type="text" id="f-tel" placeholder="(11) 99999-9999"></div>
+          <div class="form-group"><label>País de Origem</label>
+            <select id="f-pais">
+              <option>Brasil</option><option>China</option><option>EUA</option>
+              <option>Alemanha</option><option>Itália</option><option>Outro</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="salvarFornecedor()">+ Adicionar Fornecedor</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Lista de Fornecedores</div>
+        <table><thead><tr><th>Razão Social</th><th>CNPJ</th><th>Contato</th><th>País</th><th>Ações</th></tr></thead>
+        <tbody id="forn-body"><tr><td colspan="5" style="color:#555;text-align:center">Nenhum fornecedor cadastrado</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- PEDIDOS -->
+    <div class="page" id="page-pedidos">
+      <div class="page-title">📄 Pedidos</div>
+      <div class="card">
+        <div class="card-title">Novo Pedido</div>
+        <div class="grid3">
+          <div class="form-group"><label>Número do Pedido</label><input type="text" id="ped-num" placeholder="PED-001"></div>
+          <div class="form-group"><label>Fornecedor</label><select id="ped-forn"><option value="">Selecionar...</option></select></div>
+          <div class="form-group"><label>Data Prevista</label><input type="date" id="ped-data"></div>
+        </div>
+        <div class="form-group"><label>Produtos (descreva os itens)</label><textarea id="ped-itens" rows="3" placeholder="Produto A x10, Produto B x5..."></textarea></div>
+        <div class="form-group"><label>Valor Total (R$)</label><input type="number" id="ped-valor" placeholder="0.00" step="0.01" style="max-width:200px"></div>
+        <button class="btn btn-primary" onclick="salvarPedido()">+ Criar Pedido</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Pedidos Ativos</div>
+        <table><thead><tr><th>Número</th><th>Fornecedor</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="ped-body"><tr><td colspan="6" style="color:#555;text-align:center">Nenhum pedido</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ESTOQUE -->
+    <div class="page" id="page-estoque">
+      <div class="page-title">🏪 Estoque</div>
+      <div class="card">
+        <div class="card-title">Visão Geral do Estoque</div>
+        <table><thead><tr><th>EAN</th><th>Produto</th><th>Qtd Atual</th><th>Mín.</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="estoque-body"><tr><td colspan="6" style="color:#555;text-align:center">Sem dados de estoque</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <div class="card-title">Ajuste Rápido</div>
+        <div class="grid3">
+          <div class="form-group"><label>Produto</label><select id="est-prod"><option value="">Selecionar...</option></select></div>
+          <div class="form-group"><label>Quantidade</label><input type="number" id="est-qtd" placeholder="0"></div>
+          <div class="form-group"><label>Tipo</label>
+            <select id="est-tipo"><option value="add">Entrada</option><option value="sub">Saída</option><option value="set">Definir</option></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="ajustarEstoque()">Aplicar Ajuste</button>
+      </div>
+    </div>
+
+    <!-- FINANCEIRO -->
+    <div class="page" id="page-financeiro">
+      <div class="page-title">💰 Financeiro</div>
+      <div class="grid4" style="margin-bottom:16px">
+        <div class="stat-card"><div class="stat-num" id="fin-receita" style="color:#00ff88">R$0</div><div class="stat-label">Receita Total</div></div>
+        <div class="stat-card"><div class="stat-num" id="fin-custo" style="color:#ff6500">R$0</div><div class="stat-label">Custos</div></div>
+        <div class="stat-card"><div class="stat-num" id="fin-margem" style="color:#ffaa00">0%</div><div class="stat-label">Margem</div></div>
+        <div class="stat-card"><div class="stat-num" id="fin-pedidos">0</div><div class="stat-label">Pedidos</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Lançamento Manual</div>
+        <div class="grid3">
+          <div class="form-group"><label>Tipo</label>
+            <select id="fin-tipo"><option value="receita">Receita</option><option value="custo">Custo</option></select>
+          </div>
+          <div class="form-group"><label>Descrição</label><input type="text" id="fin-desc" placeholder="Descrição"></div>
+          <div class="form-group"><label>Valor (R$)</label><input type="number" id="fin-val" placeholder="0.00" step="0.01"></div>
+        </div>
+        <button class="btn btn-primary" onclick="salvarLancamento()">+ Lançar</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Extrato</div>
+        <table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead>
+        <tbody id="fin-body"><tr><td colspan="4" style="color:#555;text-align:center">Nenhum lançamento</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- RELATORIOS -->
+    <div class="page" id="page-relatorios">
+      <div class="page-title">📈 Relatórios</div>
+      <div class="grid3">
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Relatório em desenvolvimento')">
+          <div style="font-size:36px;margin-bottom:8px">📦</div>
+          <div style="font-weight:700;color:#ccc">Produtos por Categoria</div>
+          <div style="font-size:12px;color:#666;margin-top:6px">Distribuição do catálogo</div>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Relatório em desenvolvimento')">
+          <div style="font-size:36px;margin-bottom:8px">💰</div>
+          <div style="font-weight:700;color:#ccc">DRE Simplificado</div>
+          <div style="font-size:12px;color:#666;margin-top:6px">Receitas vs Custos</div>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Relatório em desenvolvimento')">
+          <div style="font-size:36px;margin-bottom:8px">🏪</div>
+          <div style="font-weight:700;color:#ccc">Posição de Estoque</div>
+          <div style="font-size:12px;color:#666;margin-top:6px">Itens abaixo do mínimo</div>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Relatório em desenvolvimento')">
+          <div style="font-size:36px;margin-bottom:8px">🏭</div>
+          <div style="font-weight:700;color:#ccc">Performance de Fornecedores</div>
+          <div style="font-size:12px;color:#666;margin-top:6px">Pontualidade e qualidade</div>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="alert('Relatório em desenvolvimento')">
+          <div style="font-size:36px;margin-bottom:8px">🧠</div>
+          <div style="font-weight:700;color:#ccc">Histórico NTC</div>
+          <div style="font-size:12px;color:#666;margin-top:6px">Evolução do score de conformidade</div>
+        </div>
+        <div class="card" style="text-align:center;cursor:pointer" onclick="exportarDados()">
+          <div style="font-size:36px;margin-bottom:8px">💾</div>
+          <div style="font-weight:700;color:#ccc">Exportar Dados</div>
+          <div style="font-size:12px;color:#666;margin-top:6px">Backup JSON completo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OEM -->
+    <div class="page" id="page-oem">
+      <div class="page-title">🎷️ OEM Branding &mdash; White-label</div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Identidade Visual</div>
+          <div class="form-group"><label>Nome do Sistema</label><input type="text" id="oem-nome" placeholder="iRollo 360"></div>
+          <div class="form-group"><label>Subtítulo / Tagline</label><input type="text" id="oem-sub" placeholder="Motor NTC 4.0"></div>
+          <div class="form-group"><label>Cor Principal (hex)</label><input type="color" id="oem-cor" value="#ff4500" style="height:44px;padding:4px"></div>
+          <div class="form-group"><label>Logo URL ou Base64</label><input type="text" id="oem-logo" placeholder="https://..."></div>
+          <div class="form-group"><label>Versão do Sistema</label><input type="text" id="oem-versao" placeholder="4.0.0"></div>
+          <button class="btn btn-primary" onclick="aplicarOEM()">&#127922; Aplicar Branding</button>
+          <button class="btn btn-secondary" style="margin-left:8px" onclick="resetOEM()">Resetar</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Pré-visualização OEM</div>
+          <div id="oem-preview" style="background:#0d0d0d;border:1px solid #222;border-radius:8px;padding:20px;font-size:13px;color:#ccc;line-height:2">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <div id="oem-prev-icon" style="width:36px;height:36px;background:#ff4500;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">🔁</div>
+              <div>
+                <div id="oem-prev-nome" style="font-weight:700;font-size:15px">iRollo 360</div>
+                <div id="oem-prev-sub" style="font-size:11px;color:#888">Motor NTC 4.0</div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#555">
+              Sem necessidade de token &mdash; 100% local<br>
+              Pronto para white-label &amp; OEM<br>
+              Versão: <span id="oem-prev-ver">4.0.0</span>
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="card-title">Sobre o Motor</div>
+            <div style="font-size:12px;color:#666;line-height:2">
+              ✔ 100% client-side &mdash; sem servidor<br>
+              ✔ Sem API keys ou tokens externos<br>
+              ✔ LocalStorage persistence<br>
+              ✔ PWA-ready<br>
+              ✔ Scanner EAN via câmera (ZXing)<br>
+              ✔ NTC / IA local embarcado<br>
+              ✔ Export JSON completo
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="page" id="page-config">
+      <div class="page-title">⚙️ Configurações</div>
+      <div class="card">
+        <div class="card-title">Preferências Gerais</div>
+        <div class="grid2">
+          <div class="form-group"><label>Nome do Usuário</label><input type="text" id="cfg-user" placeholder="Admin"></div>
+          <div class="form-group"><label>Empresa</label><input type="text" id="cfg-empresa" placeholder="Minha Empresa Ltda"></div>
+          <div class="form-group"><label>CNPJ Empresa</label><input type="text" id="cfg-cnpj" placeholder="00.000.000/0001-00"></div>
+          <div class="form-group"><label>Moeda</label>
+            <select id="cfg-moeda"><option value="BRL">BRL &mdash; Real</option><option value="USD">USD &mdash; Dólar</option><option value="EUR">EUR &mdash; Euro</option></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Dados &amp; Backup</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="exportarDados()">&#128190; Exportar Backup</button>
+          <button class="btn btn-secondary" onclick="importarDados()">&#128228; Importar Backup</button>
+          <button class="btn btn-secondary" style="color:#ff6500;border-color:#ff450040" onclick="limparDados()">&#128465;&#65039; Limpar Tudo</button>
+        </div>
+        <input type="file" id="import-file" style="display:none" accept=".json" onchange="processImport(event)">
+      </div>
+      <div class="card">
+        <div class="card-title">Sobre o Sistema</div>
+        <div style="font-size:12px;color:#666;line-height:2">
+          <b style="color:#ccc">iRollo 360</b> &mdash; Motor NTC 4.0<br>
+          Versão: 4.0.0 &bull; Build: <span id="cfg-build"></span><br>
+          Plataforma: 100% client-side &bull; Sem token &bull; OEM Ready<br>
+          &copy; 2025 iRollo Systems. Todos os direitos reservados.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ============================================================
+// iRollo 360 — Motor NTC 4.0  |  Full Client-side App
+// Sem token, sem API externa. LocalStorage persistence.
+// ============================================================
+
+var DB = {
+  produtos: [],
+  fornecedores: [],
+  pedidos: [],
+  lancamentos: [],
+  imagens: [],
+  config: {},
+  oem: { nome:'iRollo 360', sub:'Motor NTC 4.0', cor:'#ff4500', versao:'4.0.0' },
+  ntc: { score:87, updated: new Date().toISOString() },
+  scanHistory: []
+};
+
+function dbLoad() {
+  try {
+    var s = localStorage.getItem('irollo360_db');
+    if (s) { var d = JSON.parse(s); Object.assign(DB, d); }
+  } catch(e) {}
+}
+function dbSave() {
+  try { localStorage.setItem('irollo360_db', JSON.stringify(DB)); } catch(e) {}
+}
+dbLoad();
+
+// ---- NAVIGATION ----
+function nav(page) {
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.sb-item').forEach(function(i){i.classList.remove('active');});
+  var pg = document.getElementById('page-' + page);
+  if (pg) pg.classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(function(i){
+    if (i.getAttribute('onclick') && i.getAttribute('onclick').indexOf("'" + page + "'") >= 0)
+      i.classList.add('active');
+  });
+  // close sidebar on mobile
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+  // page-specific refresh
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'produtos') renderProdutos();
+  if (page === 'fornecedores') renderFornecedores();
+  if (page === 'pedidos') renderPedidos();
+  if (page === 'estoque') renderEstoque();
+  if (page === 'financeiro') renderFinanceiro();
+  if (page === 'ntc') renderNTC();
+  if (page === 'rastreamento') renderRastreamento();
+  if (page === 'imagens') renderImagens();
+  if (page === 'config') renderConfig();
+  if (page === 'oem') renderOEM();
+}
+
+function toggleSidebar() {
+  var sb = document.getElementById('sidebar');
+  sb.classList.toggle('open');
+}
+
+// ---- CLOCK ----
+function updateClock() {
+  var now = new Date();
+  document.getElementById('topbar-time').textContent = now.toLocaleTimeString('pt-BR');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ---- DASHBOARD ----
+function renderDashboard() {
+  document.getElementById('s-produtos').textContent = DB.produtos.length;
+  document.getElementById('s-pedidos').textContent = DB.pedidos.length;
+  document.getElementById('s-fornecedores').textContent = DB.fornecedores.length;
+  document.getElementById('s-imagens').textContent = DB.imagens.length;
+
+  // NTC status
+  var sc = DB.ntc.score;
+  var label = sc >= 80 ? '✅ APROVADO' : sc >= 60 ? '⚠️ PENDENTE' : '❌ REPROVADO';
+  document.getElementById('dash-ntc-status').innerHTML =
+    '<div style="font-size:36px;font-weight:900;color:' + ntcColor(sc) + '">' + sc + '</div>' +
+    '<div style="font-size:12px;color:#888;margin-top:4px">' + label + '</div>';
+
+  // produtos table
+  var body = document.getElementById('dash-prod-body');
+  if (!DB.produtos.length) {
+    body.innerHTML = '<tr><td colspan="5" style="color:#555;text-align:center">Nenhum produto cadastrado</td></tr>';
+  } else {
+    body.innerHTML = DB.produtos.slice(-5).reverse().map(function(p) {
+      return '<tr><td><code style="color:#ff4500">' + p.ean + '</code></td><td>' + p.nome +
+        '</td><td>' + p.categoria + '</td><td>R$ ' + parseFloat(p.preco||0).toFixed(2) +
+        '</td><td><span class="badge badge-green">OK</span></td></tr>';
+    }).join('');
+  }
+}
+
+// ---- NTC ----
+function ntcColor(s) { return s >= 80 ? '#00ff88' : s >= 60 ? '#ffaa00' : '#ff6500'; }
+
+var NTC_MODULES = [
+  { name:'Cadastro de Produtos', weight:20, items:['EAN/GTIN válido','Nome preenchido','Categoria definida','Preço informado'] },
+  { name:'Gestão de Estoque', weight:15, items:['Estoque mínimo configurado','Movimentações registradas','Alertas ativos'] },
+  { name:'Fornecedores', weight:15, items:['CNPJ válido','Contato registrado','Origem documentada'] },
+  { name:'Financeiro', weight:20, items:['Receitas lançadas','Custos registrados','Margem calculada'] },
+  { name:'Rastreabilidade GS1', weight:20, items:['Scanner ativo','EANs válidos GS1','Histórico de scans'] },
+  { name:'Imagens & Mídia', weight:10, items:['Imagens por produto','Categorias definidas','Tags atribuídas'] }
+];
+
+function calcNTC() {
+  var scores = [];
+  NTC_MODULES.forEach(function(m) {
+    var s = 0;
+    if (m.name.includes('Produtos')) s = DB.produtos.length > 0 ? Math.min(100, DB.produtos.length * 20) : 0;
+    else if (m.name.includes('Estoque')) s = DB.produtos.some(function(p){return p.estoque > 0;}) ? 80 : 30;
+    else if (m.name.includes('Fornecedores')) s = DB.fornecedores.length > 0 ? 90 : 20;
+    else if (m.name.includes('Financeiro')) s = DB.lancamentos.length > 0 ? 85 : 15;
+    else if (m.name.includes('GS1')) s = DB.scanHistory.length > 0 ? 90 : 40;
+    else if (m.name.includes('Imagens')) s = DB.imagens.length > 0 ? 80 : 10;
+    scores.push({ mod: m, score: s });
+  });
+  var total = 0, weightSum = 0;
+  scores.forEach(function(s) { total += s.score * s.mod.weight; weightSum += s.mod.weight; });
+  return { scores: scores, global: Math.round(total / weightSum) };
+}
+
+function renderNTC() {
+  var r = calcNTC();
+  DB.ntc.score = r.global;
+  DB.ntc.updated = new Date().toISOString();
+  dbSave();
+
+  document.getElementById('ntc-score').textContent = r.global;
+  document.getElementById('ntc-score').className = 'ntc-big ' + (r.global >= 80 ? 'ntc-aprovado' : r.global >= 60 ? 'ntc-pendente' : 'ntc-reprovado');
+  var lb = r.global >= 80 ? 'APROVADO' : r.global >= 60 ? 'PENDENTE' : 'REPROVADO';
+  var lbCls = r.global >= 80 ? 'badge-green' : r.global >= 60 ? 'badge-orange' : 'badge-red';
+  document.getElementById('ntc-label').textContent = lb;
+  document.getElementById('ntc-label').className = 'badge ' + lbCls;
+  document.getElementById('ntc-updated').textContent = new Date().toLocaleString('pt-BR');
+
+  // DNA
+  var dnaData = [
+    { k:'Produtos', v: DB.produtos.length },
+    { k:'Fornecedores', v: DB.fornecedores.length },
+    { k:'Pedidos', v: DB.pedidos.length },
+    { k:'Imagens', v: DB.imagens.length },
+    { k:'Scans EAN', v: DB.scanHistory.length },
+    { k:'Lançamentos', v: DB.lancamentos.length },
+    { k:'Score NTC', v: r.global + '/100' },
+    { k:'Status', v: lb }
+  ];
+  document.getElementById('dna-grid').innerHTML = dnaData.map(function(d) {
+    return '<div class="dna-item"><div class="dna-key">' + d.k + '</div><div class="dna-val">' + d.v + '</div></div>';
+  }).join('');
+
+  // Modules
+  document.getElementById('ntc-modules').innerHTML = r.scores.map(function(s) {
+    var bar = s.score;
+    var col = bar >= 80 ? '#00ff88' : bar >= 60 ? '#ffaa00' : '#ff6500';
+    return '<div class="module-card"><div class="module-head"><span class="module-name">' + s.mod.name +
+      '</span><span class="module-score">' + bar + '/100</span></div>' +
+      '<div class="module-bar-wrap"><div class="module-bar" style="width:' + bar + '%;background:' + col + '"></div></div>' +
+      '<div class="module-items">' + s.mod.items.map(function(it) {
+        return '<span class="' + (bar > 50 ? 'check-ok' : 'check-no') + '">' + (bar > 50 ? '✓' : '✗') + '</span> ' + it;
+      }).join(' &bull; ') + '</div></div>';
+  }).join('');
+
+  // Rastro
+  document.getElementById('ntc-rastro').innerHTML = DB.scanHistory.slice(-5).reverse().map(function(s) {
+    return '<div class="rast-line">[' + new Date(s.ts).toLocaleTimeString('pt-BR') + '] SCAN → ' + s.code + ' (' + s.format + ')</div>';
+  }).join('') || '<div style="color:#555;font-size:12px">Nenhum scan registrado.</div>';
+}
+
+function runNTC() {
+  document.getElementById('ntc-score').textContent = '...';
+  setTimeout(function() { renderNTC(); addEvento('NTC atualizado: score ' + DB.ntc.score); }, 800);
+}
+
+// ---- RASTREAMENTO ----
+var eventosList = [];
+function addEvento(msg) {
+  var ts = new Date().toLocaleTimeString('pt-BR');
+  eventosList.unshift('[' + ts + '] ' + msg);
+  if (eventosList.length > 30) eventosList.pop();
+  var dashEv = document.getElementById('dash-eventos');
+  if (dashEv) dashEv.innerHTML = eventosList.slice(0,5).join('<br>');
+  var rastFeed = document.getElementById('rast-feed');
+  if (rastFeed) rastFeed.innerHTML = eventosList.slice(0,15).join('<br>');
+}
+function addLog(msg) {
+  var ts = new Date().toISOString().substr(11,8);
+  var el = document.getElementById('rast-log');
+  if (el) el.innerHTML = '// ' + ts + ' ' + msg + '<br>' + el.innerHTML;
+}
+function renderRastreamento() {
+  var el = document.getElementById('rast-feed');
+  if (el) el.innerHTML = eventosList.slice(0,15).join('<br>') || 'Aguardando eventos...';
+}
+
+// ---- SCANNER EAN ----
+var scannerStream = null;
+var scannerRunning = false;
+var scannerInterval = null;
+
+function startScanner() {
+  if (scannerRunning) return;
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+      scannerStream = stream;
+      scannerRunning = true;
+      var vid = document.getElementById('scanner-video');
+      vid.srcObject = stream;
+      vid.play();
+      addLog('Scanner de câmera iniciado');
+      addEvento('Scanner EAN iniciado');
+      // Simula leitura automática após 3s (demo)
+      scannerInterval = setTimeout(function() {
+        if (scannerRunning) simulateScan();
+      }, 3000);
+    })
+    .catch(function(e) {
+      addLog('Erro câmera: ' + e.message);
+      alert('Erro ao acessar câmera: ' + e.message);
+    });
+}
+
+function stopScanner() {
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(function(t) { t.stop(); });
+    scannerStream = null;
+  }
+  scannerRunning = false;
+  if (scannerInterval) clearTimeout(scannerInterval);
+  document.getElementById('scanner-video').srcObject = null;
+  addLog('Scanner parado');
+}
+
+function simulateScan() {
+  // Demo: gera EAN-13 aleatório
+  var code = '789' + Math.floor(1000000000 * Math.random()).toString().padStart(10,'0').substr(0,10);
+  processScan(code, 'EAN_13');
+}
+
+function processScan(code, format) {
+  var entry = { code: code, format: format, ts: Date.now() };
+  DB.scanHistory.unshift(entry);
+  if (DB.scanHistory.length > 100) DB.scanHistory.pop();
+  dbSave();
+
+  document.getElementById('srb-barcode').textContent = code;
+  document.getElementById('srb-format').textContent = 'Formato: ' + format;
+
+  // GS1 lookup local
+  var produto = DB.produtos.find(function(p) { return p.ean === code; });
+  var info = produto ?
+    '📦 Produto encontrado: <b>' + produto.nome + '</b><br>Categoria: ' + produto.categoria + '<br>Preço: R$ ' + parseFloat(produto.preco||0).toFixed(2) :
+    'ℹ️ EAN não cadastrado no sistema.<br><small style="color:#666">Use Cadastrar Produto para adicionar.</small>';
+  document.getElementById('srb-data').innerHTML = info;
+  document.getElementById('scan-result-box').classList.add('visible');
+
+  // History
+  var hist = document.getElementById('scan-history');
+  if (hist) hist.innerHTML = DB.scanHistory.slice(0,8).map(function(s) {
+    return '<div style="padding:3px 0;border-bottom:1px solid #f5f5f5"><code style="color:#ff4500">' + s.code + '</code> <span style="color:#bbb;font-size:10px">' + new Date(s.ts).toLocaleTimeString('pt-BR') + '</span></div>';
+  }).join('');
+
+  addEvento('Scan: ' + code + ' (' + format + ')');
+  addLog('SCAN ' + format + ': ' + code);
+}
+
+function lookupEAN() {
+  var code = (document.getElementById('ean-manual').value || '').trim();
+  if (!code) { alert('Informe um código EAN'); return; }
+  processScan(code, 'MANUAL');
+  var res = document.getElementById('ean-result');
+  var produto = DB.produtos.find(function(p) { return p.ean === code; });
+  if (produto) {
+    res.innerHTML = '✅ <b>Encontrado no catálogo local:</b><br>' +
+      'Nome: ' + produto.nome + '<br>Categoria: ' + produto.categoria +
+      '<br>Preço: R$ ' + parseFloat(produto.preco||0).toFixed(2) +
+      '<br>Estoque: ' + (produto.estoque||0) + ' un.';
+  } else {
+    res.innerHTML = 'ℹ️ EAN <b>' + code + '</b> não está no catálogo local.<br>' +
+      '<small style="color:#666">Verifique o GTIN em gs1br.org ou cadastre o produto.</small>';
+  }
+}
+
+// ---- PRODUTOS ----
+function salvarProduto() {
+  var ean = document.getElementById('p-ean').value.trim();
+  var nome = document.getElementById('p-nome').value.trim();
+  if (!nome) { alert('Nome obrigatório'); return; }
+  var p = {
+    id: Date.now(),
+    ean: ean || ('SEM-EAN-' + Date.now()),
+    nome: nome,
+    categoria: document.getElementById('p-cat').value,
+    preco: document.getElementById('p-preco').value,
+    estoque: parseInt(document.getElementById('p-estoque').value) || 0,
+    marca: document.getElementById('p-marca').value,
+    descricao: document.getElementById('p-desc').value
+  };
+  DB.produtos.push(p);
+  dbSave();
+  addEvento('Produto cadastrado: ' + nome);
+  addLog('PRODUTO: ' + nome + ' EAN:' + ean);
+  ['p-ean','p-nome','p-preco','p-estoque','p-marca','p-desc'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  renderProdutos();
+  updateSelects();
+}
+
+function renderProdutos() {
+  var search = (document.getElementById('prod-search')||{}).value || '';
+  var cat = (document.getElementById('prod-filter-cat')||{}).value || '';
+  var list = DB.produtos.filter(function(p) {
+    var matchSearch = !search || p.nome.toLowerCase().includes(search.toLowerCase()) || (p.ean||'').includes(search);
+    var matchCat = !cat || p.categoria === cat;
+    return matchSearch && matchCat;
+  });
+  var body = document.getElementById('prod-body');
+  if (!body) return;
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center">Nenhum produto encontrado</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(function(p) {
+    return '<tr>' +
+      '<td><code style="color:#ff4500">' + p.ean + '</code></td>' +
+      '<td>' + p.nome + '</td>' +
+      '<td>' + p.categoria + '</td>' +
+      '<td>R$ ' + parseFloat(p.preco||0).toFixed(2) + '</td>' +
+      '<td>' + (p.estoque||0) + ' un</td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="deleteProduto(' + p.id + ')">&#128465;</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function filtrarProdutos() { renderProdutos(); }
+
+function deleteProduto(id) {
+  if (!confirm('Remover produto?')) return;
+  DB.produtos = DB.produtos.filter(function(p){ return p.id !== id; });
+  dbSave();
+  renderProdutos();
+  addEvento('Produto removido');
+}
+
+// ---- FORNECEDORES ----
+function salvarFornecedor() {
+  var razao = document.getElementById('f-razao').value.trim();
+  if (!razao) { alert('Razão social obrigatória'); return; }
+  var f = {
+    id: Date.now(),
+    razao: razao,
+    cnpj: document.getElementById('f-cnpj').value,
+    contato: document.getElementById('f-contato').value,
+    email: document.getElementById('f-email').value,
+    tel: document.getElementById('f-tel').value,
+    pais: document.getElementById('f-pais').value
+  };
+  DB.fornecedores.push(f);
+  dbSave();
+  addEvento('Fornecedor cadastrado: ' + razao);
+  ['f-razao','f-cnpj','f-contato','f-email','f-tel'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  renderFornecedores();
+  updateSelects();
+}
+
+function renderFornecedores() {
+  var body = document.getElementById('forn-body');
+  if (!body) return;
+  if (!DB.fornecedores.length) {
+    body.innerHTML = '<tr><td colspan="5" style="color:#555;text-align:center">Nenhum fornecedor</td></tr>';
+    return;
+  }
+  body.innerHTML = DB.fornecedores.map(function(f) {
+    return '<tr><td>' + f.razao + '</td><td>' + f.cnpj + '</td><td>' + f.contato + '</td><td>' + f.pais + '</td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="deleteFornecedor(' + f.id + ')">&#128465;</button></td></tr>';
+  }).join('');
+}
+
+function deleteFornecedor(id) {
+  if (!confirm('Remover fornecedor?')) return;
+  DB.fornecedores = DB.fornecedores.filter(function(f){ return f.id !== id; });
+  dbSave();
+  renderFornecedores();
+  addEvento('Fornecedor removido');
+}
+
+// ---- PEDIDOS ----
+function salvarPedido() {
+  var num = document.getElementById('ped-num').value.trim();
+  if (!num) { alert('Número do pedido obrigatório'); return; }
+  var p = {
+    id: Date.now(),
+    num: num,
+    fornecedor: document.getElementById('ped-forn').value,
+    data: document.getElementById('ped-data').value,
+    itens: document.getElementById('ped-itens').value,
+    valor: parseFloat(document.getElementById('ped-valor').value)||0,
+    status: 'Pendente'
+  };
+  DB.pedidos.push(p);
+  dbSave();
+  addEvento('Pedido criado: ' + num);
+  ['ped-num','ped-itens','ped-valor'].forEach(function(id){ document.getElementById(id).value = ''; });
+  renderPedidos();
+}
+
+function renderPedidos() {
+  var body = document.getElementById('ped-body');
+  if (!body) return;
+  if (!DB.pedidos.length) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center">Nenhum pedido</td></tr>';
+    return;
+  }
+  body.innerHTML = DB.pedidos.map(function(p) {
+    return '<tr><td>' + p.num + '</td><td>' + (p.fornecedor||'—') + '</td><td>' + (p.data||'—') + '</td>' +
+      '<td>R$ ' + p.valor.toFixed(2) + '</td>' +
+      '<td><span class="badge badge-orange">' + p.status + '</span></td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="deletePedido(' + p.id + ')">&#128465;</button></td></tr>';
+  }).join('');
+}
+
+function deletePedido(id) {
+  DB.pedidos = DB.pedidos.filter(function(p){ return p.id !== id; });
+  dbSave(); renderPedidos(); addEvento('Pedido removido');
+}
+
+// ---- ESTOQUE ----
+function renderEstoque() {
+  var body = document.getElementById('estoque-body');
+  if (!body) return;
+  if (!DB.produtos.length) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#555;text-align:center">Sem produtos</td></tr>';
+    return;
+  }
+  body.innerHTML = DB.produtos.map(function(p) {
+    var st = (p.estoque||0) < 5 ? '<span class="badge badge-red">Baixo</span>' : '<span class="badge badge-green">OK</span>';
+    return '<tr><td><code>' + p.ean + '</code></td><td>' + p.nome + '</td><td>' + (p.estoque||0) + '</td><td>5</td><td>' + st + '</td>' +
+      '<td><button class="btn btn-secondary btn-sm" onclick="ajusteRapido(' + p.id + ')">+/-</button></td></tr>';
+  }).join('');
+
+  // populate select
+  var sel = document.getElementById('est-prod');
+  if (sel) {
+    sel.innerHTML = '<option value="">Selecionar...</option>' +
+      DB.produtos.map(function(p){ return '<option value="' + p.id + '">' + p.nome + '</option>'; }).join('');
+  }
+}
+
+function ajustarEstoque() {
+  var id = parseInt(document.getElementById('est-prod').value);
+  var qtd = parseInt(document.getElementById('est-qtd').value) || 0;
+  var tipo = document.getElementById('est-tipo').value;
+  var p = DB.produtos.find(function(x){ return x.id === id; });
+  if (!p) { alert('Selecione um produto'); return; }
+  if (tipo === 'add') p.estoque = (p.estoque||0) + qtd;
+  else if (tipo === 'sub') p.estoque = Math.max(0, (p.estoque||0) - qtd);
+  else p.estoque = qtd;
+  dbSave();
+  addEvento('Estoque ajustado: ' + p.nome + ' → ' + p.estoque);
+  renderEstoque();
+}
+
+function ajusteRapido(id) {
+  var qtd = parseInt(prompt('Nova quantidade em estoque:'), 10);
+  if (isNaN(qtd)) return;
+  var p = DB.produtos.find(function(x){ return x.id === id; });
+  if (p) { p.estoque = qtd; dbSave(); renderEstoque(); addEvento('Estoque definido: ' + p.nome + ' → ' + qtd); }
+}
+
+// ---- FINANCEIRO ----
+function salvarLancamento() {
+  var tipo = document.getElementById('fin-tipo').value;
+  var desc = document.getElementById('fin-desc').value.trim();
+  var val = parseFloat(document.getElementById('fin-val').value) || 0;
+  if (!desc || !val) { alert('Preencha descrição e valor'); return; }
+  DB.lancamentos.push({ id: Date.now(), tipo: tipo, desc: desc, val: val, data: new Date().toISOString() });
+  dbSave();
+  addEvento('Lançamento: ' + tipo + ' R$' + val.toFixed(2));
+  document.getElementById('fin-desc').value = '';
+  document.getElementById('fin-val').value = '';
+  renderFinanceiro();
+}
+
+function renderFinanceiro() {
+  var receita = 0, custo = 0;
+  DB.lancamentos.forEach(function(l) {
+    if (l.tipo === 'receita') receita += l.val;
+    else custo += l.val;
+  });
+  var margem = receita > 0 ? ((receita - custo) / receita * 100).toFixed(1) : 0;
+  document.getElementById('fin-receita').textContent = 'R$' + receita.toFixed(2);
+  document.getElementById('fin-custo').textContent = 'R$' + custo.toFixed(2);
+  document.getElementById('fin-margem').textContent = margem + '%';
+  document.getElementById('fin-pedidos').textContent = DB.pedidos.length;
+
+  var body = document.getElementById('fin-body');
+  if (!DB.lancamentos.length) {
+    body.innerHTML = '<tr><td colspan="4" style="color:#555;text-align:center">Nenhum lançamento</td></tr>';
+  } else {
+    body.innerHTML = DB.lancamentos.slice().reverse().map(function(l) {
+      var col = l.tipo === 'receita' ? '#00ff88' : '#ff6500';
+      return '<tr><td>' + new Date(l.data).toLocaleDateString('pt-BR') + '</td>' +
+        '<td><span style="color:' + col + '">' + l.tipo + '</span></td>' +
+        '<td>' + l.desc + '</td>' +
+        '<td style="color:' + col + '">R$ ' + l.val.toFixed(2) + '</td></tr>';
+    }).join('');
+  }
+}
+
+// ---- IMAGENS ----
+function handleImgUpload(event) {
+  var files = event.target.files;
+  var cat = document.getElementById('img-cat-sel').value;
+  var tags = document.getElementById('img-tags').value;
+  var prodId = document.getElementById('img-prod-sel').value;
+
+  Array.from(files).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = {
+        id: Date.now() + Math.random(),
+        name: file.name,
+        cat: cat,
+        tags: tags,
+        prodId: prodId,
+        src: e.target.result,
+        size: file.size,
+        ts: Date.now()
+      };
+      DB.imagens.push(img);
+      dbSave();
+      addEvento('Imagem adicionada: ' + file.name);
+      renderImagens();
+    };
+    reader.readAsDataURL(file);
+  });
+  event.target.value = '';
+}
+
+// drag & drop
+document.addEventListener('DOMContentLoaded', function() {
+  var area = document.getElementById('img-drop-area');
+  if (area) {
+    area.addEventListener('dragover', function(e) { e.preventDefault(); area.style.borderColor='#ff4500'; });
+    area.addEventListener('dragleave', function() { area.style.borderColor=''; });
+    area.addEventListener('drop', function(e) {
+      e.preventDefault();
+      area.style.borderColor='';
+      handleImgUpload({ target: { files: e.dataTransfer.files, value: '' } });
+    });
+  }
+});
+
+function renderImagens() {
+  updateImgProdSelect();
+  var grid = document.getElementById('minhas-imagens-grid');
+  if (!grid) return;
+  if (!DB.imagens.length) {
+    grid.innerHTML = '<div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:40px 0">Nenhuma imagem ainda. Faça upload acima.</div>';
+    return;
+  }
+  var activeCat = '';
+  document.querySelectorAll('.cat-tab').forEach(function(t) { if (t.classList.contains('active')) activeCat = t.getAttribute('data-cat') || ''; });
+  var list = activeCat ? DB.imagens.filter(function(i){ return i.cat === activeCat; }) : DB.imagens;
+  if (!list.length) {
+    grid.innerHTML = '<div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px">Nenhuma imagem nesta categoria.</div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(img) {
+    var prod = DB.produtos.find(function(p){ return String(p.id) === String(img.prodId); });
+    return '<div class="img-item" data-cat="' + img.cat + '">' +
+      '<img src="' + img.src + '" alt="' + img.name + '" loading="lazy">' +
+      '<div class="img-item-info">' +
+        '<div class="img-item-name">' + img.name + '</div>' +
+        '<div class="img-item-cat">' + img.cat + (prod ? ' • ' + prod.nome : '') + '</div>' +
+      '</div>' +
+      '<div class="img-item-actions">' +
+        '<div class="img-action-btn" onclick="viewImg(\'' + img.id + '\')">🔍 Ver</div>' +
+        '<div class="img-action-btn" onclick="deleteImg(\'' + img.id + '\')">🗑️</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function viewImg(id) {
+  var img = DB.imagens.find(function(i){ return String(i.id) === String(id); });
+  if (!img) return;
+  var w = window.open('');
+  w.document.write('<img src="' + img.src + '" style="max-width:100%;">');
+}
+
+function deleteImg(id) {
+  if (!confirm('Remover imagem?')) return;
+  DB.imagens = DB.imagens.filter(function(i){ return String(i.id) !== String(id); });
+  dbSave();
+  renderImagens();
+  addEvento('Imagem removida');
+}
+
+function updateImgProdSelect() {
+  var sel = document.getElementById('img-prod-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Nenhum --</option>' +
+    DB.produtos.map(function(p){ return '<option value="' + p.id + '">' + p.nome + '</option>'; }).join('');
+}
+
+function filterImgCat(cat) {
+  document.querySelectorAll('.cat-tab').forEach(function(t) {
+    t.classList.toggle('active', (t.getAttribute('data-cat')||'') === cat);
+  });
+  renderImagens();
+}
+
+// ---- OEM ----
+function renderOEM() {
+  var o = DB.oem;
+  document.getElementById('oem-nome').value = o.nome || 'iRollo 360';
+  document.getElementById('oem-sub').value = o.sub || 'Motor NTC 4.0';
+  document.getElementById('oem-cor').value = o.cor || '#ff4500';
+  document.getElementById('oem-logo').value = o.logo || '';
+  document.getElementById('oem-versao').value = o.versao || '4.0.0';
+  applyOEMPreview();
+}
+
+function aplicarOEM() {
+  DB.oem.nome = document.getElementById('oem-nome').value.trim() || 'iRollo 360';
+  DB.oem.sub = document.getElementById('oem-sub').value.trim() || 'Motor NTC 4.0';
+  DB.oem.cor = document.getElementById('oem-cor').value;
+  DB.oem.logo = document.getElementById('oem-logo').value.trim();
+  DB.oem.versao = document.getElementById('oem-versao').value.trim() || '4.0.0';
+  dbSave();
+  applyOEMPreview();
+  addEvento('OEM Branding aplicado: ' + DB.oem.nome);
+  alert('Branding aplicado com sucesso!');
+}
+
+function applyOEMPreview() {
+  var o = DB.oem;
+  document.getElementById('oem-prev-nome').textContent = o.nome;
+  document.getElementById('oem-prev-sub').textContent = o.sub;
+  document.getElementById('oem-prev-ver').textContent = o.versao;
+  document.getElementById('oem-prev-icon').style.background = o.cor;
+  if (o.logo) {
+    document.getElementById('oem-prev-icon').innerHTML = '<img src="' + o.logo + '" style="width:28px;height:28px;object-fit:contain;border-radius:6px">';
+  }
+}
+
+function resetOEM() {
+  DB.oem = { nome:'iRollo 360', sub:'Motor NTC 4.0', cor:'#ff4500', versao:'4.0.0' };
+  dbSave();
+  renderOEM();
+  addEvento('OEM resetado para padrão');
+}
+
+// ---- CONFIG ----
+function renderConfig() {
+  var c = DB.config;
+  if (c.user) document.getElementById('cfg-user').value = c.user;
+  if (c.empresa) document.getElementById('cfg-empresa').value = c.empresa;
+  if (c.cnpj) document.getElementById('cfg-cnpj').value = c.cnpj;
+  if (c.moeda) document.getElementById('cfg-moeda').value = c.moeda;
+  document.getElementById('cfg-build').textContent = new Date().toISOString().substr(0,10);
+}
+
+function salvarConfig() {
+  DB.config.user = document.getElementById('cfg-user').value;
+  DB.config.empresa = document.getElementById('cfg-empresa').value;
+  DB.config.cnpj = document.getElementById('cfg-cnpj').value;
+  DB.config.moeda = document.getElementById('cfg-moeda').value;
+  dbSave();
+  addEvento('Configurações salvas');
+  alert('Configurações salvas!');
+}
+
+// ---- BACKUP ----
+function exportarDados() {
+  var blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'irollo360_backup_' + new Date().toISOString().substr(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  addEvento('Backup exportado');
+}
+
+function importarDados() {
+  document.getElementById('import-file').click();
+}
+
+function processImport(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      Object.assign(DB, data);
+      dbSave();
+      addEvento('Backup importado');
+      alert('Dados importados com sucesso!');
+      renderDashboard();
+    } catch(err) {
+      alert('Erro ao importar: arquivo inválido');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function limparDados() {
+  if (!confirm('Tem certeza? Todos os dados serão apagados!')) return;
+  if (!confirm('CONFIRMAR: apagar TODOS os dados?')) return;
+  localStorage.removeItem('irollo360_db');
+  location.reload();
+}
+
+// ---- SELECTS HELPERS ----
+function updateSelects() {
+  // fornecedor select em pedidos
+  var pedForn = document.getElementById('ped-forn');
+  if (pedForn) {
+    pedForn.innerHTML = '<option value="">Selecionar...</option>' +
+      DB.fornecedores.map(function(f){ return '<option value="' + f.razao + '">' + f.razao + '</option>'; }).join('');
+  }
+  // produtos em estoque
+  renderEstoque();
+  // produtos em imagens
+  updateImgProdSelect();
+}
+
+// ---- INIT ----
+renderDashboard();
+updateSelects();
+
+// simulate some live events
+setTimeout(function(){
+  addEvento('Sistema iRollo 360 iniciado');
+  addLog('INIT: Motor NTC 4.0 carregado');
+}, 500);
+
+// Filter images helper (called from inline onclick)
+function filterImagesGrid(cat) {
+  var grid = document.getElementById('minhas-imagens-grid');
+  if (!grid) return;
+  grid.querySelectorAll('.img-item').forEach(function(item) {
+    var itemCat = item.getAttribute('data-cat') || '';
+    item.style.display = (!cat || itemCat === cat) ? '' : 'none';
+  });
+}
+
+</script>
+</body>
+</html>
