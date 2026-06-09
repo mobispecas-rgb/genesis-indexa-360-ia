@@ -756,6 +756,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         <button class="btn btn-sm btn-secondary" onclick="aprovCadExportar()">&#8593; Exportar dados</button>
         <button class="btn btn-sm btn-secondary" onclick="aprovCadImportar()">&#8595; Importar dados</button>
         <button class="btn btn-sm btn-primary" onclick="aprovCadAprovarSelecionados()">&#10003; Aprovar selecionados</button>
+        <button class="btn btn-sm btn-secondary" onclick="aprovSincronizarAprovadosLote()" style="color:#00c853;border-color:#00c85340">&#128640; Sync Bling + Wix</button>
         <span style="margin-left:auto;font-size:12px;color:#555" id="aprov-cad-count"></span>
       </div>
 
@@ -4228,6 +4229,7 @@ function aprovCadAprovar(idx) {
   var prods=getProds(); if(!prods[idx]) return;
   prods[idx].decisao='APROVADO'; prods[idx]._aprovadoEm=Date.now();
   saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+  aprovAutoSync(prods[idx]);
 }
 function aprovCadReprovar(idx) {
   var prods=getProds(); if(!prods[idx]) return;
@@ -4412,6 +4414,37 @@ function aprovEnriqVerDesc(idx){
     if(pg==='aprovacao-enriq') setTimeout(aprovEnriqRender,50);
   };
 })();
+
+function aprovAutoSync(p) {
+  var done=0, msgs=[], anyOk=false;
+  function check(plat,ok,info){ msgs.push(ok?'&#10003; '+plat+' ok':'&#9888; '+plat+': '+info); if(ok) anyOk=true; if(++done===2) showToast(msgs.join('<br>'),anyOk?'success':'warn'); }
+  api('POST','/api/bling/produto',p).then(function(r){ check('Bling',r&&r.ok,r&&r.ok?r.id:(r&&r.erro)||'erro'); }).catch(function(e){ check('Bling',false,e.message||'offline'); });
+  api('POST','/api/wix/produto',p).then(function(r){ check('Wix',r&&r.ok,r&&r.ok?r.id:(r&&r.erro)||'erro'); }).catch(function(e){ check('Wix',false,e.message||'offline'); });
+}
+
+function aprovSincronizarAprovadosLote() {
+  var prods=getProds().filter(function(p){ return p.decisao==='APROVADO' && !p._syncOk; });
+  if(!prods.length){ showToast('Nenhum produto aprovado pendente de sincronização.','warn'); return; }
+  if(!confirm('Sincronizar '+prods.length+' produto(s) com Bling e Wix?')) return;
+  showToast('&#9201; Sincronizando '+prods.length+' produto(s)...','info');
+  api('POST','/api/sync/lote',{produtos:prods}).then(function(r){
+    if(!r||!r.ok){ showToast('Erro: '+(r&&r.erro)||'falha','warn'); return; }
+    showToast('&#10003; Bling: '+r.bling.sincronizados+'/'+r.total+'&nbsp;&nbsp;&#10003; Wix: '+r.wix.sincronizados+'/'+r.total,'success');
+    var all=getProds(); prods.forEach(function(p){ var i=all.indexOf(p); if(i>=0) all[i]._syncOk=true; }); saveProds(all);
+  }).catch(function(e){ showToast('Erro sync: '+e.message,'warn'); });
+}
+
+function showToast(msg,type){
+  var t=document.getElementById('gn-toast');
+  if(!t){ t=document.createElement('div'); t.id='gn-toast';
+    t.style.cssText='position:fixed;bottom:24px;right:24px;z-index:9999;max-width:340px;padding:14px 18px;border-radius:10px;font-size:13px;line-height:1.6;box-shadow:0 4px 20px #000a;transition:opacity .4s;pointer-events:none';
+    document.body.appendChild(t); }
+  t.innerHTML=msg; t.style.opacity='1';
+  t.style.background=type==='success'?'#00c85322':type==='warn'?'#ff980022':'#ffffff11';
+  t.style.border='1px solid '+(type==='success'?'#00c853':type==='warn'?'#ff9800':'#555');
+  t.style.color=type==='success'?'#00c853':type==='warn'?'#ffaa00':'#ccc';
+  clearTimeout(t._timer); t._timer=setTimeout(function(){ t.style.opacity='0'; },5000);
+}
 
 function imgFiltrarCat(cat, btn) {
   document.querySelectorAll('.img-cat-btn').forEach(function(b) {
