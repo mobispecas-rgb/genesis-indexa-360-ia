@@ -399,6 +399,21 @@ app.post('/api/wix/sync/:id', async (req, res) => {
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
+// Wix — listar produtos (V3)
+app.post('/api/wix/produtos', async (req, res) => {
+  try {
+    const limite = Math.min(parseInt(req.body.limite) || 20, 100);
+    const data = await wixRequest('POST', '/stores/v3/products/query', {
+      query: { paging: { limit: limite, offset: 0 } }
+    });
+    const prods = (data.products || []).map(p => ({
+      id: p.id, nome: p.name, preco: p.priceData?.price,
+      estoque: p.stock?.inventoryStatus, visivel: p.visible
+    }));
+    res.json({ ok: true, produtos: prods, total: prods.length });
+  } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
 // ─── BLING → WIX — Importar produtos do Bling para Wix Stores V3 ─────
 app.post('/api/bling-wix/importar', async (req, res) => {
   try {

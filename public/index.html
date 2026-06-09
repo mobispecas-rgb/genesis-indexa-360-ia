@@ -1080,7 +1080,81 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div id="cat-save-status" style="font-size:12px;color:#555;margin-bottom:12px"></div>
       </div>
     </div>
-    <div class="page" id="page-wix"><div class="stub-page"><div class="stub-icon">&#128279;</div><h2>Wix Stores</h2><p>Em desenvolvimento &mdash; Wix Stores</p></div></div>
+    <div class="page" id="page-wix">
+      <div class="page-title">&#128279; Wix Stores &mdash; mobisautoparts.com.br</div>
+
+      <!-- Status -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          &#128308; Status das Integra&ccedil;&otilde;es
+          <button class="btn btn-sm btn-secondary" onclick="wixVerificarStatus()">&#8635; Verificar</button>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px;background:#f8f9fa;border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:22px">&#128230;</div>
+            <div style="font-weight:600;color:#374151;font-size:13px;margin:4px 0">Bling V3</div>
+            <div id="wix-st-bling" style="color:#6b7280;font-size:12px">—</div>
+          </div>
+          <div style="flex:1;min-width:140px;background:#f8f9fa;border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:22px">&#127968;</div>
+            <div style="font-weight:600;color:#374151;font-size:13px;margin:4px 0">Wix Stores</div>
+            <div id="wix-st-wix" style="color:#6b7280;font-size:12px">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Importar Bling → Wix -->
+      <div class="card">
+        <div class="card-title">&#128268; Importar Bling &#8594; Wix Stores</div>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:14px">Busca produtos ativos no Bling e cria os que ainda n&atilde;o existem no Wix. Produtos com nome id&ecirc;ntico s&atilde;o pulados automaticamente.</p>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+          <div style="flex:1;min-width:90px">
+            <label style="font-size:12px;color:#555;display:block;margin-bottom:4px">P&aacute;gina Bling</label>
+            <input type="number" id="wix-imp-pag" value="1" min="1" style="width:100%;background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:13px;color:#1a1a1a">
+          </div>
+          <div style="flex:1;min-width:90px">
+            <label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Limite (m&aacute;x 100)</label>
+            <input type="number" id="wix-imp-lim" value="50" min="1" max="100" style="width:100%;background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:13px;color:#1a1a1a">
+          </div>
+          <button class="btn btn-primary" onclick="wixImportarBling()" style="white-space:nowrap">&#128268; Importar Bling &#8594; Wix</button>
+        </div>
+        <div id="wix-imp-status" style="font-size:13px;color:#6b7280;min-height:18px"></div>
+      </div>
+
+      <!-- Resultado -->
+      <div class="card" id="wix-imp-result" style="display:none">
+        <div class="card-title">&#128202; Resultado da Importa&ccedil;&atilde;o</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="flex:1;min-width:80px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
+            <div id="wix-res-cri" style="font-size:26px;font-weight:700;color:#16a34a">0</div>
+            <div style="font-size:12px;color:#6b7280">Criados</div>
+          </div>
+          <div style="flex:1;min-width:80px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;text-align:center">
+            <div id="wix-res-ign" style="font-size:26px;font-weight:700;color:#d97706">0</div>
+            <div style="font-size:12px;color:#6b7280">J&aacute; existiam</div>
+          </div>
+          <div style="flex:1;min-width:80px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;text-align:center">
+            <div id="wix-res-err" style="font-size:26px;font-weight:700;color:#dc2626">0</div>
+            <div style="font-size:12px;color:#6b7280">Erros</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
+          <table style="font-size:12px">
+            <thead><tr><th>Produto</th><th>A&ccedil;&atilde;o</th><th>Detalhe</th></tr></thead>
+            <tbody id="wix-res-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Produtos no Wix -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          &#128722; Produtos no Wix (primeiros 20)
+          <button class="btn btn-sm btn-secondary" onclick="wixListarProdutos()">&#8635; Carregar</button>
+        </div>
+        <div id="wix-prods-lista" style="font-size:12px;color:#6b7280">Clique em Carregar para ver os produtos.</div>
+      </div>
+    </div>
     <div class="page" id="page-pdv"><div class="stub-page"><div class="stub-icon">&#127978;</div><h2>PDV</h2><p>Em desenvolvimento &mdash; PDV</p></div></div>
     <div class="page" id="page-plataforma-int"><div class="stub-page"><div class="stub-icon">&#128268;</div><h2>Integra&ccedil;&otilde;es de Plataforma</h2><p>Em desenvolvimento &mdash; Integra&ccedil;&otilde;es de Plataforma</p></div></div>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
@@ -1412,6 +1486,7 @@ function nav(page) {
   if (page === 'imagens') loadMinhasImagens();
   if (page === 'aprovacao') { atualizarBadgeAprovacao(); aprovRenderLista(); }
   if (page === 'aprovados') aprovRenderAprovados();
+  if (page === 'wix') wixVerificarStatus();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -4445,6 +4520,67 @@ function showToast(msg,type){
   t.style.border='1px solid '+(type==='success'?'#00c853':type==='warn'?'#ff9800':'#555');
   t.style.color=type==='success'?'#00c853':type==='warn'?'#ffaa00':'#ccc';
   clearTimeout(t._timer); t._timer=setTimeout(function(){ t.style.opacity='0'; },5000);
+}
+
+// ─── WIX STORES — funções da página ────────────────────────
+async function wixVerificarStatus() {
+  var elB = document.getElementById('wix-st-bling');
+  var elW = document.getElementById('wix-st-wix');
+  if (elB) elB.textContent = 'Verificando...';
+  if (elW) elW.textContent = 'Verificando...';
+  api('GET', '/api/bling/status').then(function(r) {
+    if (!elB) return;
+    elB.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
+    elB.style.color = r && r.ok ? '#16a34a' : '#dc2626';
+  }).catch(function(e) { if (elB) { elB.textContent = '✗ ' + e.message; elB.style.color = '#dc2626'; } });
+  api('GET', '/api/wix/status').then(function(r) {
+    if (!elW) return;
+    elW.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
+    elW.style.color = r && r.ok ? '#16a34a' : '#dc2626';
+  }).catch(function(e) { if (elW) { elW.textContent = '✗ ' + e.message; elW.style.color = '#dc2626'; } });
+}
+
+async function wixImportarBling() {
+  var pagina = parseInt(document.getElementById('wix-imp-pag').value) || 1;
+  var limite = parseInt(document.getElementById('wix-imp-lim').value) || 50;
+  var stEl = document.getElementById('wix-imp-status');
+  var resEl = document.getElementById('wix-imp-result');
+  stEl.textContent = '⏳ Importando página ' + pagina + ' (' + limite + ' produtos)... aguarde.';
+  resEl.style.display = 'none';
+  try {
+    var r = await api('POST', '/api/bling-wix/importar', { pagina: pagina, limite: limite });
+    if (!r || !r.ok) { stEl.textContent = '✗ Erro: ' + ((r && r.erro) || 'Falha'); return; }
+    stEl.textContent = '✓ Concluído — ' + r.total + ' produto(s) do Bling processados';
+    document.getElementById('wix-res-cri').textContent = r.criados || 0;
+    document.getElementById('wix-res-ign').textContent = r.ignorados || 0;
+    document.getElementById('wix-res-err').textContent = r.erros || 0;
+    var tbody = document.getElementById('wix-res-tbody');
+    tbody.innerHTML = (r.resultados || []).map(function(it) {
+      var c = (it.acao === 'criado' || it.acao === 'criado (lote)') ? '#16a34a' : it.acao === 'erro' ? '#dc2626' : '#d97706';
+      return '<tr><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (it.nome||'') + '">' + (it.nome||'—') + '</td>'
+        + '<td style="color:' + c + ';font-weight:600">' + (it.acao||'—') + '</td>'
+        + '<td style="color:#6b7280">' + (it.erro || it.wix_id || '') + '</td></tr>';
+    }).join('');
+    resEl.style.display = 'block';
+    showToast('Bling→Wix: ' + r.criados + ' criados, ' + r.ignorados + ' ignorados', r.erros > 0 ? 'warn' : 'success');
+  } catch(e) { stEl.textContent = '✗ Erro: ' + e.message; }
+}
+
+async function wixListarProdutos() {
+  var el = document.getElementById('wix-prods-lista');
+  el.textContent = '⏳ Carregando...';
+  try {
+    var r = await api('POST', '/api/wix/produtos', { limite: 20 });
+    if (!r || !r.ok) { el.textContent = 'Erro: ' + ((r && r.erro) || 'falha'); return; }
+    var prods = r.produtos || [];
+    if (!prods.length) { el.textContent = 'Nenhum produto encontrado.'; return; }
+    el.innerHTML = '<table style="font-size:12px"><thead><tr><th>Produto</th><th>Preço</th><th>Estoque</th></tr></thead><tbody>'
+      + prods.map(function(p) {
+          return '<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (p.nome||'') + '">' + (p.nome||'—') + '</td>'
+            + '<td>' + (p.preco ? 'R$ ' + Number(p.preco).toFixed(2) : '—') + '</td>'
+            + '<td style="color:' + (p.estoque === 'IN_STOCK' ? '#16a34a' : '#d97706') + '">' + (p.estoque || '—') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+  } catch(e) { el.textContent = 'Erro: ' + e.message; }
 }
 
 function imgFiltrarCat(cat, btn) {
