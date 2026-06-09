@@ -314,6 +314,19 @@ tr:hover td{background:#ffffff04}
 
         <div id="ia-modules"></div>
 
+        <!-- VOZ DO LOJISTA — só disponível com DNA confirmado -->
+        <div class="card" id="ia-voz-card" style="display:none">
+          <div class="card-title">&#127908; Voz do Lojista — Descri&ccedil;&atilde;o IA</div>
+          <p style="font-size:12px;color:#555;margin-bottom:10px">Gera descri&ccedil;&atilde;o t&eacute;cnica com base no DNA confirmado. <strong style="color:#ff4500">Nunca inventa dados.</strong></p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="btn btn-sm btn-secondary" onclick="gerarVozIA('tecnico')">&#9881;&#65039; T&eacute;cnico</button>
+            <button class="btn btn-sm btn-secondary" onclick="gerarVozIA('comercial')">&#128188; Comercial</button>
+            <button class="btn btn-sm btn-secondary" onclick="gerarVozIA('seo')">&#128269; SEO</button>
+          </div>
+          <div id="ia-voz-output" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:12px;font-size:13px;color:#ccc;min-height:60px;white-space:pre-wrap">—</div>
+          <div id="ia-voz-status" style="font-size:11px;color:#555;margin-top:6px"></div>
+        </div>
+
         <div class="card">
           <div class="card-title">&#128247; Adicionar Imagem ao Produto</div>
           <div class="grid2">
@@ -572,6 +585,48 @@ async function api(method, path, body) {
 function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== FUNÇÕES UTILITÁRIAS NTC / PRODUTOS =====
+function renderNTC(r, el) {
+  if (!r || !el) return;
+  var ntcPct = Math.round((r.ntc || 0) * 100);
+  var cor = r.decisao === 'APROVADO' ? '#00c853' : r.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+  var modulos = r.nct_componentes || r.componentes || {};
+  var modsHtml = Object.keys(modulos).map(function(k) {
+    var v = modulos[k];
+    var pct = Math.round((v || 0) * 100);
+    var c = pct >= 95 ? '#00c853' : pct >= 60 ? '#ff9800' : '#f44336';
+    return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #1f1f1f">'
+         + '<span style="color:#888">' + k + '</span>'
+         + '<span style="color:' + c + ';font-weight:700">' + pct + '%</span>'
+         + '</div>';
+  }).join('');
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">'
+    + '<div style="font-size:36px;font-weight:900;color:' + cor + '">' + ntcPct + '%</div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:' + cor + '">' + (r.decisao || 'REPROVADO') + '</div>'
+    + '<div style="font-size:11px;color:#555">RAST: ' + (r.rast_hash || '—') + '</div></div>'
+    + '</div>'
+    + (modsHtml ? '<div>' + modsHtml + '</div>' : '');
+}
+
+function atualizarStats() {
+  var prods = getProds();
+  var aprov = prods.filter(function(p){ return p.decisao === 'APROVADO'; }).length;
+  var pend  = prods.filter(function(p){ return p.decisao === 'PENDENTE'; }).length;
+  var repr  = prods.filter(function(p){ return p.decisao === 'REPROVADO'; }).length;
+  var elT = document.getElementById('st-total'); if (elT) elT.textContent = prods.length;
+  var elA = document.getElementById('st-aprov'); if (elA) elA.textContent = aprov;
+  var elP = document.getElementById('st-pend');  if (elP) elP.textContent = pend;
+  var elR = document.getElementById('st-repr');  if (elR) elR.textContent = repr;
+}
+
+function addProdRow(prod) {
+  // Atualiza tabela de produtos se visível
+  loadProdutos();
+  // Atualiza recentes no dashboard se visível
+  var dashRecent = document.getElementById('dash-recent');
+  if (dashRecent) loadDashboard();
 }
 
 function badgeHtml(decisao) {
@@ -848,6 +903,54 @@ function renderIAResults(result, texto) {
   document.getElementById('ia-results').scrollIntoView({behavior:'smooth'});
 
   if (parsed.sku) document.getElementById('img-prod-id').value = parsed.sku;
+
+  // Voz do Lojista — só exibe se DNA confirmado (fabricante + sku presentes)
+  var vozCard = document.getElementById('ia-voz-card');
+  if (parsed.sku && parsed.fabricante) {
+    vozCard.style.display = 'block';
+    window._iaVozParsed = parsed;
+  } else {
+    vozCard.style.display = 'none';
+    window._iaVozParsed = null;
+  }
+}
+
+// Geração de voz IA — EXIGE DNA confirmado, nunca inventa dados
+async function gerarVozIA(perfil) {
+  var p = window._iaVozParsed;
+  if (!p || !p.fabricante || !p.sku) {
+    document.getElementById('ia-voz-status').textContent = '✖ DNA não confirmado — Fabricante e SKU obrigatórios.';
+    return;
+  }
+  var out = document.getElementById('ia-voz-output');
+  var status = document.getElementById('ia-voz-status');
+  out.textContent = '⏳ Gerando...';
+  status.textContent = '';
+
+  var nomeCompleto = [p.descricao, p.sku, p.fabricante].filter(Boolean).join(' — ');
+  var perfilLabel = { tecnico: 'técnico especialista em autopeças', comercial: 'vendedor comercial', seo: 'especialista SEO para autopeças' }[perfil] || 'técnico';
+
+  // Prompt com dados reais apenas — sem inventar nada
+  var prompt = 'Você é um ' + perfilLabel + '. Escreva uma descrição curta (máximo 3 frases) para o produto abaixo.\n'
+    + 'USE APENAS os dados fornecidos. NÃO invente especificações, aplicações, OEM ou NCM que não estejam listados.\n'
+    + 'Se um dado não estiver disponível, não mencione.\n\n'
+    + 'Produto: ' + nomeCompleto + '\n'
+    + (p.familia ? 'Família: ' + p.familia + '\n' : '')
+    + (p.componentes && p.componentes.length ? 'Componentes: ' + p.componentes.join(', ') + '\n' : '');
+
+  try {
+    var r = await api('POST', '/motor/voz', { perfil: perfil, prompt: prompt });
+    if (r.ok && r.texto) {
+      out.textContent = r.texto;
+      status.textContent = '✅ Gerado com base no DNA confirmado · Perfil: ' + perfil;
+    } else {
+      out.textContent = '—';
+      status.textContent = '✖ ' + (r.erro || 'Erro na geração');
+    }
+  } catch(e) {
+    out.textContent = '—';
+    status.textContent = '✖ ' + e.message;
+  }
 }
 
 async function uploadImagem() {
