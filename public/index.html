@@ -609,6 +609,10 @@ tr:hover td{background:#f9fafb}
     <div class="page" id="page-oem">
       <div class="page-title">&#10024; Enriquecimento OEM</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google e preenche os campos. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
+      <div id="oem-edit-banner" style="display:none;background:#ff450015;border:1px solid #ff450040;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ff9800;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>&#9999;&#65039; Reenriquecendo / editando: <strong id="oem-edit-nome" style="color:#fff"></strong></span>
+        <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="nav('oem')">&#10006; Cancelar edi&ccedil;&atilde;o</button>
+      </div>
 
       <div class="card">
         <div class="card-title">&#128269; Busca de Enriquecimento</div>
@@ -666,7 +670,7 @@ tr:hover td{background:#f9fafb}
           <div class="card" style="border-color:#00c85330">
             <div class="card-title" style="color:#00c853">&#128640; Pronto para Publicar</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-primary" style="flex:1" onclick="oemPublicar()">&#128230; Publicar no Cat&aacute;logo</button>
+              <button class="btn btn-primary" style="flex:1" id="oem-btn-publicar" onclick="oemPublicar()">&#128230; Publicar no Cat&aacute;logo</button>
               <button class="btn btn-secondary" onclick="oemEnviarBling()">&#129695; Enviar ao Bling</button>
               <button class="btn btn-secondary" onclick="oemEnviarWix()">&#127760; Sincronizar Wix</button>
             </div>
@@ -1486,7 +1490,7 @@ function badgeHtml(decisao) {
 }
 
 // ===== NAVIGATION =====
-function nav(page) {
+function nav(page, opts) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.querySelectorAll('.sb-item').forEach(function(i){ i.classList.remove('active'); });
   var el = document.getElementById('page-' + page);
@@ -1494,6 +1498,7 @@ function nav(page) {
   document.querySelectorAll('.sb-item').forEach(function(i) {
     if (i.getAttribute('onclick') === "nav('" + page + "')") i.classList.add('active');
   });
+  if (page === 'oem') oemDefinirModoEdicao((opts && opts.editIdx != null) ? opts.editIdx : null);
   if (page === 'dashboard') loadDashboard();
   if (page === 'produtos') loadProdutos();
   if (page === 'imagens') loadMinhasImagens();
@@ -1531,8 +1536,25 @@ setInterval(function() {
 }, 1000);
 
 // ===== LOCALSTORAGE =====
-function getProds() { try { return JSON.parse(localStorage.getItem('gn_prod') || '[]'); } catch(e) { return []; } }
+function getProds() {
+  var prods;
+  try { prods = JSON.parse(localStorage.getItem('gn_prod') || '[]'); } catch(e) { return []; }
+  var changed = false;
+  prods.forEach(function(p, i) {
+    if (!p.id) { p.id = 'p-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2,8); changed = true; }
+  });
+  if (changed) localStorage.setItem('gn_prod', JSON.stringify(prods));
+  return prods;
+}
 function saveProds(arr) { localStorage.setItem('gn_prod', JSON.stringify(arr)); }
+function prodIndex(p) {
+  var all = getProds();
+  if (p && p.id) {
+    for (var i = 0; i < all.length; i++) { if (all[i].id === p.id) return i; }
+    return -1;
+  }
+  return all.indexOf(p);
+}
 function getImagens() { try { return JSON.parse(localStorage.getItem('gn_imagens') || '[]'); } catch(e) { return []; } }
 function saveImagens(arr) { localStorage.setItem('gn_imagens', JSON.stringify(arr)); }
 
@@ -2299,7 +2321,7 @@ function aprovRenderAprovados() {
   if (!el) return;
   if (!prods.length) { el.innerHTML='<div style="text-align:center;padding:40px;color:#555">Nenhum produto aprovado ainda.</div>'; return; }
   el.innerHTML = prods.map(function(p, i) {
-    var idx = getProds().indexOf(p);
+    var idx = prodIndex(p);
     return '<div style="background:#161616;border:1px solid #00c85330;border-radius:10px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
       + '<div style="flex:1"><div style="font-weight:700;color:#fff">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
       + '<div style="font-size:11px;color:#555">'+esc(p.fabricante||'')+' · <code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></div>'
@@ -2348,7 +2370,7 @@ function aprovEnriquecerProd(idx) {
   var p = getProds()[idx];
   if (!p) return;
   window._catDados = Object.assign({}, p);
-  nav('oem');
+  nav('oem', { editIdx: idx });
   setTimeout(function() {
     document.getElementById('oem-input').value = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' ');
     if (p.codigo_fabricante) document.getElementById('oem-f-sku').value = p.codigo_fabricante;
@@ -2433,6 +2455,37 @@ async function aprovPublicarML() { alert('Integração Mercado Livre — configu
 // ===== ENRIQUECIMENTO OEM =====
 var _oemDados = {};
 var _oemNTCTimer = null;
+var _oemEditIdx = null;
+
+// Define se a tela de Enriquecimento OEM está em modo "edição/reenriquecimento"
+// de um produto já existente na fila (idx) ou em modo "novo produto" (null).
+function oemDefinirModoEdicao(idx) {
+  _oemEditIdx = idx;
+  var banner = document.getElementById('oem-edit-banner');
+  var btnPublicar = document.getElementById('oem-btn-publicar');
+  if (idx != null) {
+    var p = getProds()[idx];
+    if (banner) {
+      banner.style.display = 'flex';
+      document.getElementById('oem-edit-nome').textContent = (p && (p.nome || p.codigo_fabricante)) || ('#' + idx);
+    }
+    if (btnPublicar) btnPublicar.innerHTML = '&#128190; Atualizar Produto';
+  } else {
+    if (banner) banner.style.display = 'none';
+    if (btnPublicar) btnPublicar.innerHTML = '&#128230; Publicar no Cat&aacute;logo';
+  }
+}
+
+// Dados completos do produto (campos do formulário OEM mesclados com o
+// produto original quando em modo edição) — usado para enviar ao Bling/Wix.
+function oemDadosCompletos() {
+  var dados = oemColetar();
+  if (_oemEditIdx != null) {
+    var atual = getProds()[_oemEditIdx];
+    if (atual) return Object.assign({}, atual, dados);
+  }
+  return dados;
+}
 
 async function oemBuscar() {
   var q = document.getElementById('oem-input').value.trim();
@@ -2583,17 +2636,22 @@ async function oemPublicar() {
   var r = _oemDados._ntcResult || {};
   if ((r.ntc || 0) < 0.60) { alert('NTC insuficiente. Complete os campos obrigatórios.'); return; }
   var prods = getProds();
-  prods.push(Object.assign({}, dados, {
-    ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash,
-    id: 'oem-' + Date.now(), _fonte: 'oem', ts: Date.now()
-  }));
+  var extras = { ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now() };
+  if (_oemEditIdx != null && prods[_oemEditIdx]) {
+    prods[_oemEditIdx] = Object.assign({}, prods[_oemEditIdx], dados, extras);
+    saveProds(prods);
+    atualizarStats(); loadProdutos(); cntcPreencherSelect();
+    document.getElementById('oem-pub-status').textContent = '✅ Produto atualizado! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
+    return;
+  }
+  prods.push(Object.assign({}, dados, extras, { id: 'oem-' + Date.now(), _fonte: 'oem' }));
   saveProds(prods);
   atualizarStats(); loadProdutos(); cntcPreencherSelect();
   document.getElementById('oem-pub-status').textContent = '✅ Publicado no catálogo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
 }
 
 async function oemEnviarBling() {
-  var dados = oemColetar();
+  var dados = oemDadosCompletos();
   document.getElementById('oem-pub-status').textContent = '⏳ Enviando ao Bling...';
   try {
     var r = await api('POST', '/bling/produto', dados);
@@ -2602,7 +2660,7 @@ async function oemEnviarBling() {
 }
 
 async function oemEnviarWix() {
-  var dados = oemColetar();
+  var dados = oemDadosCompletos();
   document.getElementById('oem-pub-status').textContent = '⏳ Sincronizando no Wix...';
   try {
     var r = await api('POST', '/wix/produto', { nome: dados.nome + ' ' + (dados.fabricante||''), sku: dados.codigo_fabricante });
@@ -4399,7 +4457,7 @@ function aprovCadRender() {
     return;
   }
   tbody.innerHTML = prods.map(function(p,i){
-    var gi = start+i;
+    var gi = prodIndex(p);
     var ntcPct = Math.round((p.ntc||0)*100);
     var ntcClr = ntcPct>=95?'#00ff88':ntcPct>=70?'#ffaa00':'#ff6500';
     var stClr = p.decisao==='APROVADO'?'#00c853':p.decisao==='REPROVADO'?'#f44336':'#ff9800';
@@ -4532,7 +4590,7 @@ function aprovEnriqRender(){
     return;
   }
   tbody.innerHTML=prods.map(function(p,i){
-    var gi=getProds().indexOf(p);
+    var gi=prodIndex(p);
     var ntcPct=Math.round((p.ntc||0)*100);
     var ntcClr=ntcPct>=95?'#00ff88':ntcPct>=70?'#ffaa00':'#ff6500';
     var stClr=p.decisao==='APROVADO'?'#00c853':p.decisao==='REPROVADO'?'#f44336':'#ff9800';
@@ -4631,7 +4689,7 @@ function aprovSincronizarAprovadosLote() {
   api('POST','/sync/lote',{produtos:prods}).then(function(r){
     if(!r||!r.ok){ showToast('Erro: '+(r&&r.erro)||'falha','warn'); return; }
     showToast('&#10003; Bling: '+r.bling.sincronizados+'/'+r.total+'&nbsp;&nbsp;&#10003; Wix: '+r.wix.sincronizados+'/'+r.total,'success');
-    var all=getProds(); prods.forEach(function(p){ var i=all.indexOf(p); if(i>=0) all[i]._syncOk=true; }); saveProds(all);
+    var all=getProds(); prods.forEach(function(p){ var i=all.findIndex(function(x){return x.id===p.id;}); if(i>=0) all[i]._syncOk=true; }); saveProds(all);
   }).catch(function(e){ showToast('Erro sync: '+e.message,'warn'); });
 }
 
