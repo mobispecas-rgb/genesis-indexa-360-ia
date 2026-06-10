@@ -6,9 +6,27 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+
+// Faz uma requisição HTTPS e resolve com o JSON da resposta.
+// Aborta com erro após `timeoutMs` para evitar requisições penduradas
+// (causa de "travamentos" quando Bling/Wix/Serper não respondem).
+function httpsJSON(opts, body, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(opts, r => {
+      let b = '';
+      r.on('data', d => b += d);
+      r.on('end', () => { try { resolve(JSON.parse(b)); } catch(e) { reject(e); } });
+    });
+    req.on('error', reject);
+    req.setTimeout(timeoutMs, () => req.destroy(new Error(`Timeout: sem resposta de ${opts.hostname} em ${timeoutMs/1000}s`)));
+    if (body) req.write(body);
+    req.end();
+  });
+}
 
 // -----------------------------------------------------------
 // MIDDLEWARES
@@ -164,11 +182,12 @@ app.get('/api/imagens/proxy', (req, res) => {
         const parsed = new URL(imgUrl);
         const proto = parsed.protocol === 'https:' ? require('https') : require('http');
         const opts = { hostname: parsed.hostname, path: parsed.pathname + parsed.search, headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': parsed.origin } };
-        proto.get(opts, imgRes => {
+        const imgReq = proto.get(opts, imgRes => {
             res.setHeader('Content-Type', imgRes.headers['content-type'] || 'image/jpeg');
             res.setHeader('Cache-Control', 'public, max-age=86400');
             imgRes.pipe(res);
         }).on('error', () => res.status(502).end());
+        imgReq.setTimeout(15000, () => imgReq.destroy(new Error('Timeout')));
     } catch(e) {
         res.status(400).end();
     }
@@ -182,17 +201,11 @@ app.get('/api/imagens/buscar', async (req, res) => {
     // 1) Serper.dev — 2.500 buscas grátis, depois $1/1.000 (só 1 chave)
     if (process.env.SERPER_API_KEY) {
         try {
-            const https = require('https');
             const body = JSON.stringify({ q, num: 12 });
-            const data = await new Promise((resolve, reject) => {
-                const req2 = https.request({
-                    hostname: 'google.serper.dev', path: '/images', method: 'POST',
-                    headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-                }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
-                req2.on('error', reject);
-                req2.write(body);
-                req2.end();
-            });
+            const data = await httpsJSON({
+                hostname: 'google.serper.dev', path: '/images', method: 'POST',
+                headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+            }, body);
             const imagens = (data.images||[]).map(item => ({
                 url: item.imageUrl,
                 thumb: item.thumbnailUrl || item.imageUrl,
@@ -208,11 +221,8 @@ app.get('/api/imagens/buscar', async (req, res) => {
     // 2) Google Custom Search — 100 buscas/dia grátis (fallback)
     if (process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
         try {
-            const https = require('https');
-            const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&searchType=image&num=12`;
-            const data = await new Promise((resolve, reject) => {
-                https.get(url, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); }).on('error',reject);
-            });
+            const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&searchType=image&num=12`);
+            const data = await httpsJSON({ hostname: url.hostname, path: url.pathname + url.search, method: 'GET' });
             const imagens = (data.items||[]).map(item => ({
                 url: item.link,
                 thumb: item.image && item.image.thumbnailLink,
@@ -252,15 +262,11 @@ async function getBlingToken() {
   if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY;
   if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
   if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
-  const https = require('https');
   const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
   const qs = 'grant_type=client_credentials';
-  const data = await new Promise((resolve, reject) => {
-    const req = https.request({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + creds, 'Content-Length': Buffer.byteLength(qs) }
-    }, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
-    req.on('error', reject); req.write(qs); req.end();
-  });
+  const data = await httpsJSON({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + creds, 'Content-Length': Buffer.byteLength(qs) }
+  }, qs);
   if (!data.access_token) throw new Error('Bling token inválido: ' + JSON.stringify(data));
   _blingToken = data.access_token;
   _blingTokenExp = Date.now() + (data.expires_in || 3600) * 1000 - 60000;
@@ -269,20 +275,16 @@ async function getBlingToken() {
 
 async function blingRequest(method, path, payload) {
   const token = await getBlingToken();
-  const https = require('https');
   const body = payload ? JSON.stringify(payload) : null;
-  return new Promise((resolve, reject) => {
-    const opts = { hostname: 'www.bling.com.br', path: '/Api/v3' + path, method,
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json',
-        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) }
-    };
-    const req = https.request(opts, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
-    req.on('error', reject); if (body) req.write(body); req.end();
-  });
+  const opts = { hostname: 'www.bling.com.br', path: '/Api/v3' + path, method,
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json',
+      ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) }
+  };
+  return httpsJSON(opts, body);
 }
 
 app.get('/api/bling/status', async (req, res) => {
-  if (!process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
+  if (!process.env.BLING_API_KEY && !process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_API_KEY ou BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
   try { await getBlingToken(); res.json({ ok: true, configurado: true, mensagem: 'Bling V3 conectado' }); }
   catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
 });
@@ -346,16 +348,12 @@ function wixRequest(method, path, payload) {
   const key = process.env.WIX_API_KEY;
   const siteId = process.env.WIX_SITE_ID;
   if (!key || !siteId) throw new Error('Configure WIX_API_KEY e WIX_SITE_ID no Render');
-  const https = require('https');
   const body = payload ? JSON.stringify(payload) : null;
-  return new Promise((resolve, reject) => {
-    const opts = { hostname: 'www.wixapis.com', path, method,
-      headers: { 'Authorization': key, 'wix-site-id': siteId, 'Content-Type': 'application/json',
-        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) }
-    };
-    const req = https.request(opts, r => { let b=''; r.on('data',d=>b+=d); r.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
-    req.on('error', reject); if (body) req.write(body); req.end();
-  });
+  const opts = { hostname: 'www.wixapis.com', path, method,
+    headers: { 'Authorization': key, 'wix-site-id': siteId, 'Content-Type': 'application/json',
+      ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}) }
+  };
+  return httpsJSON(opts, body);
 }
 
 app.get('/api/wix/status', async (req, res) => {
@@ -369,22 +367,26 @@ app.get('/api/wix/status', async (req, res) => {
 app.post('/api/wix/produto', async (req, res) => {
   try {
     const p = req.body;
-    const mediaItems = (p.imagens || []).slice(0, 8).map(url => ({ mediaType: 'IMAGE', image: { url } }));
+    const preco = (p.preco_venda || p.preco) ? String(parseFloat(p.preco_venda || p.preco).toFixed(2)) : '0.01';
     const payload = {
       product: {
         name: p.nome || p.codigo_fabricante || 'Produto',
-        productType: 'physical',
-        description: p.descricao || p.voz_do_lojista || '',
-        sku: p.codigo_fabricante || p.sku || '',
         visible: true,
-        ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
-        customTextFields: [
-          ...(p.fabricante ? [{ title: 'Marca', maxLength: 100, mandatory: false }] : []),
-          ...(p.ncm ? [{ title: 'NCM', maxLength: 20, mandatory: false }] : [])
-        ]
+        productType: 'PHYSICAL',
+        plainDescription: p.descricao || p.voz_do_lojista || '',
+        physicalProperties: {},
+        variantsInfo: {
+          variants: [{
+            sku: p.codigo_fabricante || p.sku || '',
+            visible: true,
+            price: { actualPrice: { amount: preco } },
+            inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
+            physicalProperties: {}
+          }]
+        }
       }
     };
-    const data = await wixRequest('POST', '/stores/v1/products', payload);
+    const data = await wixRequest('POST', '/stores/v3/products-with-inventory', payload);
     if (data.product && data.product.id) return res.json({ ok: true, id: data.product.id, plataforma: 'wix', url: 'https://www.mobisautoparts.com.br' });
     res.json({ ok: false, erro: JSON.stringify(data) });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
@@ -393,8 +395,10 @@ app.post('/api/wix/produto', async (req, res) => {
 app.post('/api/wix/sync/:id', async (req, res) => {
   try {
     const p = req.body;
-    const payload = { product: { name: p.nome, description: p.descricao || '', visible: true } };
-    const data = await wixRequest('PUT', '/stores/v1/products/' + req.params.id, payload);
+    const atual = await wixRequest('GET', '/stores/v3/products/' + req.params.id);
+    const revision = atual.product && atual.product.revision;
+    const payload = { product: { id: req.params.id, revision, name: p.nome, plainDescription: p.descricao || '', visible: true } };
+    const data = await wixRequest('PATCH', '/stores/v3/products-with-inventory/' + req.params.id, payload);
     res.json({ ok: true, data });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });

@@ -4494,8 +4494,8 @@ function aprovEnriqVerDesc(idx){
 function aprovAutoSync(p) {
   var done=0, msgs=[], anyOk=false;
   function check(plat,ok,info){ msgs.push(ok?'&#10003; '+plat+' ok':'&#9888; '+plat+': '+info); if(ok) anyOk=true; if(++done===2) showToast(msgs.join('<br>'),anyOk?'success':'warn'); }
-  api('POST','/api/bling/produto',p).then(function(r){ check('Bling',r&&r.ok,r&&r.ok?r.id:(r&&r.erro)||'erro'); }).catch(function(e){ check('Bling',false,e.message||'offline'); });
-  api('POST','/api/wix/produto',p).then(function(r){ check('Wix',r&&r.ok,r&&r.ok?r.id:(r&&r.erro)||'erro'); }).catch(function(e){ check('Wix',false,e.message||'offline'); });
+  api('POST','/bling/produto',p).then(function(r){ check('Bling',r&&r.ok,r&&r.ok?r.id:(r&&r.erro)||'erro'); }).catch(function(e){ check('Bling',false,e.message||'offline'); });
+  api('POST','/wix/produto',p).then(function(r){ check('Wix',r&&r.ok,r&&r.ok?r.id:(r&&r.erro)||'erro'); }).catch(function(e){ check('Wix',false,e.message||'offline'); });
 }
 
 function aprovSincronizarAprovadosLote() {
@@ -4503,7 +4503,7 @@ function aprovSincronizarAprovadosLote() {
   if(!prods.length){ showToast('Nenhum produto aprovado pendente de sincronização.','warn'); return; }
   if(!confirm('Sincronizar '+prods.length+' produto(s) com Bling e Wix?')) return;
   showToast('&#9201; Sincronizando '+prods.length+' produto(s)...','info');
-  api('POST','/api/sync/lote',{produtos:prods}).then(function(r){
+  api('POST','/sync/lote',{produtos:prods}).then(function(r){
     if(!r||!r.ok){ showToast('Erro: '+(r&&r.erro)||'falha','warn'); return; }
     showToast('&#10003; Bling: '+r.bling.sincronizados+'/'+r.total+'&nbsp;&nbsp;&#10003; Wix: '+r.wix.sincronizados+'/'+r.total,'success');
     var all=getProds(); prods.forEach(function(p){ var i=all.indexOf(p); if(i>=0) all[i]._syncOk=true; }); saveProds(all);
@@ -4528,12 +4528,12 @@ async function wixVerificarStatus() {
   var elW = document.getElementById('wix-st-wix');
   if (elB) elB.textContent = 'Verificando...';
   if (elW) elW.textContent = 'Verificando...';
-  api('GET', '/api/bling/status').then(function(r) {
+  api('GET', '/bling/status').then(function(r) {
     if (!elB) return;
     elB.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
     elB.style.color = r && r.ok ? '#16a34a' : '#dc2626';
   }).catch(function(e) { if (elB) { elB.textContent = '✗ ' + e.message; elB.style.color = '#dc2626'; } });
-  api('GET', '/api/wix/status').then(function(r) {
+  api('GET', '/wix/status').then(function(r) {
     if (!elW) return;
     elW.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
     elW.style.color = r && r.ok ? '#16a34a' : '#dc2626';
@@ -4548,7 +4548,7 @@ async function wixImportarBling() {
   stEl.textContent = '⏳ Importando página ' + pagina + ' (' + limite + ' produtos)... aguarde.';
   resEl.style.display = 'none';
   try {
-    var r = await api('POST', '/api/bling-wix/importar', { pagina: pagina, limite: limite });
+    var r = await api('POST', '/bling-wix/importar', { pagina: pagina, limite: limite });
     if (!r || !r.ok) { stEl.textContent = '✗ Erro: ' + ((r && r.erro) || 'Falha'); return; }
     stEl.textContent = '✓ Concluído — ' + r.total + ' produto(s) do Bling processados';
     document.getElementById('wix-res-cri').textContent = r.criados || 0;
@@ -4570,7 +4570,7 @@ async function wixListarProdutos() {
   var el = document.getElementById('wix-prods-lista');
   el.textContent = '⏳ Carregando...';
   try {
-    var r = await api('POST', '/api/wix/produtos', { limite: 20 });
+    var r = await api('POST', '/wix/produtos', { limite: 20 });
     if (!r || !r.ok) { el.textContent = 'Erro: ' + ((r && r.erro) || 'falha'); return; }
     var prods = r.produtos || [];
     if (!prods.length) { el.textContent = 'Nenhum produto encontrado.'; return; }
