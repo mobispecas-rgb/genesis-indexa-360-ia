@@ -2436,20 +2436,29 @@ async function oemBuscar() {
   document.getElementById('oem-resultado').style.display = 'block';
 
   // Busca imagens/dados via Google Search (reutiliza endpoint existente)
+  // Usa os campos já interpretados (fabricante + SKU + descrição) em vez do
+  // texto bruto, para que as imagens batam com o produto selecionado.
+  var qBusca = [parsed.fabricante, parsed.sku, parsed.descricao].filter(Boolean).join(' ') || q;
   try {
-    var r = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(q) + '&fonte=oem');
+    var r = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(qBusca) + '&fonte=oem');
     if (r.ok && r.imagens && r.imagens.length > 0) {
       var card = document.getElementById('oem-google-card');
       card.style.display = 'block';
       document.getElementById('oem-google-results').innerHTML =
-        '<p style="font-size:11px;color:#555;margin-bottom:8px">&#9888;&#65039; Confirme os dados abaixo antes de usar. N&atilde;o preencha campos que n&atilde;o estejam confirmados.</p>'
-        + r.imagens.slice(0,4).map(function(img) {
-          return '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a">'
-            + '<img src="' + img.thumb + '" style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid #1f1f1f" onerror="this.style.display=\'none\'">'
-            + '<div><div style="font-size:12px;color:#ccc">' + esc(img.titulo||'') + '</div>'
-            + '<div style="font-size:11px;color:#555">' + esc(img.fonte||'') + '</div></div>'
+        '<p style="font-size:11px;color:#555;margin-bottom:8px">&#9888;&#65039; Clique numa imagem para adicion&aacute;-la &agrave; sele&ccedil;&atilde;o (aba Imagens). Confirme os dados antes de usar.</p>'
+        + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+        + r.imagens.slice(0,9).map(function(img) {
+          var thumb = img.thumb || img.url;
+          var thumbProxy = '/api/imagens/proxy?url=' + encodeURIComponent(thumb);
+          var titulo = (img.titulo||qBusca).replace(/'/g,'\\'+'\'');
+          return '<div onclick="imgSlotPreencher(\'' + esc(img.url) + '\',\'' + esc(thumb) + '\',\'' + esc(titulo) + '\')" '
+            + 'style="cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color .15s" '
+            + 'onmouseover="this.style.borderColor=\'#ff4500\'" onmouseout="this.style.borderColor=\'transparent\'">'
+            + '<img src="' + thumbProxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:6px" onerror="this.src=\'' + esc(thumb) + '\';this.onerror=null">'
+            + '<div style="font-size:9px;color:#777;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(img.fonte||'') + '</div>'
             + '</div>';
-        }).join('');
+        }).join('')
+        + '</div>';
     } else {
       status.innerHTML = r.mensagem
         ? '&#9888;&#65039; ' + r.mensagem
