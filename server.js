@@ -1045,8 +1045,14 @@ async function montarPayloadProdutoBling(p) {
 
 app.get('/api/bling/status', async (req, res) => {
   if (!process.env.BLING_API_KEY && !process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_API_KEY ou BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
-  try { await getBlingToken(); res.json({ ok: true, configurado: true, mensagem: 'Bling V3 conectado' }); }
-  catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
+  try {
+    // Faz uma chamada real à API para validar o token (não basta checar se a env var existe)
+    const data = await blingRequest('GET', '/produtos?limite=1');
+    if (data.type === 'invalid_token' || data.error) {
+      return res.json({ ok: false, configurado: false, mensagem: 'Bling: ' + (data.description || data.message || JSON.stringify(data.error || data)) });
+    }
+    res.json({ ok: true, configurado: true, mensagem: 'Bling V3 conectado' });
+  } catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
 });
 
 app.post('/api/bling/token/renovar', (req, res) => { _blingToken = null; _blingTokenExp = 0; res.json({ ok: true, mensagem: 'Cache de token limpo — será renovado automaticamente' }); });
