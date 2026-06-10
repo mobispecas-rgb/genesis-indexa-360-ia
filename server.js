@@ -131,6 +131,69 @@ function htmlParaTexto(html, limite = 6000) {
     .slice(0, limite);
 }
 
+// Converte HTML em texto preservando os links "Texto (LINK: url-absoluta)" —
+// usado no raspador de catálogo para a IA conseguir referenciar a página de cada produto.
+function htmlParaTextoComLinks(html, baseUrl, limite = 15000) {
+  let semBlocos = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+
+  semBlocos = semBlocos.replace(/<a\s+[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi, (m, href, inner) => {
+    const texto = inner.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!texto) return ' ';
+    let abs;
+    try { abs = new URL(href, baseUrl).href; } catch (e) { abs = href; }
+    return ' ' + texto + ' (LINK: ' + abs + ') ';
+  });
+
+  return semBlocos
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, limite);
+}
+
+// Extrai lista de produtos de blocos JSON-LD do tipo ItemList (páginas de catálogo/categoria)
+function extrairListaProdutosLd(html, baseUrl) {
+  const jsonLd = [];
+  const ldRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = ldRegex.exec(html))) {
+    try {
+      const parsed = JSON.parse(m[1].trim());
+      (Array.isArray(parsed) ? parsed : [parsed]).forEach(p => jsonLd.push(p));
+    } catch (e) { /* ignora blocos JSON-LD inválidos */ }
+  }
+  const blocos = jsonLd.flatMap(p => p['@graph'] || [p]);
+  const listas = blocos.filter(p => {
+    const tipo = p['@type'];
+    return tipo === 'ItemList' || (Array.isArray(tipo) && tipo.includes('ItemList'));
+  });
+
+  const produtos = [];
+  for (const lista of listas) {
+    for (const el of (lista.itemListElement || [])) {
+      const item = el.item || el;
+      const tipo = item['@type'];
+      const ehProduto = tipo === 'Product' || (Array.isArray(tipo) && tipo.includes('Product'));
+      if (!ehProduto && !item.name) continue;
+      const oferta = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+      let url = item.url || el.url || item['@id'] || null;
+      if (url) { try { url = new URL(url, baseUrl).href; } catch (e) { /* mantém como veio */ } }
+      produtos.push({
+        nome: item.name || null,
+        sku: item.sku || item.mpn || null,
+        fabricante: (item.brand && (item.brand.name || item.brand)) || null,
+        preco: (oferta && oferta.price != null) ? Number(oferta.price) : null,
+        url
+      });
+    }
+  }
+  return produtos;
+}
+
 // -----------------------------------------------------------
 // MIDDLEWARES
 // -----------------------------------------------------------
@@ -474,6 +537,75 @@ REGRAS ABSOLUTAS:
     } catch (e) {
         console.error('[Raspador] IA:', e.message);
         res.json({ ok: false, erro: e.message, dados: vazio });
+    }
+});
+
+// Raspador de página de catálogo/categoria — extrai VÁRIOS produtos de uma vez.
+// Tenta primeiro dados estruturados (schema.org ItemList); se a página não tiver,
+// usa IA sobre o texto da página (com links preservados) para listar os produtos
+// visíveis. NUNCA inventa: cada campo fica null se não estiver explícito.
+app.post('/api/catalogo/raspar-lista', async (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ ok: false, erro: 'URL obrigatória' });
+
+    let html;
+    try {
+        html = await fetchHtmlSeguro(url);
+    } catch (e) {
+        return res.json({ ok: false, erro: 'Erro ao acessar URL: ' + e.message, produtos: [] });
+    }
+
+    const produtosLd = extrairListaProdutosLd(html, url);
+    if (produtosLd.length > 0) {
+        return res.json({ ok: true, encontrado: true, produtos: produtosLd, total: produtosLd.length, fonte: 'schema.org' });
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+        return res.json({
+            ok: true, encontrado: false, produtos: [],
+            mensagem: 'ANTHROPIC_API_KEY não configurada — não foi possível identificar os produtos da página.'
+        });
+    }
+
+    try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const texto = htmlParaTextoComLinks(html, url);
+
+        const msg = await client.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 2000,
+            system: `Você é um especialista em catalogação de autopeças. Vai receber o texto de uma página de catálogo/categoria de um fornecedor, com links no formato "Texto (LINK: url)".
+
+Sua tarefa: identificar cada PRODUTO listado na página e extrair, SOMENTE se estiver EXPLICITAMENTE presente no texto:
+- nome: nome/descrição do produto
+- sku: código/part number do produto, se houver
+- fabricante: marca/fabricante, se houver
+- preco: preço numérico (apenas número, ponto como separador decimal), se houver
+- url: o link (LINK: ...) da página do produto, se houver
+
+REGRAS ABSOLUTAS:
+1. NUNCA invente, estime ou deduza valores que não estejam no texto.
+2. Se um dado não estiver explícito, retorne null para esse campo.
+3. Ignore links de menu, banner, paginação, login, carrinho, redes sociais — liste apenas produtos.
+4. Liste no máximo 40 produtos.
+5. Responda APENAS com um array JSON válido, sem markdown, no formato:
+[{"nome": null, "sku": null, "fabricante": null, "preco": null, "url": null}]`,
+            messages: [{ role: 'user', content: texto }]
+        });
+        const respostaTexto = msg.content?.[0]?.text || '[]';
+        let produtos;
+        try {
+            const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
+            produtos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
+            if (!Array.isArray(produtos)) produtos = [];
+        } catch (e) {
+            produtos = [];
+        }
+        res.json({ ok: true, encontrado: produtos.length > 0, produtos, total: produtos.length, fonte: 'ia' });
+    } catch (e) {
+        console.error('[Raspador Catálogo] IA:', e.message);
+        res.json({ ok: false, erro: e.message, produtos: [] });
     }
 });
 
