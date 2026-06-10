@@ -7,9 +7,12 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const https = require('https');
+const multer = require('multer');
+const { PDFParse } = require('pdf-parse');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // Faz uma requisição HTTPS e resolve com o JSON da resposta.
 // Aborta com erro após `timeoutMs` para evitar requisições penduradas
@@ -242,6 +245,23 @@ REGRAS ABSOLUTAS:
     } catch (e) {
         console.error('[Extrair Técnico] IA:', e.message);
         res.json({ ok: false, erro: e.message, dados: vazio });
+    }
+});
+
+// Extração de texto de PDF — permite importar catálogos/notas de fornecedor em PDF
+// no Catálogo de Produtos (o texto extraído é processado pelo parser de texto livre).
+app.post('/api/catalogo/extrair-pdf', upload.single('arquivo'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ ok: false, erro: 'Arquivo PDF obrigatório' });
+    const parser = new PDFParse({ data: req.file.buffer });
+    try {
+        const resultado = await parser.getText();
+        const texto = resultado.text.replace(/\n*-- \d+ of \d+ --\n*/g, '\n\n');
+        res.json({ ok: true, texto, paginas: resultado.pages ? resultado.pages.length : (resultado.total || null) });
+    } catch (e) {
+        console.error('[Extrair PDF]', e.message);
+        res.status(400).json({ ok: false, erro: 'Falha ao ler PDF: ' + e.message });
+    } finally {
+        await parser.destroy();
     }
 });
 
