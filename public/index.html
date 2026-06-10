@@ -2474,13 +2474,46 @@ async function oemBuscar() {
     status.textContent = 'Erro na busca: ' + e.message;
   }
 
+  // Busca dados técnicos/fiscais (OEM, NCM, EAN, Motor/Aplicação, Material) via IA + busca web.
+  // Só preenche campos vazios e nunca inventa: vem null se não houver evidência na busca.
+  var sugeridosIA = [];
+  try {
+    var rTec = await api('POST', '/motor/extrair-tecnico', {
+      sku: parsed.sku, fabricante: parsed.fabricante, nome: parsed.descricao || q
+    });
+    if (rTec.ok && rTec.encontrado) {
+      var camposIA = {
+        codigo_oem: { id: 'oem-f-oem', label: 'OEM' },
+        ncm:        { id: 'oem-f-ncm', label: 'NCM' },
+        ean:        { id: 'oem-f-ean', label: 'EAN' },
+        motor:      { id: 'oem-f-motor', label: 'Motor/Aplicação' },
+        material:   { id: 'oem-f-material', label: 'Material' }
+      };
+      Object.keys(camposIA).forEach(function(campo) {
+        var valor = rTec.dados[campo];
+        var info = camposIA[campo];
+        var el = document.getElementById(info.id);
+        if (valor && el && !el.value.trim()) {
+          el.value = valor;
+          el.style.borderColor = '#ff9800';
+          el.title = '🤖 Sugestão da IA — confirme antes de usar';
+          sugeridosIA.push(info.label);
+        }
+      });
+    }
+  } catch(e) {}
+
   // Inicia cálculo NTC em tempo real conforme campos são preenchidos
   ['oem-f-sku','oem-f-fab','oem-f-nome','oem-f-familia','oem-f-oem','oem-f-ncm','oem-f-ean','oem-f-motor','oem-f-material'].forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) { el.oninput = oemRecalcularNTC; el.onchange = oemRecalcularNTC; }
+    if (el) {
+      el.oninput = function() { el.style.borderColor = ''; el.title = ''; oemRecalcularNTC(); };
+      el.onchange = oemRecalcularNTC;
+    }
   });
   oemRecalcularNTC();
-  status.textContent = '✅ Campos pré-preenchidos. Confirme os dados e complete o que falta.';
+  status.innerHTML = '✅ Campos pré-preenchidos. Confirme os dados e complete o que falta.'
+    + (sugeridosIA.length ? '<br>🤖 IA sugeriu (em laranja — confirme antes de salvar): ' + esc(sugeridosIA.join(', ')) : '');
 }
 
 function oemColetar() {
