@@ -546,6 +546,7 @@ tr:hover td{background:#f9fafb}
           <button class="btn btn-sm cat-import-btn" id="cat-import-btn-csv" onclick="catalogoToggleModo('csv')">&#128202; CSV</button>
           <button class="btn btn-sm cat-import-btn" id="cat-import-btn-xml" onclick="catalogoToggleModo('xml')">&#128278; XML</button>
           <button class="btn btn-sm cat-import-btn" id="cat-import-btn-cole" onclick="catalogoToggleModo('cole')">&#128203; Cole Direto</button>
+          <button class="btn btn-sm cat-import-btn" id="cat-import-btn-url" onclick="catalogoToggleModo('url')">&#128279; Raspar URL</button>
         </div>
         <div class="cat-drop-zone" onclick="document.getElementById('cat-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;color:#555;font-size:13px">
           &#128196; Arraste o arquivo aqui ou clique para selecionar
@@ -559,10 +560,17 @@ tr:hover td{background:#f9fafb}
         <div id="catalogo-xml-legend" style="display:none;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;margin-bottom:8px">
           &#128278; Formatos suportados: NFe, cat&aacute;logo fornecedor, TOTVS
         </div>
-        <div class="form-group">
+        <div id="catalogo-url-legend" style="display:none;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;margin-bottom:8px">
+          &#128279; Cole o link da p&aacute;gina do produto/fornecedor. A IA l&ecirc; a p&aacute;gina e identifica SKU, fabricante, nome, OEM, NCM, EAN, motor, material e pre&ccedil;o &mdash; confirme antes de usar.
+        </div>
+        <div id="catalogo-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <input id="catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+          <button class="btn btn-primary" onclick="catalogoRasparUrl()">&#128279; Raspar e Identificar</button>
+        </div>
+        <div class="form-group" id="catalogo-textarea-group">
           <textarea id="catalogo-input" rows="10" style="font-family:monospace;font-size:12px;line-height:1.6" placeholder="Cole texto livre:&#10;&#10;CORREIA DENTADA - CT1028K1 - DAYCO&#10;Aplica&#231;&#227;o: GM COBALT 1.8 8V 2012-2015&#10;OEM: 93353848&#10;NCM: 4010.35.00"></textarea>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div id="catalogo-actions-row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="catalogoProcessar()">&#9889; Processar</button>
           <button class="btn btn-secondary" onclick="document.getElementById('catalogo-input').value='';document.getElementById('catalogo-resultado').style.display='none';document.getElementById('catalogo-file-status').textContent=''">&#128465; Limpar</button>
           <span id="catalogo-status" style="font-size:12px;color:#555;align-self:center"></span>
@@ -3843,8 +3851,18 @@ function catalogoToggleModo(modo) {
   if (ta) ta.placeholder = placeholders[modo] || '';
   var csvLeg = document.getElementById('catalogo-csv-legend');
   var xmlLeg = document.getElementById('catalogo-xml-legend');
+  var urlLeg = document.getElementById('catalogo-url-legend');
   if (csvLeg) csvLeg.style.display = modo === 'csv' ? 'block' : 'none';
   if (xmlLeg) xmlLeg.style.display = modo === 'xml' ? 'block' : 'none';
+  if (urlLeg) urlLeg.style.display = modo === 'url' ? 'block' : 'none';
+
+  var dropZone = document.querySelector('.cat-drop-zone');
+  var urlRow = document.getElementById('catalogo-url-row');
+  var taGroup = document.getElementById('catalogo-textarea-group');
+  var ehUrl = modo === 'url';
+  if (dropZone) dropZone.style.display = ehUrl ? 'none' : '';
+  if (taGroup) taGroup.style.display = ehUrl ? 'none' : '';
+  if (urlRow) urlRow.style.display = ehUrl ? 'flex' : 'none';
 }
 
 function catalogoFileSelect(input) {
@@ -3935,6 +3953,41 @@ function catalogoProcessarXML(texto) {
     });
   } catch(e) {}
   return resultados;
+}
+
+async function catalogoRasparUrl() {
+  var url = document.getElementById('catalogo-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('catalogo-status');
+  status.textContent = '⏳ Acessando e identificando o produto...';
+  try {
+    var r = await api('POST', '/catalogo/raspar', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar URL'); return; }
+    if (!r.encontrado) {
+      status.textContent = '⚠️ ' + (r.mensagem || 'Não foi possível identificar dados do produto nesta página.');
+      return;
+    }
+    var d = r.dados;
+    var item = {
+      sku: d.sku || null,
+      nome: d.nome || null,
+      fabricante: d.fabricante || null,
+      familia: null,
+      codigo_oem: d.codigo_oem || null,
+      ncm: d.ncm || null,
+      ean: d.ean || null,
+      motor: d.motor || null,
+      material: d.material || null,
+      preco_custo: d.preco || null,
+      _fonte: 'url',
+      _url_origem: url
+    };
+    _catalogoItens.push(item);
+    catalogoRenderResultado();
+    status.textContent = '✅ Produto identificado a partir da URL. Confirme os dados antes de enviar para a fila.';
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar URL: ' + e.message;
+  }
 }
 
 function catalogoAutoDetect(texto) {
