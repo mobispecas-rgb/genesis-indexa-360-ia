@@ -295,15 +295,20 @@ tr:hover td{background:#f9fafb}
 
     <!-- PRODUTOS -->
     <div class="page" id="page-produtos">
-      <div class="page-title" style="justify-content:space-between">
+      <div class="page-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span>&#128230; Produtos</span>
-        <button class="btn btn-primary btn-sm" onclick="openAddProduto()">+ Novo Produto</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="nav('oem')">&#10024; Cadastrar com IA (Enriquecimento)</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddProduto()">+ Novo Produto Manual</button>
+        </div>
       </div>
       <div class="card">
+        <div style="overflow-x:auto">
         <table>
           <thead><tr><th>SKU</th><th>Nome</th><th>Fabricante</th><th>Fam&iacute;lia</th><th>Motor</th><th>NTC%</th><th>Status</th><th>A&ccedil;&otilde;es</th></tr></thead>
           <tbody id="prod-table"></tbody>
         </table>
+        </div>
       </div>
       <div class="card" id="add-prod-form" style="display:none">
         <div class="card-title">+ Novo Produto</div>
@@ -1536,7 +1541,7 @@ function loadDashboard() {
   var recent = prods.slice(-5).reverse();
   var tbody = document.getElementById('dash-recent');
   tbody.innerHTML = recent.length ? recent.map(function(p) {
-    return '<tr><td><code style="color:#ff6b00;font-size:11px">' + esc(p.sku||'&mdash;') + '</code></td><td>' + esc(p.nome||'&mdash;') + '</td><td>' + esc(p.marca||'&mdash;') + '</td><td>' + (p.ntc != null ? (p.ntc*100).toFixed(1)+'%' : '&mdash;') + '</td><td>' + badgeHtml(p.decisao) + '</td></tr>';
+    return '<tr><td><code style="color:#ff6b00;font-size:11px">' + (esc(p.sku)||'—') + '</code></td><td>' + (esc(p.nome)||'—') + '</td><td>' + (esc(p.marca)||'—') + '</td><td>' + (p.ntc != null ? (p.ntc*100).toFixed(1)+'%' : '—') + '</td><td>' + badgeHtml(p.decisao) + '</td></tr>';
   }).join('') : '<tr><td colspan="5" style="color:#555;text-align:center;padding:20px">Nenhum produto cadastrado ainda.</td></tr>';
 }
 
@@ -1545,7 +1550,7 @@ function loadProdutos() {
   var prods = getProds();
   var tbody = document.getElementById('prod-table');
   tbody.innerHTML = prods.length ? prods.map(function(p, i) {
-    return '<tr><td><code style="color:#ff6b00;font-size:11px">' + esc(p.sku||'&mdash;') + '</code></td><td>' + esc(p.nome||'&mdash;') + '</td><td>' + esc(p.marca||'&mdash;') + '</td><td>' + esc(p.familia||'&mdash;') + '</td><td>' + esc(p.motor||'&mdash;') + '</td><td>' + (p.ntc != null ? (p.ntc*100).toFixed(1)+'%' : '&mdash;') + '</td><td>' + badgeHtml(p.decisao) + '</td><td><button class="btn btn-secondary btn-sm" onclick="deleteProduto(' + i + ')">&#128465;&#65039;</button></td></tr>';
+    return '<tr><td><code style="color:#ff6b00;font-size:11px">' + (esc(p.sku)||'—') + '</code></td><td>' + (esc(p.nome)||'—') + '</td><td>' + (esc(p.marca)||'—') + '</td><td>' + (esc(p.familia)||'—') + '</td><td>' + (esc(p.motor)||'—') + '</td><td>' + (p.ntc != null ? (p.ntc*100).toFixed(1)+'%' : '—') + '</td><td>' + badgeHtml(p.decisao) + '</td><td><button class="btn btn-secondary btn-sm" onclick="deleteProduto(' + i + ')">&#128465;&#65039;</button></td></tr>';
   }).join('') : '<tr><td colspan="8" style="color:#555;text-align:center;padding:20px">Nenhum produto cadastrado.</td></tr>';
 }
 
