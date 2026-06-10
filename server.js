@@ -282,7 +282,7 @@ async function blingRequest(method, path, payload) {
 }
 
 app.get('/api/bling/status', async (req, res) => {
-  if (!process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
+  if (!process.env.BLING_API_KEY && !process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_API_KEY ou BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
   try { await getBlingToken(); res.json({ ok: true, configurado: true, mensagem: 'Bling V3 conectado' }); }
   catch(e) { res.json({ ok: false, configurado: false, mensagem: e.message }); }
 });
@@ -369,22 +369,26 @@ app.get('/api/wix/status', async (req, res) => {
 app.post('/api/wix/produto', async (req, res) => {
   try {
     const p = req.body;
-    const mediaItems = (p.imagens || []).slice(0, 8).map(url => ({ mediaType: 'IMAGE', image: { url } }));
+    const preco = (p.preco_venda || p.preco) ? String(parseFloat(p.preco_venda || p.preco).toFixed(2)) : '0.01';
     const payload = {
       product: {
         name: p.nome || p.codigo_fabricante || 'Produto',
-        productType: 'physical',
-        description: p.descricao || p.voz_do_lojista || '',
-        sku: p.codigo_fabricante || p.sku || '',
         visible: true,
-        ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
-        customTextFields: [
-          ...(p.fabricante ? [{ title: 'Marca', maxLength: 100, mandatory: false }] : []),
-          ...(p.ncm ? [{ title: 'NCM', maxLength: 20, mandatory: false }] : [])
-        ]
+        productType: 'PHYSICAL',
+        plainDescription: p.descricao || p.voz_do_lojista || '',
+        physicalProperties: {},
+        variantsInfo: {
+          variants: [{
+            sku: p.codigo_fabricante || p.sku || '',
+            visible: true,
+            price: { actualPrice: { amount: preco } },
+            inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
+            physicalProperties: {}
+          }]
+        }
       }
     };
-    const data = await wixRequest('POST', '/stores/v1/products', payload);
+    const data = await wixRequest('POST', '/stores/v3/products-with-inventory', payload);
     if (data.product && data.product.id) return res.json({ ok: true, id: data.product.id, plataforma: 'wix', url: 'https://www.mobisautoparts.com.br' });
     res.json({ ok: false, erro: JSON.stringify(data) });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
@@ -393,8 +397,10 @@ app.post('/api/wix/produto', async (req, res) => {
 app.post('/api/wix/sync/:id', async (req, res) => {
   try {
     const p = req.body;
-    const payload = { product: { name: p.nome, description: p.descricao || '', visible: true } };
-    const data = await wixRequest('PUT', '/stores/v1/products/' + req.params.id, payload);
+    const atual = await wixRequest('GET', '/stores/v3/products/' + req.params.id);
+    const revision = atual.product && atual.product.revision;
+    const payload = { product: { id: req.params.id, revision, name: p.nome, plainDescription: p.descricao || '', visible: true } };
+    const data = await wixRequest('PATCH', '/stores/v3/products-with-inventory/' + req.params.id, payload);
     res.json({ ok: true, data });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
