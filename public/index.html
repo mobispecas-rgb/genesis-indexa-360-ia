@@ -698,13 +698,19 @@ tr:hover td{background:#f9fafb}
           <button class="btn btn-sm cat-import-btn" id="massa-btn-json" onclick="massaToggleModo('json')">{ } JSON</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-csv" onclick="massaToggleModo('csv')">&#128202; CSV</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-xml" onclick="massaToggleModo('xml')">&#128278; XML</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-cole" onclick="massaToggleModo('cole')">&#128203; Cole Direto</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-url" onclick="massaToggleModo('url')">&#128279; Raspar URL</button>
         </div>
         <div class="cat-drop-zone" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
-          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml)
-          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml" onchange="massaFileSelect(this)">
+          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml .pdf)
+          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="massaFileSelect(this)">
           <span id="massa-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
         </div>
-        <div class="form-group">
+        <div id="massa-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <input id="massa-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+          <button class="btn btn-primary" onclick="massaRasparUrl()">&#128279; Raspar e Identificar</button>
+        </div>
+        <div class="form-group" id="massa-textarea-group">
           <textarea id="massa-input" rows="8" style="font-family:monospace;font-size:13px;line-height:1.8" placeholder="Cole aqui — um c&oacute;digo por linha:
 
 VKM71809
@@ -737,6 +743,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
                   <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">C&oacute;digo / Nome</th>
                   <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Fabricante</th>
                   <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Fam&iacute;lia</th>
+                  <th style="text-align:left;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Pre&ccedil;o</th>
                   <th style="text-align:center;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">NTC</th>
                   <th style="text-align:center;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">Status</th>
                   <th style="text-align:center;padding:8px;color:#555;font-weight:600;border-bottom:1px solid #1f1f1f">A&ccedil;&atilde;o</th>
@@ -2688,43 +2695,124 @@ function massaLimpar() {
   _massaItens = [];
 }
 
+function massaNormalizarItem(obj, fonte) {
+  obj = obj || {};
+  return Object.assign({}, obj, {
+    nome: obj.nome || obj.descricao || null,
+    codigo_fabricante: obj.codigo_fabricante || obj.sku || null,
+    fabricante: obj.fabricante || obj.marca || null,
+    familia_tecnica: obj.familia_tecnica || obj.familia || null,
+    codigo_oem: obj.codigo_oem || null,
+    ncm: obj.ncm || null,
+    ean: obj.ean || null,
+    motor: obj.motor || null,
+    material: obj.material || null,
+    preco_venda: obj.preco_venda != null ? obj.preco_venda : null,
+    preco_custo: obj.preco_custo != null ? obj.preco_custo : (obj.preco != null ? obj.preco : null),
+    _fonte: fonte || obj._fonte || 'massa'
+  });
+}
+
+async function massaAdicionarItem(item) {
+  var ntcData = {
+    nome: item.nome || item.codigo_fabricante || item._linha || '',
+    codigo_fabricante: item.codigo_fabricante || null,
+    fabricante: item.fabricante || null,
+    familia_tecnica: item.familia_tecnica || null,
+    codigo_oem: item.codigo_oem || null,
+    ncm: item.ncm || null,
+    ean: item.ean || null,
+    motor: item.motor || null,
+    material: item.material || null
+  };
+  var ntc = 0, decisao = 'REPROVADO', rast = '';
+  try {
+    var r = await api('POST', '/motor/nct', ntcData);
+    ntc = r.ntc || 0; decisao = r.decisao || 'REPROVADO'; rast = r.rast_hash || '';
+  } catch(e) { decisao = 'REPROVADO'; }
+  var full = Object.assign({}, item, { ntc: ntc, decisao: decisao, rast_hash: rast });
+  _massaItens.push(full);
+  return full;
+}
+
+function massaRenderRow(i, item) {
+  var cor = item.decisao === 'APROVADO' ? '#00c853' : item.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+  var preco = item.preco_venda != null ? item.preco_venda : item.preco_custo;
+  var precoTxt = preco != null ? 'R$ ' + Number(preco).toFixed(2).replace('.', ',') : '—';
+  var tr = document.createElement('tr');
+  tr.style.borderBottom = '1px solid #1a1a1a';
+  tr.innerHTML = '<td style="padding:8px;color:#555">' + (i+1) + '</td>'
+    + '<td style="padding:8px;color:#ccc"><code style="color:#ff6b00">' + esc(item.codigo_fabricante||'—') + '</code><br><span style="font-size:11px;color:#555">' + esc(item.nome||item._linha||'—') + '</span></td>'
+    + '<td style="padding:8px;color:#aaa">' + esc(item.fabricante||'—') + '</td>'
+    + '<td style="padding:8px;color:#888">' + esc(item.familia_tecnica||'—') + '</td>'
+    + '<td style="padding:8px;color:#888">' + precoTxt + '</td>'
+    + '<td style="padding:8px;text-align:center;font-weight:700;color:' + cor + '">' + Math.round((item.ntc||0)*100) + '%</td>'
+    + '<td style="padding:8px;text-align:center">' + badgeHtml(item.decisao) + '</td>'
+    + '<td style="padding:8px;text-align:center"><button class="btn btn-sm btn-secondary" onclick="massaCompletarItem(' + i + ')">&#127919; Completar</button></td>';
+  return tr;
+}
+
 async function massaProcessar() {
   var texto = document.getElementById('massa-input').value || '';
   var modo = typeof _massaModo !== 'undefined' ? _massaModo : 'texto';
+  if (!texto.trim()) { alert('Cole ao menos um item.'); return; }
 
-  // For CSV/XML/JSON modes, extract structured items first
-  if (modo === 'json') {
+  var modoEfetivo = modo === 'cole' ? catalogoAutoDetect(texto) : modo;
+  var itens = [];
+
+  if (modoEfetivo === 'json') {
     try {
       var parsed = JSON.parse(texto.trim());
       var arr = Array.isArray(parsed) ? parsed : [parsed];
-      var itensEstruturados = [];
       arr.forEach(function(obj) {
+        var extracted;
         if (obj.bula_tecnica_engenharia && typeof jsonExtrair === 'function') {
-          itensEstruturados.push(jsonExtrair(obj));
+          extracted = jsonExtrair(obj);
         } else if (obj.sku || obj.nome || obj.codigo_fabricante) {
-          itensEstruturados.push(obj);
-        } else if (typeof obj === 'string') {
-          itensEstruturados.push({ _linha: obj });
+          extracted = obj;
         }
+        if (extracted) itens.push(massaNormalizarItem(extracted, 'json'));
       });
-      // rebuild textarea as JSON lines for common processing path
-      var linhas = itensEstruturados.map(function(o){ return o.sku || o.codigo_fabricante || o.nome || JSON.stringify(o); });
-      texto = linhas.join('\n');
     } catch(e) {
       document.getElementById('massa-status').textContent = '❌ JSON inválido: ' + e.message;
       return;
     }
-  } else if (modo === 'csv') {
+  } else if (modoEfetivo === 'csv') {
     var csvItens = typeof catalogoProcessarCSV === 'function' ? catalogoProcessarCSV(texto) : [];
-    texto = csvItens.map(function(o){ return [o.sku||'', o.nome||'', o.fabricante||''].filter(Boolean).join(' - '); }).join('\n');
-  } else if (modo === 'xml') {
+    itens = csvItens.map(function(o){ return massaNormalizarItem(o, 'csv'); });
+  } else if (modoEfetivo === 'xml') {
     var xmlItens = typeof catalogoProcessarXML === 'function' ? catalogoProcessarXML(texto) : [];
-    texto = xmlItens.map(function(o){ return [o.sku||'', o.nome||'', o.fabricante||''].filter(Boolean).join(' - '); }).join('\n');
+    itens = xmlItens.map(function(o){ return massaNormalizarItem(o, 'xml'); });
+  } else {
+    var blocos = texto.split(/\n\s*\n/).map(function(b){ return b.trim(); }).filter(Boolean);
+    if (blocos.length > 1) {
+      blocos.forEach(function(bloco) {
+        var d = catExtrair(bloco);
+        if (d && (d.codigo_fabricante || d.nome)) itens.push(massaNormalizarItem(Object.assign({_linha: bloco}, d), 'texto'));
+      });
+    }
+    if (itens.length === 0) {
+      texto.split('\n').forEach(function(line) {
+        line = line.trim();
+        if (!line) return;
+        var d = catExtrair(line);
+        if (d && (d.codigo_fabricante || d.nome)) {
+          itens.push(massaNormalizarItem(Object.assign({_linha: line}, d), 'texto'));
+        } else {
+          var p = parseTextoIA(line);
+          itens.push(massaNormalizarItem({
+            nome: p.descricao || line,
+            codigo_fabricante: p.sku,
+            fabricante: p.fabricante,
+            familia_tecnica: p.familia,
+            _linha: line
+          }, 'texto'));
+        }
+      });
+    }
   }
 
-  var linhas = texto.split('\n')
-    .map(function(l){ return l.trim(); }).filter(Boolean);
-  if (!linhas.length) { alert('Cole ao menos um código.'); return; }
+  if (!itens.length) { alert('Nenhum item válido encontrado.'); return; }
 
   var status = document.getElementById('massa-status');
   var tbody  = document.getElementById('massa-tbody');
@@ -2734,47 +2822,18 @@ async function massaProcessar() {
 
   var aprov=0, pend=0, repr=0;
 
-  for (var i = 0; i < linhas.length; i++) {
-    var linha = linhas[i];
-    status.textContent = 'Processando ' + (i+1) + ' / ' + linhas.length + ' …';
-
-    var parsed = parseTextoIA(linha);
-    var ntcData = {
-      nome: parsed.descricao || linha,
-      codigo_fabricante: parsed.sku || null,
-      fabricante: parsed.fabricante || null,
-      familia_tecnica: parsed.familia || null
-    };
-
-    var ntc = 0, decisao = 'REPROVADO', rast = '';
-    try {
-      var r = await api('POST', '/motor/nct', ntcData);
-      ntc = r.ntc || 0; decisao = r.decisao || 'REPROVADO'; rast = r.rast_hash || '';
-    } catch(e) { decisao = 'REPROVADO'; }
-
-    if (decisao === 'APROVADO') aprov++;
-    else if (decisao === 'PENDENTE') pend++;
+  for (var i = 0; i < itens.length; i++) {
+    status.textContent = 'Processando ' + (i+1) + ' / ' + itens.length + ' …';
+    var item = await massaAdicionarItem(itens[i]);
+    if (item.decisao === 'APROVADO') aprov++;
+    else if (item.decisao === 'PENDENTE') pend++;
     else repr++;
-
-    var item = Object.assign({}, ntcData, { ntc: ntc, decisao: decisao, rast_hash: rast, _linha: linha });
-    _massaItens.push(item);
-
-    var cor = decisao === 'APROVADO' ? '#00c853' : decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
-    var tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid #1a1a1a';
-    tr.innerHTML = '<td style="padding:8px;color:#555">' + (i+1) + '</td>'
-      + '<td style="padding:8px;color:#ccc"><code style="color:#ff6b00">' + esc(parsed.sku||'—') + '</code><br><span style="font-size:11px;color:#555">' + esc(parsed.descricao||linha) + '</span></td>'
-      + '<td style="padding:8px;color:#aaa">' + esc(parsed.fabricante||'—') + '</td>'
-      + '<td style="padding:8px;color:#888">' + esc(parsed.familia||'—') + '</td>'
-      + '<td style="padding:8px;text-align:center;font-weight:700;color:' + cor + '">' + Math.round(ntc*100) + '%</td>'
-      + '<td style="padding:8px;text-align:center">' + badgeHtml(decisao) + '</td>'
-      + '<td style="padding:8px;text-align:center"><button class="btn btn-sm btn-secondary" onclick="massaCompletarItem(' + i + ')">&#127919; Completar</button></td>';
-    tbody.appendChild(tr);
+    tbody.appendChild(massaRenderRow(i, item));
   }
 
   document.getElementById('massa-resumo').textContent =
     '✅ ' + aprov + ' aprovados · ⏳ ' + pend + ' pendentes · ✖ ' + repr + ' reprovados';
-  status.textContent = '✅ Lote concluído — ' + linhas.length + ' itens processados.';
+  status.textContent = '✅ Lote concluído — ' + itens.length + ' itens processados.';
 }
 
 function massaSalvarAprovados() {
@@ -4175,22 +4234,95 @@ function massaToggleModo(modo) {
   document.querySelectorAll('#page-massa .cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
   var btn = document.getElementById('massa-btn-' + modo);
   if (btn) btn.classList.add('active-mode');
+
+  var placeholders = {
+    texto: 'Cole aqui — um código por linha ou blocos separados por linha em branco:\n\nVKM71809\nKIT9063\n5300512100 INA\nPASTILHA DE FREIO - PF4201 - FREMAX\n93353848',
+    json: 'Cole o JSON da bula técnica (bula_tecnica_engenharia {...}) ou um array de itens com sku/nome/codigo_fabricante',
+    csv: 'sku,nome,fabricante,familia,oem,ncm,ean,motor\nCT1028K1,Correia Dentada,DAYCO,Correia Dentada,93353848,4010.35.00,,GM COBALT 1.8',
+    xml: '<?xml version="1.0"?>\n<catalogo>\n  <produto>\n    <sku>CT1028K1</sku>\n    <nome>Correia Dentada</nome>\n  </produto>\n</catalogo>',
+    cole: 'Cole qualquer conteúdo — o motor detecta o formato automaticamente'
+  };
+  var ta = document.getElementById('massa-input');
+  if (ta) ta.placeholder = placeholders[modo] || '';
+
+  var dropZone = document.querySelector('#page-massa .cat-drop-zone');
+  var urlRow = document.getElementById('massa-url-row');
+  var taGroup = document.getElementById('massa-textarea-group');
+  var ehUrl = modo === 'url';
+  if (dropZone) dropZone.style.display = ehUrl ? 'none' : '';
+  if (taGroup) taGroup.style.display = ehUrl ? 'none' : '';
+  if (urlRow) urlRow.style.display = ehUrl ? 'flex' : 'none';
 }
 
 function massaFileSelect(input) {
   var file = input.files[0];
   if (!file) return;
+  var name = file.name.toLowerCase();
+  var status = document.getElementById('massa-file-status');
+
+  if (name.endsWith('.pdf')) {
+    status.textContent = '⏳ Lendo PDF ' + file.name + '...';
+    var fd = new FormData();
+    fd.append('arquivo', file);
+    var tok = localStorage.getItem('gn_token') || '';
+    fetch('/api/catalogo/extrair-pdf', {
+      method: 'POST',
+      headers: tok ? { 'Authorization': 'Bearer ' + tok } : {},
+      body: fd
+    }).then(function(r){ return r.json(); }).then(function(r) {
+      if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao ler PDF'); return; }
+      document.getElementById('massa-input').value = r.texto;
+      massaToggleModo('texto');
+      status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
+    }).catch(function(e) {
+      status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+    });
+    return;
+  }
+
   var reader = new FileReader();
   reader.onload = function(e) {
     document.getElementById('massa-input').value = e.target.result;
-    var name = file.name.toLowerCase();
     if (name.endsWith('.json')) massaToggleModo('json');
     else if (name.endsWith('.csv')) massaToggleModo('csv');
     else if (name.endsWith('.xml')) massaToggleModo('xml');
     else massaToggleModo('texto');
-    document.getElementById('massa-file-status').textContent = '📎 ' + file.name;
+    status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
   };
   reader.readAsText(file, 'UTF-8');
+}
+
+async function massaRasparUrl() {
+  var url = document.getElementById('massa-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('massa-status');
+  status.textContent = '⏳ Acessando e identificando o produto...';
+  try {
+    var r = await api('POST', '/catalogo/raspar', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar URL'); return; }
+    if (!r.encontrado) {
+      status.textContent = '⚠️ ' + (r.mensagem || 'Não foi possível identificar dados do produto nesta página.');
+      return;
+    }
+    var d = r.dados;
+    var item = massaNormalizarItem(Object.assign({}, d, { preco_custo: d.preco, _url_origem: url }), 'url');
+
+    var tbody = document.getElementById('massa-tbody');
+    document.getElementById('massa-resultado').style.display = 'block';
+    var i = _massaItens.length;
+    var full = await massaAdicionarItem(item);
+    tbody.appendChild(massaRenderRow(i, full));
+
+    var aprov = _massaItens.filter(function(x){ return x.decisao === 'APROVADO'; }).length;
+    var pend  = _massaItens.filter(function(x){ return x.decisao === 'PENDENTE'; }).length;
+    var repr  = _massaItens.filter(function(x){ return x.decisao === 'REPROVADO'; }).length;
+    document.getElementById('massa-resumo').textContent =
+      '✅ ' + aprov + ' aprovados · ⏳ ' + pend + ' pendentes · ✖ ' + repr + ' reprovados';
+
+    status.textContent = '✅ Produto identificado a partir da URL. Confirme os dados antes de salvar.';
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar URL: ' + e.message;
+  }
 }
 
 // ===== EAN SCANNER GS1 =====
