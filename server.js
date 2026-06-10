@@ -194,6 +194,60 @@ function extrairListaProdutosLd(html, baseUrl) {
   return produtos;
 }
 
+// Valida checksum de GTIN-8/12/13/14 (módulo 10, peso 3/1 a partir do dígito mais à direita)
+function validarGTIN(codigo) {
+  const digitos = String(codigo == null ? '' : codigo).replace(/\D/g, '');
+  if (![8, 12, 13, 14].includes(digitos.length)) return false;
+  const nums = digitos.split('').map(Number);
+  const check = nums.pop();
+  let soma = 0;
+  for (let i = 0; i < nums.length; i++) {
+    const posicaoDaDireita = nums.length - i;
+    soma += nums[i] * (posicaoDaDireita % 2 === 1 ? 3 : 1);
+  }
+  const digitoCalculado = (10 - (soma % 10)) % 10;
+  return digitoCalculado === check;
+}
+
+// Valida NCM: precisa ter exatamente 8 dígitos numéricos (TIPI). Retorna o código limpo ou null.
+function validarNCM(codigo) {
+  const digitos = String(codigo == null ? '' : codigo).replace(/\D/g, '');
+  return digitos.length === 8 ? digitos : null;
+}
+
+// Busca web com fallback: Serper.dev (primário) → Google Custom Search (secundário)
+async function buscarWeb(q, num = 10) {
+  const resultados = [];
+  if (process.env.SERPER_API_KEY) {
+    try {
+      const body = JSON.stringify({ q, num, gl: 'br', hl: 'pt-br' });
+      const data = await httpsJSON({
+        hostname: 'google.serper.dev', path: '/search', method: 'POST',
+        headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, body);
+      (data.organic || []).forEach(item => {
+        if (item.title && item.snippet) resultados.push({ titulo: item.title, fonte: item.link, trecho: item.snippet });
+      });
+    } catch (e) {
+      console.error('[Busca Web] Serper:', e.message);
+    }
+  }
+  if (resultados.length < num && process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
+    try {
+      const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&num=10`);
+      const data = await httpsJSON({ hostname: url.hostname, path: url.pathname + url.search, method: 'GET' });
+      (data.items || []).forEach(item => {
+        if (item.title && item.snippet && !resultados.some(r => r.fonte === item.link)) {
+          resultados.push({ titulo: item.title, fonte: item.link, trecho: item.snippet });
+        }
+      });
+    } catch (e) {
+      console.error('[Busca Web] Google:', e.message);
+    }
+  }
+  return resultados.slice(0, num);
+}
+
 // -----------------------------------------------------------
 // MIDDLEWARES
 // -----------------------------------------------------------
@@ -421,6 +475,128 @@ REGRAS ABSOLUTAS:
     } catch (e) {
         console.error('[Extrair Técnico] IA:', e.message);
         res.json({ ok: false, erro: e.message, dados: vazio });
+    }
+});
+
+// Agente de Enriquecimento de DNA via Web — busca na web os campos dos módulos
+// CO/AV/FM/MC/FP do NTC (código OEM, EAN/GTIN, NCM/CEST, aplicação veicular,
+// material, dimensões, FMSI etc.) e devolve, para cada campo, o valor, a fonte
+// (URL) e a confiança (alta/media/baixa). NUNCA inventa: sem fonte, o campo
+// volta null com confiança "baixa" e motivo "fonte não encontrada". EAN passa
+// por checksum GTIN e NCM precisa ter 8 dígitos — senão é marcado para
+// confirmação fiscal. Resultado sempre "pendente_confirmacao": nunca auto-aprova.
+const CAMPOS_DNA = [
+    'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
+    'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
+    'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura'
+];
+
+app.post('/api/motor/enriquecer-dna', async (req, res) => {
+    const { sku, fabricante, nome } = req.body;
+    if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
+
+    const vazio = {};
+    CAMPOS_DNA.forEach(c => { vazio[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' }; });
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+        return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true });
+    }
+
+    const q = [fabricante, sku, nome].filter(Boolean).join(' ');
+    let trechos = [];
+    try {
+        trechos = await buscarWeb(q, 10);
+    } catch (e) {
+        console.error('[Enriquecer DNA] busca:', e.message);
+    }
+
+    if (trechos.length === 0) {
+        return res.json({
+            ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
+            mensagem: 'Sem resultados de busca — nenhuma fonte encontrada.'
+        });
+    }
+
+    try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await client.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1500,
+            system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
+
+Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
+
+Campos:
+- codigo_oem: código OEM / part number de referência do fabricante do veículo
+- ean: código EAN/GTIN do produto (8, 12, 13 ou 14 dígitos numéricos)
+- ncm: código NCM (8 dígitos numéricos)
+- cest: código CEST (formato NN.NNN.NN), se aplicável
+- motor: aplicação de motor/veículo (texto livre, ex: "1.0 12V Flex")
+- codigo_motor: código interno do motor (ex: "EA211", "1GD-FTV")
+- marca_veiculo: marca do veículo de aplicação (ex: "Toyota")
+- modelo_veiculo: modelo do veículo (ex: "Hilux")
+- versao_veiculo: versão/trim do veículo (ex: "SRV", "SR")
+- ano_inicial: ano inicial de aplicação (número de 4 dígitos)
+- ano_final: ano final de aplicação (número de 4 dígitos)
+- cilindrada: cilindrada em cm³ (número)
+- material: material/composição da peça
+- posicao: posição de montagem (ex: "Dianteiro", "Traseiro Esquerdo")
+- fmsi: código de referência FMSI (padrão usado em pastilhas/lonas de freio)
+- comprimento: comprimento em cm (número)
+- largura: largura em cm (número)
+- altura: altura em cm (número)
+
+REGRAS ABSOLUTAS:
+1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
+2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
+3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null.
+4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
+5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.`,
+            messages: [{
+                role: 'user',
+                content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca numerados:\n`
+                    + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n')
+            }]
+        });
+        const texto = msg.content?.[0]?.text || '{}';
+        let bruto;
+        try {
+            const jsonMatch = texto.match(/\{[\s\S]*\}/);
+            bruto = JSON.parse(jsonMatch ? jsonMatch[0] : texto);
+        } catch (e) {
+            bruto = {};
+        }
+
+        const campos = {};
+        CAMPOS_DNA.forEach(c => {
+            const item = bruto[c];
+            if (!item || item.valor == null || item.valor === '') {
+                campos[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' };
+                return;
+            }
+            const idx = Number(item.fonte_idx);
+            const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
+            let valor = item.valor;
+            let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
+            let motivo = null;
+
+            if (c === 'ean') {
+                if (!validarGTIN(valor)) { valor = null; confianca = 'baixa'; motivo = 'GTIN inválido (checksum)'; }
+            }
+            if (c === 'ncm') {
+                const ncmLimpo = validarNCM(valor);
+                if (!ncmLimpo) { confianca = 'baixa'; motivo = 'requer confirmação fiscal — NCM deve ter 8 dígitos'; }
+                else valor = ncmLimpo;
+            }
+            campos[c] = { valor, fonte: fonte || null, confianca, motivo };
+        });
+
+        const encontrado = CAMPOS_DNA.some(c => campos[c].valor != null);
+        res.json({ ok: true, encontrado, campos, fontes_consultadas: trechos.map(t => t.fonte), pendente_confirmacao: true });
+    } catch (e) {
+        console.error('[Enriquecer DNA] IA:', e.message);
+        res.json({ ok: false, erro: e.message, campos: vazio, pendente_confirmacao: true });
     }
 });
 

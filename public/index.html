@@ -1497,6 +1497,14 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
       </div>
 
+      <!-- Agente de Enriquecimento de DNA via Web -->
+      <div class="card" id="cntc-dna-card" style="display:none">
+        <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
+        <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, aplica&ccedil;&atilde;o veicular, material e dimens&otilde;es na web. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, e fica em laranja para sua confirma&ccedil;&atilde;o.</p>
+        <button class="btn btn-secondary" onclick="cntcBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
+        <div id="cntc-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
       <!-- Barra NTC em tempo real -->
       <div id="cntc-ntc-bar" style="display:none" class="card">
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
@@ -4441,6 +4449,126 @@ function cntcAnalisarJSON() {
   }
 }
 
+// Mapa: campo retornado por /api/motor/enriquecer-dna -> {id do input no formulário, key em _cntcDados}
+var MAPA_CAMPOS_DNA = {
+  codigo_oem:     {id:'cntc-co-oem',   key:'codigo_oem'},
+  ean:            {id:'cntc-co-ean',   key:'ean'},
+  ncm:            {id:'cntc-fm-ncm',   key:'ncm'},
+  cest:           {id:'cntc-fm-cest',  key:'cest'},
+  motor:          {id:'cntc-av-motor', key:'motor'},
+  codigo_motor:   {id:'cntc-av-codmot',key:'codigo_motor'},
+  marca_veiculo:  {id:'cntc-av-marca', key:'marca'},
+  modelo_veiculo: {id:'cntc-av-modelo',key:'modelo'},
+  versao_veiculo: {id:'cntc-av-versao',key:'versao'},
+  ano_inicial:    {id:'cntc-av-anoi',  key:'ano_inicial'},
+  ano_final:      {id:'cntc-av-anof',  key:'ano_final'},
+  cilindrada:     {id:'cntc-av-cil',   key:'cilindrada'},
+  material:       {id:'cntc-mc-mat',   key:'material'},
+  comprimento:    {id:'cntc-fp-comp',  key:'comprimento'},
+  largura:        {id:'cntc-fp-larg',  key:'largura'},
+  altura:         {id:'cntc-fp-alt',   key:'altura'},
+};
+
+async function cntcBuscarDnaWeb() {
+  var statusEl = document.getElementById('cntc-dna-status');
+  var sku = _cntcDados.codigo_fabricante || _cntcDados.sku || '';
+  var fabricante = _cntcDados.fabricante || '';
+  var nome = _cntcDados.nome || _cntcDados.descricao || '';
+
+  if (!sku && !nome) {
+    statusEl.innerHTML = '<span style="color:#ff6500">&#9888; Informe ao menos o SKU/c&oacute;digo ou o nome do produto antes de buscar.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '&#8987; Buscando DNA na web (IA)... isso pode levar at&eacute; 1 minuto.';
+
+  var r;
+  try {
+    r = await api('POST', '/motor/enriquecer-dna', {sku: sku, fabricante: fabricante, nome: nome});
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#ff4500">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+
+  if (!r.ok) {
+    statusEl.innerHTML = '<span style="color:#ff4500">&#9888; ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
+    return;
+  }
+  if (!r.encontrado) {
+    statusEl.innerHTML = '<span style="color:#ffaa00">&#9888; ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
+    return;
+  }
+
+  var preenchidos = [];
+  var pendentes = [];
+  var campos = r.campos || {};
+
+  Object.keys(MAPA_CAMPOS_DNA).forEach(function(campo) {
+    var info = campos[campo];
+    if (!info) return;
+    var map = MAPA_CAMPOS_DNA[campo];
+    if (info.valor == null || info.valor === '') {
+      if (info.motivo && info.motivo !== 'fonte não encontrada') pendentes.push({campo: campo, motivo: info.motivo});
+      return;
+    }
+    var el = document.getElementById(map.id);
+    if (!el || (el.value && String(el.value).trim() !== '')) return;
+    el.value = info.valor;
+    el.style.borderColor = '#ff9800';
+    el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida') + (info.motivo ? ' — ' + info.motivo : '');
+    _cntcDados[map.key] = info.valor;
+    preenchidos.push({campo: campo, valor: info.valor, confianca: info.confianca, fonte: info.fonte, motivo: info.motivo});
+  });
+
+  // Campos sem campo dedicado no formulário: anexa como linha em "Especificações" (EC)
+  ['posicao', 'fmsi'].forEach(function(campo) {
+    var info = campos[campo];
+    if (!info || info.valor == null || info.valor === '') return;
+    var rotulo = campo === 'posicao' ? 'Posição' : 'Código FMSI';
+    var linha = rotulo + ': ' + info.valor;
+    var el = document.getElementById('cntc-ec-espec');
+    if (el) {
+      if (el.value.indexOf(linha) === -1) {
+        el.value = el.value ? (el.value + '\n' + linha) : linha;
+        el.style.borderColor = '#ff9800';
+        el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+      }
+    } else {
+      if (!Array.isArray(_cntcDados.especificacoes)) _cntcDados.especificacoes = [];
+      if (_cntcDados.especificacoes.indexOf(linha) === -1) _cntcDados.especificacoes.push(linha);
+    }
+    preenchidos.push({campo: campo, valor: info.valor, confianca: info.confianca, fonte: info.fonte});
+  });
+
+  // Recalcula o NTC com os novos dados preservando os campos já em tela
+  await _cntcRecalcular();
+
+  // Resumo para o usuário
+  var html = '';
+  if (preenchidos.length === 0) {
+    html = '<span style="color:#ffaa00">A IA consultou ' + (r.fontes_consultadas||[]).length + ' fonte(s), mas n&atilde;o encontrou campos vazios para preencher.</span>';
+  } else {
+    html = '<div style="color:#00ff88;margin-bottom:6px">&#10003; ' + preenchidos.length + ' campo(s) preenchido(s) em laranja &mdash; revise antes de salvar:</div><ul style="margin:0 0 6px;padding-left:18px">';
+    preenchidos.forEach(function(p) {
+      var cor = p.confianca === 'alta' ? '#00ff88' : (p.confianca === 'media' ? '#ffaa00' : '#ff6500');
+      html += '<li style="margin-bottom:3px"><strong>' + esc(p.campo) + '</strong>: ' + esc(String(p.valor)) + ' <span style="color:' + cor + '">(' + esc(p.confianca) + ')</span>'
+            + (p.fonte ? ' &mdash; <a href="' + esc(p.fonte) + '" target="_blank" rel="noopener" style="color:#888">fonte</a>' : '')
+            + (p.motivo ? ' &mdash; <span style="color:#ff6500">' + esc(p.motivo) + '</span>' : '')
+            + '</li>';
+    });
+    html += '</ul>';
+  }
+  if (pendentes.length > 0) {
+    html += '<div style="font-size:11px;color:#ff6500;margin-top:4px">&#9888; ' + pendentes.length + ' campo(s) encontrados mas n&atilde;o confi&aacute;veis: ';
+    html += pendentes.map(function(p){ return esc(p.campo) + ' (' + esc(p.motivo) + ')'; }).join(', ');
+    html += '</div>';
+  }
+  if (r.fontes_consultadas && r.fontes_consultadas.length) {
+    html += '<div style="margin-top:6px;font-size:11px;color:#666">Fontes consultadas: ' + r.fontes_consultadas.length + '</div>';
+  }
+  statusEl.innerHTML = html;
+}
+
 async function _cntcRenderModulos() {
   // Busca scores atuais no backend
   var r;
@@ -4451,6 +4579,7 @@ async function _cntcRenderModulos() {
   _cntcAtualizarBarra(r.ntc, r.decisao);
   document.getElementById('cntc-ntc-bar').style.display = 'block';
   document.getElementById('cntc-save-bar').style.display = 'block';
+  document.getElementById('cntc-dna-card').style.display = 'block';
 
   // Módulos incompletos primeiro, completos no fim
   var modOrdem = Object.keys(PESOS_NTC);
