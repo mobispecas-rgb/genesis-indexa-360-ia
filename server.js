@@ -771,6 +771,106 @@ function wixRequest(method, path, payload) {
   return httpsJSON(opts, body);
 }
 
+// ─── Wix Stores — categorias/subcategorias de produtos (criação automática) ─
+const WIX_TREE_REF = { appNamespace: '@wix/stores' };
+const WIX_STORES_APP_ID = '215238eb-22a5-4c36-9e7b-e7c08025e04e';
+
+let _wixCategoriasCache = null;
+let _wixCategoriasCacheTs = 0;
+
+async function listarWixCategorias() {
+  if (_wixCategoriasCache && Date.now() - _wixCategoriasCacheTs < 5 * 60 * 1000) return _wixCategoriasCache;
+  const todas = [];
+  let cursor = null;
+  for (let i = 0; i < 10; i++) {
+    const data = await wixRequest('POST', '/categories/v1/categories/query', {
+      query: { cursorPaging: { limit: 100, ...(cursor ? { cursor } : {}) } },
+      treeReference: WIX_TREE_REF
+    });
+    const lista = data.categories || [];
+    todas.push(...lista);
+    cursor = data.pagingMetadata && data.pagingMetadata.cursors && data.pagingMetadata.cursors.next;
+    if (!cursor || lista.length < 100) break;
+  }
+  _wixCategoriasCache = todas;
+  _wixCategoriasCacheTs = Date.now();
+  return todas;
+}
+
+function _idCategoriaPaiWix(c) {
+  return (c.parentCategory && c.parentCategory.id) || null;
+}
+
+async function getOrCreateWixCategoria(nome, idPai) {
+  const todas = await listarWixCategorias();
+  const existente = todas.find(c => (c.name || '').trim().toLowerCase() === nome.trim().toLowerCase()
+    && (idPai ? _idCategoriaPaiWix(c) === idPai : !_idCategoriaPaiWix(c)));
+  if (existente) return existente.id;
+  const payload = { category: { name: nome, visible: true, ...(idPai ? { parentCategory: { id: idPai } } : {}) }, treeReference: WIX_TREE_REF };
+  const criada = await wixRequest('POST', '/categories/v1/categories', payload);
+  if (!criada.category || !criada.category.id) throw new Error('Falha ao criar categoria Wix "' + nome + '": ' + JSON.stringify(criada));
+  _wixCategoriasCache.push(criada.category);
+  return criada.category.id;
+}
+
+// Resolve (criando se preciso) categoria + subcategoria seguindo o modelo de engenharia.
+// Best-effort: nunca bloqueia o cadastro do produto — em caso de falha retorna null.
+async function resolverCategoriasWix(familia, nomeProduto) {
+  if (!familia) return null;
+  try {
+    const idCategoria = await getOrCreateWixCategoria(nomeCategoriaPrincipal(familia), null);
+    const nomeSub = classificarSubcategoria(familia, nomeProduto);
+    if (!nomeSub) return [idCategoria];
+    const idSub = await getOrCreateWixCategoria(nomeSub, idCategoria);
+    return [idCategoria, idSub];
+  } catch (e) {
+    console.error('[Wix categoria]', e.message);
+    return null;
+  }
+}
+
+// Atribui um produto às categorias resolvidas. Best-effort: falhas não bloqueiam o cadastro.
+async function atribuirCategoriasWix(produtoId, categoriaIds) {
+  if (!produtoId || !categoriaIds || !categoriaIds.length) return;
+  try {
+    await wixRequest('POST', '/categories/v1/bulk/categories/add-item', {
+      item: { catalogItemId: produtoId, appId: WIX_STORES_APP_ID },
+      categoryIds: categoriaIds,
+      treeReference: WIX_TREE_REF
+    });
+  } catch (e) {
+    console.error('[Wix categoria/atribuir]', e.message);
+  }
+}
+
+// Monta o payload completo (produto + categorias resolvidas) para a Catalog V3 do Wix
+async function montarPayloadProdutoWix(p) {
+  const preco = (p.preco_venda || p.preco) ? String(parseFloat(p.preco_venda || p.preco).toFixed(2)) : '0.01';
+  const mediaItems = (p.imagens || []).slice(0, 8).map(url => ({ mediaType: 'IMAGE', image: { url } }));
+  const familia = p.familia_tecnica || p.familia;
+  const categoriaIds = await resolverCategoriasWix(familia, p.nome);
+  const payload = {
+    product: {
+      name: p.nome || p.codigo_fabricante || 'Produto',
+      visible: true,
+      productType: 'PHYSICAL',
+      plainDescription: p.descricao || p.voz_do_lojista || '',
+      physicalProperties: {},
+      ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
+      variantsInfo: {
+        variants: [{
+          sku: p.codigo_fabricante || p.sku || '',
+          visible: true,
+          price: { actualPrice: { amount: preco } },
+          inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
+          physicalProperties: {}
+        }]
+      }
+    }
+  };
+  return { payload, categoriaIds };
+}
+
 app.get('/api/wix/status', async (req, res) => {
   if (!process.env.WIX_API_KEY) return res.json({ ok: false, configurado: false, mensagem: 'Configure WIX_API_KEY e WIX_SITE_ID no Render' });
   try {
@@ -782,27 +882,12 @@ app.get('/api/wix/status', async (req, res) => {
 app.post('/api/wix/produto', async (req, res) => {
   try {
     const p = req.body;
-    const preco = (p.preco_venda || p.preco) ? String(parseFloat(p.preco_venda || p.preco).toFixed(2)) : '0.01';
-    const payload = {
-      product: {
-        name: p.nome || p.codigo_fabricante || 'Produto',
-        visible: true,
-        productType: 'PHYSICAL',
-        plainDescription: p.descricao || p.voz_do_lojista || '',
-        physicalProperties: {},
-        variantsInfo: {
-          variants: [{
-            sku: p.codigo_fabricante || p.sku || '',
-            visible: true,
-            price: { actualPrice: { amount: preco } },
-            inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
-            physicalProperties: {}
-          }]
-        }
-      }
-    };
+    const { payload, categoriaIds } = await montarPayloadProdutoWix(p);
     const data = await wixRequest('POST', '/stores/v3/products-with-inventory', payload);
-    if (data.product && data.product.id) return res.json({ ok: true, id: data.product.id, plataforma: 'wix', url: 'https://www.mobisautoparts.com.br' });
+    if (data.product && data.product.id) {
+      await atribuirCategoriasWix(data.product.id, categoriaIds);
+      return res.json({ ok: true, id: data.product.id, plataforma: 'wix', url: 'https://www.mobisautoparts.com.br', categorias: categoriaIds || null });
+    }
     res.json({ ok: false, erro: JSON.stringify(data) });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
@@ -816,6 +901,14 @@ app.post('/api/wix/sync/:id', async (req, res) => {
     const data = await wixRequest('PATCH', '/stores/v3/products-with-inventory/' + req.params.id, payload);
     res.json({ ok: true, data });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ─── Wix — categorias e subcategorias de produtos ───────────────────
+app.get('/api/wix/categorias', async (req, res) => {
+  try {
+    const categorias = await listarWixCategorias();
+    res.json({ ok: true, categorias: categorias.map(c => ({ id: c.id, nome: c.name, idCategoriaPai: _idCategoriaPaiWix(c) })) });
+  } catch(e) { res.json({ ok: false, erro: e.message, categorias: [] }); }
 });
 
 // Wix — listar produtos (V3)
@@ -925,12 +1018,14 @@ app.post('/api/sync/lote', async (req, res) => {
       r.bling = b.data?.id ? { ok: true, id: b.data.id, categoria: payload.categoria || null } : { ok: false, erro: JSON.stringify(b.error||b) };
     } catch(e) { r.bling = { ok: false, erro: e.message }; }
     try {
-      const mediaItems = (p.imagens||[]).slice(0,8).map(url=>({mediaType:'IMAGE',image:{url}}));
-      const payload = { product: { name: p.nome||p.codigo_fabricante||'Produto', productType:'physical',
-        description: p.descricao||p.voz_do_lojista||'', sku: p.codigo_fabricante||'', visible:true,
-        ...(mediaItems.length?{media:{items:mediaItems}}:{}) }};
-      const w = await wixRequest('POST', '/stores/v1/products', payload);
-      r.wix = w.product?.id ? { ok: true, id: w.product.id } : { ok: false, erro: JSON.stringify(w) };
+      const { payload, categoriaIds } = await montarPayloadProdutoWix(p);
+      const w = await wixRequest('POST', '/stores/v3/products-with-inventory', payload);
+      if (w.product?.id) {
+        await atribuirCategoriasWix(w.product.id, categoriaIds);
+        r.wix = { ok: true, id: w.product.id, categorias: categoriaIds || null };
+      } else {
+        r.wix = { ok: false, erro: JSON.stringify(w) };
+      }
     } catch(e) { r.wix = { ok: false, erro: e.message }; }
     resultados.push(r);
   }
