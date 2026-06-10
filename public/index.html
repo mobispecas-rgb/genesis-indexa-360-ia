@@ -816,6 +816,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       </div>
 
       <!-- Table -->
+      <div id="aprov-cad-table-wrap">
       <div style="overflow-x:auto">
         <table class="aprov-table">
           <thead>
@@ -854,6 +855,8 @@ PASTILHA DE FREIO - PF4201 - FREMAX
           <button id="aprov-cad-next" class="btn btn-sm btn-secondary" onclick="aprovCadPgChange(1)">Pr&oacute;xima &#8594;</button>
         </div>
       </div>
+      </div>
+      <div id="aprov-cad-plat-view" style="display:none"></div>
     </div>
 
     <!-- REVISÃO DE CADASTRO (detalhe por produto) -->
@@ -914,6 +917,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       </div>
 
       <!-- Table -->
+      <div id="aprov-enriq-table-wrap">
       <div style="overflow-x:auto">
         <table class="aprov-table">
           <thead>
@@ -952,6 +956,8 @@ PASTILHA DE FREIO - PF4201 - FREMAX
           <button id="aprov-enriq-next" class="btn btn-sm btn-secondary" onclick="aprovEnriqPgChange(1)">Pr&oacute;xima &#8594;</button>
         </div>
       </div>
+      </div>
+      <div id="aprov-enriq-plat-view" style="display:none"></div>
     </div>
 
     <!-- APROVADOS -->
@@ -2555,7 +2561,177 @@ async function aprovSincronizarLote() {
 }
 
 async function aprovPublicarTodos() { aprovSincronizarLote(); }
-async function aprovPublicarML() { alert('Integração Mercado Livre — configure ML_ACCESS_TOKEN no Render para ativar.'); }
+
+// ===== FORMATO MERCADO LIVRE (preview/export) =====
+var ML_CATEGORY_MAP = [
+  { test: /pastilha.*freio|freio.*pastilha/i, nome: 'Acessórios para Veículos > Freios > Pastilhas de Freio' },
+  { test: /disco.*freio|freio.*disco/i, nome: 'Acessórios para Veículos > Freios > Discos de Freio' },
+  { test: /amortecedor/i, nome: 'Acessórios para Veículos > Suspensão > Amortecedores' },
+  { test: /filtro.*(o|ó)leo/i, nome: 'Acessórios para Veículos > Filtros > Filtros de Óleo' },
+  { test: /filtro.*ar/i, nome: 'Acessórios para Veículos > Filtros > Filtros de Ar' },
+  { test: /filtro.*combust/i, nome: 'Acessórios para Veículos > Filtros > Filtros de Combustível' },
+  { test: /correia/i, nome: 'Acessórios para Veículos > Motor > Correias' },
+  { test: /vela.*igni/i, nome: 'Acessórios para Veículos > Motor > Velas de Ignição' },
+  { test: /embreagem/i, nome: 'Acessórios para Veículos > Transmissão > Kits de Embreagem' },
+  { test: /rolamento/i, nome: 'Acessórios para Veículos > Transmissão > Rolamentos' },
+  { test: /suspens|bandeja|pivot|terminal de dire/i, nome: 'Acessórios para Veículos > Suspensão e Direção' },
+  { test: /bomba.*combust/i, nome: 'Acessórios para Veículos > Motor > Bombas de Combustível' },
+  { test: /radiador/i, nome: 'Acessórios para Veículos > Arrefecimento > Radiadores' },
+  { test: /bateria/i, nome: 'Acessórios para Veículos > Elétrica > Baterias' }
+];
+
+function mlSugerirCategoria(p) {
+  var texto = [p.categoria, p.familia_tecnica, p.familia, p.nome].filter(Boolean).join(' ');
+  for (var i = 0; i < ML_CATEGORY_MAP.length; i++) {
+    if (ML_CATEGORY_MAP[i].test.test(texto)) return ML_CATEGORY_MAP[i].nome;
+  }
+  return 'Acessórios para Veículos > Outros (revisar categoria)';
+}
+
+function mlMontarTitulo(p) {
+  var partes = [p.nome, p.fabricante, p.codigo_fabricante].filter(Boolean);
+  return partes.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function mlMapearProduto(p) {
+  var avisos = [];
+  var tituloCompleto = mlMontarTitulo(p);
+  var titulo = tituloCompleto.length > 60 ? tituloCompleto.slice(0, 60) : tituloCompleto;
+  if (tituloCompleto.length > 60) avisos.push('Título excede 60 caracteres (limite Mercado Livre) e foi truncado');
+  if (!tituloCompleto) avisos.push('Sem nome/título');
+  var ean = (p.ean || '').replace(/\D/g, '');
+  if (!ean || ean.length !== 13) avisos.push('GTIN/EAN ausente ou inválido (esperado 13 dígitos)');
+  if (!p.imagens || !p.imagens.length) avisos.push('Sem imagens');
+  if (p.preco_venda == null) avisos.push('Sem preço de venda');
+  return {
+    title: titulo,
+    category_sugerida: mlSugerirCategoria(p),
+    gtin: ean || null,
+    price: p.preco_venda != null ? Number(p.preco_venda) : null,
+    currency_id: 'BRL',
+    condition: 'new',
+    available_quantity: p.estoque != null ? Number(p.estoque) : 1,
+    listing_type_id: 'gold_special',
+    buying_mode: 'buy_it_now',
+    pictures: (p.imagens || []).map(function(u){ return { source: u }; }),
+    description: p.descricao || '',
+    attributes: [
+      p.fabricante ? { id: 'BRAND', value_name: p.fabricante } : null,
+      p.codigo_fabricante ? { id: 'PART_NUMBER', value_name: p.codigo_fabricante } : null,
+      p.codigo_oem ? { id: 'ALTERNATE_PART_NUMBER', value_name: p.codigo_oem } : null,
+      ean ? { id: 'GTIN', value_name: ean } : null,
+      p.material ? { id: 'MATERIAL', value_name: p.material } : null,
+      p.motor ? { id: 'VEHICLE_ENGINE', value_name: p.motor } : null
+    ].filter(Boolean),
+    _avisos: avisos
+  };
+}
+
+function mlGetProdsPorContexto(ctx) {
+  if (ctx === 'cad') return aprovCadGetSorted();
+  if (ctx === 'enriq') return aprovEnriqGetSorted();
+  return getProds().filter(function(p){ return p.decisao === 'APROVADO'; });
+}
+
+function mlPreviewHtml(prods, ctx) {
+  if (!prods.length) return '<div class="card" style="text-align:center;padding:40px;color:#555">Nenhum produto na fila.</div>';
+  var rows = prods.map(function(p){
+    var gi = prodIndex(p);
+    var m = mlMapearProduto(p);
+    var img = (p.imagens && p.imagens[0])
+      ? '<img src="'+esc(p.imagens[0])+'" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #333">'
+      : '<div style="width:36px;height:36px;background:#1a1a1a;border-radius:4px;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:16px">📷</div>';
+    var avisosHtml = m._avisos.length
+      ? m._avisos.map(function(a){ return '<span style="display:inline-block;background:#f4433620;color:#f44336;border-radius:8px;padding:1px 6px;font-size:10px;margin:1px">'+esc(a)+'</span>'; }).join('')
+      : '<span style="color:#00c853;font-size:11px">&#10003; OK</span>';
+    return '<tr>'
+      + '<td style="padding:8px 6px">'+img+'</td>'
+      + '<td style="padding:8px 6px"><div style="font-size:13px;font-weight:600">'+esc(m.title)+'</div>'
+      + '<div style="font-size:11px;color:#555">'+esc(m.category_sugerida)+'</div></td>'
+      + '<td class="col-opt" style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(m.gtin||'—')+'</td>'
+      + '<td style="padding:8px 6px;font-size:12px">'+(m.price!=null ? 'R$ '+m.price.toFixed(2).replace('.',',') : '—')+'</td>'
+      + '<td class="col-opt" style="padding:8px 6px">'+avisosHtml+'</td>'
+      + '<td style="padding:8px 6px;white-space:nowrap"><button class="btn btn-sm btn-secondary" onclick="mlVerJson('+gi+')">&#128065; JSON</button></td>'
+      + '</tr>';
+  }).join('');
+  return '<div class="card">'
+    + '<div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">'
+    + '<span>&#128722; Formato Mercado Livre &mdash; Pr&eacute;via</span>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button class="btn btn-sm btn-secondary" onclick="mlExportarCsv(\''+ctx+'\')">&#8595; Exportar CSV</button>'
+    + '<button class="btn btn-sm btn-secondary" onclick="mlExportarJson(\''+ctx+'\')">&#8595; Exportar JSON</button>'
+    + '</div></div>'
+    + '<p style="font-size:12px;color:#888;margin:4px 0 12px">Mapeamento autom&aacute;tico para o formato de an&uacute;ncio do Mercado Livre. Categoria e atributos s&atilde;o sugest&otilde;es e devem ser confirmados no Categorizador do Mercado Livre antes da publica&ccedil;&atilde;o.</p>'
+    + '<div style="overflow-x:auto"><table class="aprov-table" style="width:100%"><thead><tr>'
+    + '<th>Imagem</th><th>T&iacute;tulo / Categoria sugerida</th><th class="col-opt">GTIN</th><th>Pre&ccedil;o</th><th class="col-opt">Avisos</th><th>A&ccedil;&atilde;o</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '</div>';
+}
+
+var _platLabels = {
+  vtex: 'VTEX', shopify: 'Shopify', magento2: 'Magento 2', tray: 'Tray', lojaintegrada: 'Loja Integrada',
+  bagy: 'Bagy', nuvemshop: 'Nuvemshop', hostgator: 'HostGator', bling: 'Bling', tiny: 'Tiny',
+  idworks: 'idworks', alternativa: 'Alternativa', arius: 'Arius', conectahub: 'ConectaHub', climba: 'Climba'
+};
+
+function aprovPlatRender(ctx, tab) {
+  var view = document.getElementById(ctx === 'cad' ? 'aprov-cad-plat-view' : 'aprov-enriq-plat-view');
+  if (!view) return;
+  var prods = mlGetProdsPorContexto(ctx);
+  if (tab === 'mercadolivre') {
+    view.innerHTML = mlPreviewHtml(prods, ctx);
+  } else {
+    view.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:#555">'
+      + '<div style="font-size:32px;margin-bottom:8px">&#128679;</div>'
+      + '<div>Formato <strong>'+esc(_platLabels[tab]||tab)+'</strong> em desenvolvimento.</div>'
+      + '<div style="font-size:12px;margin-top:6px">Use a aba <strong>MercadoLivre</strong> para visualizar e exportar o formato dispon&iacute;vel.</div>'
+      + '</div>';
+  }
+  view.style.display = 'block';
+}
+
+function mlVerJson(idx) {
+  var prods = getProds(); var p = prods[idx];
+  if (!p) return;
+  var json = JSON.stringify(mlMapearProduto(p), null, 2);
+  if (navigator.clipboard) navigator.clipboard.writeText(json).catch(function(){});
+  alert('JSON do anúncio Mercado Livre (copiado para a área de transferência):\n\n' + json);
+}
+
+function mlExportarJson(ctx) {
+  var prods = mlGetProdsPorContexto(ctx);
+  if (!prods.length) { alert('Nenhum produto para exportar.'); return; }
+  var arr = prods.map(mlMapearProduto);
+  var blob = new Blob([JSON.stringify(arr, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'mercadolivre_anuncios_' + new Date().toISOString().slice(0,10) + '.json'; a.click();
+}
+
+function mlExportarCsv(ctx) {
+  var prods = mlGetProdsPorContexto(ctx);
+  if (!prods.length) { alert('Nenhum produto para exportar.'); return; }
+  var header = ['Título','Categoria sugerida','GTIN','Preço','Moeda','Condição','Quantidade','Tipo de anúncio','Descrição','Avisos'];
+  var lines = [header.join(';')];
+  prods.forEach(function(p){
+    var m = mlMapearProduto(p);
+    var row = [
+      m.title, m.category_sugerida, m.gtin || '',
+      m.price != null ? String(m.price).replace('.', ',') : '',
+      m.currency_id, m.condition, m.available_quantity, m.listing_type_id,
+      (m.description || '').replace(/[\r\n;]+/g, ' '),
+      m._avisos.join(' | ')
+    ];
+    lines.push(row.map(function(v){ return '"' + String(v==null?'':v).replace(/"/g,'""') + '"'; }).join(';'));
+  });
+  var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'mercadolivre_anuncios_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+}
+
+async function aprovPublicarML(idx) {
+  if (idx != null) { mlVerJson(idx); return; }
+  mlExportarCsv('aprovados');
+}
 
 // ===== ENRIQUECIMENTO OEM =====
 var _oemDados = {};
@@ -4629,7 +4805,16 @@ function aprovCadSetTab(tab, btn) {
   _aprovCadTab = tab;
   document.querySelectorAll('.aprov-plat-tab').forEach(function(b){ b.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  aprovCadRender();
+  var wrap = document.getElementById('aprov-cad-table-wrap');
+  var platView = document.getElementById('aprov-cad-plat-view');
+  if (tab === 'principal') {
+    if (wrap) wrap.style.display = '';
+    if (platView) platView.style.display = 'none';
+    aprovCadRender();
+  } else {
+    if (wrap) wrap.style.display = 'none';
+    aprovPlatRender('cad', tab);
+  }
 }
 
 function aprovCadOrdenar(sort, el) {
@@ -4773,7 +4958,16 @@ function aprovEnriqSetTab(tab,btn){
   _aprovEnriqTab=tab;
   document.querySelectorAll('.aprov-plat-tab-e').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
-  aprovEnriqRender();
+  var wrap = document.getElementById('aprov-enriq-table-wrap');
+  var platView = document.getElementById('aprov-enriq-plat-view');
+  if (tab === 'principal') {
+    if (wrap) wrap.style.display = '';
+    if (platView) platView.style.display = 'none';
+    aprovEnriqRender();
+  } else {
+    if (wrap) wrap.style.display = 'none';
+    aprovPlatRender('enriq', tab);
+  }
 }
 function aprovEnriqOrdenar(sort,el){
   _aprovEnriqSort=sort; _aprovEnriqPage=0;
