@@ -1550,7 +1550,7 @@ function loadProdutos() {
   var prods = getProds();
   var tbody = document.getElementById('prod-table');
   tbody.innerHTML = prods.length ? prods.map(function(p, i) {
-    return '<tr><td><code style="color:#ff6b00;font-size:11px">' + (esc(p.sku)||'—') + '</code></td><td>' + (esc(p.nome)||'—') + '</td><td>' + (esc(p.marca)||'—') + '</td><td>' + (esc(p.familia)||'—') + '</td><td>' + (esc(p.motor)||'—') + '</td><td>' + (p.ntc != null ? (p.ntc*100).toFixed(1)+'%' : '—') + '</td><td>' + badgeHtml(p.decisao) + '</td><td><button class="btn btn-secondary btn-sm" onclick="deleteProduto(' + i + ')">&#128465;&#65039;</button></td></tr>';
+    return '<tr><td><code style="color:#ff6b00;font-size:11px">' + (esc(p.sku)||'—') + '</code></td><td>' + (esc(p.nome)||'—') + '</td><td>' + (esc(p.marca)||'—') + '</td><td>' + (esc(p.familia)||'—') + '</td><td>' + (esc(p.motor)||'—') + '</td><td>' + (p.ntc != null ? (p.ntc*100).toFixed(1)+'%' : '—') + '</td><td>' + badgeHtml(p.decisao) + '</td><td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="aprovEnriquecerProd(' + i + ')" title="Enriquecer com IA (NTC/SEO)" style="margin-right:4px">&#10024;</button><button class="btn btn-secondary btn-sm" onclick="deleteProduto(' + i + ')">&#128465;&#65039;</button></td></tr>';
   }).join('') : '<tr><td colspan="8" style="color:#555;text-align:center;padding:20px">Nenhum produto cadastrado.</td></tr>';
 }
 
@@ -2296,6 +2296,7 @@ function aprovRenderAprovados() {
       + '<div style="flex:1"><div style="font-weight:700;color:#fff">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
       + '<div style="font-size:11px;color:#555">'+esc(p.fabricante||'')+' · <code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></div>'
       + '<span style="color:#00c853;font-weight:700">'+Math.round((p.ntc||0)*100)+'% NTC</span>'
+      + '<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerProd('+idx+')">&#10024; Enriquecer</button>'
       + '<button class="btn btn-sm btn-primary" onclick="aprovPublicar('+idx+')">&#129695; Bling</button>'
       + '<button class="btn btn-sm btn-secondary" onclick="aprovPublicarWixItem('+idx+')">&#127760; Wix</button>'
       + '<button class="btn btn-sm btn-secondary" onclick="aprovPublicarML()">&#128722; ML</button>'
@@ -4310,6 +4311,7 @@ function aprovCadRender() {
       +'<td style="padding:8px 6px;white-space:nowrap">'
       +'<button class="btn btn-sm" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;margin-right:4px" onclick="aprovCadAprovar('+gi+')">&#10003; Aprovar</button>'
       +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640;margin-right:4px" onclick="aprovCadReprovar('+gi+')">&#10006; Reprovar</button>'
+      +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerProd('+gi+')" style="margin-right:4px">&#10024; Enriquecer</button>'
       +'<button class="btn btn-sm btn-secondary" onclick="aprovRevisarDetalhe('+gi+')">&#128393; Revisar</button>'
       +'</td></tr>';
   }).join('');
@@ -4443,6 +4445,7 @@ function aprovEnriqRender(){
       +'<td style="padding:8px 6px;white-space:nowrap">'
       +'<button class="btn btn-sm" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;margin-right:4px" onclick="aprovEnriqAprovar('+gi+')">&#10003; Aprovar</button>'
       +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640;margin-right:4px" onclick="aprovEnriqReprovar('+gi+')">&#10006; Reprovar</button>'
+      +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerProd('+gi+')" style="margin-right:4px">&#10024; Enriquecer</button>'
       +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriqVerDesc('+gi+')">&#128065; Ver</button>'
       +'</td></tr>';
   }).join('');
