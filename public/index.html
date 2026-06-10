@@ -223,6 +223,7 @@ tr:hover td{background:#f9fafb}
     <div class="sb-item" onclick="nav('imagens')"><span class="icon">&#128444;&#65039;</span>Imagens</div>
     <div class="sb-item" onclick="nav('aplicacoes')"><span class="icon">&#128663;</span>Aplica&ccedil;&otilde;es Motor</div>
     <div class="sb-item" onclick="nav('fiscal')"><span class="icon">&#128203;</span>Fiscal &amp; Log&iacute;stica</div>
+    <div class="sb-item" onclick="nav('precificacao')"><span class="icon">&#128181;</span>Precifica&ccedil;&atilde;o</div>
     <div class="sb-item" onclick="nav('ntc')"><span class="icon">&#128302;</span>NTC Inspector</div>
   </div>
 
@@ -1033,6 +1034,53 @@ PASTILHA DE FREIO - PF4201 - FREMAX
     </div>
     <div class="page" id="page-aplicacoes"><div class="stub-page"><div class="stub-icon">&#128663;</div><h2>Aplica&ccedil;&otilde;es Motor</h2><p>Em desenvolvimento &mdash; Aplica&ccedil;&otilde;es Motor</p></div></div>
     <div class="page" id="page-fiscal"><div class="stub-page"><div class="stub-icon">&#128203;</div><h2>Fiscal &amp; Log&iacute;stica</h2><p>Em desenvolvimento &mdash; Fiscal &amp; Log&iacute;stica</p></div></div>
+
+    <!-- PRECIFICAÇÃO -->
+    <div class="page" id="page-precificacao">
+      <div class="page-title">&#128181; Precifica&ccedil;&atilde;o &mdash; Markup &amp; Google Shopping</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Calcule o pre&ccedil;o de venda sugerido a partir do custo, das taxas de marketplace, impostos e frete. Compare com o pre&ccedil;o de mercado (pesquisado no Google Shopping/CPC) para posicionar sua oferta.</p>
+
+      <div class="card">
+        <div class="card-title">&#9881;&#65039; Par&acirc;metros de Precifica&ccedil;&atilde;o</div>
+        <div class="grid4">
+          <div class="form-group"><label>Margem desejada (%)</label><input id="prc-margem" type="number" step="0.1" min="0"></div>
+          <div class="form-group"><label>Taxa de marketplace (%)</label><input id="prc-taxa-mkt" type="number" step="0.1" min="0"></div>
+          <div class="form-group"><label>Impostos (%)</label><input id="prc-impostos" type="number" step="0.1" min="0"></div>
+          <div class="form-group"><label>Frete m&eacute;dio absorvido (R$)</label><input id="prc-frete" type="number" step="0.01" min="0"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="precificacaoSalvarConfig()">&#128190; Salvar Par&acirc;metros</button>
+        <span id="prc-config-status" style="font-size:12px;color:#00c853;margin-left:8px"></span>
+        <p style="font-size:11px;color:#555;margin-top:10px">F&oacute;rmula: <code style="color:#ff6b00">Pre&ccedil;o sugerido = (Custo + Frete) &divide; (1 &minus; (Margem% + Taxa marketplace% + Impostos%) / 100)</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span>&#128202; Sugest&otilde;es de Pre&ccedil;o por Produto</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:12px;color:#555" id="prc-resumo"></span>
+            <button class="btn btn-sm btn-primary" onclick="precificacaoAplicarTodos()">&#10003; Aplicar sugeridos a todos</button>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#555;margin:0 0 10px">Preencha o "Pre&ccedil;o de mercado" pesquisando o produto no Google Shopping (ou outro comparador) para ver o posicionamento da sua oferta.</p>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Produto</th>
+              <th>Custo</th>
+              <th>Pre&ccedil;o atual</th>
+              <th>Pre&ccedil;o de mercado</th>
+              <th>Pre&ccedil;o sugerido</th>
+              <th class="col-opt">Posicionamento</th>
+              <th>A&ccedil;&atilde;o</th>
+            </tr></thead>
+            <tbody id="prc-tbody">
+              <tr><td colspan="7" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-ntc"><div class="stub-page"><div class="stub-icon">&#128302;</div><h2>NTC Inspector</h2><p>Em desenvolvimento &mdash; NTC Inspector</p></div></div>
     <div class="page" id="page-relatorios"><div class="stub-page"><div class="stub-icon">&#128200;</div><h2>Relat&oacute;rios</h2><p>Em desenvolvimento &mdash; Relat&oacute;rios</p></div></div>
     <!-- IMPORTAR CATÁLOGO -->
@@ -1527,6 +1575,7 @@ function nav(page, opts) {
   if (page === 'imagens') loadMinhasImagens();
   if (page === 'aprovacao') { atualizarBadgeAprovacao(); aprovRenderLista(); }
   if (page === 'aprovados') aprovRenderAprovados();
+  if (page === 'precificacao') precificacaoRender();
   if (page === 'wix') wixVerificarStatus();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
@@ -2381,7 +2430,8 @@ var PD_CAMPOS_EDIT = [
   ['motor', 'Motor', 'text'],
   ['material', 'Material', 'text'],
   ['preco_custo', 'Preço de Custo (R$)', 'number'],
-  ['preco_venda', 'Preço de Venda (R$)', 'number']
+  ['preco_venda', 'Preço de Venda (R$)', 'number'],
+  ['preco_mercado', 'Preço de Mercado / Google Shopping (R$)', 'number']
 ];
 
 function aprovRevisarDetalhe(idx) {
@@ -2731,6 +2781,116 @@ function mlExportarCsv(ctx) {
 async function aprovPublicarML(idx) {
   if (idx != null) { mlVerJson(idx); return; }
   mlExportarCsv('aprovados');
+}
+
+// ===== PRECIFICAÇÃO (markup + Google Shopping/CPC) =====
+var PRICING_CFG_DEFAULT = { margem: 20, taxaMkt: 14, impostos: 6, frete: 0 };
+
+function pricingGetConfig() {
+  try {
+    var s = JSON.parse(localStorage.getItem('gn_pricing_cfg') || 'null');
+    return s ? Object.assign({}, PRICING_CFG_DEFAULT, s) : Object.assign({}, PRICING_CFG_DEFAULT);
+  } catch(e) { return Object.assign({}, PRICING_CFG_DEFAULT); }
+}
+
+function pricingSaveConfig(cfg) { localStorage.setItem('gn_pricing_cfg', JSON.stringify(cfg)); }
+
+function precoSugerir(custo, cfg) {
+  if (custo == null || isNaN(custo)) return null;
+  var pctTotal = (Number(cfg.margem)||0) + (Number(cfg.taxaMkt)||0) + (Number(cfg.impostos)||0);
+  var divisor = 1 - (pctTotal/100);
+  if (divisor <= 0) return null;
+  return (Number(custo) + (Number(cfg.frete)||0)) / divisor;
+}
+
+function precificacaoRender() {
+  var cfg = pricingGetConfig();
+  document.getElementById('prc-margem').value = cfg.margem;
+  document.getElementById('prc-taxa-mkt').value = cfg.taxaMkt;
+  document.getElementById('prc-impostos').value = cfg.impostos;
+  document.getElementById('prc-frete').value = cfg.frete;
+
+  var prods = getProds();
+  var tbody = document.getElementById('prc-tbody');
+  if (!tbody) return;
+  var resumo = document.getElementById('prc-resumo');
+  if (!prods.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#555">Nenhum produto cadastrado.</td></tr>';
+    if (resumo) resumo.textContent = '';
+    return;
+  }
+  var comCusto = prods.filter(function(p){ return p.preco_custo != null; }).length;
+  if (resumo) resumo.textContent = comCusto + ' de ' + prods.length + ' produto(s) com custo cadastrado';
+
+  tbody.innerHTML = prods.map(function(p, i) {
+    var sugerido = precoSugerir(p.preco_custo, cfg);
+    var mercado = p.preco_mercado != null ? Number(p.preco_mercado) : null;
+    var posic = '<span style="color:#555">&mdash;</span>';
+    if (sugerido != null && mercado != null && mercado > 0) {
+      var diff = ((sugerido - mercado) / mercado) * 100;
+      var pcor = diff > 5 ? '#f44336' : diff < -5 ? '#ff9800' : '#00c853';
+      var sinal = diff > 0 ? '+' : '';
+      posic = '<span style="color:'+pcor+';font-weight:700">'+sinal+diff.toFixed(1)+'%</span>';
+    }
+    return '<tr>'
+      + '<td style="padding:8px 6px"><div style="font-size:13px;font-weight:600">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+      + '<div style="font-size:11px;color:#555"><code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></td>'
+      + '<td style="padding:8px 6px;font-size:12px">'+(p.preco_custo!=null?'R$ '+Number(p.preco_custo).toFixed(2).replace('.',','):'—')+'</td>'
+      + '<td style="padding:8px 6px;font-size:12px">'+(p.preco_venda!=null?'R$ '+Number(p.preco_venda).toFixed(2).replace('.',','):'—')+'</td>'
+      + '<td style="padding:8px 6px"><input type="number" step="0.01" min="0" value="'+(p.preco_mercado!=null?p.preco_mercado:'')+'" placeholder="—" style="width:90px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:6px;color:#ccc;font-size:12px" onchange="precificacaoSalvarMercado('+i+',this.value)"></td>'
+      + '<td style="padding:8px 6px;font-size:12px;font-weight:700;color:#00c853">'+(sugerido!=null?'R$ '+sugerido.toFixed(2).replace('.',','):'—')+'</td>'
+      + '<td class="col-opt" style="padding:8px 6px">'+posic+'</td>'
+      + '<td style="padding:8px 6px"><button class="btn btn-sm btn-secondary" onclick="precificacaoAplicar('+i+')"'+(sugerido==null?' disabled':'')+'>&#10003; Aplicar</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function precificacaoSalvarConfig() {
+  var cfg = {
+    margem: parseFloat(document.getElementById('prc-margem').value)||0,
+    taxaMkt: parseFloat(document.getElementById('prc-taxa-mkt').value)||0,
+    impostos: parseFloat(document.getElementById('prc-impostos').value)||0,
+    frete: parseFloat(document.getElementById('prc-frete').value)||0
+  };
+  pricingSaveConfig(cfg);
+  var st = document.getElementById('prc-config-status');
+  if (st) { st.textContent = '✔ Salvo'; setTimeout(function(){ st.textContent=''; }, 2000); }
+  precificacaoRender();
+}
+
+function precificacaoSalvarMercado(idx, val) {
+  var prods = getProds();
+  if (!prods[idx]) return;
+  prods[idx].preco_mercado = val !== '' ? parseFloat(val) : null;
+  saveProds(prods);
+  precificacaoRender();
+}
+
+function precificacaoAplicar(idx) {
+  var cfg = pricingGetConfig();
+  var prods = getProds();
+  var p = prods[idx];
+  if (!p) return;
+  var sugerido = precoSugerir(p.preco_custo, cfg);
+  if (sugerido == null) { alert('Sem custo cadastrado ou parâmetros inválidos para este produto.'); return; }
+  p.preco_venda = Math.round(sugerido*100)/100;
+  saveProds(prods);
+  precificacaoRender();
+}
+
+function precificacaoAplicarTodos() {
+  var cfg = pricingGetConfig();
+  var prods = getProds();
+  var n = 0;
+  prods.forEach(function(p){
+    var sugerido = precoSugerir(p.preco_custo, cfg);
+    if (sugerido != null) { p.preco_venda = Math.round(sugerido*100)/100; n++; }
+  });
+  if (!n) { alert('Nenhum produto com custo cadastrado.'); return; }
+  if (!confirm('Aplicar preço sugerido a ' + n + ' produto(s)? Isso substituirá o preço de venda atual.')) return;
+  saveProds(prods);
+  precificacaoRender();
+  alert('✔ ' + n + ' produto(s) atualizado(s).');
 }
 
 // ===== ENRIQUECIMENTO OEM =====
