@@ -2,15 +2,26 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>iRollo 360 — Motor NTC 4.0</title>
+
+<!-- PWA: permite instalar o iRollo 360 na tela inicial do celular (Add to Home Screen) -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#ff4500">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="iRollo 360">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1a;display:flex;height:100vh;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1a;display:flex;height:100vh;height:100dvh;overflow:hidden}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#e8e8e8}::-webkit-scrollbar-thumb{background:#c0c0c0;border-radius:3px}
 
 /* SIDEBAR */
-#sidebar{width:220px;min-width:220px;background:#111111;height:100vh;display:flex;flex-direction:column;border-right:1px solid #1f1f1f;position:fixed;left:0;top:0;z-index:100;overflow-y:auto;transition:transform .3s}
+#sidebar{width:220px;min-width:220px;background:#111111;height:100vh;height:100dvh;display:flex;flex-direction:column;border-right:1px solid #1f1f1f;position:fixed;left:0;top:0;z-index:100;overflow-y:auto;transition:transform .3s}
 #sidebar.hidden{transform:translateX(-220px)}
 .sb-logo{padding:16px 14px;border-bottom:1px solid #1f1f1f;display:flex;align-items:center;gap:10px}
 .sb-logo .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#ff4500,#ff6b00);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
@@ -26,7 +37,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .sb-footer{margin-top:auto;padding:12px 14px;border-top:1px solid #1f1f1f;font-size:10px;color:#555;line-height:1.4}
 
 /* MAIN */
-#main{margin-left:220px;flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;transition:margin-left .3s}
+#main{margin-left:220px;flex:1;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;transition:margin-left .3s}
 #topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 #hamburger{background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;display:none;padding:4px}
 .health-dot{width:8px;height:8px;background:#00ff88;border-radius:50%;animation:pulse 2s infinite;flex-shrink:0}
@@ -264,6 +275,7 @@ tr:hover td{background:#f9fafb}
   </div>
 
   <div class="sb-footer">
+    <button id="pwa-install-btn" class="btn btn-sm btn-secondary" style="width:100%;display:none;margin-bottom:8px" onclick="pwaInstalar()">&#128241; Instalar App</button>
     Administrador<br>iRollo 360
   </div>
 </nav>
@@ -1635,6 +1647,39 @@ async function checkHealth() {
 }
 checkHealth();
 setInterval(checkHealth, 30000);
+
+// ===== PWA: Service Worker (instalação / "Adicionar à tela inicial") =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(e) {
+      console.error('[Service Worker]', e.message);
+    });
+  });
+}
+
+// ===== PWA: Botão "Instalar App" no celular/desktop =====
+var _pwaDeferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  _pwaDeferredPrompt = e;
+  var btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'block';
+});
+
+function pwaInstalar() {
+  if (!_pwaDeferredPrompt) {
+    alert('Para instalar o app:\n\n• Android/Chrome: menu ⋮ → "Instalar app" ou "Adicionar à tela inicial"\n• iPhone/Safari: botão Compartilhar → "Adicionar à Tela de Início"');
+    return;
+  }
+  _pwaDeferredPrompt.prompt();
+  _pwaDeferredPrompt.userChoice.then(function() { _pwaDeferredPrompt = null; });
+  document.getElementById('pwa-install-btn').style.display = 'none';
+}
+
+window.addEventListener('appinstalled', function() {
+  var btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'none';
+});
 setInterval(function() {
   var up = Math.floor((Date.now() - startTime) / 1000);
   var m = Math.floor(up/60), s = up%60;

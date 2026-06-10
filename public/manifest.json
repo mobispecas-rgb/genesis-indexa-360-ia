@@ -1,0 +1,17 @@
+{
+  "name": "iRollo 360 — Motor NTC 4.0",
+  "short_name": "iRollo 360",
+  "description": "Plataforma iRollo 360 para cadastro, enriquecimento e publicação de catálogo de autopeças com o Motor NTC 4.0.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0d0d",
+  "theme_color": "#ff4500",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
