@@ -1233,6 +1233,11 @@ MEDIDA LARGURA  25 MM"></textarea>
             <div style="font-weight:600;color:#374151;font-size:13px;margin:4px 0">Wix Stores</div>
             <div id="wix-st-wix" style="color:#6b7280;font-size:12px">—</div>
           </div>
+          <div style="flex:1;min-width:140px;background:#f8f9fa;border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:22px">&#129302;</div>
+            <div style="font-weight:600;color:#374151;font-size:13px;margin:4px 0">Motor IA (Sonnet)</div>
+            <div id="wix-st-ia" style="color:#6b7280;font-size:12px">—</div>
+          </div>
         </div>
       </div>
 
@@ -5615,8 +5620,10 @@ function showToast(msg,type){
 async function wixVerificarStatus() {
   var elB = document.getElementById('wix-st-bling');
   var elW = document.getElementById('wix-st-wix');
+  var elI = document.getElementById('wix-st-ia');
   if (elB) elB.textContent = 'Verificando...';
   if (elW) elW.textContent = 'Verificando...';
+  if (elI) elI.textContent = 'Verificando...';
   api('GET', '/bling/status').then(function(r) {
     if (!elB) return;
     elB.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
@@ -5627,6 +5634,11 @@ async function wixVerificarStatus() {
     elW.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
     elW.style.color = r && r.ok ? '#16a34a' : '#dc2626';
   }).catch(function(e) { if (elW) { elW.textContent = '✗ ' + e.message; elW.style.color = '#dc2626'; } });
+  api('GET', '/ia/status').then(function(r) {
+    if (!elI) return;
+    elI.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
+    elI.style.color = r && r.ok ? '#16a34a' : '#dc2626';
+  }).catch(function(e) { if (elI) { elI.textContent = '✗ ' + e.message; elI.style.color = '#dc2626'; } });
 }
 
 async function wixImportarBling() {

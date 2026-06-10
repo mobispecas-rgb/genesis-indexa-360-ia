@@ -222,6 +222,19 @@ app.post('/api/motor/voz', async (req, res) => {
     }
 });
 
+// Status do Motor IA (Claude Sonnet) — usado pela Voz do Lojista e demais motores de IA
+app.get('/api/ia/status', async (req, res) => {
+    if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, configurado: false, mensagem: 'Configure ANTHROPIC_API_KEY no Render' });
+    try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        await client.models.retrieve('claude-sonnet-4-6');
+        res.json({ ok: true, configurado: true, mensagem: 'Motor IA conectado — Claude Sonnet 4.6' });
+    } catch (e) {
+        res.json({ ok: false, configurado: false, mensagem: e.message });
+    }
+});
+
 // ─── NTC Engine (Núcleo de Triangulação Certificada) ─────────
 const ntcEngine = require('./src/services/ntc-engine');
 
