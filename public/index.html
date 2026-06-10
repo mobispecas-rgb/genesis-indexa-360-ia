@@ -3850,15 +3850,37 @@ function catalogoToggleModo(modo) {
 function catalogoFileSelect(input) {
   var file = input.files[0];
   if (!file) return;
+  var name = file.name.toLowerCase();
+  var status = document.getElementById('catalogo-file-status');
+
+  if (name.endsWith('.pdf')) {
+    status.textContent = '⏳ Lendo PDF ' + file.name + '...';
+    var fd = new FormData();
+    fd.append('arquivo', file);
+    var tok = localStorage.getItem('gn_token') || '';
+    fetch('/api/catalogo/extrair-pdf', {
+      method: 'POST',
+      headers: tok ? { 'Authorization': 'Bearer ' + tok } : {},
+      body: fd
+    }).then(function(r){ return r.json(); }).then(function(r) {
+      if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao ler PDF'); return; }
+      document.getElementById('catalogo-input').value = r.texto;
+      catalogoToggleModo('texto');
+      status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
+    }).catch(function(e) {
+      status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+    });
+    return;
+  }
+
   var reader = new FileReader();
   reader.onload = function(e) {
     document.getElementById('catalogo-input').value = e.target.result;
-    var name = file.name.toLowerCase();
     if (name.endsWith('.json')) catalogoToggleModo('json');
     else if (name.endsWith('.csv')) catalogoToggleModo('csv');
     else if (name.endsWith('.xml')) catalogoToggleModo('xml');
     else catalogoToggleModo('texto');
-    document.getElementById('catalogo-file-status').textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+    status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
   };
   reader.readAsText(file, 'UTF-8');
 }
