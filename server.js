@@ -356,7 +356,27 @@ app.post('/api/catalogo/extrair-pdf', upload.single('arquivo'), async (req, res)
     try {
         const resultado = await parser.getText();
         const texto = resultado.text.replace(/\n*-- \d+ of \d+ --\n*/g, '\n\n');
-        res.json({ ok: true, texto, paginas: resultado.pages ? resultado.pages.length : (resultado.total || null) });
+
+        // Tenta detectar tabelas (catálogos tabulares: SKU/Descrição/Marca/Preço em colunas).
+        // Quando há tabela, ela é convertida em CSV — muito mais confiável para o
+        // parser de catálogo do que o texto corrido extraído do PDF.
+        let tabela = null;
+        try {
+            const resultadoTabelas = await parser.getTable();
+            const candidatas = (resultadoTabelas.mergedTables || [])
+                .filter(t => Array.isArray(t) && t.length >= 2 && Array.isArray(t[0]) && t[0].length >= 2);
+            if (candidatas.length) {
+                const maior = candidatas.reduce((a, b) => (b.length * b[0].length) > (a.length * a[0].length) ? b : a);
+                tabela = maior.map(linha => linha.map(cel => {
+                    const s = (cel == null ? '' : String(cel)).replace(/\s+/g, ' ').trim();
+                    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+                }).join(',')).join('\n');
+            }
+        } catch (eTabela) {
+            console.error('[Extrair PDF] Tabela:', eTabela.message);
+        }
+
+        res.json({ ok: true, texto, tabela, paginas: resultado.pages ? resultado.pages.length : (resultado.total || null) });
     } catch (e) {
         console.error('[Extrair PDF]', e.message);
         res.status(400).json({ ok: false, erro: 'Falha ao ler PDF: ' + e.message });
