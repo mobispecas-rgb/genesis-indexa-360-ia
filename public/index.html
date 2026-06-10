@@ -225,6 +225,7 @@ tr:hover td{background:#f9fafb}
     <div class="sb-item" onclick="nav('fiscal')"><span class="icon">&#128203;</span>Fiscal &amp; Log&iacute;stica</div>
     <div class="sb-item" onclick="nav('precificacao')"><span class="icon">&#128181;</span>Precifica&ccedil;&atilde;o</div>
     <div class="sb-item" onclick="nav('ntc')"><span class="icon">&#128302;</span>NTC Inspector</div>
+    <div class="sb-item" onclick="nav('diagnostico')"><span class="icon">&#128269;</span>Diagn&oacute;stico do Cat&aacute;logo</div>
   </div>
 
   <div class="sb-section">
@@ -1082,6 +1083,38 @@ PASTILHA DE FREIO - PF4201 - FREMAX
     </div>
 
     <div class="page" id="page-ntc"><div class="stub-page"><div class="stub-icon">&#128302;</div><h2>NTC Inspector</h2><p>Em desenvolvimento &mdash; NTC Inspector</p></div></div>
+
+    <div class="page" id="page-diagnostico">
+      <div class="page-title">&#128269; Diagn&oacute;stico / Auditoria do Cat&aacute;logo</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Verifica se os produtos cadastrados seguem o padr&atilde;o NTC 4.0 (nomenclatura de campos, dados fiscais, c&oacute;digos, imagens e aplica&ccedil;&otilde;es). Use as a&ccedil;&otilde;es abaixo para normalizar nomenclatura legada (sku/marca/familia) e recalcular o NTC dos produtos.</p>
+
+      <div class="card">
+        <div class="card-title">&#128202; Resumo Geral</div>
+        <div class="grid4" id="diag-resumo" style="gap:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-secondary btn-sm" onclick="diagNormalizarTodos()">&#128295; Normalizar nomenclatura legada (todos)</button>
+          <button class="btn btn-secondary btn-sm" onclick="diagRecalcularTodosNTC()">&#127919; Recalcular NTC de todos</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128203; Pend&ecirc;ncias por Produto</div>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Produto</th>
+              <th>Conformidade NTC 4.0</th>
+              <th class="col-opt">Nomenclatura legada</th>
+              <th>Pend&ecirc;ncias</th>
+              <th>A&ccedil;&atilde;o</th>
+            </tr></thead>
+            <tbody id="diag-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-relatorios"><div class="stub-page"><div class="stub-icon">&#128200;</div><h2>Relat&oacute;rios</h2><p>Em desenvolvimento &mdash; Relat&oacute;rios</p></div></div>
     <!-- IMPORTAR CATÁLOGO -->
     <div class="page" id="page-importar">
@@ -1576,6 +1609,7 @@ function nav(page, opts) {
   if (page === 'aprovacao') { atualizarBadgeAprovacao(); aprovRenderLista(); }
   if (page === 'aprovados') aprovRenderAprovados();
   if (page === 'precificacao') precificacaoRender();
+  if (page === 'diagnostico') diagnosticoRender();
   if (page === 'wix') wixVerificarStatus();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
@@ -2891,6 +2925,168 @@ function precificacaoAplicarTodos() {
   saveProds(prods);
   precificacaoRender();
   alert('✔ ' + n + ' produto(s) atualizado(s).');
+}
+
+// ===== DIAGNÓSTICO / AUDITORIA DO CATÁLOGO =====
+// Campos do padrão NTC 4.0 verificados em cada produto (chave, rótulo)
+var DIAG_CAMPOS_NTC = [
+  ['codigo_fabricante', 'Part Number'],
+  ['fabricante', 'Fabricante'],
+  ['familia_tecnica', 'Família Técnica'],
+  ['codigo_oem', 'Código OEM'],
+  ['ncm', 'NCM'],
+  ['ean', 'EAN'],
+  ['motor', 'Motor'],
+  ['material', 'Material'],
+  ['descricao', 'Descrição'],
+  ['preco_custo', 'Preço de Custo'],
+  ['preco_venda', 'Preço de Venda'],
+  ['imagens', 'Imagens'],
+  ['_aplicacoes', 'Aplicações Veiculares']
+];
+// Mapeamento de nomenclatura legada -> padrão NTC 4.0 (campo legado, campo novo, rótulo)
+var DIAG_CAMPOS_LEGADO = [
+  ['sku', 'codigo_fabricante', 'Part Number'],
+  ['marca', 'fabricante', 'Fabricante'],
+  ['familia', 'familia_tecnica', 'Família Técnica']
+];
+
+function diagAuditarProduto(p) {
+  var legados = DIAG_CAMPOS_LEGADO.filter(function(m) {
+    return p[m[0]] != null && p[m[0]] !== '' && (p[m[1]] == null || p[m[1]] === '');
+  });
+
+  var pendencias = DIAG_CAMPOS_NTC.filter(function(c) {
+    var v = p[c[0]];
+    return Array.isArray(v) ? v.length === 0 : (v == null || v === '');
+  }).map(function(c){ return c[1]; });
+
+  if (p.ntc == null) pendencias.push('NTC não calculado');
+  if (!p.rast_hash) pendencias.push('Hash de rastreabilidade');
+
+  var totalCampos = DIAG_CAMPOS_NTC.length + 2;
+  var conformidade = Math.round(((totalCampos - pendencias.length) / totalCampos) * 100);
+  return { legados: legados, pendencias: pendencias, conformidade: conformidade };
+}
+
+function diagnosticoRender() {
+  var prods = getProds();
+  var resumoEl = document.getElementById('diag-resumo');
+  var tbody = document.getElementById('diag-tbody');
+  if (!resumoEl || !tbody) return;
+
+  if (!prods.length) {
+    resumoEl.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#555">Nenhum produto cadastrado.</td></tr>';
+    return;
+  }
+
+  var auditorias = prods.map(diagAuditarProduto);
+  var comLegado = auditorias.filter(function(a){ return a.legados.length > 0; }).length;
+  var conformes = auditorias.filter(function(a){ return a.conformidade === 100; }).length;
+  var semNCM = prods.filter(function(p){ return !p.ncm; }).length;
+  var semImagens = prods.filter(function(p){ return !Array.isArray(p.imagens) || !p.imagens.length; }).length;
+  var semAplic = prods.filter(function(p){ return !Array.isArray(p._aplicacoes) || !p._aplicacoes.length; }).length;
+  var semNTC = prods.filter(function(p){ return p.ntc == null; }).length;
+  var mediaConf = Math.round(auditorias.reduce(function(s,a){ return s+a.conformidade; },0) / auditorias.length);
+
+  function card(valor, label, cor) {
+    return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;text-align:center">'
+      + '<div style="font-size:24px;font-weight:900;color:'+(cor||'#fff')+'">'+valor+'</div>'
+      + '<div style="font-size:11px;color:#888;margin-top:4px">'+label+'</div></div>';
+  }
+  resumoEl.innerHTML = card(prods.length, 'Produtos cadastrados')
+    + card(mediaConf + '%', 'Conformidade média NTC 4.0', mediaConf>=90?'#00c853':mediaConf>=60?'#ff9800':'#f44336')
+    + card(conformes, 'Produtos 100% conformes', '#00c853')
+    + card(comLegado, 'Com nomenclatura legada', comLegado>0?'#ff9800':'#00c853')
+    + card(semNCM, 'Sem NCM', semNCM>0?'#ff9800':'#00c853')
+    + card(semImagens, 'Sem imagens', semImagens>0?'#ff9800':'#00c853')
+    + card(semAplic, 'Sem aplicações veiculares', semAplic>0?'#ff9800':'#00c853')
+    + card(semNTC, 'Sem NTC calculado', semNTC>0?'#ff9800':'#00c853');
+
+  tbody.innerHTML = prods.map(function(p, i) {
+    var a = auditorias[i];
+    var cor = a.conformidade>=90?'#00c853':a.conformidade>=60?'#ff9800':'#f44336';
+    var legadoHtml = a.legados.length
+      ? a.legados.map(function(m){ return '<span style="background:#ff980022;color:#ff9800;padding:2px 6px;border-radius:8px;font-size:10px;font-weight:700;margin-right:4px;display:inline-block;margin-bottom:2px">'+esc(m[0])+' &rarr; '+esc(m[1])+'</span>'; }).join('')
+      : '<span style="color:#00c853;font-size:11px">&mdash;</span>';
+    var pendHtml = a.pendencias.length
+      ? '<span style="font-size:11px;color:#ccc">'+esc(a.pendencias.slice(0,3).join(', '))+(a.pendencias.length>3?' +'+(a.pendencias.length-3):'')+'</span>'
+      : '<span style="color:#00c853;font-size:11px">Nenhuma — conforme</span>';
+    return '<tr>'
+      + '<td style="padding:8px 6px"><div style="font-size:13px;font-weight:600">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+      + '<div style="font-size:11px;color:#555"><code style="color:#ff6b00">'+esc(p.codigo_fabricante||p.sku||'')+'</code></div></td>'
+      + '<td style="padding:8px 6px"><span style="color:'+cor+';font-weight:700">'+a.conformidade+'%</span></td>'
+      + '<td class="col-opt" style="padding:8px 6px">'+legadoHtml+'</td>'
+      + '<td style="padding:8px 6px">'+pendHtml+'</td>'
+      + '<td style="padding:8px 6px;white-space:nowrap">'
+        + (a.legados.length ? '<button class="btn btn-sm btn-secondary" onclick="diagNormalizarProduto('+i+')">&#128295; Normalizar</button> ' : '')
+        + '<button class="btn btn-sm btn-secondary" onclick="aprovRevisarDetalhe('+i+')">&#9999;&#65039; Corrigir</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function diagNormalizarProduto(idx, silencioso) {
+  var prods = getProds();
+  var p = prods[idx];
+  if (!p) return false;
+  var alterado = false;
+  DIAG_CAMPOS_LEGADO.forEach(function(m) {
+    var legado = m[0], novo = m[1];
+    if (p[legado] != null && p[legado] !== '' && (p[novo] == null || p[novo] === '')) {
+      p[novo] = p[legado];
+      delete p[legado];
+      alterado = true;
+    }
+  });
+  if (!alterado) {
+    if (!silencioso) alert('Nenhum campo legado para normalizar neste produto.');
+    return false;
+  }
+  saveProds(prods);
+  if (!silencioso) { diagnosticoRender(); loadProdutos(); }
+  return true;
+}
+
+function diagNormalizarTodos() {
+  var prods = getProds();
+  var pendentes = prods.map(diagAuditarProduto).filter(function(a){ return a.legados.length > 0; }).length;
+  if (!pendentes) { alert('Nenhum produto com nomenclatura legada — catálogo já está no padrão NTC 4.0.'); return; }
+  if (!confirm('Migrar nomenclatura legada (sku/marca/familia) para o padrão NTC 4.0 (codigo_fabricante/fabricante/familia_tecnica) em ' + pendentes + ' produto(s)?')) return;
+  var n = 0;
+  for (var i = 0; i < prods.length; i++) {
+    if (diagNormalizarProduto(i, true)) n++;
+  }
+  diagnosticoRender();
+  loadProdutos();
+  alert('✔ ' + n + ' produto(s) normalizado(s).');
+}
+
+async function diagRecalcularTodosNTC() {
+  var prods = getProds();
+  if (!prods.length) { alert('Nenhum produto cadastrado.'); return; }
+  if (!confirm('Recalcular o NTC de ' + prods.length + ' produto(s) usando o motor NTC 4.0? Isso pode levar alguns instantes.')) return;
+  var resumoEl = document.getElementById('diag-resumo');
+  var n = 0;
+  for (var i = 0; i < prods.length; i++) {
+    var p = prods[i];
+    if (resumoEl) resumoEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#888;padding:12px">Recalculando NTC... ' + (i+1) + ' de ' + prods.length + '</div>';
+    try {
+      var r = await api('POST', '/motor/nct', {
+        nome: p.nome, codigo_fabricante: p.codigo_fabricante, fabricante: p.fabricante,
+        familia_tecnica: p.familia_tecnica, codigo_oem: p.codigo_oem, ncm: p.ncm,
+        ean: p.ean, motor: p.motor, material: p.material
+      });
+      p.ntc = r.ntc || 0; p.decisao = r.decisao || p.decisao; p.rast_hash = r.rast_hash || p.rast_hash;
+      n++;
+    } catch(e) {}
+  }
+  saveProds(prods);
+  diagnosticoRender();
+  atualizarStats();
+  atualizarBadgeAprovacao();
+  alert('✔ NTC recalculado para ' + n + ' de ' + prods.length + ' produto(s).');
 }
 
 // ===== ENRIQUECIMENTO OEM =====
