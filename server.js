@@ -553,6 +553,155 @@ async function blingRequest(method, path, payload) {
   return httpsJSON(opts, body);
 }
 
+// ─── Modelo de engenharia — taxonomia de categorias/subcategorias ─────
+function normalizarTexto(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+const TAXONOMIA_CATEGORIAS = {
+  motor: { nome: 'Motor', subcategorias: [
+    { nome: 'Correias e Tensores', palavras: ['correia', 'tensor', 'polia', 'distribuicao'] },
+    { nome: 'Juntas e Retentores', palavras: ['junta', 'retentor'] },
+    { nome: 'Bombas', palavras: ['bomba'] },
+  ]},
+  freios: { nome: 'Freios', subcategorias: [
+    { nome: 'Pastilhas de Freio', palavras: ['pastilha'] },
+    { nome: 'Discos de Freio', palavras: ['disco'] },
+    { nome: 'Cilindros e Pincas', palavras: ['cilindro', 'pinca'] },
+    { nome: 'Flexiveis e Mangueiras', palavras: ['flexivel', 'mangueira'] },
+  ]},
+  filtros: { nome: 'Filtros', subcategorias: [
+    { nome: 'Filtro de Ar', palavras: ['filtro de ar', 'filtro ar'] },
+    { nome: 'Filtro de Oleo', palavras: ['filtro de oleo'] },
+    { nome: 'Filtro de Combustivel', palavras: ['filtro de combustivel'] },
+    { nome: 'Filtro de Cabine', palavras: ['cabine', 'ar condicionado'] },
+  ]},
+  suspensao: { nome: 'Suspensao', subcategorias: [
+    { nome: 'Amortecedores', palavras: ['amortecedor'] },
+    { nome: 'Buchas e Batentes', palavras: ['bucha', 'batente', 'coxim'] },
+    { nome: 'Pivos e Terminais', palavras: ['pivo', 'terminal'] },
+    { nome: 'Molas', palavras: ['mola'] },
+  ]},
+  transmissao: { nome: 'Transmissao', subcategorias: [
+    { nome: 'Juntas Homocineticas', palavras: ['homocinetica'] },
+    { nome: 'Embreagem', palavras: ['embreagem', 'plato'] },
+    { nome: 'Cardans e Coifas', palavras: ['cardan', 'coifa'] },
+  ]},
+  ignicao: { nome: 'Ignicao e Eletrica', subcategorias: [
+    { nome: 'Velas de Ignicao', palavras: ['vela'] },
+    { nome: 'Bobinas e Modulos', palavras: ['bobina', 'modulo'] },
+    { nome: 'Sensores', palavras: ['sensor'] },
+  ]},
+  eletrica: { nome: 'Ignicao e Eletrica', subcategorias: [
+    { nome: 'Velas de Ignicao', palavras: ['vela'] },
+    { nome: 'Bobinas e Modulos', palavras: ['bobina', 'modulo'] },
+    { nome: 'Sensores', palavras: ['sensor'] },
+  ]},
+  arrefecimento: { nome: 'Arrefecimento', subcategorias: [
+    { nome: 'Radiadores', palavras: ['radiador'] },
+    { nome: 'Mangueiras', palavras: ['mangueira'] },
+    { nome: "Bombas D'Agua", palavras: ['bomba dagua', "bomba d'agua", 'bomba de agua'] },
+    { nome: 'Valvulas Termostaticas', palavras: ['termostat'] },
+  ]},
+};
+
+function nomeCategoriaPrincipal(familia) {
+  const grupo = TAXONOMIA_CATEGORIAS[normalizarTexto(familia)];
+  return grupo ? grupo.nome : familia;
+}
+
+function classificarSubcategoria(familia, nomeProduto) {
+  const grupo = TAXONOMIA_CATEGORIAS[normalizarTexto(familia)];
+  if (!grupo) return null;
+  const nomeNorm = normalizarTexto(nomeProduto);
+  const sub = grupo.subcategorias.find(s => s.palavras.some(p => nomeNorm.indexOf(normalizarTexto(p)) >= 0));
+  return sub ? sub.nome : null;
+}
+
+// ─── Bling — categorias/subcategorias de produtos (criação automática) ─
+let _blingCategoriasCache = null;
+let _blingCategoriasCacheTs = 0;
+
+async function listarBlingCategorias() {
+  if (_blingCategoriasCache && Date.now() - _blingCategoriasCacheTs < 5 * 60 * 1000) return _blingCategoriasCache;
+  const todas = [];
+  for (let pagina = 1; pagina <= 10; pagina++) {
+    const data = await blingRequest('GET', `/categorias/produtos?pagina=${pagina}&limite=100`);
+    const lista = data.data || [];
+    todas.push(...lista);
+    if (lista.length < 100) break;
+  }
+  _blingCategoriasCache = todas;
+  _blingCategoriasCacheTs = Date.now();
+  return todas;
+}
+
+function _idCategoriaPai(c) {
+  return (c.categoriaPai && c.categoriaPai.id) || c.idCategoriaPai || null;
+}
+
+async function getOrCreateBlingCategoria(nome, idPai) {
+  const todas = await listarBlingCategorias();
+  const existente = todas.find(c => (c.descricao || '').trim().toLowerCase() === nome.trim().toLowerCase()
+    && (idPai ? _idCategoriaPai(c) == idPai : !_idCategoriaPai(c)));
+  if (existente) return existente.id;
+  const payload = { descricao: nome, ...(idPai ? { categoriaPai: { id: idPai } } : {}) };
+  const criada = await blingRequest('POST', '/categorias/produtos', payload);
+  if (!criada.data || !criada.data.id) throw new Error('Falha ao criar categoria "' + nome + '": ' + JSON.stringify(criada.error || criada));
+  _blingCategoriasCache.push({ id: criada.data.id, descricao: nome, ...(idPai ? { categoriaPai: { id: idPai } } : {}) });
+  return criada.data.id;
+}
+
+// Resolve (criando se preciso) categoria + subcategoria seguindo o modelo de engenharia.
+// Best-effort: nunca bloqueia o cadastro do produto — em caso de falha retorna null.
+async function resolverCategoriaBling(familia, nomeProduto) {
+  if (!familia) return null;
+  try {
+    const idCategoria = await getOrCreateBlingCategoria(nomeCategoriaPrincipal(familia), null);
+    const nomeSub = classificarSubcategoria(familia, nomeProduto);
+    if (!nomeSub) return idCategoria;
+    return await getOrCreateBlingCategoria(nomeSub, idCategoria);
+  } catch (e) {
+    console.error('[Bling categoria]', e.message);
+    return null;
+  }
+}
+
+// Monta a descrição complementar (ficha técnica) usada no PDV/Bling
+function montarFichaTecnica(p) {
+  const linhas = [];
+  if (p.codigo_oem) linhas.push('Código OEM: ' + p.codigo_oem);
+  if (p.motor) linhas.push('Motor/Aplicação: ' + p.motor);
+  if (p.material) linhas.push('Material: ' + p.material);
+  if (p.ean) linhas.push('EAN/GTIN: ' + p.ean);
+  return linhas.join('\n');
+}
+
+// Monta o payload completo (fiscal + categoria + ficha técnica/PDV) para /produtos do Bling
+async function montarPayloadProdutoBling(p) {
+  const midia = (p.imagens || []).slice(0, 6).map((url, i) => ({ tipo: 'F', thumbnail: i === 0, url }));
+  const ean = (p.ean || '').replace(/\D/g, '');
+  const ncm = (p.ncm || '').replace(/\D/g, '').substring(0, 8);
+  const fichaTecnica = montarFichaTecnica(p);
+  const familia = p.familia_tecnica || p.familia;
+  const idCategoria = await resolverCategoriaBling(familia, p.nome);
+  return {
+    nome: p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome',
+    codigo: p.codigo_fabricante || p.sku || '',
+    tipo: 'P', situacao: 'A', formato: 'S',
+    unidade: 'UN',
+    descricaoCurta: (p.descricao || p.voz_do_lojista || '').substring(0, 300),
+    descricaoComplementar: [p.descricao_tecnica || '', fichaTecnica].filter(Boolean).join('\n\n'),
+    tributacao: { ncm, origem: (p.origem !== undefined && p.origem !== null && p.origem !== '') ? parseInt(p.origem) : 0 },
+    estoque: { minimo: 0, maximo: 0, crossdocking: 0, localizacao: '' },
+    ...(ean ? { gtin: ean } : {}),
+    ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
+    ...(midia.length ? { midia } : {}),
+    ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {}),
+    ...(idCategoria ? { categoria: { id: idCategoria } } : {})
+  };
+}
+
 app.get('/api/bling/status', async (req, res) => {
   if (!process.env.BLING_API_KEY && !process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_API_KEY ou BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
   try { await getBlingToken(); res.json({ ok: true, configurado: true, mensagem: 'Bling V3 conectado' }); }
@@ -572,23 +721,19 @@ app.get('/api/bling/buscar', async (req, res) => {
 app.post('/api/bling/produto', async (req, res) => {
   try {
     const p = req.body;
-    const midia = (p.imagens || []).slice(0, 6).map((url, i) => ({ tipo: 'F', thumbnail: i === 0, url }));
-    const payload = {
-      nome: p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome',
-      codigo: p.codigo_fabricante || p.sku || '',
-      tipo: 'P', situacao: 'A', formato: 'S',
-      descricaoCurta: (p.descricao || p.voz_do_lojista || '').substring(0, 300),
-      descricaoComplementar: p.descricao_tecnica || '',
-      tributacao: { ncm: (p.ncm || '').replace(/\D/g, '').substring(0, 8) },
-      estoque: { minimo: 0, maximo: 0, crossdocking: 0, localizacao: '' },
-      ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
-      ...(midia.length ? { midia } : {}),
-      ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {})
-    };
+    const payload = await montarPayloadProdutoBling(p);
     const data = await blingRequest('POST', '/produtos', payload);
-    if (data.data && data.data.id) return res.json({ ok: true, id: data.data.id, plataforma: 'bling' });
+    if (data.data && data.data.id) return res.json({ ok: true, id: data.data.id, plataforma: 'bling', categoria: payload.categoria || null });
     res.json({ ok: false, erro: JSON.stringify(data.error || data) });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ─── Bling — categorias e subcategorias de produtos ───────────────────
+app.get('/api/bling/categorias', async (req, res) => {
+  try {
+    const categorias = await listarBlingCategorias();
+    res.json({ ok: true, categorias: categorias.map(c => ({ id: c.id, descricao: c.descricao, idCategoriaPai: _idCategoriaPai(c) })) });
+  } catch(e) { res.json({ ok: false, erro: e.message, categorias: [] }); }
 });
 
 app.put('/api/bling/produto/:id', async (req, res) => {
@@ -775,14 +920,9 @@ app.post('/api/sync/lote', async (req, res) => {
   for (const p of produtos) {
     const r = { nome: p.nome || p.codigo_fabricante, bling: null, wix: null };
     try {
-      const b = await (async () => {
-        const midia = (p.imagens||[]).slice(0,6).map((url,i)=>({tipo:'F',thumbnail:i===0,url}));
-        const payload = { nome: p.nome||p.codigo_fabricante||'Produto', codigo: p.codigo_fabricante||'', tipo:'P', situacao:'A', formato:'S',
-          descricaoCurta:(p.descricao||p.voz_do_lojista||'').substring(0,300), tributacao:{ncm:(p.ncm||'').replace(/\D/g,'').substring(0,8)},
-          ...(p.fabricante?{marca:{nome:p.fabricante}}:{}), ...(midia.length?{midia}:{}) };
-        return await blingRequest('POST', '/produtos', payload);
-      })();
-      r.bling = b.data?.id ? { ok: true, id: b.data.id } : { ok: false, erro: JSON.stringify(b.error||b) };
+      const payload = await montarPayloadProdutoBling(p);
+      const b = await blingRequest('POST', '/produtos', payload);
+      r.bling = b.data?.id ? { ok: true, id: b.data.id, categoria: payload.categoria || null } : { ok: false, erro: JSON.stringify(b.error||b) };
     } catch(e) { r.bling = { ok: false, erro: e.message }; }
     try {
       const mediaItems = (p.imagens||[]).slice(0,8).map(url=>({mediaType:'IMAGE',image:{url}}));
