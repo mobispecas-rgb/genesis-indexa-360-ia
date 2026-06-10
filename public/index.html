@@ -4629,9 +4629,15 @@ function catalogoFileSelect(input) {
       body: fd
     }).then(function(r){ return r.json(); }).then(function(r) {
       if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao ler PDF'); return; }
-      document.getElementById('catalogo-input').value = r.texto;
-      catalogoToggleModo('texto');
-      status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
+      if (r.tabela) {
+        document.getElementById('catalogo-input').value = r.tabela;
+        catalogoToggleModo('csv');
+        status.textContent = '📎 ' + file.name + ' — tabela detectada (' + r.paginas + ' pág.), revise e clique em Processar';
+      } else {
+        document.getElementById('catalogo-input').value = r.texto;
+        catalogoToggleModo('texto');
+        status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
+      }
     }).catch(function(e) {
       status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
     });
@@ -4650,12 +4656,73 @@ function catalogoFileSelect(input) {
   reader.readAsText(file, 'UTF-8');
 }
 
+// Remove acentos/pontuação e baixa caixa, para comparar cabeçalhos de forma tolerante
+// (ex: "Código de Barras" e "codigo_de_barras" viram "codigo de barras")
+function _normalizarTextoCSV(s) {
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+}
+
+// Sinônimos de cabeçalho (em PT-BR, com/sem acento) aceitos para cada campo do catálogo.
+// Permite reconhecer CSVs de fornecedores e tabelas extraídas de PDF, que raramente
+// usam exatamente os nomes internos (sku, nome, fabricante...).
+var CSV_HEADER_SYNONYMS = {
+  sku: ['sku','codigo','cod','part number','partnumber','referencia','ref','codigo fabricante','codigo do produto','part num','codigo produto'],
+  nome: ['nome','descricao','produto','item','titulo','descricao produto','descricao do produto'],
+  fabricante: ['fabricante','marca','montadora'],
+  familia: ['familia','categoria','familia tecnica','grupo','linha'],
+  oem: ['oem','codigo oem','cod oem','codigo original','referencia oem'],
+  ncm: ['ncm'],
+  ean: ['ean','codigo de barras','gtin','cod barras'],
+  motor: ['motor','motorizacao'],
+  preco_venda: ['preco','valor','preco venda','preco de venda','venda','preco unitario'],
+  preco_custo: ['custo','preco custo','preco de custo','custo unitario']
+};
+
+// Divide uma linha CSV respeitando campos entre aspas (com vírgulas/aspas escapadas)
+function _splitLinhaCSV(linha) {
+  var resultado = [], atual = '', dentroAspas = false;
+  for (var i = 0; i < linha.length; i++) {
+    var c = linha[i];
+    if (dentroAspas) {
+      if (c === '"') {
+        if (linha[i+1] === '"') { atual += '"'; i++; }
+        else dentroAspas = false;
+      } else atual += c;
+    } else {
+      if (c === '"') dentroAspas = true;
+      else if (c === ',') { resultado.push(atual); atual = ''; }
+      else atual += c;
+    }
+  }
+  resultado.push(atual);
+  return resultado;
+}
+
+// Mapeia uma linha de cabeçalho CSV para os nomes internos de campo (sku, nome, fabricante...)
+// usando CSV_HEADER_SYNONYMS. Cabeçalhos não reconhecidos são mantidos normalizados.
+function catalogoMapearHeaderCSV(headerCols) {
+  return headerCols.map(function(h) {
+    var hn = _normalizarTextoCSV(h);
+    var campo = Object.keys(CSV_HEADER_SYNONYMS).filter(function(c) {
+      return CSV_HEADER_SYNONYMS[c].indexOf(hn) >= 0;
+    })[0];
+    return campo || hn;
+  });
+}
+
+function _parsePrecoCSV(v) {
+  if (!v) return null;
+  var n = parseFloat(String(v).replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.'));
+  return isNaN(n) ? null : n;
+}
+
 function catalogoProcessarCSV(texto) {
   var linhas = texto.trim().split('\n');
-  var header = linhas[0].split(',').map(function(h){ return h.trim().toLowerCase(); });
+  var header = catalogoMapearHeaderCSV(_splitLinhaCSV(linhas[0]));
   var resultados = [];
   for (var i = 1; i < linhas.length; i++) {
-    var cols = linhas[i].split(',');
+    if (!linhas[i].trim()) continue;
+    var cols = _splitLinhaCSV(linhas[i]);
     var obj = {};
     header.forEach(function(h, j){ obj[h] = (cols[j]||'').trim(); });
     if (!obj.sku && !obj.nome) continue;
@@ -4668,6 +4735,8 @@ function catalogoProcessarCSV(texto) {
       ncm: obj.ncm||null,
       ean: obj.ean||null,
       motor: obj.motor||null,
+      preco_venda: _parsePrecoCSV(obj.preco_venda),
+      preco_custo: _parsePrecoCSV(obj.preco_custo),
       _fonte: 'csv'
     });
   }
@@ -4737,11 +4806,17 @@ async function catalogoRasparUrl() {
   }
 }
 
+var CSV_CAMPOS_RECONHECIDOS = ['sku','nome','fabricante','familia','oem','ncm','ean','motor','preco_venda','preco_custo'];
+
 function catalogoAutoDetect(texto) {
   var t = texto.trim();
   if (t.startsWith('{') || t.startsWith('[')) return 'json';
   if (t.startsWith('<?xml') || t.startsWith('<')) return 'xml';
-  if (t.split('\n')[0].toLowerCase().includes(',') && t.split('\n')[0].toLowerCase().match(/sku|nome|fabricante/)) return 'csv';
+  var primeiraLinha = t.split('\n')[0];
+  if (primeiraLinha.indexOf(',') >= 0) {
+    var headerMapeado = catalogoMapearHeaderCSV(_splitLinhaCSV(primeiraLinha));
+    if (headerMapeado.some(function(h){ return CSV_CAMPOS_RECONHECIDOS.indexOf(h) >= 0; })) return 'csv';
+  }
   return 'texto';
 }
 
@@ -4901,9 +4976,15 @@ function massaFileSelect(input) {
       body: fd
     }).then(function(r){ return r.json(); }).then(function(r) {
       if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao ler PDF'); return; }
-      document.getElementById('massa-input').value = r.texto;
-      massaToggleModo('texto');
-      status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
+      if (r.tabela) {
+        document.getElementById('massa-input').value = r.tabela;
+        massaToggleModo('csv');
+        status.textContent = '📎 ' + file.name + ' — tabela detectada (' + r.paginas + ' pág.), revise e clique em Processar';
+      } else {
+        document.getElementById('massa-input').value = r.texto;
+        massaToggleModo('texto');
+        status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
+      }
     }).catch(function(e) {
       status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
     });
