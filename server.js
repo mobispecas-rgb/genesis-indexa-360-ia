@@ -7,6 +7,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const https = require('https');
+const http = require('http');
+const dns = require('dns').promises;
+const net = require('net');
 const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
 
@@ -29,6 +32,103 @@ function httpsJSON(opts, body, timeoutMs = 15000) {
     if (body) req.write(body);
     req.end();
   });
+}
+
+// Verifica se um IP é privado/local — usado para impedir SSRF no raspador de URLs
+function ipPrivada(ip) {
+  if (net.isIPv4(ip)) {
+    const p = ip.split('.').map(Number);
+    return p[0] === 10 || p[0] === 127 || p[0] === 0
+      || (p[0] === 172 && p[1] >= 16 && p[1] <= 31)
+      || (p[0] === 192 && p[1] === 168)
+      || (p[0] === 169 && p[1] === 254);
+  }
+  if (net.isIPv6(ip)) {
+    const lo = ip.toLowerCase();
+    return lo === '::1' || lo.startsWith('fe80:') || lo.startsWith('fc') || lo.startsWith('fd') || lo.startsWith('::ffff:127.');
+  }
+  return true; // formato desconhecido — bloqueia por segurança
+}
+
+// Busca o HTML de uma URL pública para o raspador de catálogo.
+// Valida o IP resolvido (anti-SSRF) e segue poucos redirecionamentos.
+async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
+  const parsed = new URL(urlStr);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Apenas URLs http/https são permitidas');
+  }
+  const enderecos = await dns.lookup(parsed.hostname, { all: true });
+  if (enderecos.length === 0 || enderecos.some(e => ipPrivada(e.address))) {
+    throw new Error('URL aponta para um endereço interno/privado — não permitido');
+  }
+  const proto = parsed.protocol === 'https:' ? https : http;
+  return new Promise((resolve, reject) => {
+    const r = proto.get(parsed, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; iRollo360Bot/1.0)' } }, response => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirectsLeft > 0) {
+        response.resume();
+        const proxima = new URL(response.headers.location, parsed);
+        resolve(fetchHtmlSeguro(proxima.href, redirectsLeft - 1));
+        return;
+      }
+      if (response.statusCode >= 400) {
+        response.resume();
+        reject(new Error(`HTTP ${response.statusCode} ao acessar a URL`));
+        return;
+      }
+      let dados = '';
+      let tamanho = 0;
+      response.on('data', chunk => {
+        tamanho += chunk.length;
+        if (tamanho > 3 * 1024 * 1024) { response.destroy(); reject(new Error('Página muito grande (limite 3MB)')); return; }
+        dados += chunk;
+      });
+      response.on('end', () => resolve(dados));
+      response.on('error', reject);
+    });
+    r.on('error', reject);
+    r.setTimeout(15000, () => r.destroy(new Error('Timeout ao acessar a URL')));
+  });
+}
+
+// Extrai título, meta tags e dados estruturados (schema.org Product / JSON-LD) de um HTML
+function extrairMetaProduto(html) {
+  const tituloMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  const titulo = tituloMatch ? tituloMatch[1].trim() : null;
+
+  const meta = {};
+  const metaRegex1 = /<meta\s+[^>]*?(?:property|name)=["']([^"']+)["'][^>]*?content=["']([^"']*)["'][^>]*>/gi;
+  const metaRegex2 = /<meta\s+[^>]*?content=["']([^"']*)["'][^>]*?(?:property|name)=["']([^"']+)["'][^>]*>/gi;
+  let m;
+  while ((m = metaRegex1.exec(html))) meta[m[1].toLowerCase()] = m[2];
+  while ((m = metaRegex2.exec(html))) if (!meta[m[2].toLowerCase()]) meta[m[2].toLowerCase()] = m[1];
+
+  const jsonLd = [];
+  const ldRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  while ((m = ldRegex.exec(html))) {
+    try {
+      const parsed = JSON.parse(m[1].trim());
+      (Array.isArray(parsed) ? parsed : [parsed]).forEach(p => jsonLd.push(p));
+    } catch (e) { /* ignora blocos JSON-LD inválidos */ }
+  }
+  const produtoLd = jsonLd.flatMap(p => p['@graph'] || [p]).find(p => {
+    const tipo = p['@type'];
+    return tipo === 'Product' || (Array.isArray(tipo) && tipo.includes('Product'));
+  }) || null;
+
+  return { titulo, meta, produtoLd };
+}
+
+// Remove tags/scripts/estilos do HTML, deixando apenas texto visível (truncado)
+function htmlParaTexto(html, limite = 6000) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, limite);
 }
 
 // -----------------------------------------------------------
@@ -262,6 +362,85 @@ app.post('/api/catalogo/extrair-pdf', upload.single('arquivo'), async (req, res)
         res.status(400).json({ ok: false, erro: 'Falha ao ler PDF: ' + e.message });
     } finally {
         await parser.destroy();
+    }
+});
+
+// Raspador de página de produto/fornecedor — extrai dados via meta tags, JSON-LD
+// (schema.org Product) e IA, para identificar e cadastrar o produto automaticamente.
+// NUNCA inventa: campo fica null se não estiver explícito no conteúdo da página.
+app.post('/api/catalogo/raspar', async (req, res) => {
+    const { url } = req.body;
+    const vazio = { sku: null, nome: null, fabricante: null, codigo_oem: null, ncm: null, ean: null, motor: null, material: null, preco: null };
+    if (!url) return res.status(400).json({ ok: false, erro: 'URL obrigatória' });
+
+    let html;
+    try {
+        html = await fetchHtmlSeguro(url);
+    } catch (e) {
+        return res.json({ ok: false, erro: 'Erro ao acessar URL: ' + e.message, dados: vazio });
+    }
+
+    const { titulo, meta, produtoLd } = extrairMetaProduto(html);
+    const texto = htmlParaTexto(html);
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+        return res.json({
+            ok: true, encontrado: false, dados: vazio,
+            bruto: { titulo, produtoLd },
+            mensagem: 'ANTHROPIC_API_KEY não configurada — não foi possível identificar os dados do produto.'
+        });
+    }
+
+    try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const contexto = [
+            'Título da página: ' + (titulo || ''),
+            produtoLd ? 'Dados estruturados (schema.org Product): ' + JSON.stringify(produtoLd).slice(0, 3000) : '',
+            'Meta tags relevantes: ' + JSON.stringify({
+                'og:title': meta['og:title'] || null, 'og:description': meta['og:description'] || null,
+                'product:price:amount': meta['product:price:amount'] || null, 'product:price:currency': meta['product:price:currency'] || null,
+                'og:price:amount': meta['og:price:amount'] || null, 'og:price:currency': meta['og:price:currency'] || null
+            }),
+            'Texto da página (truncado): ' + texto
+        ].filter(Boolean).join('\n\n');
+
+        const msg = await client.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 600,
+            system: `Você é um especialista em catalogação de autopeças. Vai receber o conteúdo de uma página de produto/fornecedor (título, dados estruturados, meta tags e texto).
+
+Sua tarefa: extrair os seguintes dados do produto, SOMENTE se estiverem EXPLICITAMENTE presentes no conteúdo:
+- sku: código/part number do produto (do fabricante)
+- nome: nome/descrição do produto
+- fabricante: marca/fabricante
+- codigo_oem: código OEM
+- ncm: código NCM (8 dígitos)
+- ean: código EAN/GTIN
+- motor: aplicação de motor/veículo
+- material: material/composição
+- preco: preço numérico (apenas número, sem símbolo de moeda; use ponto como separador decimal)
+
+REGRAS ABSOLUTAS:
+1. NUNCA invente, estime ou deduza valores que não estejam no conteúdo.
+2. Se um dado não estiver explícito, retorne null para esse campo.
+3. Responda APENAS com um objeto JSON válido, sem markdown, no formato exato:
+{"sku": null, "nome": null, "fabricante": null, "codigo_oem": null, "ncm": null, "ean": null, "motor": null, "material": null, "preco": null}`,
+            messages: [{ role: 'user', content: contexto }]
+        });
+        const respostaTexto = msg.content?.[0]?.text || '{}';
+        let dados;
+        try {
+            const jsonMatch = respostaTexto.match(/\{[\s\S]*\}/);
+            dados = Object.assign({}, vazio, JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto));
+        } catch (e) {
+            dados = vazio;
+        }
+        const encontrado = Object.keys(vazio).some(k => dados[k] != null && dados[k] !== '');
+        res.json({ ok: true, encontrado, dados, fonte: url });
+    } catch (e) {
+        console.error('[Raspador] IA:', e.message);
+        res.json({ ok: false, erro: e.message, dados: vazio });
     }
 });
 
