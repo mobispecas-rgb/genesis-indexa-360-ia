@@ -168,8 +168,8 @@ app.post('/api/motor/enriquecer', (req, res) => {
             material_composicao:     dados.material      || null,
             confianca_enriquecimento: resultado.ntc,
         },
-        aviso: resultado.bloqueios.length > 0
-            ? resultado.bloqueios.join(' | ')
+        aviso: resultado.impedimentos.length > 0
+            ? resultado.impedimentos.join(' | ')
             : null,
     });
 });
