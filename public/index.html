@@ -713,7 +713,7 @@ tr:hover td{background:#f9fafb}
     </div>
     <div class="page" id="page-massa">
       <div class="page-title">&#128194; Enriquecimento por ID / Massa</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha &mdash; ou importe arquivo JSON, CSV ou XML. O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha &mdash;, importe arquivo JSON, CSV, XML ou PDF, ou raspe uma URL (produto &uacute;nico ou cat&aacute;logo com v&aacute;rios produtos). O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
 
       <div class="card">
         <div class="card-title">&#128203; Lista de C&oacute;digos</div>
@@ -724,6 +724,7 @@ tr:hover td{background:#f9fafb}
           <button class="btn btn-sm cat-import-btn" id="massa-btn-xml" onclick="massaToggleModo('xml')">&#128278; XML</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-cole" onclick="massaToggleModo('cole')">&#128203; Cole Direto</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-url" onclick="massaToggleModo('url')">&#128279; Raspar URL</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-catalogo" onclick="massaToggleModo('catalogo')">&#128218; Raspar Cat&aacute;logo</button>
         </div>
         <div class="cat-drop-zone" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
           &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml .pdf)
@@ -733,6 +734,10 @@ tr:hover td{background:#f9fafb}
         <div id="massa-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
           <input id="massa-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
           <button class="btn btn-primary" onclick="massaRasparUrl()">&#128279; Raspar e Identificar</button>
+        </div>
+        <div id="massa-catalogo-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <input id="massa-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/categoria/...">
+          <button class="btn btn-primary" onclick="massaRasparCatalogo()">&#128218; Raspar Cat&aacute;logo (v&aacute;rios produtos)</button>
         </div>
         <div class="form-group" id="massa-textarea-group">
           <textarea id="massa-input" rows="8" style="font-family:monospace;font-size:13px;line-height:1.8" placeholder="Cole aqui — um c&oacute;digo por linha:
@@ -5002,11 +5007,14 @@ function massaToggleModo(modo) {
 
   var dropZone = document.querySelector('#page-massa .cat-drop-zone');
   var urlRow = document.getElementById('massa-url-row');
+  var catalogoRow = document.getElementById('massa-catalogo-url-row');
   var taGroup = document.getElementById('massa-textarea-group');
   var ehUrl = modo === 'url';
-  if (dropZone) dropZone.style.display = ehUrl ? 'none' : '';
-  if (taGroup) taGroup.style.display = ehUrl ? 'none' : '';
+  var ehCatalogo = modo === 'catalogo';
+  if (dropZone) dropZone.style.display = (ehUrl || ehCatalogo) ? 'none' : '';
+  if (taGroup) taGroup.style.display = (ehUrl || ehCatalogo) ? 'none' : '';
   if (urlRow) urlRow.style.display = ehUrl ? 'flex' : 'none';
+  if (catalogoRow) catalogoRow.style.display = ehCatalogo ? 'flex' : 'none';
 }
 
 function massaFileSelect(input) {
@@ -5083,6 +5091,42 @@ async function massaRasparUrl() {
     status.textContent = '✅ Produto identificado a partir da URL. Confirme os dados antes de salvar.';
   } catch (e) {
     status.textContent = '❌ Erro ao raspar URL: ' + e.message;
+  }
+}
+
+async function massaRasparCatalogo() {
+  var url = document.getElementById('massa-catalogo-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('massa-status');
+  status.textContent = '⏳ Acessando catálogo e identificando produtos...';
+  try {
+    var r = await api('POST', '/catalogo/raspar-lista', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar catálogo'); return; }
+    if (!r.encontrado || !r.produtos || !r.produtos.length) {
+      status.textContent = '⚠️ ' + (r.mensagem || 'Não foi possível identificar produtos nesta página.');
+      return;
+    }
+
+    var tbody = document.getElementById('massa-tbody');
+    document.getElementById('massa-resultado').style.display = 'block';
+
+    for (var k = 0; k < r.produtos.length; k++) {
+      var d = r.produtos[k];
+      var item = massaNormalizarItem(Object.assign({}, d, { preco_custo: d.preco, _url_origem: d.url }), 'catalogo');
+      var i = _massaItens.length;
+      var full = await massaAdicionarItem(item);
+      tbody.appendChild(massaRenderRow(i, full));
+    }
+
+    var aprov = _massaItens.filter(function(x){ return x.decisao === 'APROVADO'; }).length;
+    var pend  = _massaItens.filter(function(x){ return x.decisao === 'PENDENTE'; }).length;
+    var repr  = _massaItens.filter(function(x){ return x.decisao === 'REPROVADO'; }).length;
+    document.getElementById('massa-resumo').textContent =
+      '✅ ' + aprov + ' aprovados · ⏳ ' + pend + ' pendentes · ✖ ' + repr + ' reprovados';
+
+    status.textContent = '✅ ' + r.produtos.length + ' produto(s) identificados (' + r.fonte + '). Confirme os dados antes de salvar.';
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar catálogo: ' + e.message;
   }
 }
 
