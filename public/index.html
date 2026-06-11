@@ -597,7 +597,7 @@ tr:hover td{background:#f9fafb}
         </div>
         <div class="cat-drop-zone" onclick="document.getElementById('cat-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;color:#555;font-size:13px">
           &#128196; Arraste o arquivo aqui ou clique para selecionar
-          <div style="font-size:11px;color:#444;margin-top:4px">Suporta .txt .json .csv .xml .pdf</div>
+          <div style="font-size:11px;color:#444;margin-top:4px">Suporta .txt .json .csv .xml .pdf (PDF: máx. 20 MB)</div>
           <input type="file" id="cat-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="catalogoFileSelect(this)">
           <span id="catalogo-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
         </div>
@@ -5710,6 +5710,11 @@ function catalogoFileSelect(input) {
   var status = document.getElementById('catalogo-file-status');
 
   if (name.endsWith('.pdf')) {
+    if (file.size > PDF_UPLOAD_MAX_BYTES) {
+      status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 20 MB. Tente um arquivo menor ou compacte o PDF.';
+      input.value = '';
+      return;
+    }
     status.textContent = '⏳ Lendo PDF ' + file.name + '...';
     var fd = new FormData();
     fd.append('arquivo', file);
@@ -5730,7 +5735,10 @@ function catalogoFileSelect(input) {
         status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
       }
     }).catch(function(e) {
-      status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+      var msg = (e.message === 'Failed to fetch')
+        ? 'Falha de conexão ao enviar o PDF. Verifique sua internet e tente novamente.'
+        : e.message;
+      status.textContent = '❌ Erro ao enviar PDF: ' + msg;
     });
     return;
   }
