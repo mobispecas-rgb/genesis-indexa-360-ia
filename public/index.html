@@ -1749,6 +1749,31 @@ function prodIndex(p) {
   }
   return all.indexOf(p);
 }
+
+// Localiza, em `prods`, um produto já cadastrado com o mesmo Part Number +
+// Fabricante de `dados` — usado para evitar duplicar o mesmo produto ao
+// importar pelo Catálogo, Massa, Enriquecimento OEM ou Completar NTC.
+function _prodEncontrarIndice(prods, dados) {
+  if (!dados || !dados.codigo_fabricante) return -1;
+  return prods.findIndex(function(p) {
+    return p.codigo_fabricante === dados.codigo_fabricante && p.fabricante === dados.fabricante;
+  });
+}
+
+// Insere `dados` em `prods` ou funde com o produto existente (mesmo Part
+// Number + Fabricante), preservando os campos já cadastrados por outras
+// telas. Retorna o índice do produto em `prods`.
+function _prodSalvarOuFundir(prods, dados, extras, prefixoId) {
+  extras = extras || {};
+  var idx = _prodEncontrarIndice(prods, dados);
+  if (idx >= 0) {
+    prods[idx] = Object.assign({}, prods[idx], dados, extras);
+  } else {
+    prods.push(Object.assign({}, dados, extras, { id: prefixoId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8) }));
+    idx = prods.length - 1;
+  }
+  return idx;
+}
 function getImagens() { try { return JSON.parse(localStorage.getItem('gn_imagens') || '[]'); } catch(e) { return []; } }
 function saveImagens(arr) { localStorage.setItem('gn_imagens', JSON.stringify(arr)); }
 
@@ -3311,11 +3336,10 @@ async function diagRecalcularTodosNTC() {
     var p = prods[i];
     if (resumoEl) resumoEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#888;padding:12px">Recalculando NTC... ' + (i+1) + ' de ' + prods.length + '</div>';
     try {
-      var r = await api('POST', '/motor/nct', {
-        nome: p.nome, codigo_fabricante: p.codigo_fabricante, fabricante: p.fabricante,
-        familia_tecnica: p.familia_tecnica, codigo_oem: p.codigo_oem, ncm: p.ncm,
-        ean: p.ean, motor: p.motor, material: p.material
-      });
+      // Envia o produto completo (todos os módulos já preenchidos em "Completar
+      // NTC" — imagens, especificações, linhagem etc.), não apenas os campos
+      // básicos, para o NTC recalculado não regredir.
+      var r = await api('POST', '/motor/nct', p);
       p.ntc = r.ntc || 0; p.decisao = r.decisao || p.decisao; p.rast_hash = r.rast_hash || p.rast_hash;
       n++;
     } catch(e) {}
@@ -3538,16 +3562,20 @@ async function oemPublicar() {
 async function oemSalvarRascunho() {
   var dados = oemColetar();
   if (!dados.codigo_fabricante && !dados.nome) return null;
-  var r;
-  try { r = await api('POST', '/motor/nct', dados); } catch(e) { r = {ntc:0, decisao:'REPROVADO'}; }
   var prods = getProds();
-  var extras = { ntc: r.ntc || 0, decisao: r.decisao || 'REPROVADO', rast_hash: r.rast_hash, ts: Date.now() };
   var idx = _oemEditIdx;
   if (idx == null || !prods[idx]) {
     idx = prods.findIndex(function(p) {
       return dados.codigo_fabricante && p.codigo_fabricante === dados.codigo_fabricante && p.fabricante === dados.fabricante;
     });
   }
+  // Calcula o NTC com o registro completo (preservando módulos já preenchidos
+  // em "Completar NTC", como imagens, especificações e linhagem) — evita que
+  // o NTC regrida ao salvar a partir desta tela.
+  var dadosCompletos = Object.assign({}, (idx >= 0 && prods[idx]) || {}, dados);
+  var r;
+  try { r = await api('POST', '/motor/nct', dadosCompletos); } catch(e) { r = {ntc:0, decisao:'REPROVADO'}; }
+  var extras = { ntc: r.ntc || 0, decisao: r.decisao || 'REPROVADO', rast_hash: r.rast_hash, ts: Date.now() };
   if (idx >= 0 && prods[idx]) {
     prods[idx] = Object.assign({}, prods[idx], dados, extras);
   } else {
@@ -3864,17 +3892,20 @@ async function massaProcessar() {
 
 function massaSalvarAprovados() {
   var prods = getProds();
-  var salvos = 0;
+  var salvos = 0, atualizados = 0;
   _massaItens.forEach(function(item) {
     if (item.decisao === 'APROVADO' || item.decisao === 'PENDENTE') {
-      prods.push(Object.assign({}, item, { id: 'massa-' + Date.now() + '-' + Math.random(), _fonte: 'massa', ts: Date.now() }));
-      salvos++;
+      var jaExistia = _prodEncontrarIndice(prods, item) >= 0;
+      _prodSalvarOuFundir(prods, item, { ntc: item.ntc, decisao: item.decisao, rast_hash: item.rast_hash, _fonte: item._fonte || 'massa', ts: Date.now() }, 'massa');
+      if (jaExistia) atualizados++; else salvos++;
     }
   });
   saveProds(prods);
   atualizarStats();
   loadProdutos();
-  document.getElementById('massa-status').textContent = '✅ ' + salvos + ' produtos salvos no catálogo.';
+  var msg = '✅ ' + salvos + ' produto(s) salvo(s) no catálogo.';
+  if (atualizados) msg += ' (' + atualizados + ' já cadastrado(s) — dados atualizados)';
+  document.getElementById('massa-status').textContent = msg;
 }
 
 function massaCompletarItem(idx) {
@@ -5189,7 +5220,9 @@ async function cntcSalvar() {
   var idx = prods.findIndex(function(p){
     return p.codigo_fabricante === _cntcDados.codigo_fabricante && p.fabricante === _cntcDados.fabricante;
   });
-  var prod = Object.assign({}, _cntcDados, {ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash});
+  // Funde com o registro existente (base) — evita apagar campos não
+  // representados em _cntcDados (ex: id, _fonte, dados colados via JSON parcial)
+  var prod = Object.assign({}, (idx >= 0 && prods[idx]) || {}, _cntcDados, {ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now()});
   if (idx >= 0) { prods[idx] = prod; } else { prods.push(prod); }
   localStorage.setItem('gn_prod', JSON.stringify(prods));
   atualizarStats();
@@ -5553,18 +5586,22 @@ function catalogoDescartar(idx) {
 
 function catalogoEnviarFila() {
   var prods = getProds();
-  var enviados = 0;
+  var enviados = 0, atualizados = 0;
   _catalogoItens.forEach(function(item) {
     if ((item.ntc||0) >= 0.6) {
-      prods.push(Object.assign({}, item, { id: 'cat-' + Date.now() + '-' + enviados, ts: Date.now() }));
-      enviados++;
+      var dados = massaNormalizarItem(item, item._fonte || 'catalogo');
+      var jaExistia = _prodEncontrarIndice(prods, dados) >= 0;
+      _prodSalvarOuFundir(prods, dados, { ntc: item.ntc, decisao: item.decisao, rast_hash: item.rast_hash, ts: Date.now() }, 'cat');
+      if (jaExistia) atualizados++; else enviados++;
     }
   });
   saveProds(prods);
   atualizarBadgeAprovacao();
   _catalogoItens = _catalogoItens.filter(function(i){ return (i.ntc||0) < 0.6; });
   catalogoRenderResultado();
-  document.getElementById('catalogo-file-status').textContent = '✅ ' + enviados + ' produto(s) enviado(s) para a Fila de Aprovação';
+  var msg = '✅ ' + enviados + ' produto(s) enviado(s) para a Fila de Aprovação';
+  if (atualizados) msg += ' (' + atualizados + ' já cadastrado(s) — dados atualizados)';
+  document.getElementById('catalogo-file-status').textContent = msg;
 }
 
 // =============================================
