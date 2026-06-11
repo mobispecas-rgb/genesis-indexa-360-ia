@@ -658,6 +658,14 @@ tr:hover td{background:#f9fafb}
       <!-- Resultado da busca -->
       <div id="oem-resultado" style="display:none">
 
+        <!-- Agente de Enriquecimento de DNA via Web -->
+        <div class="card">
+          <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
+          <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, motor/aplica&ccedil;&atilde;o, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes na web e <strong style="color:#ff4500">salva automaticamente</strong> o cadastro (rascunho) com o que for encontrado. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, pendente de confirma&ccedil;&atilde;o humana.</p>
+          <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
+          <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+        </div>
+
         <!-- Dados confirmados -->
         <div class="card" style="border-color:#ff450030">
           <div class="card-title">&#9989; Dados Confirmados (preenchidos pela busca)</div>
@@ -680,6 +688,7 @@ tr:hover td{background:#f9fafb}
           </div>
           <div class="form-group"><label>Material / Composi&ccedil;&atilde;o</label><input id="oem-f-material" placeholder="Ex: Aço estampado nitretado | Esferas radiais"></div>
         </div>
+
 
         <!-- Resultados Google -->
         <div class="card" id="oem-google-card" style="display:none">
@@ -818,6 +827,8 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         <button class="btn btn-sm btn-secondary" onclick="aprovCadImportar()">&#8595; Importar dados</button>
         <button class="btn btn-sm btn-primary" onclick="aprovCadAprovarSelecionados()">&#10003; Aprovar selecionados</button>
         <button class="btn btn-sm btn-secondary" onclick="aprovSincronizarAprovadosLote()" style="color:#00c853;border-color:#00c85340">&#128640; Sync Bling + Wix</button>
+        <button class="btn btn-sm btn-secondary" onclick="aprovCadApagarSelecionados()" style="color:#f44336;border-color:#f4433640">&#128465; Apagar selecionados</button>
+        <button class="btn btn-sm btn-secondary" onclick="aprovCadApagarTodos()" style="color:#f44336;border-color:#f4433640">&#128465; Apagar todos</button>
         <span style="margin-left:auto;font-size:12px;color:#555" id="aprov-cad-count"></span>
       </div>
 
@@ -3314,6 +3325,7 @@ async function diagRecalcularTodosNTC() {
 var _oemDados = {};
 var _oemNTCTimer = null;
 var _oemEditIdx = null;
+var _oemDnaExtras = {}; // campos extras do agente de DNA sem input próprio nesta tela (AV/FP/CC/FM)
 
 // Define se a tela de Enriquecimento OEM está em modo "edição/reenriquecimento"
 // de um produto já existente na fila (idx) ou em modo "novo produto" (null).
@@ -3350,6 +3362,9 @@ async function oemBuscar() {
   if (!q) return;
   var status = document.getElementById('oem-status');
   status.innerHTML = '&#9889; Buscando dados reais...';
+  _oemDnaExtras = {};
+  var dnaStatus = document.getElementById('oem-dna-status');
+  if (dnaStatus) dnaStatus.innerHTML = '';
 
   // Parse inicial do texto para pré-preencher campos
   var parsed = parseTextoIA(q);
@@ -3436,7 +3451,10 @@ async function oemBuscar() {
 }
 
 function oemColetar() {
-  return {
+  // _oemDnaExtras traz campos sem input nesta tela (aplicação veicular, dimensões,
+  // CEST, cross-codes etc.) encontrados pelo agente de DNA — os campos do
+  // formulário sempre têm prioridade sobre eles.
+  return Object.assign({}, _oemDnaExtras, {
     codigo_fabricante: document.getElementById('oem-f-sku').value.trim() || null,
     fabricante:        document.getElementById('oem-f-fab').value.trim() || null,
     nome:              document.getElementById('oem-f-nome').value.trim() || null,
@@ -3446,7 +3464,7 @@ function oemColetar() {
     ean:               document.getElementById('oem-f-ean').value.replace(/\D/g,'') || null,
     motor:             document.getElementById('oem-f-motor').value.trim() || null,
     material:          document.getElementById('oem-f-material').value.trim() || null,
-  };
+  });
 }
 
 async function oemRecalcularNTC() {
@@ -3506,6 +3524,157 @@ async function oemPublicar() {
   saveProds(prods);
   atualizarStats(); loadProdutos(); cntcPreencherSelect();
   document.getElementById('oem-pub-status').textContent = '✅ Publicado no catálogo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
+}
+
+// Salva o que está na tela como rascunho na fila de cadastro (sem o bloqueio
+// de NTC mínimo do "Publicar"), criando o produto ou atualizando se já existir
+// (mesmo Part Number + Fabricante), para não perder o que a IA encontrou.
+async function oemSalvarRascunho() {
+  var dados = oemColetar();
+  if (!dados.codigo_fabricante && !dados.nome) return null;
+  var r;
+  try { r = await api('POST', '/motor/nct', dados); } catch(e) { r = {ntc:0, decisao:'REPROVADO'}; }
+  var prods = getProds();
+  var extras = { ntc: r.ntc || 0, decisao: r.decisao || 'REPROVADO', rast_hash: r.rast_hash, ts: Date.now() };
+  var idx = _oemEditIdx;
+  if (idx == null || !prods[idx]) {
+    idx = prods.findIndex(function(p) {
+      return dados.codigo_fabricante && p.codigo_fabricante === dados.codigo_fabricante && p.fabricante === dados.fabricante;
+    });
+  }
+  if (idx >= 0 && prods[idx]) {
+    prods[idx] = Object.assign({}, prods[idx], dados, extras);
+  } else {
+    prods.push(Object.assign({}, dados, extras, { id: 'oem-' + Date.now(), _fonte: 'oem' }));
+    idx = prods.length - 1;
+  }
+  saveProds(prods);
+  atualizarStats(); loadProdutos(); cntcPreencherSelect(); atualizarBadgeAprovacao();
+  oemDefinirModoEdicao(idx);
+  return r;
+}
+
+// Mapeia o retorno de /api/motor/enriquecer-dna para as chaves usadas no
+// cadastro do produto (mesmas chaves de CNTC_CAMPOS em "Completar NTC").
+function mapearCamposDnaParaProduto(campos) {
+  campos = campos || {};
+  var resultado = {};
+  var DIRETOS = {
+    codigo_oem: 'codigo_oem', ean: 'ean', ncm: 'ncm', cest: 'cest', motor: 'motor',
+    codigo_motor: 'codigo_motor', versao_veiculo: 'versao', ano_inicial: 'ano_inicial',
+    ano_final: 'ano_final', cilindrada: 'cilindrada', material: 'material',
+    comprimento: 'comprimento', largura: 'largura', altura: 'altura'
+  };
+  Object.keys(DIRETOS).forEach(function(campo) {
+    var info = campos[campo];
+    if (!info || info.valor == null || info.valor === '') return;
+    resultado[DIRETOS[campo]] = info.valor;
+  });
+  if (campos.marca_veiculo && campos.marca_veiculo.valor)  resultado.marca  = campos.marca_veiculo.valor;
+  if (campos.modelo_veiculo && campos.modelo_veiculo.valor) resultado.modelo = campos.modelo_veiculo.valor;
+  ['posicao', 'fmsi'].forEach(function(campo) {
+    var info = campos[campo];
+    if (!info || info.valor == null || info.valor === '') return;
+    var rotulo = campo === 'posicao' ? 'Posição' : 'Código FMSI';
+    if (!Array.isArray(resultado.especificacoes)) resultado.especificacoes = [];
+    resultado.especificacoes.push(rotulo + ': ' + info.valor);
+  });
+  if (campos.cross_codes && campos.cross_codes.valor) {
+    resultado.cc_aftermarket = String(campos.cross_codes.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  return resultado;
+}
+
+// Campos do agente de DNA que já têm input próprio nesta tela
+var MAPA_CAMPOS_DNA_OEM = {
+  codigo_oem: { id: 'oem-f-oem',      label: 'OEM',              key: 'codigo_oem' },
+  ean:        { id: 'oem-f-ean',      label: 'EAN',              key: 'ean' },
+  ncm:        { id: 'oem-f-ncm',      label: 'NCM',              key: 'ncm' },
+  motor:      { id: 'oem-f-motor',    label: 'Motor/Aplicação',  key: 'motor' },
+  material:   { id: 'oem-f-material', label: 'Material',         key: 'material' },
+};
+
+async function oemBuscarDnaWeb() {
+  var statusEl = document.getElementById('oem-dna-status');
+  var dados = oemColetar();
+  var sku = dados.codigo_fabricante || '';
+  var fabricante = dados.fabricante || '';
+  var nome = dados.nome || '';
+
+  if (!sku && !nome) {
+    statusEl.innerHTML = '<span style="color:#ff6500">&#9888; Informe ao menos o SKU/c&oacute;digo ou o nome do produto antes de buscar.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '&#8987; Buscando DNA na web (IA)... isso pode levar at&eacute; 1 minuto.';
+
+  var r;
+  try {
+    r = await api('POST', '/motor/enriquecer-dna', {sku: sku, fabricante: fabricante, nome: nome});
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#ff4500">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+
+  if (!r.ok) {
+    statusEl.innerHTML = '<span style="color:#ff4500">&#9888; ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
+    return;
+  }
+  if (!r.encontrado) {
+    statusEl.innerHTML = '<span style="color:#ffaa00">&#9888; ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
+    return;
+  }
+
+  var campos = r.campos || {};
+  var preenchidos = [];
+
+  // Campos com input próprio nesta tela: preenche em laranja só se estiverem vazios
+  Object.keys(MAPA_CAMPOS_DNA_OEM).forEach(function(campo) {
+    var info = campos[campo];
+    if (!info || info.valor == null || info.valor === '') return;
+    var map = MAPA_CAMPOS_DNA_OEM[campo];
+    var el = document.getElementById(map.id);
+    if (!el || (el.value && el.value.trim() !== '')) return;
+    el.value = info.valor;
+    el.style.borderColor = '#ff9800';
+    el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+    preenchidos.push({campo: map.label, valor: info.valor, confianca: info.confianca});
+  });
+
+  // Demais campos (aplicação veicular, dimensões, CEST, cross-codes etc.) não têm
+  // input nesta tela — ficam anexados ao cadastro e alimentam o "Completar NTC"
+  _oemDnaExtras = mapearCamposDnaParaProduto(campos);
+  Object.keys(MAPA_CAMPOS_DNA_OEM).forEach(function(campo) {
+    delete _oemDnaExtras[MAPA_CAMPOS_DNA_OEM[campo].key];
+  });
+  var extrasCount = Object.keys(_oemDnaExtras).length;
+
+  oemRecalcularNTC();
+
+  var html = '';
+  if (preenchidos.length === 0 && extrasCount === 0) {
+    html = '<span style="color:#ffaa00">A IA consultou ' + (r.fontes_consultadas||[]).length + ' fonte(s), mas n&atilde;o encontrou campos novos.</span>';
+  } else {
+    html = '<div style="color:#00ff88;margin-bottom:6px">&#10003; ' + preenchidos.length + ' campo(s) preenchido(s) em laranja';
+    if (extrasCount) html += ' + ' + extrasCount + ' campo(s) extra(s) (aplica&ccedil;&atilde;o veicular/dimens&otilde;es/cross-codes) anexados ao cadastro';
+    html += ':</div><ul style="margin:0 0 6px;padding-left:18px">';
+    preenchidos.forEach(function(p) {
+      var cor = p.confianca === 'alta' ? '#00ff88' : (p.confianca === 'media' ? '#ffaa00' : '#ff6500');
+      html += '<li style="margin-bottom:3px"><strong>' + esc(p.campo) + '</strong>: ' + esc(String(p.valor)) + ' <span style="color:' + cor + '">(' + esc(p.confianca) + ')</span></li>';
+    });
+    html += '</ul>';
+  }
+  if (r.fontes_consultadas && r.fontes_consultadas.length) {
+    html += '<div style="font-size:11px;color:#666">Fontes consultadas: ' + r.fontes_consultadas.length + '</div>';
+  }
+
+  // Salva automaticamente um rascunho com o que foi encontrado, para não perder os dados
+  var rSalvo = await oemSalvarRascunho();
+  if (rSalvo) {
+    html += '<div style="margin-top:6px;color:#00ff88">&#128190; Rascunho salvo na fila de Aprova&ccedil;&atilde;o de Cadastro &mdash; NTC ' + Math.round((rSalvo.ntc||0)*100) + '% (' + esc(rSalvo.decisao||'') + ').</div>';
+  }
+
+  statusEl.innerHTML = html;
 }
 
 async function oemEnviarBling() {
@@ -5855,6 +6024,23 @@ function aprovCadAprovarSelecionados() {
   var prods=getProds();
   idxs.forEach(function(i){ if(prods[i]){ prods[i].decisao='APROVADO'; prods[i]._aprovadoEm=Date.now(); } });
   saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+}
+// Apaga apenas os produtos marcados na tabela (um ou vários)
+function aprovCadApagarSelecionados() {
+  var idxs=[]; document.querySelectorAll('.aprov-cad-chk:checked').forEach(function(c){ idxs.push(parseInt(c.dataset.gi)); });
+  if(!idxs.length){ alert('Selecione ao menos um produto.'); return; }
+  if(!confirm('Apagar ' + idxs.length + ' produto(s) selecionado(s)? Esta ação não pode ser desfeita.')) return;
+  var prods=getProds();
+  idxs.sort(function(a,b){ return b-a; }).forEach(function(i){ prods.splice(i,1); });
+  saveProds(prods); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
+}
+// Apaga todos os produtos cadastrados (limpa a fila inteira)
+function aprovCadApagarTodos() {
+  var prods=getProds();
+  if(!prods.length){ alert('Não há produtos cadastrados.'); return; }
+  if(!confirm('Apagar TODOS os ' + prods.length + ' produto(s) cadastrados? Esta ação não pode ser desfeita.')) return;
+  if(!confirm('Tem certeza? Isso vai limpar TODO o catálogo local.')) return;
+  saveProds([]); atualizarStats(); atualizarBadgeAprovacao(); aprovCadRender();
 }
 function aprovCadExportar() {
   var prods=getProds();
