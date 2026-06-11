@@ -666,11 +666,71 @@ tr:hover td{background:#f9fafb}
 
       <div class="card">
         <div class="card-title">&#128269; Busca de Enriquecimento</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div id="oem-modo-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn btn-sm cat-import-btn active-mode" id="oem-modo-btn-busca" onclick="oemToggleModoEntrada('busca')">&#128269; Buscar por c&oacute;digo/nome</button>
+          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-pdf" onclick="oemToggleModoEntrada('pdf')">&#128196; Anexar PDF</button>
+          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-url" onclick="oemToggleModoEntrada('url')">&#128279; Raspar URL</button>
+          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-catalogo" onclick="oemToggleModoEntrada('catalogo')">&#128722; Raspar Cat&aacute;logo (v&aacute;rios)</button>
+        </div>
+
+        <div id="oem-modo-busca" class="oem-modo-painel" style="display:flex;gap:8px;margin-bottom:12px">
           <input id="oem-input" style="flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
           <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
         </div>
+
+        <div id="oem-modo-pdf" class="oem-modo-painel" style="display:none">
+          <div class="cat-drop-zone" onclick="document.getElementById('oem-pdf-input').click()" style="border:2px dashed #d1d5db;border-radius:8px;padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;color:#6b7280;font-size:13px">
+            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar
+            <input type="file" id="oem-pdf-input" style="display:none" accept=".pdf" onchange="oemAnexarPdf(this)">
+            <span id="oem-pdf-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+          </div>
+        </div>
+
+        <div id="oem-modo-url" class="oem-modo-painel" style="display:none">
+          <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link da p&aacute;gina do produto no site do fornecedor. A IA l&ecirc; a p&aacute;gina e identifica SKU, fabricante, nome, OEM, NCM, EAN, motor, material e pre&ccedil;o &mdash; confirme antes de usar.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input id="oem-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+            <button class="btn btn-primary" onclick="oemRasparUrl()">&#128279; Raspar e Identificar</button>
+          </div>
+          <div style="font-size:11px;color:#6b7280">&#128161; Se o site bloquear a raspagem (erro HTTP 403/405), use a aba &#128196; Anexar PDF com a ficha t&eacute;cnica/p&aacute;gina do produto.</div>
+        </div>
+
+        <div id="oem-modo-catalogo" class="oem-modo-painel" style="display:none">
+          <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link de uma p&aacute;gina de categoria/cat&aacute;logo do fornecedor com v&aacute;rios produtos (ex: resultado de busca ou carrinho). A IA identifica os produtos listados para voc&ecirc; selecionar quais cadastrar.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input id="oem-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/categoria/...">
+            <button class="btn btn-primary" onclick="oemRasparCatalogo()">&#128722; Raspar Cat&aacute;logo</button>
+          </div>
+        </div>
+
         <div id="oem-status" style="font-size:12px;color:#555"></div>
+      </div>
+
+      <!-- Carrinho de produtos encontrados (PDF com vários itens / Raspar Catálogo) -->
+      <div class="card" id="oem-carrinho-card" style="display:none;border-color:#ff450030">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span>&#128722; Produtos Encontrados &mdash; Selecione para Cadastrar</span>
+          <span id="oem-carrinho-resumo" style="font-size:12px;color:#888"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;font-size:13px">
+            <thead>
+              <tr>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb"><input type="checkbox" id="oem-carrinho-chk-all" onclick="oemCarrinhoMarcarTodos(this.checked)"></th>
+                <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">SKU</th>
+                <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Nome</th>
+                <th class="col-opt" style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Fabricante</th>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">NTC%</th>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Status</th>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">A&ccedil;&atilde;o</th>
+              </tr>
+            </thead>
+            <tbody id="oem-carrinho-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" onclick="oemCarrinhoEnviar()">&#10003; Cadastrar selecionados</button>
+        </div>
       </div>
 
       <!-- Resultado da busca -->
@@ -3612,6 +3672,15 @@ function _oemLimparFormulario() {
   if (modulos) modulos.innerHTML = '';
   var barra = document.getElementById('cntc-ntc-bar');
   if (barra) barra.style.display = 'none';
+  if (typeof oemToggleModoEntrada === 'function') oemToggleModoEntrada('busca');
+  ['oem-pdf-input','oem-url-input','oem-catalogo-url-input'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var pdfStatus = document.getElementById('oem-pdf-status');
+  if (pdfStatus) pdfStatus.textContent = '';
+  _oemCarrinhoItens = [];
+  if (typeof oemCarrinhoRender === 'function') oemCarrinhoRender();
 }
 
 // Define se a tela de Cadastro Completo está em modo "edição/reenriquecimento"
@@ -4096,6 +4165,195 @@ function oemCarregarDados(dados) {
     oemIrEtapa(2);
     _cntcRecalcular();
   }, 150);
+}
+
+// ===== CADASTRO COMPLETO — MODOS DE ENTRADA (PDF / Raspar URL / Raspar Catálogo) =====
+var _oemCarrinhoItens = [];
+
+function oemToggleModoEntrada(modo) {
+  document.querySelectorAll('#oem-modo-tabs .cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
+  var btn = document.getElementById('oem-modo-btn-' + modo);
+  if (btn) btn.classList.add('active-mode');
+  ['busca','pdf','url','catalogo'].forEach(function(m) {
+    var el = document.getElementById('oem-modo-' + m);
+    if (el) el.style.display = (m === modo) ? (m === 'busca' ? 'flex' : 'block') : 'none';
+  });
+}
+
+// Lê um PDF (ficha técnica ou catálogo do fornecedor) e identifica produtos.
+// Reaproveita /api/catalogo/extrair-pdf: se houver tabela detectada, trata como
+// CSV de catálogo (vários produtos); senão, tenta extrair blocos de texto.
+function oemAnexarPdf(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var status = document.getElementById('oem-pdf-status');
+  status.textContent = '⏳ Lendo PDF ' + file.name + '...';
+  var fd = new FormData();
+  fd.append('arquivo', file);
+  var tok = localStorage.getItem('gn_token') || '';
+  fetch('/api/catalogo/extrair-pdf', {
+    method: 'POST',
+    headers: tok ? { 'Authorization': 'Bearer ' + tok } : {},
+    body: fd
+  }).then(function(r){ return r.json(); }).then(function(r) {
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao ler PDF'); return; }
+    var itens = [];
+    if (r.tabela) {
+      itens = catalogoProcessarCSV(r.tabela).map(function(o){ return massaNormalizarItem(o, 'pdf'); });
+    }
+    if (!itens.length && r.texto) {
+      r.texto.split(/\n\s*\n/).map(function(b){ return b.trim(); }).filter(Boolean).forEach(function(bloco) {
+        var d = catExtrair(bloco);
+        if (d && (d.codigo_fabricante || d.nome)) itens.push(massaNormalizarItem(Object.assign({_linha: bloco}, d), 'pdf'));
+      });
+    }
+    if (!itens.length) {
+      status.textContent = '⚠️ Não foi possível identificar produtos neste PDF. Tente colar os dados manualmente na busca.';
+      return;
+    }
+    status.textContent = '📎 ' + file.name + ' — ' + itens.length + ' produto(s) identificado(s).';
+    oemProcessarItensEncontrados(itens);
+  }).catch(function(e) {
+    status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+  });
+}
+
+// Raspa uma única página de produto do fornecedor (reaproveita /api/catalogo/raspar).
+async function oemRasparUrl() {
+  var url = document.getElementById('oem-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('oem-status');
+  status.innerHTML = '⏳ Acessando e identificando o produto...';
+  try {
+    var r = await api('POST', '/catalogo/raspar', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar URL') + ' — tente anexar a ficha técnica em PDF.'; return; }
+    if (!r.encontrado) { status.textContent = '⚠️ ' + (r.mensagem || 'Não foi possível identificar dados do produto nesta página.'); return; }
+    var d = r.dados;
+    var item = massaNormalizarItem({
+      codigo_fabricante: d.sku, nome: d.nome, fabricante: d.fabricante, codigo_oem: d.codigo_oem,
+      ncm: d.ncm, ean: d.ean, motor: d.motor, material: d.material, preco_custo: d.preco, _url_origem: url
+    }, 'url');
+    status.textContent = '⏳ Produto identificado — calculando NTC...';
+    await oemProcessarItensEncontrados([item]);
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar URL: ' + e.message;
+  }
+}
+
+// Raspa uma página de catálogo/categoria do fornecedor com vários produtos
+// (reaproveita /api/catalogo/raspar-lista) e mostra o "carrinho" de seleção.
+async function oemRasparCatalogo() {
+  var url = document.getElementById('oem-catalogo-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('oem-status');
+  status.innerHTML = '⏳ Acessando catálogo e identificando produtos...';
+  try {
+    var r = await api('POST', '/catalogo/raspar-lista', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar catálogo'); return; }
+    if (!r.encontrado || !r.produtos.length) { status.textContent = '⚠️ ' + (r.mensagem || 'Nenhum produto identificado nesta página.'); return; }
+    var itens = r.produtos.map(function(p) {
+      return massaNormalizarItem({
+        codigo_fabricante: p.sku, nome: p.nome, fabricante: p.fabricante, preco_custo: p.preco, _url_origem: p.url
+      }, 'catalogo');
+    });
+    status.textContent = '⏳ ' + itens.length + ' produto(s) encontrado(s) — calculando NTC...';
+    await oemProcessarItensEncontrados(itens);
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar catálogo: ' + e.message;
+  }
+}
+
+// Calcula o NTC de cada item encontrado (PDF/URL/Catálogo). Se for um único
+// produto, carrega direto no Cadastro Completo (Etapa 2). Se forem vários,
+// exibe o "carrinho" para o lojista escolher quais cadastrar.
+async function oemProcessarItensEncontrados(itens) {
+  var status = document.getElementById('oem-status');
+  if (itens.length === 1) {
+    var item = itens[0];
+    try {
+      var r = await api('POST', '/motor/nct', item);
+      item = Object.assign({}, item, { ntc: r.ntc||0, decisao: r.decisao||'REPROVADO', rast_hash: r.rast_hash||'' });
+    } catch(e) {}
+    if (status) status.textContent = '✅ Produto identificado — revise os dados e siga para a Etapa 2.';
+    oemCarregarDados(item);
+    return;
+  }
+  _oemCarrinhoItens = [];
+  for (var i = 0; i < itens.length; i++) {
+    var item = itens[i];
+    try {
+      var r = await api('POST', '/motor/nct', item);
+      item = Object.assign({}, item, { ntc: r.ntc||0, decisao: r.decisao||'REPROVADO', rast_hash: r.rast_hash||'' });
+    } catch(e) {
+      item = Object.assign({}, item, { ntc: 0, decisao: 'REPROVADO' });
+    }
+    item._sel = (item.ntc||0) >= 0.6;
+    _oemCarrinhoItens.push(item);
+  }
+  if (status) status.textContent = '✅ ' + _oemCarrinhoItens.length + ' produto(s) listado(s) abaixo — selecione os que deseja cadastrar.';
+  oemCarrinhoRender();
+}
+
+function oemCarrinhoRender() {
+  var card = document.getElementById('oem-carrinho-card');
+  var tbody = document.getElementById('oem-carrinho-tbody');
+  if (!_oemCarrinhoItens.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  var selecionados = _oemCarrinhoItens.filter(function(i){ return i._sel; }).length;
+  document.getElementById('oem-carrinho-resumo').textContent = _oemCarrinhoItens.length + ' produto(s) — ' + selecionados + ' selecionado(s)';
+  tbody.innerHTML = _oemCarrinhoItens.map(function(item, i) {
+    var ntcPct = Math.round((item.ntc||0)*100);
+    return '<tr>'
+      + '<td style="padding:8px;text-align:center"><input type="checkbox" ' + (item._sel?'checked':'') + ' onchange="oemCarrinhoToggle(' + i + ',this.checked)"></td>'
+      + '<td style="padding:8px"><code style="color:#ff4500">' + esc(item.codigo_fabricante||'—') + '</code></td>'
+      + '<td style="padding:8px">' + esc(item.nome||'—') + '</td>'
+      + '<td class="col-opt" style="padding:8px">' + esc(item.fabricante||'—') + '</td>'
+      + '<td style="padding:8px;text-align:center;font-weight:700">' + ntcPct + '%</td>'
+      + '<td style="padding:8px;text-align:center">' + badgeHtml(item.decisao) + '</td>'
+      + '<td style="padding:8px;text-align:center"><button class="btn btn-sm btn-secondary" onclick="oemCarrinhoCompletar(' + i + ')">Completar</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function oemCarrinhoToggle(idx, checked) {
+  if (_oemCarrinhoItens[idx]) _oemCarrinhoItens[idx]._sel = checked;
+  oemCarrinhoRender();
+}
+
+function oemCarrinhoMarcarTodos(checked) {
+  _oemCarrinhoItens.forEach(function(i){ i._sel = checked; });
+  oemCarrinhoRender();
+}
+
+// Carrega um item do carrinho diretamente no Cadastro Completo (Etapa 2) para
+// revisão individual antes de publicar.
+function oemCarrinhoCompletar(idx) {
+  var item = _oemCarrinhoItens[idx];
+  if (!item) return;
+  oemCarregarDados(item);
+}
+
+// Envia os itens selecionados do carrinho para a fila de Aprovação &
+// Congelados (Pendentes), preservando dados já cadastrados em produtos
+// existentes (mesmo Part Number + Fabricante).
+function oemCarrinhoEnviar() {
+  var selecionados = _oemCarrinhoItens.filter(function(i){ return i._sel; });
+  if (!selecionados.length) { alert('Selecione ao menos um produto.'); return; }
+  var prods = getProds();
+  var enviados = 0, atualizados = 0;
+  selecionados.forEach(function(item) {
+    var jaExistia = _prodEncontrarIndice(prods, item) >= 0;
+    _prodSalvarOuFundir(prods, item, { ntc: item.ntc, decisao: item.decisao, rast_hash: item.rast_hash, _fonte: item._fonte, ts: Date.now() }, 'imp');
+    if (jaExistia) atualizados++; else enviados++;
+  });
+  saveProds(prods);
+  atualizarStats();
+  atualizarBadgeAprovacao();
+  _oemCarrinhoItens = _oemCarrinhoItens.filter(function(i){ return !i._sel; });
+  oemCarrinhoRender();
+  var msg = '✅ ' + enviados + ' produto(s) enviado(s) para Aprovação & Congelados';
+  if (atualizados) msg += ' (' + atualizados + ' já cadastrado(s) — dados atualizados)';
+  document.getElementById('oem-status').textContent = msg;
 }
 
 // ===== ENRIQUECIMENTO EM MASSA =====
