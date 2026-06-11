@@ -220,7 +220,7 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section">
     <div class="sb-section-label">Catalogacao</div>
     <div class="sb-item" onclick="nav('catalogo')"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
-    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Enriquecimento OEM</div>
+    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
     <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
     <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
     <div class="sb-item" onclick="nav('aprovacao-enriq')"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o de Enriquecimento</div>
@@ -262,11 +262,6 @@ tr:hover td{background:#f9fafb}
     <div class="sb-item" onclick="nav('usuarios')"><span class="icon">&#128101;</span>Usu&aacute;rios</div>
     <div class="sb-item" onclick="nav('empresa')"><span class="icon">&#127970;</span>Empresa</div>
     <div class="sb-item" onclick="nav('preferencias')"><span class="icon">&#127925;</span>Prefer&ecirc;ncias</div>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-section-label">NTC Tools</div>
-    <div class="sb-item" onclick="nav('completar-ntc')"><span class="icon">&#127919;</span>Completar NTC<span class="sb-badge" id="badge-incompletos">0</span></div>
   </div>
 
   <div class="sb-section">
@@ -642,8 +637,8 @@ tr:hover td{background:#f9fafb}
       </div>
     </div>
     <div class="page" id="page-oem">
-      <div class="page-title">&#10024; Enriquecimento OEM</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google e preenche os campos. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
+      <div class="page-title">&#10024; Cadastro Completo</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google, preenche os campos e mostra os m&oacute;dulos do NTC 4.0 que faltam para chegar a 95%. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
       <div id="oem-edit-banner" style="display:none;background:#ff450015;border:1px solid #ff450040;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ff9800;align-items:center;gap:10px;flex-wrap:wrap">
         <span>&#9999;&#65039; Reenriquecendo / editando: <strong id="oem-edit-nome" style="color:#fff"></strong></span>
         <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="nav('oem')">&#10006; Cancelar edi&ccedil;&atilde;o</button>
@@ -709,6 +704,34 @@ tr:hover td{background:#f9fafb}
           </div>
         </div>
 
+        <!-- Barra NTC completa (meta 95%) -->
+        <div id="cntc-ntc-bar" style="display:none" class="card">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div>
+              <div id="cntc-ntc-pct" style="font-size:42px;font-weight:900;color:#ff6500;line-height:1">0%</div>
+              <div style="font-size:12px;color:#666">NTC atual</div>
+            </div>
+            <div style="flex:1;min-width:200px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
+                <span id="cntc-decisao-label">REPROVADO</span>
+                <span>Meta: 95% APROVADO</span>
+              </div>
+              <div style="height:12px;background:#1f1f1f;border-radius:6px;overflow:hidden;position:relative">
+                <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:6px;transition:width .4s,background .4s"></div>
+                <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:3px"><span>0%</span><span>60%</span><span style="color:#00ff88">95%</span><span>100%</span></div>
+            </div>
+            <div style="text-align:right">
+              <div id="cntc-ganho-label" style="font-size:12px;color:#00ff88"></div>
+              <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulos do NTC para completar até 95% -->
+        <div id="cntc-modulos"></div>
+
         <!-- Botões de ação -->
         <div id="oem-acoes" style="display:none">
           <div class="card" style="border-color:#00c85330">
@@ -724,7 +747,7 @@ tr:hover td{background:#f9fafb}
           <div class="card" style="border-color:#f4433630;background:#f4433608">
             <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
             <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
-            <button class="btn btn-secondary" onclick="oemCompletarNTC()">&#127919; Completar NTC para Desbloquear</button>
+            <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear.</div>
           </div>
         </div>
 
@@ -1502,71 +1525,6 @@ MEDIDA LARGURA  25 MM"></textarea>
     <div class="page" id="page-preferencias"><div class="stub-page"><div class="stub-icon">&#127925;</div><h2>Prefer&ecirc;ncias</h2><p>Em desenvolvimento &mdash; Prefer&ecirc;ncias</p></div></div>
     <div class="page" id="page-config"><div class="stub-page"><div class="stub-icon">&#9881;</div><h2>Configura&ccedil;&otilde;es</h2><p>Em desenvolvimento &mdash; Configura&ccedil;&otilde;es</p></div></div>
 
-    <!-- COMPLETAR NTC -->
-    <div class="page" id="page-completar-ntc">
-      <div class="page-title">&#127919; Completar NTC &mdash; Preenchimento Guiado</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Selecione um produto com NTC incompleto. O sistema mostra <strong style="color:#ff4500">somente os campos faltantes</strong> por módulo, com progresso em tempo real.</p>
-
-      <!-- Selecionar produto -->
-      <div class="card" id="cntc-select-card">
-        <div class="card-title">&#128270; Selecionar Produto</div>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <select id="cntc-prod-select" style="flex:1" onchange="cntcCarregarProduto()">
-            <option value="">— Selecione um produto —</option>
-          </select>
-          <button class="btn btn-secondary" onclick="cntcPopularJSON()">ou colar JSON</button>
-        </div>
-        <div id="cntc-json-area" style="display:none">
-          <div class="form-group"><label>JSON do produto (cole aqui)</label><textarea id="cntc-json-input" rows="4" style="font-family:monospace;font-size:12px" placeholder='{"fabricante":"NYTRON","codigo_fabricante":"KIT9063","familia_tecnica":"Motor",...}'></textarea></div>
-          <button class="btn btn-primary" onclick="cntcAnalisarJSON()">Analisar JSON</button>
-        </div>
-      </div>
-
-      <!-- Agente de Enriquecimento de DNA via Web -->
-      <div class="card" id="cntc-dna-card" style="display:none">
-        <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
-        <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, aplica&ccedil;&atilde;o veicular, material e dimens&otilde;es na web. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, e fica em laranja para sua confirma&ccedil;&atilde;o.</p>
-        <button class="btn btn-secondary" onclick="cntcBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
-        <div id="cntc-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
-      </div>
-
-      <!-- Barra NTC em tempo real -->
-      <div id="cntc-ntc-bar" style="display:none" class="card">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <div>
-            <div id="cntc-ntc-pct" style="font-size:42px;font-weight:900;color:#ff6500;line-height:1">0%</div>
-            <div style="font-size:12px;color:#666">NTC atual</div>
-          </div>
-          <div style="flex:1;min-width:200px">
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
-              <span id="cntc-decisao-label">REPROVADO</span>
-              <span>Meta: 95% APROVADO</span>
-            </div>
-            <div style="height:12px;background:#1f1f1f;border-radius:6px;overflow:hidden;position:relative">
-              <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:6px;transition:width .4s,background .4s"></div>
-              <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:3px"><span>0%</span><span>60%</span><span style="color:#00ff88">95%</span><span>100%</span></div>
-          </div>
-          <div style="text-align:right">
-            <div id="cntc-ganho-label" style="font-size:12px;color:#00ff88"></div>
-            <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Módulos incompletos -->
-      <div id="cntc-modulos"></div>
-
-      <!-- Botão salvar -->
-      <div id="cntc-save-bar" style="display:none;position:sticky;bottom:0;background:#0d0d0d;border-top:1px solid #1f1f1f;padding:12px 0;margin-top:8px">
-        <div style="display:flex;gap:10px;align-items:center">
-          <button class="btn btn-primary" style="flex:1" onclick="cntcSalvar()">&#10003; Salvar Produto Completado</button>
-          <div id="cntc-save-status" style="font-size:12px;color:#555"></div>
-        </div>
-      </div>
-    </div>
-
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -2156,9 +2114,9 @@ async function iaBuscarDnaWeb() {
     descricao: p.descricao || null,
     familia_tecnica: p.familia || null,
   };
-  Object.keys(MAPA_CAMPOS_DNA).forEach(function(campo) {
+  Object.keys(MAPA_CAMPOS_DNA_TODOS).forEach(function(campo) {
     var info = campos[campo];
-    if (info && info.valor != null && info.valor !== '') dados[MAPA_CAMPOS_DNA[campo].key] = info.valor;
+    if (info && info.valor != null && info.valor !== '') dados[MAPA_CAMPOS_DNA_TODOS[campo].key] = info.valor;
   });
   var especificacoes = (p.componentes || []).slice();
   if (campos.posicao && campos.posicao.valor) especificacoes.push('Posição: ' + campos.posicao.valor);
@@ -2616,10 +2574,8 @@ var _aprovFiltroAtivo = 'todos';
 function atualizarBadgeAprovacao() {
   var prods = getProds();
   var pendentes = prods.filter(function(p){ return p.decisao !== 'APROVADO' || !p._publicado; }).length;
-  var badge = document.getElementById('badge-incompletos');
   var badgeAprov = document.getElementById('badge-aprovacao') || document.querySelector('[onclick*="aprovacao"] .sb-badge');
   if (badgeAprov) badgeAprov.textContent = pendentes;
-  if (badge) badge.textContent = prods.filter(function(p){ return (p.ntc||0) < 0.95; }).length;
 }
 
 function aprovFiltrar(tipo, btn) {
@@ -2841,19 +2797,16 @@ function aprovEnriquecerProd(idx) {
     if (p.motor)             document.getElementById('oem-f-motor').value = p.motor;
     if (p.material)          document.getElementById('oem-f-material').value = p.material;
     document.getElementById('oem-resultado').style.display = 'block';
-    oemRecalcularNTC();
+    _cntcRecalcular();
   }, 150);
 }
 
 function aprovCompletar(idx) {
-  var p = getProds()[idx];
-  if (!p) return;
-  nav('completar-ntc');
+  aprovEnriquecerProd(idx);
   setTimeout(function() {
-    document.getElementById('cntc-json-area').style.display = 'block';
-    document.getElementById('cntc-json-input').value = JSON.stringify(p, null, 2);
-    cntcAnalisarJSON();
-  }, 200);
+    var el = document.getElementById('cntc-modulos');
+    if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 400);
 }
 
 function aprovEnriquecerImagens(idx) {
@@ -3351,30 +3304,55 @@ async function diagRecalcularTodosNTC() {
   alert('✔ NTC recalculado para ' + n + ' de ' + prods.length + ' produto(s).');
 }
 
-// ===== ENRIQUECIMENTO OEM =====
+// ===== CADASTRO COMPLETO (OEM + NTC 4.0) =====
 var _oemDados = {};
-var _oemNTCTimer = null;
 var _oemEditIdx = null;
-var _oemDnaExtras = {}; // campos extras do agente de DNA sem input próprio nesta tela (AV/FP/CC/FM)
 
-// Define se a tela de Enriquecimento OEM está em modo "edição/reenriquecimento"
+// Limpa o formulário "Cadastro Completo" (campos confirmados, status, módulos
+// CNTC) — chamado sempre ao entrar/trocar de modo, para que dados de OUTRO
+// produto não "vazem" entre cadastros.
+function _oemLimparFormulario() {
+  document.getElementById('oem-input').value = '';
+  ['oem-f-sku','oem-f-fab','oem-f-nome','oem-f-oem','oem-f-ncm','oem-f-ean','oem-f-motor','oem-f-material'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.value = ''; el.style.borderColor = ''; el.title = ''; }
+  });
+  var familia = document.getElementById('oem-f-familia');
+  if (familia) familia.value = '';
+  var googleCard = document.getElementById('oem-google-card');
+  if (googleCard) googleCard.style.display = 'none';
+  ['oem-status','oem-dna-status','oem-pub-status'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+  var modulos = document.getElementById('cntc-modulos');
+  if (modulos) modulos.innerHTML = '';
+  var barra = document.getElementById('cntc-ntc-bar');
+  if (barra) barra.style.display = 'none';
+}
+
+// Define se a tela de Cadastro Completo está em modo "edição/reenriquecimento"
 // de um produto já existente na fila (idx) ou em modo "novo produto" (null).
+// _cntcDados (campos dos módulos AV/MC/EC/BTA/CC/LG/IV/FI/FP) é reiniciado a
+// partir do produto em edição (ou vazio, em modo novo) — sem isso, dados de
+// OUTRO produto (ex: dados_fiscais e logística) podem "vazar" entre cadastros.
 function oemDefinirModoEdicao(idx) {
   _oemEditIdx = idx;
-  // Limpa os extras do agente de DNA (dimensões, CEST, aplicação veicular etc.)
-  // de uma busca anterior — sem isso, dados de OUTRO produto (ex: dados_fiscais
-  // e logística) podem "vazar" e sobrescrever este produto ao salvar.
-  _oemDnaExtras = {};
+  _cntcIVImagens = null;
+  _oemLimparFormulario();
   var banner = document.getElementById('oem-edit-banner');
   var btnPublicar = document.getElementById('oem-btn-publicar');
   if (idx != null) {
     var p = getProds()[idx];
+    _cntcDados = Object.assign({}, p || {});
     if (banner) {
       banner.style.display = 'flex';
       document.getElementById('oem-edit-nome').textContent = (p && (p.nome || p.codigo_fabricante)) || ('#' + idx);
     }
     if (btnPublicar) btnPublicar.innerHTML = '&#128190; Atualizar Produto';
   } else {
+    _cntcDados = {};
+    document.getElementById('oem-resultado').style.display = 'none';
     if (banner) banner.style.display = 'none';
     if (btnPublicar) btnPublicar.innerHTML = '&#128230; Publicar no Cat&aacute;logo';
   }
@@ -3396,7 +3374,8 @@ async function oemBuscar() {
   if (!q) return;
   var status = document.getElementById('oem-status');
   status.innerHTML = '&#9889; Buscando dados reais...';
-  _oemDnaExtras = {};
+  _cntcDados = {};
+  _cntcIVImagens = null;
   var dnaStatus = document.getElementById('oem-dna-status');
   if (dnaStatus) dnaStatus.innerHTML = '';
 
@@ -3475,20 +3454,20 @@ async function oemBuscar() {
   ['oem-f-sku','oem-f-fab','oem-f-nome','oem-f-familia','oem-f-oem','oem-f-ncm','oem-f-ean','oem-f-motor','oem-f-material'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) {
-      el.oninput = function() { el.style.borderColor = ''; el.title = ''; oemRecalcularNTC(); };
-      el.onchange = oemRecalcularNTC;
+      el.oninput = function() { el.style.borderColor = ''; el.title = ''; _cntcOnInput(); };
+      el.onchange = _cntcOnInput;
     }
   });
-  oemRecalcularNTC();
+  await _cntcRecalcular();
   status.innerHTML = '✅ Campos pré-preenchidos. Confirme os dados e complete o que falta.'
     + (sugeridosIA.length ? '<br>🤖 IA sugeriu (em laranja — confirme antes de salvar): ' + esc(sugeridosIA.join(', ')) : '');
 }
 
 function oemColetar() {
-  // _oemDnaExtras traz campos sem input nesta tela (aplicação veicular, dimensões,
-  // CEST, cross-codes etc.) encontrados pelo agente de DNA — os campos do
-  // formulário sempre têm prioridade sobre eles.
-  return Object.assign({}, _oemDnaExtras, {
+  // _cntcDados traz os campos dos módulos do NTC (AV/MC/EC/BTA/CC/LG/IV/FI/FP e
+  // extras do agente de DNA) — os campos do formulário "Dados Confirmados"
+  // sempre têm prioridade sobre eles.
+  return Object.assign({}, _cntcDados, {
     codigo_fabricante: document.getElementById('oem-f-sku').value.trim() || null,
     fabricante:        document.getElementById('oem-f-fab').value.trim() || null,
     nome:              document.getElementById('oem-f-nome').value.trim() || null,
@@ -3501,44 +3480,38 @@ function oemColetar() {
   });
 }
 
-async function oemRecalcularNTC() {
-  clearTimeout(_oemNTCTimer);
-  _oemNTCTimer = setTimeout(async function() {
-    var dados = oemColetar();
-    try {
-      var r = await api('POST', '/motor/nct', dados);
-      _oemDados = Object.assign({}, dados, { _ntcResult: r });
-      var ntc = r.ntc || 0;
-      var pct = Math.round(ntc * 100);
-      var cor = r.decisao === 'APROVADO' ? '#00c853' : r.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
-      document.getElementById('oem-ntc-num').textContent = pct + '%';
-      document.getElementById('oem-ntc-num').style.color = cor;
-      document.getElementById('oem-ntc-badge').innerHTML = badgeHtml(r.decisao);
+// Atualiza o card "NTC 4.0 — Atualiza em tempo real" e os botões de
+// publicar/bloqueado com base no resultado mais recente de /motor/nct.
+function _oemAtualizarPainel(dados, r) {
+  var ntc = r.ntc || 0;
+  var pct = Math.round(ntc * 100);
+  var cor = r.decisao === 'APROVADO' ? '#00c853' : r.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+  document.getElementById('oem-ntc-num').textContent = pct + '%';
+  document.getElementById('oem-ntc-num').style.color = cor;
+  document.getElementById('oem-ntc-badge').innerHTML = badgeHtml(r.decisao);
 
-      // Mostra o que falta
-      var falta = [];
-      if (!dados.codigo_fabricante) falta.push('Part Number');
-      if (!dados.fabricante) falta.push('Fabricante');
-      if (!dados.nome) falta.push('Nome');
-      if (!dados.codigo_oem) falta.push('OEM');
-      if (!dados.ncm) falta.push('NCM');
-      if (!dados.motor) falta.push('Motor/Aplicação');
-      document.getElementById('oem-ntc-falta').textContent = falta.length ? 'Faltando: ' + falta.join(', ') : '';
+  // Mostra o que falta
+  var falta = [];
+  if (!dados.codigo_fabricante) falta.push('Part Number');
+  if (!dados.fabricante) falta.push('Fabricante');
+  if (!dados.nome) falta.push('Nome');
+  if (!dados.codigo_oem) falta.push('OEM');
+  if (!dados.ncm) falta.push('NCM');
+  if (!dados.motor) falta.push('Motor/Aplicação');
+  document.getElementById('oem-ntc-falta').textContent = falta.length ? 'Faltando: ' + falta.join(', ') : '';
 
-      // Botões: só libera com NTC ≥ 0.60
-      var bloqueado = ntc < 0.60 || !dados.fabricante || !dados.codigo_fabricante || !dados.nome;
-      document.getElementById('oem-acoes').style.display          = bloqueado ? 'none' : 'block';
-      document.getElementById('oem-acoes-bloqueado').style.display = bloqueado ? 'block' : 'none';
-      if (bloqueado) {
-        var motivos = [];
-        if (ntc < 0.60) motivos.push('NTC ' + pct + '% (mínimo 60%)');
-        if (!dados.fabricante) motivos.push('Fabricante obrigatório');
-        if (!dados.codigo_fabricante) motivos.push('Part Number obrigatório');
-        if (!dados.nome) motivos.push('Nome obrigatório');
-        document.getElementById('oem-bloqueado-motivo').textContent = motivos.join(' · ');
-      }
-    } catch(e) {}
-  }, 400);
+  // Botões: só libera com NTC ≥ 0.60
+  var bloqueado = ntc < 0.60 || !dados.fabricante || !dados.codigo_fabricante || !dados.nome;
+  document.getElementById('oem-acoes').style.display          = bloqueado ? 'none' : 'block';
+  document.getElementById('oem-acoes-bloqueado').style.display = bloqueado ? 'block' : 'none';
+  if (bloqueado) {
+    var motivos = [];
+    if (ntc < 0.60) motivos.push('NTC ' + pct + '% (mínimo 60%)');
+    if (!dados.fabricante) motivos.push('Fabricante obrigatório');
+    if (!dados.codigo_fabricante) motivos.push('Part Number obrigatório');
+    if (!dados.nome) motivos.push('Nome obrigatório');
+    document.getElementById('oem-bloqueado-motivo').textContent = motivos.join(' · ');
+  }
 }
 
 async function oemPublicar() {
@@ -3550,13 +3523,13 @@ async function oemPublicar() {
   if (_oemEditIdx != null && prods[_oemEditIdx]) {
     prods[_oemEditIdx] = Object.assign({}, prods[_oemEditIdx], dados, extras);
     saveProds(prods);
-    atualizarStats(); loadProdutos(); cntcPreencherSelect();
+    atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
     document.getElementById('oem-pub-status').textContent = '✅ Produto atualizado! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
     return;
   }
   prods.push(Object.assign({}, dados, extras, { id: 'oem-' + Date.now(), _fonte: 'oem' }));
   saveProds(prods);
-  atualizarStats(); loadProdutos(); cntcPreencherSelect();
+  atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
   document.getElementById('oem-pub-status').textContent = '✅ Publicado no catálogo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
 }
 
@@ -3574,8 +3547,8 @@ async function oemSalvarRascunho() {
     });
   }
   // Calcula o NTC com o registro completo (preservando módulos já preenchidos
-  // em "Completar NTC", como imagens, especificações e linhagem) — evita que
-  // o NTC regrida ao salvar a partir desta tela.
+  // nesta tela, como imagens, especificações e linhagem) — evita que o NTC
+  // regrida ao salvar.
   var dadosCompletos = Object.assign({}, (idx >= 0 && prods[idx]) || {}, dados);
   var r;
   try { r = await api('POST', '/motor/nct', dadosCompletos); } catch(e) { r = {ntc:0, decisao:'REPROVADO'}; }
@@ -3587,43 +3560,12 @@ async function oemSalvarRascunho() {
     idx = prods.length - 1;
   }
   saveProds(prods);
-  atualizarStats(); loadProdutos(); cntcPreencherSelect(); atualizarBadgeAprovacao();
+  atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
   oemDefinirModoEdicao(idx);
   return r;
 }
 
-// Mapeia o retorno de /api/motor/enriquecer-dna para as chaves usadas no
-// cadastro do produto (mesmas chaves de CNTC_CAMPOS em "Completar NTC").
-function mapearCamposDnaParaProduto(campos) {
-  campos = campos || {};
-  var resultado = {};
-  var DIRETOS = {
-    codigo_oem: 'codigo_oem', ean: 'ean', ncm: 'ncm', cest: 'cest', motor: 'motor',
-    codigo_motor: 'codigo_motor', versao_veiculo: 'versao', ano_inicial: 'ano_inicial',
-    ano_final: 'ano_final', cilindrada: 'cilindrada', material: 'material',
-    comprimento: 'comprimento', largura: 'largura', altura: 'altura'
-  };
-  Object.keys(DIRETOS).forEach(function(campo) {
-    var info = campos[campo];
-    if (!info || info.valor == null || info.valor === '') return;
-    resultado[DIRETOS[campo]] = info.valor;
-  });
-  if (campos.marca_veiculo && campos.marca_veiculo.valor)  resultado.marca  = campos.marca_veiculo.valor;
-  if (campos.modelo_veiculo && campos.modelo_veiculo.valor) resultado.modelo = campos.modelo_veiculo.valor;
-  ['posicao', 'fmsi'].forEach(function(campo) {
-    var info = campos[campo];
-    if (!info || info.valor == null || info.valor === '') return;
-    var rotulo = campo === 'posicao' ? 'Posição' : 'Código FMSI';
-    if (!Array.isArray(resultado.especificacoes)) resultado.especificacoes = [];
-    resultado.especificacoes.push(rotulo + ': ' + info.valor);
-  });
-  if (campos.cross_codes && campos.cross_codes.valor) {
-    resultado.cc_aftermarket = String(campos.cross_codes.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
-  }
-  return resultado;
-}
-
-// Campos do agente de DNA que já têm input próprio nesta tela
+// Campos do agente de DNA que já têm input próprio em "Dados Confirmados"
 var MAPA_CAMPOS_DNA_OEM = {
   codigo_oem: { id: 'oem-f-oem',      label: 'OEM',              key: 'codigo_oem' },
   ean:        { id: 'oem-f-ean',      label: 'EAN',              key: 'ean' },
@@ -3631,6 +3573,26 @@ var MAPA_CAMPOS_DNA_OEM = {
   motor:      { id: 'oem-f-motor',    label: 'Motor/Aplicação',  key: 'motor' },
   material:   { id: 'oem-f-material', label: 'Material',         key: 'material' },
 };
+
+// Campos do agente de DNA sem input em "Dados Confirmados" — alimentam os
+// módulos do NTC (AV/FM/FP) renderizados em #cntc-modulos quando incompletos,
+// ou ficam anexados em _cntcDados quando o módulo já está completo.
+var MAPA_CAMPOS_DNA_EXTRA = {
+  cest:           { id: 'cntc-fm-cest',  label: 'CEST',              key: 'cest' },
+  codigo_motor:   { id: 'cntc-av-codmot',label: 'Código do Motor',   key: 'codigo_motor' },
+  marca_veiculo:  { id: 'cntc-av-marca', label: 'Marca do Veículo',  key: 'marca' },
+  modelo_veiculo: { id: 'cntc-av-modelo',label: 'Modelo do Veículo', key: 'modelo' },
+  versao_veiculo: { id: 'cntc-av-versao',label: 'Versão',            key: 'versao' },
+  ano_inicial:    { id: 'cntc-av-anoi',  label: 'Ano Inicial',       key: 'ano_inicial' },
+  ano_final:      { id: 'cntc-av-anof',  label: 'Ano Final',         key: 'ano_final' },
+  cilindrada:     { id: 'cntc-av-cil',   label: 'Cilindrada',        key: 'cilindrada' },
+  comprimento:    { id: 'cntc-fp-comp',  label: 'Comprimento',       key: 'comprimento' },
+  largura:        { id: 'cntc-fp-larg',  label: 'Largura',           key: 'largura' },
+  altura:         { id: 'cntc-fp-alt',   label: 'Altura',            key: 'altura' },
+};
+
+// União dos dois mapas — usado pelo agente de DNA na Web (Cadastro Completo e Voz do Lojista)
+var MAPA_CAMPOS_DNA_TODOS = Object.assign({}, MAPA_CAMPOS_DNA_OEM, MAPA_CAMPOS_DNA_EXTRA);
 
 async function oemBuscarDnaWeb() {
   var statusEl = document.getElementById('oem-dna-status');
@@ -3665,45 +3627,97 @@ async function oemBuscarDnaWeb() {
 
   var campos = r.campos || {};
   var preenchidos = [];
+  var pendentes = [];
 
-  // Campos com input próprio nesta tela: preenche em laranja só se estiverem vazios
-  Object.keys(MAPA_CAMPOS_DNA_OEM).forEach(function(campo) {
+  // Campos com input próprio (em "Dados Confirmados" ou já visível em
+  // #cntc-modulos): preenche em laranja só se estiverem vazios. Sem input
+  // visível na tela: anexa direto em _cntcDados, que alimenta os módulos do NTC.
+  Object.keys(MAPA_CAMPOS_DNA_TODOS).forEach(function(campo) {
+    var info = campos[campo];
+    if (!info) return;
+    var map = MAPA_CAMPOS_DNA_TODOS[campo];
+    if (info.valor == null || info.valor === '') {
+      if (info.motivo && info.motivo !== 'fonte não encontrada') pendentes.push({campo: map.label, motivo: info.motivo});
+      return;
+    }
+    var el = document.getElementById(map.id);
+    if (el) {
+      if (el.value && String(el.value).trim() !== '') return;
+      el.value = info.valor;
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida') + (info.motivo ? ' — ' + info.motivo : '');
+    } else {
+      if (_cntcDados[map.key] != null && _cntcDados[map.key] !== '') return;
+      _cntcDados[map.key] = info.valor;
+    }
+    preenchidos.push({campo: map.label, valor: info.valor, confianca: info.confianca, fonte: info.fonte, motivo: info.motivo});
+  });
+
+  // Posição/FMSI — sem campo dedicado, anexa como linha em "Especificações" (EC)
+  ['posicao', 'fmsi'].forEach(function(campo) {
     var info = campos[campo];
     if (!info || info.valor == null || info.valor === '') return;
-    var map = MAPA_CAMPOS_DNA_OEM[campo];
-    var el = document.getElementById(map.id);
-    if (!el || (el.value && el.value.trim() !== '')) return;
-    el.value = info.valor;
-    el.style.borderColor = '#ff9800';
-    el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
-    preenchidos.push({campo: map.label, valor: info.valor, confianca: info.confianca});
+    var rotulo = campo === 'posicao' ? 'Posição' : 'Código FMSI';
+    var linha = rotulo + ': ' + info.valor;
+    var el = document.getElementById('cntc-ec-espec');
+    if (el) {
+      if (el.value.indexOf(linha) === -1) {
+        el.value = el.value ? (el.value + '\n' + linha) : linha;
+        el.style.borderColor = '#ff9800';
+        el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+      }
+    } else {
+      if (!Array.isArray(_cntcDados.especificacoes)) _cntcDados.especificacoes = [];
+      if (_cntcDados.especificacoes.indexOf(linha) === -1) _cntcDados.especificacoes.push(linha);
+    }
+    preenchidos.push({campo: rotulo, valor: info.valor, confianca: info.confianca, fonte: info.fonte});
   });
 
-  // Demais campos (aplicação veicular, dimensões, CEST, cross-codes etc.) não têm
-  // input nesta tela — ficam anexados ao cadastro e alimentam o "Completar NTC"
-  _oemDnaExtras = mapearCamposDnaParaProduto(campos);
-  Object.keys(MAPA_CAMPOS_DNA_OEM).forEach(function(campo) {
-    delete _oemDnaExtras[MAPA_CAMPOS_DNA_OEM[campo].key];
-  });
-  var extrasCount = Object.keys(_oemDnaExtras).length;
+  // Cross-codes (CC) — códigos equivalentes em outras marcas aftermarket
+  (function() {
+    var info = campos.cross_codes;
+    if (!info || info.valor == null || info.valor === '') return;
+    var itens = String(info.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if (itens.length === 0) return;
+    var el = document.getElementById('cntc-cc-after');
+    if (el) {
+      itens.forEach(function(it) {
+        if (el.value.indexOf(it) === -1) el.value = el.value ? (el.value + '\n' + it) : it;
+      });
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+    } else {
+      if (!Array.isArray(_cntcDados.cc_aftermarket)) _cntcDados.cc_aftermarket = [];
+      itens.forEach(function(it) {
+        if (_cntcDados.cc_aftermarket.indexOf(it) === -1) _cntcDados.cc_aftermarket.push(it);
+      });
+    }
+    preenchidos.push({campo: 'Códigos equivalentes', valor: itens.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
 
-  oemRecalcularNTC();
+  await _cntcRecalcular();
 
   var html = '';
-  if (preenchidos.length === 0 && extrasCount === 0) {
+  if (preenchidos.length === 0) {
     html = '<span style="color:#ffaa00">A IA consultou ' + (r.fontes_consultadas||[]).length + ' fonte(s), mas n&atilde;o encontrou campos novos.</span>';
   } else {
-    html = '<div style="color:#00ff88;margin-bottom:6px">&#10003; ' + preenchidos.length + ' campo(s) preenchido(s) em laranja';
-    if (extrasCount) html += ' + ' + extrasCount + ' campo(s) extra(s) (aplica&ccedil;&atilde;o veicular/dimens&otilde;es/cross-codes) anexados ao cadastro';
-    html += ':</div><ul style="margin:0 0 6px;padding-left:18px">';
+    html = '<div style="color:#00ff88;margin-bottom:6px">&#10003; ' + preenchidos.length + ' campo(s) preenchido(s) &mdash; revise antes de salvar:</div><ul style="margin:0 0 6px;padding-left:18px">';
     preenchidos.forEach(function(p) {
       var cor = p.confianca === 'alta' ? '#00ff88' : (p.confianca === 'media' ? '#ffaa00' : '#ff6500');
-      html += '<li style="margin-bottom:3px"><strong>' + esc(p.campo) + '</strong>: ' + esc(String(p.valor)) + ' <span style="color:' + cor + '">(' + esc(p.confianca) + ')</span></li>';
+      html += '<li style="margin-bottom:3px"><strong>' + esc(p.campo) + '</strong>: ' + esc(String(p.valor)) + ' <span style="color:' + cor + '">(' + esc(p.confianca) + ')</span>'
+            + (p.fonte ? ' &mdash; <a href="' + esc(p.fonte) + '" target="_blank" rel="noopener" style="color:#888">fonte</a>' : '')
+            + (p.motivo ? ' &mdash; <span style="color:#ff6500">' + esc(p.motivo) + '</span>' : '')
+            + '</li>';
     });
     html += '</ul>';
   }
+  if (pendentes.length > 0) {
+    html += '<div style="font-size:11px;color:#ff6500;margin-top:4px">&#9888; ' + pendentes.length + ' campo(s) encontrados mas n&atilde;o confi&aacute;veis: ';
+    html += pendentes.map(function(p){ return esc(p.campo) + ' (' + esc(p.motivo) + ')'; }).join(', ');
+    html += '</div>';
+  }
   if (r.fontes_consultadas && r.fontes_consultadas.length) {
-    html += '<div style="font-size:11px;color:#666">Fontes consultadas: ' + r.fontes_consultadas.length + '</div>';
+    html += '<div style="margin-top:6px;font-size:11px;color:#666">Fontes consultadas: ' + r.fontes_consultadas.length + '</div>';
   }
 
   // Salva automaticamente um rascunho com o que foi encontrado, para não perder os dados
@@ -3733,14 +3747,32 @@ async function oemEnviarWix() {
   } catch(e) { document.getElementById('oem-pub-status').textContent = '✖ ' + e.message; }
 }
 
-function oemCompletarNTC() {
-  var dados = oemColetar();
-  nav('completar-ntc');
+// Carrega um conjunto de dados (de Enriquecimento em Massa, Indexador de
+// Catálogo etc.) na tela "Cadastro Completo" — localiza o produto correspondente
+// na fila (mesmo Part Number + Fabricante) para entrar em modo edição, ou abre
+// em modo "novo produto" caso contrário.
+function oemCarregarDados(dados) {
+  dados = dados || {};
+  var prods = getProds();
+  var idx = prods.findIndex(function(p) {
+    return dados.codigo_fabricante && p.codigo_fabricante === dados.codigo_fabricante && p.fabricante === dados.fabricante;
+  });
+  nav('oem', idx >= 0 ? { editIdx: idx } : undefined);
   setTimeout(function() {
-    document.getElementById('cntc-json-area').style.display = 'block';
-    document.getElementById('cntc-json-input').value = JSON.stringify(dados, null, 2);
-    cntcAnalisarJSON();
-  }, 200);
+    _cntcDados = Object.assign({}, _cntcDados, dados);
+    document.getElementById('oem-input').value = [dados.codigo_fabricante, dados.fabricante, dados.nome].filter(Boolean).join(' ');
+    if (dados.codigo_fabricante) document.getElementById('oem-f-sku').value = dados.codigo_fabricante;
+    if (dados.fabricante)        document.getElementById('oem-f-fab').value = dados.fabricante;
+    if (dados.nome)              document.getElementById('oem-f-nome').value = dados.nome;
+    if (dados.familia_tecnica)   document.getElementById('oem-f-familia').value = dados.familia_tecnica;
+    if (dados.codigo_oem)        document.getElementById('oem-f-oem').value = dados.codigo_oem;
+    if (dados.ncm)               document.getElementById('oem-f-ncm').value = dados.ncm;
+    if (dados.ean)               document.getElementById('oem-f-ean').value = dados.ean;
+    if (dados.motor)             document.getElementById('oem-f-motor').value = dados.motor;
+    if (dados.material)          document.getElementById('oem-f-material').value = dados.material;
+    document.getElementById('oem-resultado').style.display = 'block';
+    _cntcRecalcular();
+  }, 150);
 }
 
 // ===== ENRIQUECIMENTO EM MASSA =====
@@ -3915,13 +3947,7 @@ function massaSalvarAprovados() {
 function massaCompletarItem(idx) {
   var item = _massaItens[idx];
   if (!item) return;
-  // Carrega no Completar NTC
-  nav('completar-ntc');
-  setTimeout(function() {
-    document.getElementById('cntc-json-area').style.display = 'block';
-    document.getElementById('cntc-json-input').value = JSON.stringify(item, null, 2);
-    cntcAnalisarJSON();
-  }, 200);
+  oemCarregarDados(item);
 }
 
 // ===== TEMPLATES =====
@@ -4585,7 +4611,6 @@ function catSalvar() {
   localStorage.setItem('gn_prod', JSON.stringify(prods));
   addProdRow(prod);
   atualizarStats();
-  cntcPreencherSelect();
   document.getElementById('cat-save-status').innerHTML = '✅ Produto enviado para <strong>Fila de Aprovação</strong>! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + (r.decisao||'REPROVADO')
     + ' &nbsp;<button class="btn btn-sm btn-secondary" onclick="nav(\'aprovacao\')" style="margin-left:8px">Ver Fila ›</button>';
   atualizarBadgeAprovacao();
@@ -4612,7 +4637,7 @@ function catEnriquecerCadastro() {
     if (_catDados.motor)             document.getElementById('oem-f-motor').value  = _catDados.motor;
     if (_catDados.material)          document.getElementById('oem-f-material').value = _catDados.material;
     document.getElementById('oem-resultado').style.display = 'block';
-    oemRecalcularNTC();
+    _cntcRecalcular();
   }, 150);
 }
 
@@ -4631,20 +4656,7 @@ function catEnriquecerImagens() {
 
 function catCompletarNTC() {
   if (!_catDados.fabricante) return;
-  // Salva temporariamente e abre Completar NTC
-  catSalvar();
-  setTimeout(function() {
-    nav('completar-ntc', document.querySelector('[onclick*="completar-ntc"]'));
-    cntcPreencherSelect();
-    // Seleciona o produto recém-salvo
-    setTimeout(function() {
-      var sel = document.getElementById('cntc-prod-select');
-      if (sel && sel.options.length > 1) {
-        sel.value = String(JSON.parse(localStorage.getItem('gn_prod')||'[]').length - 1);
-        cntcCarregarProduto();
-      }
-    }, 300);
-  }, 400);
+  oemCarregarDados(_catDados);
 }
 
 // ===== INIT =====
@@ -4652,7 +4664,7 @@ loadDashboard();
 tplRenderLista();
 imgCarregarSlots();
 // Atualiza lista de templates ao navegar para a página
-(function(orig){ window.nav = function(p){ orig(p); if(p==='templates') tplRenderLista(); if(p==='ia') vozAtualizarSelect(); }; })(nav);
+(function(orig){ window.nav = function(p, opts){ orig(p, opts); if(p==='templates') tplRenderLista(); if(p==='ia') vozAtualizarSelect(); }; })(nav);
 
 // ===== COMPLETAR NTC =====
 var PESOS_NTC = {DNA:0.25,TF:0.15,FM:0.10,CO:0.10,AV:0.10,MC:0.05,EC:0.05,BTA:0.05,CC:0.05,LG:0.05,IV:0.05,FI:0.03,FP:0.02};
@@ -4776,211 +4788,30 @@ var CNTC_CAMPOS = {
   },
 };
 
-var _cntcDados = {};   // dados acumulados do produto em edição
+// Campos dos módulos CNTC já cobertos pelos inputs "Dados Confirmados" do
+// Cadastro Completo (oem-f-*) — não devem ser duplicados nos cartões de módulo.
+var CNTC_CAMPOS_DUPLICADOS = {
+  CO: ['codigo_oem', 'ean'],
+  FM: ['ncm'],
+  MC: ['material'],
+  AV: ['motor'],
+};
 
-function cntcPreencherSelect() {
-  var sel = document.getElementById('cntc-prod-select');
-  if (!sel) return;
-  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
-  sel.innerHTML = '<option value="">— Selecione um produto —</option>';
-  var incompletos = 0;
-  prods.forEach(function(p, i) {
-    var ntc = p.ntc || 0;
-    if (ntc < 0.95) incompletos++;
-    var label = (p.sku || p.codigo_fabricante || 'Produto ' + i) + ' — ' + (p.nome || '') + ' — NTC ' + Math.round(ntc*100) + '%';
-    sel.innerHTML += '<option value="' + i + '">' + label + '</option>';
-  });
-  var badge = document.getElementById('badge-incompletos');
-  if (badge) badge.textContent = incompletos;
-}
-
-function cntcCarregarProduto() {
-  var idx = document.getElementById('cntc-prod-select').value;
-  if (idx === '') return;
-  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
-  _cntcDados = Object.assign({}, prods[parseInt(idx)]);
-  _cntcIVImagens = null;
-  _cntcRenderModulos();
-}
-
-function cntcPopularJSON() {
-  var area = document.getElementById('cntc-json-area');
-  area.style.display = area.style.display === 'none' ? 'block' : 'none';
-}
-
-function cntcAnalisarJSON() {
-  try {
-    _cntcDados = JSON.parse(document.getElementById('cntc-json-input').value);
-    _cntcIVImagens = null;
-    _cntcRenderModulos();
-    document.getElementById('cntc-json-area').style.display = 'none';
-  } catch(e) {
-    alert('JSON inválido: ' + e.message);
-  }
-}
+var _cntcDados = {};   // dados acumulados dos módulos NTC do produto em edição
 
 // Monta o termo de busca (SKU/código + fabricante + nome) usado tanto no
 // agente de DNA quanto na busca de imagens do módulo IV.
 function _cntcQueryProduto() {
+  var dados = oemColetar();
   return {
-    sku: _cntcDados.codigo_fabricante || _cntcDados.sku || '',
-    fabricante: _cntcDados.fabricante || '',
-    nome: _cntcDados.nome || _cntcDados.descricao || ''
+    sku: dados.codigo_fabricante || '',
+    fabricante: dados.fabricante || '',
+    nome: dados.nome || ''
   };
 }
 
-// Mapa: campo retornado por /api/motor/enriquecer-dna -> {id do input no formulário, key em _cntcDados}
-var MAPA_CAMPOS_DNA = {
-  codigo_oem:     {id:'cntc-co-oem',   key:'codigo_oem'},
-  ean:            {id:'cntc-co-ean',   key:'ean'},
-  ncm:            {id:'cntc-fm-ncm',   key:'ncm'},
-  cest:           {id:'cntc-fm-cest',  key:'cest'},
-  motor:          {id:'cntc-av-motor', key:'motor'},
-  codigo_motor:   {id:'cntc-av-codmot',key:'codigo_motor'},
-  marca_veiculo:  {id:'cntc-av-marca', key:'marca'},
-  modelo_veiculo: {id:'cntc-av-modelo',key:'modelo'},
-  versao_veiculo: {id:'cntc-av-versao',key:'versao'},
-  ano_inicial:    {id:'cntc-av-anoi',  key:'ano_inicial'},
-  ano_final:      {id:'cntc-av-anof',  key:'ano_final'},
-  cilindrada:     {id:'cntc-av-cil',   key:'cilindrada'},
-  material:       {id:'cntc-mc-mat',   key:'material'},
-  comprimento:    {id:'cntc-fp-comp',  key:'comprimento'},
-  largura:        {id:'cntc-fp-larg',  key:'largura'},
-  altura:         {id:'cntc-fp-alt',   key:'altura'},
-};
-
-async function cntcBuscarDnaWeb() {
-  var statusEl = document.getElementById('cntc-dna-status');
-  var q = _cntcQueryProduto();
-  var sku = q.sku, fabricante = q.fabricante, nome = q.nome;
-
-  if (!sku && !nome) {
-    statusEl.innerHTML = '<span style="color:#ff6500">&#9888; Informe ao menos o SKU/c&oacute;digo ou o nome do produto antes de buscar.</span>';
-    return;
-  }
-
-  statusEl.innerHTML = '&#8987; Buscando DNA na web (IA)... isso pode levar at&eacute; 1 minuto.';
-
-  var r;
-  try {
-    r = await api('POST', '/motor/enriquecer-dna', {sku: sku, fabricante: fabricante, nome: nome});
-  } catch (e) {
-    statusEl.innerHTML = '<span style="color:#ff4500">Erro: ' + esc(e.message) + '</span>';
-    return;
-  }
-
-  if (!r.ok) {
-    statusEl.innerHTML = '<span style="color:#ff4500">&#9888; ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
-    return;
-  }
-  if (!r.encontrado) {
-    statusEl.innerHTML = '<span style="color:#ffaa00">&#9888; ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
-    return;
-  }
-
-  var preenchidos = [];
-  var pendentes = [];
-  var campos = r.campos || {};
-
-  Object.keys(MAPA_CAMPOS_DNA).forEach(function(campo) {
-    var info = campos[campo];
-    if (!info) return;
-    var map = MAPA_CAMPOS_DNA[campo];
-    if (info.valor == null || info.valor === '') {
-      if (info.motivo && info.motivo !== 'fonte não encontrada') pendentes.push({campo: campo, motivo: info.motivo});
-      return;
-    }
-    var el = document.getElementById(map.id);
-    if (!el || (el.value && String(el.value).trim() !== '')) return;
-    el.value = info.valor;
-    el.style.borderColor = '#ff9800';
-    el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida') + (info.motivo ? ' — ' + info.motivo : '');
-    _cntcDados[map.key] = info.valor;
-    preenchidos.push({campo: campo, valor: info.valor, confianca: info.confianca, fonte: info.fonte, motivo: info.motivo});
-  });
-
-  // Campos sem campo dedicado no formulário: anexa como linha em "Especificações" (EC)
-  ['posicao', 'fmsi'].forEach(function(campo) {
-    var info = campos[campo];
-    if (!info || info.valor == null || info.valor === '') return;
-    var rotulo = campo === 'posicao' ? 'Posição' : 'Código FMSI';
-    var linha = rotulo + ': ' + info.valor;
-    var el = document.getElementById('cntc-ec-espec');
-    if (el) {
-      if (el.value.indexOf(linha) === -1) {
-        el.value = el.value ? (el.value + '\n' + linha) : linha;
-        el.style.borderColor = '#ff9800';
-        el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
-      }
-    } else {
-      if (!Array.isArray(_cntcDados.especificacoes)) _cntcDados.especificacoes = [];
-      if (_cntcDados.especificacoes.indexOf(linha) === -1) _cntcDados.especificacoes.push(linha);
-    }
-    preenchidos.push({campo: campo, valor: info.valor, confianca: info.confianca, fonte: info.fonte});
-  });
-
-  // Cross-codes (CC) — códigos equivalentes em outras marcas aftermarket
-  (function() {
-    var info = campos.cross_codes;
-    if (!info || info.valor == null || info.valor === '') return;
-    var itens = String(info.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
-    if (itens.length === 0) return;
-    var el = document.getElementById('cntc-cc-after');
-    if (el) {
-      itens.forEach(function(it) {
-        if (el.value.indexOf(it) === -1) el.value = el.value ? (el.value + '\n' + it) : it;
-      });
-      el.style.borderColor = '#ff9800';
-      el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
-    } else {
-      if (!Array.isArray(_cntcDados.cc_aftermarket)) _cntcDados.cc_aftermarket = [];
-      itens.forEach(function(it) {
-        if (_cntcDados.cc_aftermarket.indexOf(it) === -1) _cntcDados.cc_aftermarket.push(it);
-      });
-    }
-    preenchidos.push({campo: 'cross_codes', valor: itens.join('; '), confianca: info.confianca, fonte: info.fonte});
-  })();
-
-  // Recalcula o NTC com os novos dados preservando os campos já em tela
-  await _cntcRecalcular();
-
-  // Resumo para o usuário
-  var html = '';
-  if (preenchidos.length === 0) {
-    html = '<span style="color:#ffaa00">A IA consultou ' + (r.fontes_consultadas||[]).length + ' fonte(s), mas n&atilde;o encontrou campos vazios para preencher.</span>';
-  } else {
-    html = '<div style="color:#00ff88;margin-bottom:6px">&#10003; ' + preenchidos.length + ' campo(s) preenchido(s) em laranja &mdash; revise antes de salvar:</div><ul style="margin:0 0 6px;padding-left:18px">';
-    preenchidos.forEach(function(p) {
-      var cor = p.confianca === 'alta' ? '#00ff88' : (p.confianca === 'media' ? '#ffaa00' : '#ff6500');
-      html += '<li style="margin-bottom:3px"><strong>' + esc(p.campo) + '</strong>: ' + esc(String(p.valor)) + ' <span style="color:' + cor + '">(' + esc(p.confianca) + ')</span>'
-            + (p.fonte ? ' &mdash; <a href="' + esc(p.fonte) + '" target="_blank" rel="noopener" style="color:#888">fonte</a>' : '')
-            + (p.motivo ? ' &mdash; <span style="color:#ff6500">' + esc(p.motivo) + '</span>' : '')
-            + '</li>';
-    });
-    html += '</ul>';
-  }
-  if (pendentes.length > 0) {
-    html += '<div style="font-size:11px;color:#ff6500;margin-top:4px">&#9888; ' + pendentes.length + ' campo(s) encontrados mas n&atilde;o confi&aacute;veis: ';
-    html += pendentes.map(function(p){ return esc(p.campo) + ' (' + esc(p.motivo) + ')'; }).join(', ');
-    html += '</div>';
-  }
-  if (r.fontes_consultadas && r.fontes_consultadas.length) {
-    html += '<div style="margin-top:6px;font-size:11px;color:#666">Fontes consultadas: ' + r.fontes_consultadas.length + '</div>';
-  }
-  statusEl.innerHTML = html;
-}
-
-async function _cntcRenderModulos() {
-  // Busca scores atuais no backend
-  var r;
-  try { r = await api('POST', '/motor/nct', _cntcDados); } catch(e) { r = {ntc:0,decisao:'REPROVADO',scores:{}}; }
-  var scores = r.scores || {};
-
-  // Atualiza barra NTC
-  _cntcAtualizarBarra(r.ntc, r.decisao);
-  document.getElementById('cntc-ntc-bar').style.display = 'block';
-  document.getElementById('cntc-save-bar').style.display = 'block';
-  document.getElementById('cntc-dna-card').style.display = 'block';
+function _cntcRenderModulos(scores) {
+  scores = scores || {};
 
   // Módulos incompletos primeiro, completos no fim
   var modOrdem = Object.keys(PESOS_NTC);
@@ -5039,6 +4870,10 @@ async function _cntcRenderModulos() {
 }
 
 function _cntcCampoHtml(mod, meta, sc, ganhoMax) {
+  var dup = CNTC_CAMPOS_DUPLICADOS[mod] || [];
+  var camposVisiveis = meta.campos.filter(function(c){ return dup.indexOf(c.key) === -1; });
+  if (camposVisiveis.length === 0) return '';
+
   var cor = meta.cor || '#ff8800';
   var html = '<div class="card" style="border-left:3px solid ' + cor + ';margin-bottom:10px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
@@ -5049,7 +4884,7 @@ function _cntcCampoHtml(mod, meta, sc, ganhoMax) {
     + '</div>'
     + '<div class="grid2">';
 
-  meta.campos.forEach(function(c) {
+  camposVisiveis.forEach(function(c) {
     html += '<div class="form-group" style="' + (c.tipo==='textarea'?'grid-column:1/-1':'') + '">'
           + '<label>' + c.label + '</label>';
     if (c.tipo === 'check') {
@@ -5149,7 +4984,7 @@ async function cntcImgIVAdicionar(idx) {
 
   // Recalcula NTC (o módulo IV pontua com base na quantidade de imagens vinculadas)
   // e reconstrói os módulos para refletir o novo score do IV.
-  await _cntcRenderModulos();
+  await _cntcRecalcular();
   _cntcIVRenderGrid();
 }
 
@@ -5160,7 +4995,7 @@ function _cntcOnInput() {
 }
 
 async function _cntcRecalcular() {
-  // Lê todos os campos preenchidos
+  // 1. Lê os campos dos módulos CNTC renderizados em tela para _cntcDados
   Object.keys(CNTC_CAMPOS).forEach(function(mod) {
     var meta = CNTC_CAMPOS[mod];
     meta.campos.forEach(function(c) {
@@ -5188,11 +5023,21 @@ async function _cntcRecalcular() {
     });
   });
 
-  // Recalcula NTC via backend
-  try {
-    var r = await api('POST', '/motor/nct', _cntcDados);
-    _cntcAtualizarBarra(r.ntc, r.decisao);
-  } catch(e) {}
+  // 2. Funde com os campos básicos do formulário OEM (prioridade)
+  var dados = oemColetar();
+
+  // 3. Recalcula NTC com o conjunto completo (uma única chamada à API)
+  var r;
+  try { r = await api('POST', '/motor/nct', dados); } catch(e) { r = {ntc:0, decisao:'REPROVADO', scores:{}}; }
+  _oemDados = Object.assign({}, dados, { _ntcResult: r });
+
+  // 4. Atualiza o painel simples do OEM (pct/badge/falta + ações)
+  _oemAtualizarPainel(dados, r);
+
+  // 5. Atualiza barra CNTC + módulos
+  _cntcAtualizarBarra(r.ntc, r.decisao);
+  document.getElementById('cntc-ntc-bar').style.display = 'block';
+  _cntcRenderModulos(r.scores || {});
 }
 
 function _cntcAtualizarBarra(ntc, decisao) {
@@ -5211,36 +5056,6 @@ function _cntcAtualizarBarra(ntc, decisao) {
   if (faltam && pct < 95) { faltam.textContent = 'Faltam ' + (95 - pct) + ' pontos'; }
   else if (faltam) { faltam.textContent = 'Pode publicar no marketplace'; }
 }
-
-async function cntcSalvar() {
-  var status = document.getElementById('cntc-save-status');
-  status.textContent = 'Salvando...';
-  // Garante que _cntcDados reflita o que está em tela antes de calcular o NTC final
-  await _cntcRecalcular();
-  var r;
-  try { r = await api('POST', '/motor/nct', _cntcDados); } catch(e) { status.textContent = 'Erro: ' + e.message; return; }
-
-  var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
-  var idx = prods.findIndex(function(p){
-    return p.codigo_fabricante === _cntcDados.codigo_fabricante && p.fabricante === _cntcDados.fabricante;
-  });
-  // Funde com o registro existente (base) — evita apagar campos não
-  // representados em _cntcDados (ex: id, _fonte, dados colados via JSON parcial)
-  var prod = Object.assign({}, (idx >= 0 && prods[idx]) || {}, _cntcDados, {ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now()});
-  if (idx >= 0) { prods[idx] = prod; } else { prods.push(prod); }
-  localStorage.setItem('gn_prod', JSON.stringify(prods));
-  atualizarStats();
-  cntcPreencherSelect();
-  status.textContent = '✅ Salvo! NTC: ' + Math.round(r.ntc*100) + '% — ' + r.decisao;
-  _cntcRenderModulos();
-}
-
-// Carregar select ao entrar na página completar-ntc
-var _origNav = nav;
-nav = function(id, btn) {
-  _origNav(id, btn);
-  if (id === 'completar-ntc') cntcPreencherSelect();
-};
 
 // =============================================
 // CATÁLOGO DE PRODUTOS — multi-format import
