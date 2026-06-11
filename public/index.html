@@ -4589,6 +4589,7 @@ function cntcCarregarProduto() {
   if (idx === '') return;
   var prods = JSON.parse(localStorage.getItem('gn_prod') || '[]');
   _cntcDados = Object.assign({}, prods[parseInt(idx)]);
+  _cntcIVImagens = null;
   _cntcRenderModulos();
 }
 
@@ -4600,11 +4601,22 @@ function cntcPopularJSON() {
 function cntcAnalisarJSON() {
   try {
     _cntcDados = JSON.parse(document.getElementById('cntc-json-input').value);
+    _cntcIVImagens = null;
     _cntcRenderModulos();
     document.getElementById('cntc-json-area').style.display = 'none';
   } catch(e) {
     alert('JSON inválido: ' + e.message);
   }
+}
+
+// Monta o termo de busca (SKU/código + fabricante + nome) usado tanto no
+// agente de DNA quanto na busca de imagens do módulo IV.
+function _cntcQueryProduto() {
+  return {
+    sku: _cntcDados.codigo_fabricante || _cntcDados.sku || '',
+    fabricante: _cntcDados.fabricante || '',
+    nome: _cntcDados.nome || _cntcDados.descricao || ''
+  };
 }
 
 // Mapa: campo retornado por /api/motor/enriquecer-dna -> {id do input no formulário, key em _cntcDados}
@@ -4629,9 +4641,8 @@ var MAPA_CAMPOS_DNA = {
 
 async function cntcBuscarDnaWeb() {
   var statusEl = document.getElementById('cntc-dna-status');
-  var sku = _cntcDados.codigo_fabricante || _cntcDados.sku || '';
-  var fabricante = _cntcDados.fabricante || '';
-  var nome = _cntcDados.nome || _cntcDados.descricao || '';
+  var q = _cntcQueryProduto();
+  var sku = q.sku, fabricante = q.fabricante, nome = q.nome;
 
   if (!sku && !nome) {
     statusEl.innerHTML = '<span style="color:#ff6500">&#9888; Informe ao menos o SKU/c&oacute;digo ou o nome do produto antes de buscar.</span>';
@@ -4844,8 +4855,92 @@ function _cntcCampoHtml(mod, meta, sc, ganhoMax) {
     html += '</div>';
   });
 
-  html += '</div></div>';
+  html += '</div>';
+
+  if (mod === 'IV') html += _cntcImgIVHtml();
+
+  html += '</div>';
   return html;
+}
+
+// =============================================
+// IV — Busca de imagens reais na web (soma pontos no módulo IV)
+// =============================================
+var _cntcIVImagens = null; // cache dos resultados da última busca de imagens
+
+function _cntcImgIVHtml() {
+  var n = (_cntcDados.imagens || []).length;
+  return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #222">'
+    + '<div style="font-size:11px;color:#888;margin-bottom:6px">&#128247; Imagens vinculadas ao produto: <strong id="cntc-iv-img-count" style="color:#00ff88">' + n + '</strong> (cada imagem soma pontos no m&oacute;dulo IV)</div>'
+    + '<button class="btn btn-secondary" type="button" onclick="cntcBuscarImagensIV()">&#128247; Buscar Imagens na Web</button>'
+    + '<div id="cntc-iv-img-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>'
+    + '<div id="cntc-iv-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:8px"></div>'
+    + '</div>';
+}
+
+function _cntcIVRenderGrid() {
+  var gridEl = document.getElementById('cntc-iv-img-grid');
+  var statusEl = document.getElementById('cntc-iv-img-status');
+  if (!gridEl || !_cntcIVImagens) return;
+  if (statusEl) statusEl.innerHTML = _cntcIVImagens.length + ' imagem(ns) encontrada(s). Clique para vincular/desvincular do produto.';
+  gridEl.innerHTML = _cntcIVImagens.map(function(img, i) {
+    var thumb = img.thumb || img.url;
+    var thumbProxy = '/api/imagens/proxy?url=' + encodeURIComponent(thumb);
+    var ativa = (_cntcDados.imagens || []).indexOf(img.url) !== -1;
+    return '<div onclick="cntcImgIVAdicionar(' + i + ')" title="' + esc(img.titulo || '') + '" '
+      + 'style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid ' + (ativa ? '#00ff88' : 'transparent') + ';position:relative">'
+      + '<img src="' + thumbProxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" onerror="this.src=\'' + esc(thumb) + '\';this.onerror=null">'
+      + (ativa ? '<div style="position:absolute;top:2px;right:2px;background:#00ff88;color:#000;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">&#10003;</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+async function cntcBuscarImagensIV() {
+  var statusEl = document.getElementById('cntc-iv-img-status');
+  var gridEl = document.getElementById('cntc-iv-img-grid');
+  var q = _cntcQueryProduto();
+  var termo = [q.sku, q.fabricante, q.nome].filter(Boolean).join(' ');
+
+  if (!termo) {
+    statusEl.innerHTML = '<span style="color:#ff6500">&#9888; Informe ao menos o SKU/c&oacute;digo ou o nome do produto antes de buscar.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '&#8987; Buscando imagens na web...';
+  gridEl.innerHTML = '';
+
+  var data;
+  try {
+    data = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(termo) + '&fonte=cntc-iv');
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#ff4500">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+
+  if (!data.ok || !data.imagens || !data.imagens.length) {
+    statusEl.innerHTML = data.mensagem
+      ? '<span style="color:#ffaa00">&#9888; ' + esc(data.mensagem) + '</span>'
+      : '<span style="color:#ffaa00">&#9888; Nenhuma imagem encontrada para "' + esc(termo) + '".</span>';
+    _cntcIVImagens = null;
+    return;
+  }
+
+  _cntcIVImagens = data.imagens;
+  _cntcIVRenderGrid();
+}
+
+async function cntcImgIVAdicionar(idx) {
+  if (!_cntcIVImagens || !_cntcIVImagens[idx]) return;
+  var url = _cntcIVImagens[idx].url;
+  if (!Array.isArray(_cntcDados.imagens)) _cntcDados.imagens = [];
+  var pos = _cntcDados.imagens.indexOf(url);
+  if (pos === -1) _cntcDados.imagens.push(url);
+  else _cntcDados.imagens.splice(pos, 1);
+
+  // Recalcula NTC (o módulo IV pontua com base na quantidade de imagens vinculadas)
+  // e reconstrói os módulos para refletir o novo score do IV.
+  await _cntcRenderModulos();
+  _cntcIVRenderGrid();
 }
 
 var _cntcDebounce = null;
@@ -4910,6 +5005,8 @@ function _cntcAtualizarBarra(ntc, decisao) {
 async function cntcSalvar() {
   var status = document.getElementById('cntc-save-status');
   status.textContent = 'Salvando...';
+  // Garante que _cntcDados reflita o que está em tela antes de calcular o NTC final
+  await _cntcRecalcular();
   var r;
   try { r = await api('POST', '/motor/nct', _cntcDados); } catch(e) { status.textContent = 'Erro: ' + e.message; return; }
 
