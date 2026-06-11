@@ -1933,7 +1933,36 @@ function deleteProduto(i) {
 }
 
 // ===== IA ANALYZER =====
+
+// Corrige erros de digitação comuns em termos técnicos automotivos (ex:
+// "ALTENADOR" → "ALTERNADOR") antes de interpretar o texto — evita propagar
+// o erro para nome do produto, busca, DNA e descrições geradas pela IA.
+var CORRECOES_TERMOS_TECNICOS = {
+  ALTENADOR: 'ALTERNADOR', ALTENATOR: 'ALTERNADOR', ALTERNATOR: 'ALTERNADOR',
+  COREIA: 'CORREIA', CORREA: 'CORREIA',
+  ROLAMANTO: 'ROLAMENTO', ROLAMETO: 'ROLAMENTO',
+  RADIDOR: 'RADIADOR',
+  SUSPENCAO: 'SUSPENSAO',
+  TRANSMICAO: 'TRANSMISSAO',
+  INGNICAO: 'IGNICAO', INGNIÇÃO: 'IGNIÇÃO',
+  EMBREIAGEM: 'EMBREAGEM',
+  DISTRIBUISAO: 'DISTRIBUICAO', DISTRIBUSSAO: 'DISTRIBUICAO',
+  TENCIONADOR: 'TENSIONADOR',
+};
+
+function _normalizarTermosTecnicos(texto) {
+  return texto.replace(/[A-Za-zÀ-ÿ]+/g, function(palavra) {
+    var correta = CORRECOES_TERMOS_TECNICOS[palavra.toUpperCase()];
+    if (!correta) return palavra;
+    // Preserva o "estilo" da palavra original (maiúsculas, minúsculas ou capitalizada)
+    if (palavra === palavra.toUpperCase()) return correta;
+    if (palavra === palavra.toLowerCase()) return correta.toLowerCase();
+    return correta.charAt(0) + correta.slice(1).toLowerCase();
+  });
+}
+
 function parseTextoIA(texto) {
+  texto = _normalizarTermosTecnicos(texto);
   // Normaliza separadores: travessão —, hífen -, barra /
   // Suporta: "DESC - SKU - MARCA", "SKU — DESC", "SKU - DESC", "DESC/VARIANTE - SKU - MARCA"
   var separador = /\s*[—–]\s*|\s+-\s+/;
