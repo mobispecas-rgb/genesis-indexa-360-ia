@@ -129,6 +129,8 @@ tr:hover td{background:#f9fafb}
 .dna-item{background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px}
 .dna-key{color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
 .dna-val{color:#1a1a1a;font-weight:600;margin-top:2px;word-break:break-all}
+.campo-label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.campo-val{font-size:13px;color:#1a1a1a;font-weight:600;word-break:break-word}
 .rast-line{font-family:monospace;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:5px;padding:6px 10px;margin:10px 0}
 
 /* IMAGENS (light page) */
@@ -1077,7 +1079,18 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       </div>
       <div id="aprovados-lista"></div>
     </div>
-    <div class="page" id="page-congelados"><div class="stub-page"><div class="stub-icon">&#10052;</div><h2>Congelados</h2><p>Em desenvolvimento &mdash; Congelados</p></div></div>
+    <!-- CONGELADOS -->
+    <div class="page" id="page-congelados">
+      <div class="page-title">&#10052;&#65039; Congelados &mdash; Prontos para Integra&ccedil;&atilde;o</div>
+      <p style="color:#6b7280;font-size:13px;margin-bottom:16px">Produtos publicados com NTC alto (&#8805; 95%). Clique em um produto para abrir o perfil completo &mdash; imagens, SEO, dados fiscais, medidas, engenharia e categoriza&ccedil;&atilde;o &mdash; e conferir o mapeamento para ERP, Mercado Livre e v&iacute;deo do produto.</p>
+      <div id="congelados-lista"></div>
+    </div>
+
+    <!-- PERFIL COMPLETO DO PRODUTO (Congelados) -->
+    <div class="page" id="page-congelado-perfil">
+      <div class="page-title">&#10052;&#65039; Perfil Completo do Produto</div>
+      <div id="congelado-perfil-conteudo"></div>
+    </div>
     <div class="page" id="page-ean">
       <div class="page-title">&#128247; EAN Scanner GS1</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Valide e decodifique c&oacute;digos EAN-13, GTIN-8/12/14 e GS1-128 conforme padr&atilde;o GS1 Brasil. Preencha os campos do produto automaticamente.</p>
@@ -1666,6 +1679,7 @@ function nav(page, opts) {
   if (page === 'imagens') loadMinhasImagens();
   if (page === 'aprovacao') { atualizarBadgeAprovacao(); aprovRenderLista(); }
   if (page === 'aprovados') aprovRenderAprovados();
+  if (page === 'congelados') congeladosRender();
   if (page === 'precificacao') precificacaoRender();
   if (page === 'diagnostico') diagnosticoRender();
   if (page === 'wix') wixVerificarStatus();
@@ -2881,6 +2895,248 @@ function aprovExcluir(idx) {
   atualizarStats(); atualizarBadgeAprovacao(); aprovRenderLista();
 }
 
+// ===== CONGELADOS (Perfil Completo do Produto) =====
+var PERFIL_CAMPOS_SEO = [
+  ['seo_titulo', 'Título SEO / Anúncio (CPC)', 'text'],
+  ['seo_meta_descricao', 'Meta Description', 'textarea'],
+  ['seo_palavras_chave', 'Palavras-chave (separadas por vírgula)', 'text'],
+  ['seo_meta_tags', 'Meta Tags (separadas por vírgula)', 'text']
+];
+var PERFIL_CAMPOS_CATEGORIA = [
+  ['categoria', 'Categoria', 'text'],
+  ['subcategoria', 'Subcategoria', 'text']
+];
+var PERFIL_CAMPOS_REGULATORIO = [
+  ['registro_orgao', 'Registro INMETRO / Órgão Controlado (quando houver)', 'text']
+];
+var PERFIL_CAMPOS_VIDEO = [
+  ['video_url', 'URL do Vídeo do Produto (gerado a partir das imagens)', 'text']
+];
+var PERFIL_CAMPOS_MEDIDAS = [
+  ['comprimento', 'Comprimento (cm)', 'number'],
+  ['largura', 'Largura (cm)', 'number'],
+  ['altura', 'Altura (cm)', 'number'],
+  ['peso_bruto', 'Peso Bruto (kg)', 'number'],
+  ['peso_liquido', 'Peso Líquido (kg)', 'number']
+];
+var PERFIL_CAMPOS_FISCAL = [
+  ['ncm', 'NCM', 'text'],
+  ['cest', 'CEST', 'text'],
+  ['cst', 'CST', 'text'],
+  ['origem', 'Origem ICMS', 'text'],
+  ['linhagem_fabricante', 'Fabricante Original', 'text'],
+  ['linhagem_montadora', 'Montadora', 'text'],
+  ['linhagem_distribuidor', 'Distribuidor', 'text'],
+  ['linhagem_importador', 'Importador', 'text']
+];
+var PERFIL_CAMPOS_TODOS = PERFIL_CAMPOS_SEO.concat(PERFIL_CAMPOS_CATEGORIA, PERFIL_CAMPOS_REGULATORIO, PERFIL_CAMPOS_VIDEO, PERFIL_CAMPOS_MEDIDAS, PERFIL_CAMPOS_FISCAL, [['material', 'Material / Engenharia', 'text']]);
+
+function congeladosRender() {
+  var prods = getProds().filter(function(p){ return p.decisao === 'APROVADO' && p._publicado; });
+  var el = document.getElementById('congelados-lista');
+  if (!el) return;
+  if (!prods.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:#9ca3af">'
+      + '❄️ Nenhum produto congelado ainda.<br>'
+      + '<span style="font-size:12px">Publique produtos com NTC ≥ 95% na Etapa 2 (Revisão &amp; Publicação) do Cadastro Completo.</span></div>';
+    return;
+  }
+  el.innerHTML = prods.map(function(p) {
+    var idx = prodIndex(p);
+    var img = (p.imagens && p.imagens[0]) || null;
+    return '<div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;cursor:pointer" onclick="congeladosAbrirPerfil('+idx+')">'
+      + (img
+          ? '<img src="'+esc(img)+'" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb">'
+          : '<div style="width:56px;height:56px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:24px">❄️</div>')
+      + '<div style="flex:1;min-width:160px"><div style="font-weight:700;color:#111827">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+      + '<div style="font-size:11px;color:#9ca3af">'+esc(p.fabricante||'')+' · <code style="color:#ff4500">'+esc(p.codigo_fabricante||'')+'</code></div></div>'
+      + '<span style="color:#00c853;font-weight:700">'+Math.round((p.ntc||0)*100)+'% NTC</span>'
+      + '<span style="background:#e0f2fe;color:#0284c7;border:1px solid #bae6fd;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700">❄️ CONGELADO</span>'
+      + '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();congeladosAbrirPerfil('+idx+')">Ver Perfil Completo</button>'
+      + '</div>';
+  }).join('');
+}
+
+function _perfilPillOk(label, ok) {
+  return '<span style="padding:3px 10px;border-radius:10px;background:'+(ok?'#00c85320':'#f4433620')+';color:'+(ok?'#00c853':'#f44336')+';font-size:11px;font-weight:600">'+(ok?'✔':'✖')+' '+label+'</span>';
+}
+
+function _perfilCampoTexto(label, val) {
+  return '<div><div class="campo-label">'+label+'</div><div class="campo-val">'+(val ? esc(val) : '<span style="color:#9ca3af;font-weight:400">—</span>')+'</div></div>';
+}
+
+function _perfilCampoLista(label, arr) {
+  var val = (Array.isArray(arr) && arr.length) ? arr.join(', ') : null;
+  return _perfilCampoTexto(label, val);
+}
+
+function _perfilCampoInput(p, c) {
+  var val = p[c[0]] != null ? String(p[c[0]]) : '';
+  if (c[2] === 'textarea') {
+    return '<div class="form-group"><label>'+c[1]+'</label><textarea id="pf-'+c[0]+'" rows="2">'+esc(val)+'</textarea></div>';
+  }
+  return '<div class="form-group"><label>'+c[1]+'</label><input id="pf-'+c[0]+'" type="'+c[2]+'"'+(c[2]==='number'?' step="0.01"':'')+' value="'+esc(val)+'"></div>';
+}
+
+function congeladosAbrirPerfil(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  var atual = document.querySelector('.page.active');
+  window._pdOrigemPage = atual ? atual.id.replace('page-', '') : 'congelados';
+  nav('congelado-perfil');
+  var el = document.getElementById('congelado-perfil-conteudo');
+  var ntc = Math.round((p.ntc || 0) * 100);
+  var cor = p.decisao === 'APROVADO' ? '#00c853' : p.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+
+  var imagens = p.imagens || [];
+  var galeria = imagens.length
+    ? imagens.map(function(url, i) {
+        return '<div style="position:relative">'
+          + '<img src="'+esc(url)+'" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:2px solid '+(i===0?'#ff4500':'#e5e7eb')+'">'
+          + (i===0 ? '<span style="position:absolute;top:2px;left:2px;background:#ff4500;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PRINCIPAL</span>' : '')
+          + '</div>';
+      }).join('')
+    : '<div style="color:#9ca3af;font-size:13px">Nenhuma imagem cadastrada.</div>';
+
+  var aplicacoesHtml = '<span style="color:#9ca3af;font-size:13px">Nenhuma aplicação informada.</span>';
+  if (Array.isArray(p._aplicacoes) && p._aplicacoes.length) {
+    aplicacoesHtml = '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      + p._aplicacoes.map(function(a) {
+          var periodo = (a.ano_inicial || a.ano_final) ? ((a.ano_inicial||'')+'–'+(a.ano_final||'')) : null;
+          var txt = [a.montadora, a.modelo, a.motor, periodo].filter(Boolean).join(' ');
+          return '<span style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:10px;padding:3px 10px;font-size:11px;color:#374151">'+esc(txt)+'</span>';
+        }).join('')
+      + '</div>';
+  }
+
+  // Mapeamento de integração: indica se o perfil já alimenta ERP, Mercado Livre, vídeo, categoria e DNA
+  var temErp = !!(p.codigo_fabricante && p.fabricante && p.ncm && p.preco_venda);
+  var temML = !!(p.nome && p.descricao && p.categoria && imagens.length);
+  var temVideo = !!p.video_url;
+  var temCategoria = !!(p.categoria && p.subcategoria);
+  var temDna = !!((p.codigo_oem || (p.cc_oem && p.cc_oem.length)) && p.descricao);
+
+  el.innerHTML = '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+    + '<button class="btn btn-sm btn-secondary" onclick="nav(window._pdOrigemPage||\'congelados\')">&#8592; Voltar</button>'
+    + '<div style="font-size:36px;font-weight:900;color:'+cor+'">'+ntc+'%</div>'
+    + '<div><div style="font-size:16px;font-weight:700;color:#111827">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+    + '<div style="font-size:12px;color:#9ca3af">'+esc(p.fabricante||'')+' · '+esc(p.codigo_fabricante||'')+(p.rast_hash?' · RAST '+esc(p.rast_hash):'')+'</div></div>'
+    + badgeHtml(p.decisao)
+    + '<span style="background:#e0f2fe;color:#0284c7;border:1px solid #bae6fd;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;margin-left:auto">❄️ CONGELADO'+(p._publicado_em ? ' · '+new Date(p._publicado_em).toLocaleDateString('pt-BR') : '')+'</span>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📷 Imagens</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+galeria+'</div>'
+    + '<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerImagens('+idx+')">🖼️ Gerenciar Imagens</button>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🔧 Identificação &amp; Códigos</div>'
+    + '<div class="dna-grid" style="margin-bottom:12px">'
+    + _perfilCampoTexto('Código OEM', p.codigo_oem)
+    + _perfilCampoTexto('SKU / Part Number', p.codigo_fabricante)
+    + _perfilCampoTexto('EAN / GTIN', p.ean)
+    + _perfilCampoLista('Cross-Codes OEM', p.cc_oem)
+    + _perfilCampoLista('Cross-Codes Aftermarket', p.cc_aftermarket)
+    + _perfilCampoLista('Cross-Codes Importadores', p.cc_importadores)
+    + '</div>'
+    + '<div class="campo-label" style="margin-bottom:6px">Aplicação Veicular Informada</div>'
+    + aplicacoesHtml
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📐 Medidas</div>'
+    + '<div class="grid3">' + PERFIL_CAMPOS_MEDIDAS.map(function(c){ return _perfilCampoInput(p, c); }).join('') + '</div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🏛️ Dados Fiscais &amp; Logística</div>'
+    + '<div class="grid2">' + PERFIL_CAMPOS_FISCAL.map(function(c){ return _perfilCampoInput(p, c); }).join('') + '</div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">⚙️ Engenharia &amp; Materiais</div>'
+    + '<div class="form-group"><label>Material</label><input id="pf-material" type="text" value="'+esc(p.material||'')+'"></div>'
+    + (p.funcao ? _perfilCampoTexto('Função', p.funcao) : '')
+    + '<div class="campo-label" style="margin:8px 0 6px">Especificações Técnicas</div>'
+    + ((Array.isArray(p.especificacoes) && p.especificacoes.length)
+        ? '<ul style="margin:0;padding-left:18px;font-size:13px;color:#374151">' + p.especificacoes.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('') + '</ul>'
+        : '<span style="color:#9ca3af;font-size:13px">—</span>')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📝 Descrição Técnica</div>'
+    + '<div class="form-group" style="margin-bottom:0"><textarea id="pf-descricao" rows="4">'+esc(p.descricao||'')+'</textarea></div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🔍 SEO / CPC</div>'
+    + PERFIL_CAMPOS_SEO.map(function(c){ return _perfilCampoInput(p, c); }).join('')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🏷️ Categoria &amp; Subcategoria</div>'
+    + '<div class="grid2">' + PERFIL_CAMPOS_CATEGORIA.map(function(c){ return _perfilCampoInput(p, c); }).join('') + '</div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📋 Registro Regulatório</div>'
+    + '<p style="font-size:12px;color:#9ca3af;margin-bottom:8px">Preencha quando o produto exigir registro no INMETRO ou outro órgão controlado.</p>'
+    + PERFIL_CAMPOS_REGULATORIO.map(function(c){ return _perfilCampoInput(p, c); }).join('')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🎬 Vídeo do Produto</div>'
+    + '<p style="font-size:12px;color:#9ca3af;margin-bottom:8px">'+(imagens.length ? 'Imagens disponíveis para geração de vídeo. Informe a URL quando o vídeo for gerado.' : 'Cadastre imagens do produto para permitir a geração de vídeo.')+'</p>'
+    + PERFIL_CAMPOS_VIDEO.map(function(c){ return _perfilCampoInput(p, c); }).join('')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🔗 Mapeamento de Integração (ERP / Mercado Livre / Vídeo)</div>'
+    + '<p style="font-size:12px;color:#9ca3af;margin-bottom:10px">Esses indicadores garantem que o perfil completo está pronto para alimentar o ERP (Bling), o Mercado Livre, o vídeo do produto e o site, sem retrabalho.</p>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+    + _perfilPillOk('ERP / Bling', temErp)
+    + _perfilPillOk('Mercado Livre', temML)
+    + _perfilPillOk('Vídeo do Produto', temVideo)
+    + _perfilPillOk('Categoria / Subcategoria', temCategoria)
+    + _perfilPillOk('DNA + Descrição (perfil de integração)', temDna)
+    + '</div>'
+    + '</div>'
+
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px">'
+    + '<button class="btn btn-primary" onclick="congeladosSalvarPerfil('+idx+')">💾 Salvar Perfil Completo</button>'
+    + '<button class="btn btn-secondary" onclick="congeladosReciclar('+idx+')">♻️ Reciclar (Reenriquecer)</button>'
+    + '<button class="btn btn-secondary" onclick="congeladosDeletar('+idx+')" style="color:#f44336;margin-left:auto">🗑️ Deletar</button>'
+    + '</div>';
+}
+
+async function congeladosSalvarPerfil(idx) {
+  var prods = getProds();
+  var p = prods[idx];
+  if (!p) return;
+  PERFIL_CAMPOS_TODOS.forEach(function(c) {
+    var elInput = document.getElementById('pf-'+c[0]);
+    if (!elInput) return;
+    if (c[2] === 'number') {
+      p[c[0]] = elInput.value !== '' ? parseFloat(elInput.value) : null;
+    } else {
+      p[c[0]] = elInput.value.trim() || null;
+    }
+  });
+  var descEl = document.getElementById('pf-descricao');
+  if (descEl) p.descricao = descEl.value.trim() || null;
+  saveProds(prods);
+  alert('✅ Perfil completo salvo!');
+  congeladosAbrirPerfil(idx);
+}
+
+function congeladosReciclar(idx) {
+  if (!confirm('Reciclar este produto? Ele voltará para a Etapa 1 (Identificação) do Cadastro Completo para um novo enriquecimento por IA.')) return;
+  aprovEnriquecerProd(idx);
+}
+
+function congeladosDeletar(idx) {
+  var prods = getProds();
+  var p = prods[idx];
+  if (!p) return;
+  if (!confirm('Deletar definitivamente "'+(p.nome||p.codigo_fabricante||'este produto')+'" e todos os dados deste processo (imagens, NTC, perfil de integração)? Esta ação não pode ser desfeita.')) return;
+  prods.splice(idx, 1);
+  saveProds(prods);
+  atualizarStats();
+  atualizarBadgeAprovacao();
+  nav('congelados');
+}
+
 async function aprovPublicar(idx) {
   var p = getProds()[idx];
   if (!p) return;
@@ -3588,7 +3844,7 @@ async function oemPublicar() {
   var r = _oemDados._ntcResult || {};
   if ((r.ntc || 0) < 0.60) { alert('NTC insuficiente. Complete os campos obrigatórios.'); return; }
   var prods = getProds();
-  var extras = { ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now() };
+  var extras = { ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now(), _publicado: true, _publicado_em: new Date().toISOString() };
   if (_oemEditIdx != null && prods[_oemEditIdx]) {
     prods[_oemEditIdx] = Object.assign({}, prods[_oemEditIdx], dados, extras);
     saveProds(prods);
