@@ -866,14 +866,22 @@ tr:hover td{background:#f9fafb}
           <button class="btn btn-sm cat-import-btn" id="massa-btn-json" onclick="massaToggleModo('json')">{ } JSON</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-csv" onclick="massaToggleModo('csv')">&#128202; CSV</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-xml" onclick="massaToggleModo('xml')">&#128278; XML</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-pdf" onclick="massaToggleModo('pdf')">&#128196; PDF</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-cole" onclick="massaToggleModo('cole')">&#128203; Cole Direto</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-url" onclick="massaToggleModo('url')">&#128279; Raspar URL</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-catalogo" onclick="massaToggleModo('catalogo')">&#128218; Raspar Cat&aacute;logo</button>
         </div>
-        <div class="cat-drop-zone" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
-          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml .pdf)
-          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="massaFileSelect(this)">
+        <div class="cat-drop-zone" id="massa-dropzone-generico" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
+          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml)
+          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml" onchange="massaFileSelect(this)">
           <span id="massa-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+        </div>
+        <div id="massa-modo-pdf" style="display:none">
+          <div class="cat-drop-zone" onclick="document.getElementById('massa-pdf-input').click()" style="border:2px dashed #333;border-radius:8px;padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
+            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar (m&aacute;x. 10&nbsp;MB)
+            <input type="file" id="massa-pdf-input" style="display:none" accept=".pdf" onchange="massaFileSelect(this, 'massa-pdf-status')">
+            <span id="massa-pdf-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+          </div>
         </div>
         <div id="massa-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
           <input id="massa-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
@@ -4170,6 +4178,9 @@ function oemCarregarDados(dados) {
 // ===== CADASTRO COMPLETO — MODOS DE ENTRADA (PDF / Raspar URL / Raspar Catálogo) =====
 var _oemCarrinhoItens = [];
 
+// Tamanho máximo de PDF aceito pelo servidor (multer) — ver server.js, upload.
+var PDF_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+
 function oemToggleModoEntrada(modo) {
   document.querySelectorAll('#oem-modo-tabs .cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
   var btn = document.getElementById('oem-modo-btn-' + modo);
@@ -4187,6 +4198,11 @@ function oemAnexarPdf(input) {
   var file = input.files[0];
   if (!file) return;
   var status = document.getElementById('oem-pdf-status');
+  if (file.size > PDF_UPLOAD_MAX_BYTES) {
+    status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 10 MB. Tente um arquivo menor ou compacte o PDF.';
+    input.value = '';
+    return;
+  }
   status.textContent = '⏳ Lendo PDF ' + file.name + '...';
   var fd = new FormData();
   fd.append('arquivo', file);
@@ -4214,7 +4230,10 @@ function oemAnexarPdf(input) {
     status.textContent = '📎 ' + file.name + ' — ' + itens.length + ' produto(s) identificado(s).';
     oemProcessarItensEncontrados(itens);
   }).catch(function(e) {
-    status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+    var msg = (e.message === 'Failed to fetch')
+      ? 'Falha de conexão ao enviar o PDF. Verifique sua internet e tente novamente.'
+      : e.message;
+    status.textContent = '❌ Erro ao enviar PDF: ' + msg;
   });
 }
 
@@ -6026,27 +6045,35 @@ function massaToggleModo(modo) {
   var ta = document.getElementById('massa-input');
   if (ta) ta.placeholder = placeholders[modo] || '';
 
-  var dropZone = document.querySelector('#page-massa .cat-drop-zone');
+  var dropZone = document.getElementById('massa-dropzone-generico');
+  var pdfPanel = document.getElementById('massa-modo-pdf');
   var urlRow = document.getElementById('massa-url-row');
   var catalogoRow = document.getElementById('massa-catalogo-url-row');
   var taGroup = document.getElementById('massa-textarea-group');
   var dropHint = document.getElementById('massa-dropzone-hint');
   var ehUrl = modo === 'url';
   var ehCatalogo = modo === 'catalogo';
-  if (dropZone) dropZone.style.display = ehCatalogo ? 'none' : '';
-  if (taGroup) taGroup.style.display = (ehUrl || ehCatalogo) ? 'none' : '';
+  var ehPdf = modo === 'pdf';
+  if (dropZone) dropZone.style.display = (ehCatalogo || ehPdf) ? 'none' : '';
+  if (pdfPanel) pdfPanel.style.display = ehPdf ? 'block' : 'none';
+  if (taGroup) taGroup.style.display = (ehUrl || ehCatalogo || ehPdf) ? 'none' : '';
   if (urlRow) urlRow.style.display = ehUrl ? 'flex' : 'none';
   if (dropHint) dropHint.style.display = ehUrl ? 'block' : 'none';
   if (catalogoRow) catalogoRow.style.display = ehCatalogo ? 'flex' : 'none';
 }
 
-function massaFileSelect(input) {
+function massaFileSelect(input, statusId) {
   var file = input.files[0];
   if (!file) return;
   var name = file.name.toLowerCase();
-  var status = document.getElementById('massa-file-status');
+  var status = document.getElementById(statusId || 'massa-file-status');
 
   if (name.endsWith('.pdf')) {
+    if (file.size > PDF_UPLOAD_MAX_BYTES) {
+      status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 10 MB. Tente um arquivo menor ou compacte o PDF.';
+      input.value = '';
+      return;
+    }
     status.textContent = '⏳ Lendo PDF ' + file.name + '...';
     var fd = new FormData();
     fd.append('arquivo', file);
@@ -6067,7 +6094,10 @@ function massaFileSelect(input) {
         status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
       }
     }).catch(function(e) {
-      status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+      var msg = (e.message === 'Failed to fetch')
+        ? 'Falha de conexão ao enviar o PDF. Verifique sua internet e tente novamente.'
+        : e.message;
+      status.textContent = '❌ Erro ao enviar PDF: ' + msg;
     });
     return;
   }
