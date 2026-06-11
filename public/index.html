@@ -33,6 +33,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .sb-item:hover{color:#ddd;background:#ffffff08}
 .sb-item.active{border-left:3px solid #ff4500;background:#ff450010;color:#ff4500}
 .sb-item .icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-more{display:none}
+.sb-more.open{display:block}
+.sb-more-toggle{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:1.2px;border-top:1px solid #1f1f1f;margin-top:6px}
+.sb-more-toggle:hover{color:#ddd;background:#ffffff08}
+.sb-more-toggle .chev{margin-left:auto;transition:transform .2s;font-size:10px}
+.sb-more-toggle.open .chev{transform:rotate(90deg)}
 .sb-badge{margin-left:auto;background:#ff4500;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
 .sb-footer{margin-top:auto;padding:12px 14px;border-top:1px solid #1f1f1f;font-size:10px;color:#555;line-height:1.4}
 
@@ -48,6 +54,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 #content{flex:1;overflow-y:auto;padding:24px}
 .page{display:none}
 .page.active{display:block}
+.oem-step{display:none}
+.oem-step.active{display:block}
+.oem-step-pill{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;background:#f3f4f6;color:#6b7280;cursor:pointer;border:1px solid #d1d5db;display:flex;align-items:center;gap:6px}
+.oem-step-pill.active{background:#ff450012;color:#ff4500;border-color:#ff450040}
+.oem-step-pill .num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#d1d5db;color:#6b7280;font-size:10px;font-weight:800}
+.oem-step-pill.active .num{background:#ff4500;color:#fff}
 
 /* CARDS / COMMON */
 .page-title{font-size:20px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px}
@@ -117,6 +129,8 @@ tr:hover td{background:#f9fafb}
 .dna-item{background:#f8f9fa;border:1px solid #e5e7eb;border-radius:6px;padding:8px}
 .dna-key{color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
 .dna-val{color:#1a1a1a;font-weight:600;margin-top:2px;word-break:break-all}
+.campo-label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.campo-val{font-size:13px;color:#1a1a1a;font-weight:600;word-break:break-word}
 .rast-line{font-family:monospace;font-size:11px;color:#6b7280;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:5px;padding:6px 10px;margin:10px 0}
 
 /* IMAGENS (light page) */
@@ -214,18 +228,23 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section">
     <div class="sb-section-label">Principal</div>
     <div class="sb-item active" onclick="nav('dashboard')"><span class="icon">&#128202;</span>Dashboard</div>
+    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
+    <div class="sb-item" onclick="nav('ia')"><span class="icon">&#129302;</span>IA Analyzer (Voz do Lojista)</div>
     <div class="sb-item" onclick="nav('produtos')"><span class="icon">&#128230;</span>Produtos</div>
   </div>
+
+  <div class="sb-more-toggle" id="sb-more-toggle" onclick="toggleMaisFerramentas()">
+    <span class="icon">&#8230;</span>Mais ferramentas<span class="chev">&#9656;</span>
+  </div>
+  <div class="sb-more" id="sb-more">
 
   <div class="sb-section">
     <div class="sb-section-label">Catalogacao</div>
     <div class="sb-item" onclick="nav('catalogo')"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
-    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
     <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
     <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
-    <div class="sb-item" onclick="nav('aprovacao-enriq')"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o de Enriquecimento</div>
+    <div class="sb-item" onclick="nav('aprovacao-enriq')"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o &amp; Congelados</div>
     <div class="sb-item" onclick="nav('aprovados')"><span class="icon">&#127775;</span>Aprovados</div>
-    <div class="sb-item" onclick="nav('congelados')"><span class="icon">&#10052;&#65039;</span>Congelados</div>
   </div>
 
   <div class="sb-section">
@@ -241,7 +260,6 @@ tr:hover td{background:#f9fafb}
 
   <div class="sb-section">
     <div class="sb-section-label">Intelig&ecirc;ncia</div>
-    <div class="sb-item" onclick="nav('ia')"><span class="icon">&#129302;</span>IA Analyzer</div>
     <div class="sb-item" onclick="nav('relatorios')"><span class="icon">&#128200;</span>Relat&oacute;rios</div>
   </div>
 
@@ -267,6 +285,8 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section">
     <div class="sb-section-label">Sistema</div>
     <div class="sb-item" onclick="nav('config')"><span class="icon">&#9881;&#65039;</span>Configura&ccedil;&otilde;es</div>
+  </div>
+
   </div>
 
   <div class="sb-footer">
@@ -577,7 +597,7 @@ tr:hover td{background:#f9fafb}
         </div>
         <div class="cat-drop-zone" onclick="document.getElementById('cat-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;color:#555;font-size:13px">
           &#128196; Arraste o arquivo aqui ou clique para selecionar
-          <div style="font-size:11px;color:#444;margin-top:4px">Suporta .txt .json .csv .xml .pdf</div>
+          <div style="font-size:11px;color:#444;margin-top:4px">Suporta .txt .json .csv .xml .pdf (PDF: máx. 20 MB)</div>
           <input type="file" id="cat-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="catalogoFileSelect(this)">
           <span id="catalogo-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
         </div>
@@ -646,112 +666,193 @@ tr:hover td{background:#f9fafb}
 
       <div class="card">
         <div class="card-title">&#128269; Busca de Enriquecimento</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div id="oem-modo-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <button class="btn btn-sm cat-import-btn active-mode" id="oem-modo-btn-busca" onclick="oemToggleModoEntrada('busca')">&#128269; Buscar por c&oacute;digo/nome</button>
+          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-pdf" onclick="oemToggleModoEntrada('pdf')">&#128196; Anexar PDF</button>
+          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-url" onclick="oemToggleModoEntrada('url')">&#128279; Raspar URL</button>
+          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-catalogo" onclick="oemToggleModoEntrada('catalogo')">&#128722; Raspar Cat&aacute;logo (v&aacute;rios)</button>
+        </div>
+
+        <div id="oem-modo-busca" class="oem-modo-painel" style="display:flex;gap:8px;margin-bottom:12px">
           <input id="oem-input" style="flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
           <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
         </div>
+
+        <div id="oem-modo-pdf" class="oem-modo-painel" style="display:none">
+          <div class="cat-drop-zone" onclick="document.getElementById('oem-pdf-input').click()" style="border:2px dashed #d1d5db;border-radius:8px;padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;color:#6b7280;font-size:13px">
+            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar
+            <input type="file" id="oem-pdf-input" style="display:none" accept=".pdf" onchange="oemAnexarPdf(this)">
+            <span id="oem-pdf-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+          </div>
+        </div>
+
+        <div id="oem-modo-url" class="oem-modo-painel" style="display:none">
+          <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link da p&aacute;gina do produto no site do fornecedor. A IA l&ecirc; a p&aacute;gina e identifica SKU, fabricante, nome, OEM, NCM, EAN, motor, material e pre&ccedil;o &mdash; confirme antes de usar.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input id="oem-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+            <button class="btn btn-primary" onclick="oemRasparUrl()">&#128279; Raspar e Identificar</button>
+          </div>
+          <div style="font-size:11px;color:#6b7280">&#128161; Se o site bloquear a raspagem (erro HTTP 403/405), use a aba &#128196; Anexar PDF com a ficha t&eacute;cnica/p&aacute;gina do produto.</div>
+        </div>
+
+        <div id="oem-modo-catalogo" class="oem-modo-painel" style="display:none">
+          <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link de uma p&aacute;gina de categoria/cat&aacute;logo do fornecedor com v&aacute;rios produtos (ex: resultado de busca ou carrinho). A IA identifica os produtos listados para voc&ecirc; selecionar quais cadastrar.</p>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input id="oem-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/categoria/...">
+            <button class="btn btn-primary" onclick="oemRasparCatalogo()">&#128722; Raspar Cat&aacute;logo</button>
+          </div>
+        </div>
+
         <div id="oem-status" style="font-size:12px;color:#555"></div>
+      </div>
+
+      <!-- Carrinho de produtos encontrados (PDF com vários itens / Raspar Catálogo) -->
+      <div class="card" id="oem-carrinho-card" style="display:none;border-color:#ff450030">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span>&#128722; Produtos Encontrados &mdash; Selecione para Cadastrar</span>
+          <span id="oem-carrinho-resumo" style="font-size:12px;color:#888"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;font-size:13px">
+            <thead>
+              <tr>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb"><input type="checkbox" id="oem-carrinho-chk-all" onclick="oemCarrinhoMarcarTodos(this.checked)"></th>
+                <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">SKU</th>
+                <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Nome</th>
+                <th class="col-opt" style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Fabricante</th>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">NTC%</th>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Status</th>
+                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">A&ccedil;&atilde;o</th>
+              </tr>
+            </thead>
+            <tbody id="oem-carrinho-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" onclick="oemCarrinhoEnviar()">&#10003; Cadastrar selecionados</button>
+        </div>
       </div>
 
       <!-- Resultado da busca -->
       <div id="oem-resultado" style="display:none">
 
-        <!-- Agente de Enriquecimento de DNA via Web -->
-        <div class="card">
-          <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
-          <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, motor/aplica&ccedil;&atilde;o, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes na web e <strong style="color:#ff4500">salva automaticamente</strong> o cadastro (rascunho) com o que for encontrado. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, pendente de confirma&ccedil;&atilde;o humana.</p>
-          <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
-          <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+        <!-- Indicador de etapas -->
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="oem-step-pill active" id="oem-pill-1" onclick="oemIrEtapa(1)"><span class="num">1</span> Identifica&ccedil;&atilde;o (IA / Voz do Lojista)</div>
+          <div class="oem-step-pill" id="oem-pill-2" onclick="oemIrEtapa(2)"><span class="num">2</span> Revis&atilde;o &amp; Publica&ccedil;&atilde;o</div>
         </div>
 
-        <!-- Dados confirmados -->
-        <div class="card" style="border-color:#ff450030">
-          <div class="card-title">&#9989; Dados Confirmados (preenchidos pela busca)</div>
-          <div class="grid2" style="gap:10px;margin-bottom:12px">
-            <div class="form-group"><label>Part Number / SKU *</label><input id="oem-f-sku" placeholder="Ex: VKM71809"></div>
-            <div class="form-group"><label>Fabricante *</label><input id="oem-f-fab" placeholder="Ex: SKF"></div>
-            <div class="form-group"><label>Nome do Produto *</label><input id="oem-f-nome" placeholder="Ex: Tensor de Correia Dentada"></div>
-            <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label>
-              <select id="oem-f-familia">
-                <option value="">— selecione —</option>
-                <option>Motor</option><option>Freios</option><option>Suspens&atilde;o</option>
-                <option>Filtros</option><option>Arrefecimento</option><option>El&eacute;trica</option>
-                <option>Transmiss&atilde;o</option><option>Dire&ccedil;&atilde;o</option>
-              </select>
-            </div>
-            <div class="form-group"><label>C&oacute;digo OEM (principal)</label><input id="oem-f-oem" placeholder="Ex: 93353848"></div>
-            <div class="form-group"><label>NCM</label><input id="oem-f-ncm" placeholder="Ex: 84835010" maxlength="10"></div>
-            <div class="form-group"><label>EAN / GTIN</label><input id="oem-f-ean" placeholder="Ex: 7316572455985" maxlength="14"></div>
-            <div class="form-group"><label>Motor / Aplica&ccedil;&atilde;o</label><input id="oem-f-motor" placeholder="Ex: GM Família I 8V"></div>
+        <!-- ETAPA 1: Identificação automática (IA / Voz do Lojista) -->
+        <div id="oem-step1" class="oem-step active">
+
+          <!-- Agente de Enriquecimento de DNA via Web -->
+          <div class="card">
+            <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
+            <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, motor/aplica&ccedil;&atilde;o, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes na web e <strong style="color:#ff4500">salva automaticamente</strong> o cadastro (rascunho) com o que for encontrado. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, pendente de confirma&ccedil;&atilde;o humana.</p>
+            <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
+            <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
           </div>
-          <div class="form-group"><label>Material / Composi&ccedil;&atilde;o</label><input id="oem-f-material" placeholder="Ex: Aço estampado nitretado | Esferas radiais"></div>
-        </div>
 
-
-        <!-- Resultados Google -->
-        <div class="card" id="oem-google-card" style="display:none">
-          <div class="card-title">&#127760; Resultados da Busca — Confirme os dados antes de usar</div>
-          <div id="oem-google-results" style="font-size:13px;color:#aaa;line-height:1.8"></div>
-        </div>
-
-        <!-- NTC em tempo real -->
-        <div class="card">
-          <div class="card-title">&#9889; NTC 4.0 — Atualiza em tempo real</div>
-          <div id="oem-ntc-live" style="text-align:center;padding:10px">
-            <div style="font-size:40px;font-weight:900;color:#555" id="oem-ntc-num">0%</div>
-            <div id="oem-ntc-badge"></div>
-            <div style="font-size:11px;color:#444;margin-top:6px" id="oem-ntc-falta"></div>
-          </div>
-        </div>
-
-        <!-- Barra NTC completa (meta 95%) -->
-        <div id="cntc-ntc-bar" style="display:none" class="card">
-          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-            <div>
-              <div id="cntc-ntc-pct" style="font-size:42px;font-weight:900;color:#ff6500;line-height:1">0%</div>
-              <div style="font-size:12px;color:#666">NTC atual</div>
-            </div>
-            <div style="flex:1;min-width:200px">
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
-                <span id="cntc-decisao-label">REPROVADO</span>
-                <span>Meta: 95% APROVADO</span>
+          <!-- Dados confirmados -->
+          <div class="card" style="border-color:#ff450030">
+            <div class="card-title">&#9989; Dados Confirmados (preenchidos pela busca)</div>
+            <div class="grid2" style="gap:10px;margin-bottom:12px">
+              <div class="form-group"><label>Part Number / SKU *</label><input id="oem-f-sku" placeholder="Ex: VKM71809"></div>
+              <div class="form-group"><label>Fabricante *</label><input id="oem-f-fab" placeholder="Ex: SKF"></div>
+              <div class="form-group"><label>Nome do Produto *</label><input id="oem-f-nome" placeholder="Ex: Tensor de Correia Dentada"></div>
+              <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label>
+                <select id="oem-f-familia">
+                  <option value="">— selecione —</option>
+                  <option>Motor</option><option>Freios</option><option>Suspens&atilde;o</option>
+                  <option>Filtros</option><option>Arrefecimento</option><option>El&eacute;trica</option>
+                  <option>Transmiss&atilde;o</option><option>Dire&ccedil;&atilde;o</option>
+                </select>
               </div>
-              <div style="height:12px;background:#1f1f1f;border-radius:6px;overflow:hidden;position:relative">
-                <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:6px;transition:width .4s,background .4s"></div>
-                <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
+              <div class="form-group"><label>C&oacute;digo OEM (principal)</label><input id="oem-f-oem" placeholder="Ex: 93353848"></div>
+              <div class="form-group"><label>NCM</label><input id="oem-f-ncm" placeholder="Ex: 84835010" maxlength="10"></div>
+              <div class="form-group"><label>EAN / GTIN</label><input id="oem-f-ean" placeholder="Ex: 7316572455985" maxlength="14"></div>
+              <div class="form-group"><label>Motor / Aplica&ccedil;&atilde;o</label><input id="oem-f-motor" placeholder="Ex: GM Família I 8V"></div>
+            </div>
+            <div class="form-group"><label>Material / Composi&ccedil;&atilde;o</label><input id="oem-f-material" placeholder="Ex: Aço estampado nitretado | Esferas radiais"></div>
+          </div>
+
+          <!-- Resultados Google -->
+          <div class="card" id="oem-google-card" style="display:none">
+            <div class="card-title">&#127760; Resultados da Busca — Confirme os dados antes de usar</div>
+            <div id="oem-google-results" style="font-size:13px;color:#aaa;line-height:1.8"></div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;margin-bottom:18px">
+            <button class="btn btn-primary" onclick="oemIrEtapa(2)">Avan&ccedil;ar para Revis&atilde;o &amp; Publica&ccedil;&atilde;o &#8594;</button>
+          </div>
+        </div>
+
+        <!-- ETAPA 2: Revisão do lojista (imagens, NTC e publicação) -->
+        <div id="oem-step2" class="oem-step">
+
+          <div style="margin-bottom:14px">
+            <button class="btn btn-secondary" onclick="oemIrEtapa(1)">&#8592; Voltar / Reenriquecer (IA)</button>
+          </div>
+
+          <!-- NTC em tempo real -->
+          <div class="card">
+            <div class="card-title">&#9889; NTC 4.0 — Atualiza em tempo real</div>
+            <div id="oem-ntc-live" style="text-align:center;padding:10px">
+              <div style="font-size:40px;font-weight:900;color:#555" id="oem-ntc-num">0%</div>
+              <div id="oem-ntc-badge"></div>
+              <div style="font-size:11px;color:#444;margin-top:6px" id="oem-ntc-falta"></div>
+            </div>
+          </div>
+
+          <!-- Barra NTC completa (meta 95%) -->
+          <div id="cntc-ntc-bar" style="display:none" class="card">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+              <div>
+                <div id="cntc-ntc-pct" style="font-size:42px;font-weight:900;color:#ff6500;line-height:1">0%</div>
+                <div style="font-size:12px;color:#666">NTC atual</div>
               </div>
-              <div style="display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:3px"><span>0%</span><span>60%</span><span style="color:#00ff88">95%</span><span>100%</span></div>
-            </div>
-            <div style="text-align:right">
-              <div id="cntc-ganho-label" style="font-size:12px;color:#00ff88"></div>
-              <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Módulos do NTC para completar até 95% -->
-        <div id="cntc-modulos"></div>
-
-        <!-- Botões de ação -->
-        <div id="oem-acoes" style="display:none">
-          <div class="card" style="border-color:#00c85330">
-            <div class="card-title" style="color:#00c853">&#128640; Pronto para Publicar</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-primary" style="flex:1" id="oem-btn-publicar" onclick="oemPublicar()">&#128230; Publicar no Cat&aacute;logo</button>
-              <button class="btn btn-secondary" onclick="oemEnviarBling()">&#129695; Enviar ao Bling</button>
-              <button class="btn btn-secondary" onclick="oemEnviarWix()">&#127760; Sincronizar Wix</button>
+              <div style="flex:1;min-width:200px">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
+                  <span id="cntc-decisao-label">REPROVADO</span>
+                  <span>Meta: 95% APROVADO</span>
+                </div>
+                <div style="height:12px;background:#1f1f1f;border-radius:6px;overflow:hidden;position:relative">
+                  <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:6px;transition:width .4s,background .4s"></div>
+                  <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:3px"><span>0%</span><span>60%</span><span style="color:#00ff88">95%</span><span>100%</span></div>
+              </div>
+              <div style="text-align:right">
+                <div id="cntc-ganho-label" style="font-size:12px;color:#00ff88"></div>
+                <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
+              </div>
             </div>
           </div>
-        </div>
-        <div id="oem-acoes-bloqueado" style="display:none">
-          <div class="card" style="border-color:#f4433630;background:#f4433608">
-            <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
-            <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
-            <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear.</div>
-          </div>
-        </div>
 
-        <div id="oem-pub-status" style="font-size:12px;color:#555;margin-top:8px"></div>
+          <!-- Módulos do NTC para completar até 95% -->
+          <div id="cntc-modulos"></div>
+
+          <!-- Botões de ação -->
+          <div id="oem-acoes" style="display:none">
+            <div class="card" style="border-color:#00c85330">
+              <div class="card-title" style="color:#00c853">&#128640; Pronto para Publicar</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-primary" style="flex:1" id="oem-btn-publicar" onclick="oemPublicar()">&#128230; Publicar no Cat&aacute;logo</button>
+                <button class="btn btn-secondary" onclick="oemEnviarBling()">&#129695; Enviar ao Bling</button>
+                <button class="btn btn-secondary" onclick="oemEnviarWix()">&#127760; Sincronizar Wix</button>
+              </div>
+            </div>
+          </div>
+          <div id="oem-acoes-bloqueado" style="display:none">
+            <div class="card" style="border-color:#f4433630;background:#f4433608">
+              <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
+              <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
+              <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear, ou volte &agrave; Etapa 1 e use o &#127760; Buscar DNA na Web para reenriquecer automaticamente.</div>
+            </div>
+          </div>
+
+          <div id="oem-pub-status" style="font-size:12px;color:#555;margin-top:8px"></div>
+        </div>
       </div>
     </div>
     <div class="page" id="page-massa">
@@ -765,14 +866,22 @@ tr:hover td{background:#f9fafb}
           <button class="btn btn-sm cat-import-btn" id="massa-btn-json" onclick="massaToggleModo('json')">{ } JSON</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-csv" onclick="massaToggleModo('csv')">&#128202; CSV</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-xml" onclick="massaToggleModo('xml')">&#128278; XML</button>
+          <button class="btn btn-sm cat-import-btn" id="massa-btn-pdf" onclick="massaToggleModo('pdf')">&#128196; PDF</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-cole" onclick="massaToggleModo('cole')">&#128203; Cole Direto</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-url" onclick="massaToggleModo('url')">&#128279; Raspar URL</button>
           <button class="btn btn-sm cat-import-btn" id="massa-btn-catalogo" onclick="massaToggleModo('catalogo')">&#128218; Raspar Cat&aacute;logo</button>
         </div>
-        <div class="cat-drop-zone" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
-          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml .pdf)
-          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml,.pdf" onchange="massaFileSelect(this)">
+        <div class="cat-drop-zone" id="massa-dropzone-generico" onclick="document.getElementById('massa-file-input').click()" style="border:2px dashed #333;border-radius:8px;padding:16px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
+          &#128206; Arraste o arquivo aqui ou clique para selecionar (.txt .json .csv .xml)
+          <input type="file" id="massa-file-input" style="display:none" accept=".txt,.json,.csv,.xml" onchange="massaFileSelect(this)">
           <span id="massa-file-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+        </div>
+        <div id="massa-modo-pdf" style="display:none">
+          <div class="cat-drop-zone" onclick="document.getElementById('massa-pdf-input').click()" style="border:2px dashed #333;border-radius:8px;padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
+            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar (m&aacute;x. 20&nbsp;MB)
+            <input type="file" id="massa-pdf-input" style="display:none" accept=".pdf" onchange="massaFileSelect(this, 'massa-pdf-status')">
+            <span id="massa-pdf-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
+          </div>
         </div>
         <div id="massa-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
           <input id="massa-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
@@ -934,10 +1043,16 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       </div>
     </div>
 
-    <!-- APROVAÇÃO DE ENRIQUECIMENTO -->
+    <!-- APROVAÇÃO DE ENRIQUECIMENTO & CONGELADOS -->
     <div class="page" id="page-aprovacao-enriq">
-      <div class="page-title">&#128204; Aprova&ccedil;&atilde;o de Enriquecimento</div>
-      <p style="color:#666;font-size:13px;margin-bottom:16px">Revise os produtos enriquecidos pelo Motor NTC 4.0. Valide descri&ccedil;&atilde;o, imagens e dados t&eacute;cnicos antes de publicar nas plataformas.</p>
+      <div class="page-title">&#128204; Aprova&ccedil;&atilde;o &amp; Congelados</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Revise os produtos enriquecidos pelo Motor NTC 4.0 e acompanhe os Congelados &mdash; produtos j&aacute; publicados com NTC alto e perfil completo pronto para ERP, Mercado Livre e site.</p>
+
+      <!-- Status Tabs -->
+      <div class="tabs" id="aprov-enriq-status-tabs">
+        <div class="tab active" onclick="aprovEnriqSetStatus('pendentes',this)">&#128204; Pendentes</div>
+        <div class="tab" onclick="aprovEnriqSetStatus('congelados',this)">&#10052;&#65039; Congelados</div>
+      </div>
 
       <!-- Toolbar -->
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
@@ -958,7 +1073,7 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         </div>
         <button class="btn btn-sm btn-secondary" onclick="aprovEnriqExportar()">&#8593; Exportar dados</button>
         <button class="btn btn-sm btn-secondary" onclick="aprovEnriqImportar()">&#8595; Importar dados</button>
-        <button class="btn btn-sm btn-primary" onclick="aprovEnriqAprovarSelecionados()">&#10003; Aprovar selecionados</button>
+        <button class="btn btn-sm btn-primary" id="aprov-enriq-aprovar-sel" onclick="aprovEnriqAprovarSelecionados()">&#10003; Aprovar selecionados</button>
         <span style="margin-left:auto;font-size:12px;color:#555" id="aprov-enriq-count"></span>
       </div>
 
@@ -1037,7 +1152,11 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       </div>
       <div id="aprovados-lista"></div>
     </div>
-    <div class="page" id="page-congelados"><div class="stub-page"><div class="stub-icon">&#10052;</div><h2>Congelados</h2><p>Em desenvolvimento &mdash; Congelados</p></div></div>
+    <!-- PERFIL COMPLETO DO PRODUTO (Congelados) -->
+    <div class="page" id="page-congelado-perfil">
+      <div class="page-title">&#10052;&#65039; Perfil Completo do Produto</div>
+      <div id="congelado-perfil-conteudo"></div>
+    </div>
     <div class="page" id="page-ean">
       <div class="page-title">&#128247; EAN Scanner GS1</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Valide e decodifique c&oacute;digos EAN-13, GTIN-8/12/14 e GS1-128 conforme padr&atilde;o GS1 Brasil. Preencha os campos do produto automaticamente.</p>
@@ -1615,6 +1734,11 @@ function nav(page, opts) {
   document.querySelectorAll('.sb-item').forEach(function(i) {
     if (i.getAttribute('onclick') === "nav('" + page + "')") i.classList.add('active');
   });
+  var activeItem = document.querySelector('.sb-item.active');
+  if (activeItem && document.getElementById('sb-more') && document.getElementById('sb-more').contains(activeItem)) {
+    document.getElementById('sb-more').classList.add('open');
+    document.getElementById('sb-more-toggle').classList.add('open');
+  }
   if (page === 'oem') oemDefinirModoEdicao((opts && opts.editIdx != null) ? opts.editIdx : null);
   if (page === 'dashboard') loadDashboard();
   if (page === 'produtos') loadProdutos();
@@ -1631,6 +1755,11 @@ function nav(page, opts) {
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
+}
+
+function toggleMaisFerramentas() {
+  document.getElementById('sb-more').classList.toggle('open');
+  document.getElementById('sb-more-toggle').classList.toggle('open');
 }
 
 // ===== HEALTH =====
@@ -2802,6 +2931,7 @@ function aprovEnriquecerProd(idx) {
     if (p.motor)             document.getElementById('oem-f-motor').value = p.motor;
     if (p.material)          document.getElementById('oem-f-material').value = p.material;
     document.getElementById('oem-resultado').style.display = 'block';
+    oemIrEtapa(2);
     _cntcRecalcular();
   }, 150);
 }
@@ -2828,6 +2958,222 @@ function aprovExcluir(idx) {
   if (!confirm('Apagar este produto da fila?')) return;
   var prods = getProds(); prods.splice(idx, 1); saveProds(prods);
   atualizarStats(); atualizarBadgeAprovacao(); aprovRenderLista();
+}
+
+// ===== CONGELADOS (Perfil Completo do Produto) =====
+var PERFIL_CAMPOS_SEO = [
+  ['seo_titulo', 'Título SEO / Anúncio (CPC)', 'text'],
+  ['seo_meta_descricao', 'Meta Description', 'textarea'],
+  ['seo_palavras_chave', 'Palavras-chave (separadas por vírgula)', 'text'],
+  ['seo_meta_tags', 'Meta Tags (separadas por vírgula)', 'text']
+];
+var PERFIL_CAMPOS_CATEGORIA = [
+  ['categoria', 'Categoria', 'text'],
+  ['subcategoria', 'Subcategoria', 'text']
+];
+var PERFIL_CAMPOS_REGULATORIO = [
+  ['registro_orgao', 'Registro INMETRO / Órgão Controlado (quando houver)', 'text']
+];
+var PERFIL_CAMPOS_VIDEO = [
+  ['video_url', 'URL do Vídeo do Produto (gerado a partir das imagens)', 'text']
+];
+var PERFIL_CAMPOS_MEDIDAS = [
+  ['comprimento', 'Comprimento (cm)', 'number'],
+  ['largura', 'Largura (cm)', 'number'],
+  ['altura', 'Altura (cm)', 'number'],
+  ['peso_bruto', 'Peso Bruto (kg)', 'number'],
+  ['peso_liquido', 'Peso Líquido (kg)', 'number']
+];
+var PERFIL_CAMPOS_FISCAL = [
+  ['ncm', 'NCM', 'text'],
+  ['cest', 'CEST', 'text'],
+  ['cst', 'CST', 'text'],
+  ['origem', 'Origem ICMS', 'text'],
+  ['linhagem_fabricante', 'Fabricante Original', 'text'],
+  ['linhagem_montadora', 'Montadora', 'text'],
+  ['linhagem_distribuidor', 'Distribuidor', 'text'],
+  ['linhagem_importador', 'Importador', 'text']
+];
+var PERFIL_CAMPOS_TODOS = PERFIL_CAMPOS_SEO.concat(PERFIL_CAMPOS_CATEGORIA, PERFIL_CAMPOS_REGULATORIO, PERFIL_CAMPOS_VIDEO, PERFIL_CAMPOS_MEDIDAS, PERFIL_CAMPOS_FISCAL, [['material', 'Material / Engenharia', 'text']]);
+
+function _perfilPillOk(label, ok) {
+  return '<span style="padding:3px 10px;border-radius:10px;background:'+(ok?'#00c85320':'#f4433620')+';color:'+(ok?'#00c853':'#f44336')+';font-size:11px;font-weight:600">'+(ok?'✔':'✖')+' '+label+'</span>';
+}
+
+function _perfilCampoTexto(label, val) {
+  return '<div><div class="campo-label">'+label+'</div><div class="campo-val">'+(val ? esc(val) : '<span style="color:#9ca3af;font-weight:400">—</span>')+'</div></div>';
+}
+
+function _perfilCampoLista(label, arr) {
+  var val = (Array.isArray(arr) && arr.length) ? arr.join(', ') : null;
+  return _perfilCampoTexto(label, val);
+}
+
+function _perfilCampoInput(p, c) {
+  var val = p[c[0]] != null ? String(p[c[0]]) : '';
+  if (c[2] === 'textarea') {
+    return '<div class="form-group"><label>'+c[1]+'</label><textarea id="pf-'+c[0]+'" rows="2">'+esc(val)+'</textarea></div>';
+  }
+  return '<div class="form-group"><label>'+c[1]+'</label><input id="pf-'+c[0]+'" type="'+c[2]+'"'+(c[2]==='number'?' step="0.01"':'')+' value="'+esc(val)+'"></div>';
+}
+
+function congeladosAbrirPerfil(idx) {
+  var p = getProds()[idx];
+  if (!p) return;
+  var atual = document.querySelector('.page.active');
+  window._pdOrigemPage = atual ? atual.id.replace('page-', '') : 'aprovacao-enriq';
+  nav('congelado-perfil');
+  var el = document.getElementById('congelado-perfil-conteudo');
+  var ntc = Math.round((p.ntc || 0) * 100);
+  var cor = p.decisao === 'APROVADO' ? '#00c853' : p.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
+
+  var imagens = p.imagens || [];
+  var galeria = imagens.length
+    ? imagens.map(function(url, i) {
+        return '<div style="position:relative">'
+          + '<img src="'+esc(url)+'" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:2px solid '+(i===0?'#ff4500':'#e5e7eb')+'">'
+          + (i===0 ? '<span style="position:absolute;top:2px;left:2px;background:#ff4500;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">PRINCIPAL</span>' : '')
+          + '</div>';
+      }).join('')
+    : '<div style="color:#9ca3af;font-size:13px">Nenhuma imagem cadastrada.</div>';
+
+  var aplicacoesHtml = '<span style="color:#9ca3af;font-size:13px">Nenhuma aplicação informada.</span>';
+  if (Array.isArray(p._aplicacoes) && p._aplicacoes.length) {
+    aplicacoesHtml = '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      + p._aplicacoes.map(function(a) {
+          var periodo = (a.ano_inicial || a.ano_final) ? ((a.ano_inicial||'')+'–'+(a.ano_final||'')) : null;
+          var txt = [a.montadora, a.modelo, a.motor, periodo].filter(Boolean).join(' ');
+          return '<span style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:10px;padding:3px 10px;font-size:11px;color:#374151">'+esc(txt)+'</span>';
+        }).join('')
+      + '</div>';
+  }
+
+  // Mapeamento de integração: indica se o perfil já alimenta ERP, Mercado Livre, vídeo, categoria e DNA
+  var temErp = !!(p.codigo_fabricante && p.fabricante && p.ncm && p.preco_venda);
+  var temML = !!(p.nome && p.descricao && p.categoria && imagens.length);
+  var temVideo = !!p.video_url;
+  var temCategoria = !!(p.categoria && p.subcategoria);
+  var temDna = !!((p.codigo_oem || (p.cc_oem && p.cc_oem.length)) && p.descricao);
+
+  el.innerHTML = '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+    + '<button class="btn btn-sm btn-secondary" onclick="nav(window._pdOrigemPage||\'aprovacao-enriq\')">&#8592; Voltar</button>'
+    + '<div style="font-size:36px;font-weight:900;color:'+cor+'">'+ntc+'%</div>'
+    + '<div><div style="font-size:16px;font-weight:700;color:#111827">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
+    + '<div style="font-size:12px;color:#9ca3af">'+esc(p.fabricante||'')+' · '+esc(p.codigo_fabricante||'')+(p.rast_hash?' · RAST '+esc(p.rast_hash):'')+'</div></div>'
+    + badgeHtml(p.decisao)
+    + '<span style="background:#e0f2fe;color:#0284c7;border:1px solid #bae6fd;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;margin-left:auto">❄️ CONGELADO'+(p._publicado_em ? ' · '+new Date(p._publicado_em).toLocaleDateString('pt-BR') : '')+'</span>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📷 Imagens</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+galeria+'</div>'
+    + '<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerImagens('+idx+')">🖼️ Gerenciar Imagens</button>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🔧 Identificação &amp; Códigos</div>'
+    + '<div class="dna-grid" style="margin-bottom:12px">'
+    + _perfilCampoTexto('Código OEM', p.codigo_oem)
+    + _perfilCampoTexto('SKU / Part Number', p.codigo_fabricante)
+    + _perfilCampoTexto('EAN / GTIN', p.ean)
+    + _perfilCampoLista('Cross-Codes OEM', p.cc_oem)
+    + _perfilCampoLista('Cross-Codes Aftermarket', p.cc_aftermarket)
+    + _perfilCampoLista('Cross-Codes Importadores', p.cc_importadores)
+    + '</div>'
+    + '<div class="campo-label" style="margin-bottom:6px">Aplicação Veicular Informada</div>'
+    + aplicacoesHtml
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📐 Medidas</div>'
+    + '<div class="grid3">' + PERFIL_CAMPOS_MEDIDAS.map(function(c){ return _perfilCampoInput(p, c); }).join('') + '</div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🏛️ Dados Fiscais &amp; Logística</div>'
+    + '<div class="grid2">' + PERFIL_CAMPOS_FISCAL.map(function(c){ return _perfilCampoInput(p, c); }).join('') + '</div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">⚙️ Engenharia &amp; Materiais</div>'
+    + '<div class="form-group"><label>Material</label><input id="pf-material" type="text" value="'+esc(p.material||'')+'"></div>'
+    + (p.funcao ? _perfilCampoTexto('Função', p.funcao) : '')
+    + '<div class="campo-label" style="margin:8px 0 6px">Especificações Técnicas</div>'
+    + ((Array.isArray(p.especificacoes) && p.especificacoes.length)
+        ? '<ul style="margin:0;padding-left:18px;font-size:13px;color:#374151">' + p.especificacoes.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('') + '</ul>'
+        : '<span style="color:#9ca3af;font-size:13px">—</span>')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📝 Descrição Técnica</div>'
+    + '<div class="form-group" style="margin-bottom:0"><textarea id="pf-descricao" rows="4">'+esc(p.descricao||'')+'</textarea></div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🔍 SEO / CPC</div>'
+    + PERFIL_CAMPOS_SEO.map(function(c){ return _perfilCampoInput(p, c); }).join('')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🏷️ Categoria &amp; Subcategoria</div>'
+    + '<div class="grid2">' + PERFIL_CAMPOS_CATEGORIA.map(function(c){ return _perfilCampoInput(p, c); }).join('') + '</div>'
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">📋 Registro Regulatório</div>'
+    + '<p style="font-size:12px;color:#9ca3af;margin-bottom:8px">Preencha quando o produto exigir registro no INMETRO ou outro órgão controlado.</p>'
+    + PERFIL_CAMPOS_REGULATORIO.map(function(c){ return _perfilCampoInput(p, c); }).join('')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🎬 Vídeo do Produto</div>'
+    + '<p style="font-size:12px;color:#9ca3af;margin-bottom:8px">'+(imagens.length ? 'Imagens disponíveis para geração de vídeo. Informe a URL quando o vídeo for gerado.' : 'Cadastre imagens do produto para permitir a geração de vídeo.')+'</p>'
+    + PERFIL_CAMPOS_VIDEO.map(function(c){ return _perfilCampoInput(p, c); }).join('')
+    + '</div>'
+
+    + '<div class="card"><div class="card-title">🔗 Mapeamento de Integração (ERP / Mercado Livre / Vídeo)</div>'
+    + '<p style="font-size:12px;color:#9ca3af;margin-bottom:10px">Esses indicadores garantem que o perfil completo está pronto para alimentar o ERP (Bling), o Mercado Livre, o vídeo do produto e o site, sem retrabalho.</p>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+    + _perfilPillOk('ERP / Bling', temErp)
+    + _perfilPillOk('Mercado Livre', temML)
+    + _perfilPillOk('Vídeo do Produto', temVideo)
+    + _perfilPillOk('Categoria / Subcategoria', temCategoria)
+    + _perfilPillOk('DNA + Descrição (perfil de integração)', temDna)
+    + '</div>'
+    + '</div>'
+
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px">'
+    + '<button class="btn btn-primary" onclick="congeladosSalvarPerfil('+idx+')">💾 Salvar Perfil Completo</button>'
+    + '<button class="btn btn-secondary" onclick="congeladosReciclar('+idx+')">♻️ Reciclar (Reenriquecer)</button>'
+    + '<button class="btn btn-secondary" onclick="congeladosDeletar('+idx+')" style="color:#f44336;margin-left:auto">🗑️ Deletar</button>'
+    + '</div>';
+}
+
+async function congeladosSalvarPerfil(idx) {
+  var prods = getProds();
+  var p = prods[idx];
+  if (!p) return;
+  PERFIL_CAMPOS_TODOS.forEach(function(c) {
+    var elInput = document.getElementById('pf-'+c[0]);
+    if (!elInput) return;
+    if (c[2] === 'number') {
+      p[c[0]] = elInput.value !== '' ? parseFloat(elInput.value) : null;
+    } else {
+      p[c[0]] = elInput.value.trim() || null;
+    }
+  });
+  var descEl = document.getElementById('pf-descricao');
+  if (descEl) p.descricao = descEl.value.trim() || null;
+  saveProds(prods);
+  alert('✅ Perfil completo salvo!');
+  congeladosAbrirPerfil(idx);
+}
+
+function congeladosReciclar(idx) {
+  if (!confirm('Reciclar este produto? Ele voltará para a Etapa 1 (Identificação) do Cadastro Completo para um novo enriquecimento por IA.')) return;
+  aprovEnriquecerProd(idx);
+}
+
+function congeladosDeletar(idx) {
+  var prods = getProds();
+  var p = prods[idx];
+  if (!p) return;
+  if (!confirm('Deletar definitivamente "'+(p.nome||p.codigo_fabricante||'este produto')+'" e todos os dados deste processo (imagens, NTC, perfil de integração)? Esta ação não pode ser desfeita.')) return;
+  prods.splice(idx, 1);
+  saveProds(prods);
+  atualizarStats();
+  atualizarBadgeAprovacao();
+  nav('aprovacao-enriq');
 }
 
 async function aprovPublicar(idx) {
@@ -3334,6 +3680,15 @@ function _oemLimparFormulario() {
   if (modulos) modulos.innerHTML = '';
   var barra = document.getElementById('cntc-ntc-bar');
   if (barra) barra.style.display = 'none';
+  if (typeof oemToggleModoEntrada === 'function') oemToggleModoEntrada('busca');
+  ['oem-pdf-input','oem-url-input','oem-catalogo-url-input'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var pdfStatus = document.getElementById('oem-pdf-status');
+  if (pdfStatus) pdfStatus.textContent = '';
+  _oemCarrinhoItens = [];
+  if (typeof oemCarrinhoRender === 'function') oemCarrinhoRender();
 }
 
 // Define se a tela de Cadastro Completo está em modo "edição/reenriquecimento"
@@ -3360,7 +3715,19 @@ function oemDefinirModoEdicao(idx) {
     document.getElementById('oem-resultado').style.display = 'none';
     if (banner) banner.style.display = 'none';
     if (btnPublicar) btnPublicar.innerHTML = '&#128230; Publicar no Cat&aacute;logo';
+    oemIrEtapa(1);
   }
+}
+
+// Alterna entre as 2 etapas do Cadastro Completo:
+// 1) Identificação automática (IA / Voz do Lojista)
+// 2) Revisão do lojista (NTC, imagens) e publicação
+function oemIrEtapa(n) {
+  document.getElementById('oem-step1').classList.toggle('active', n === 1);
+  document.getElementById('oem-step2').classList.toggle('active', n === 2);
+  document.getElementById('oem-pill-1').classList.toggle('active', n === 1);
+  document.getElementById('oem-pill-2').classList.toggle('active', n === 2);
+  if (n === 2) _cntcRecalcular();
 }
 
 // Dados completos do produto (campos do formulário OEM mesclados com o
@@ -3392,6 +3759,7 @@ async function oemBuscar() {
   document.getElementById('oem-f-familia').value = parsed.familia || '';
 
   document.getElementById('oem-resultado').style.display = 'block';
+  oemIrEtapa(1);
 
   // Busca imagens/dados via Google Search (reutiliza endpoint existente)
   // Usa os campos já interpretados (fabricante + SKU + descrição) em vez do
@@ -3524,7 +3892,7 @@ async function oemPublicar() {
   var r = _oemDados._ntcResult || {};
   if ((r.ntc || 0) < 0.60) { alert('NTC insuficiente. Complete os campos obrigatórios.'); return; }
   var prods = getProds();
-  var extras = { ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now() };
+  var extras = { ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now(), _publicado: true, _publicado_em: new Date().toISOString() };
   if (_oemEditIdx != null && prods[_oemEditIdx]) {
     prods[_oemEditIdx] = Object.assign({}, prods[_oemEditIdx], dados, extras);
     saveProds(prods);
@@ -3802,8 +4170,209 @@ function oemCarregarDados(dados) {
     if (dados.motor)             document.getElementById('oem-f-motor').value = dados.motor;
     if (dados.material)          document.getElementById('oem-f-material').value = dados.material;
     document.getElementById('oem-resultado').style.display = 'block';
+    oemIrEtapa(2);
     _cntcRecalcular();
   }, 150);
+}
+
+// ===== CADASTRO COMPLETO — MODOS DE ENTRADA (PDF / Raspar URL / Raspar Catálogo) =====
+var _oemCarrinhoItens = [];
+
+// Tamanho máximo de PDF aceito pelo servidor (multer) — ver server.js, upload.
+var PDF_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+
+function oemToggleModoEntrada(modo) {
+  document.querySelectorAll('#oem-modo-tabs .cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
+  var btn = document.getElementById('oem-modo-btn-' + modo);
+  if (btn) btn.classList.add('active-mode');
+  ['busca','pdf','url','catalogo'].forEach(function(m) {
+    var el = document.getElementById('oem-modo-' + m);
+    if (el) el.style.display = (m === modo) ? (m === 'busca' ? 'flex' : 'block') : 'none';
+  });
+}
+
+// Lê um PDF (ficha técnica ou catálogo do fornecedor) e identifica produtos.
+// Reaproveita /api/catalogo/extrair-pdf: se houver tabela detectada, trata como
+// CSV de catálogo (vários produtos); senão, tenta extrair blocos de texto.
+function oemAnexarPdf(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var status = document.getElementById('oem-pdf-status');
+  if (file.size > PDF_UPLOAD_MAX_BYTES) {
+    status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 20 MB. Tente um arquivo menor ou compacte o PDF.';
+    input.value = '';
+    return;
+  }
+  status.textContent = '⏳ Lendo PDF ' + file.name + '...';
+  var fd = new FormData();
+  fd.append('arquivo', file);
+  var tok = localStorage.getItem('gn_token') || '';
+  fetch('/api/catalogo/extrair-pdf', {
+    method: 'POST',
+    headers: tok ? { 'Authorization': 'Bearer ' + tok } : {},
+    body: fd
+  }).then(function(r){ return r.json(); }).then(function(r) {
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao ler PDF'); return; }
+    var itens = [];
+    if (r.tabela) {
+      itens = catalogoProcessarCSV(r.tabela).map(function(o){ return massaNormalizarItem(o, 'pdf'); });
+    }
+    if (!itens.length && r.texto) {
+      r.texto.split(/\n\s*\n/).map(function(b){ return b.trim(); }).filter(Boolean).forEach(function(bloco) {
+        var d = catExtrair(bloco);
+        if (d && (d.codigo_fabricante || d.nome)) itens.push(massaNormalizarItem(Object.assign({_linha: bloco}, d), 'pdf'));
+      });
+    }
+    if (!itens.length) {
+      status.textContent = '⚠️ Não foi possível identificar produtos neste PDF. Tente colar os dados manualmente na busca.';
+      return;
+    }
+    status.textContent = '📎 ' + file.name + ' — ' + itens.length + ' produto(s) identificado(s).';
+    oemProcessarItensEncontrados(itens);
+  }).catch(function(e) {
+    var msg = (e.message === 'Failed to fetch')
+      ? 'Falha de conexão ao enviar o PDF. Verifique sua internet e tente novamente.'
+      : e.message;
+    status.textContent = '❌ Erro ao enviar PDF: ' + msg;
+  });
+}
+
+// Raspa uma única página de produto do fornecedor (reaproveita /api/catalogo/raspar).
+async function oemRasparUrl() {
+  var url = document.getElementById('oem-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('oem-status');
+  status.innerHTML = '⏳ Acessando e identificando o produto...';
+  try {
+    var r = await api('POST', '/catalogo/raspar', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar URL') + ' — tente anexar a ficha técnica em PDF.'; return; }
+    if (!r.encontrado) { status.textContent = '⚠️ ' + (r.mensagem || 'Não foi possível identificar dados do produto nesta página.'); return; }
+    var d = r.dados;
+    var item = massaNormalizarItem({
+      codigo_fabricante: d.sku, nome: d.nome, fabricante: d.fabricante, codigo_oem: d.codigo_oem,
+      ncm: d.ncm, ean: d.ean, motor: d.motor, material: d.material, preco_custo: d.preco, _url_origem: url
+    }, 'url');
+    status.textContent = '⏳ Produto identificado — calculando NTC...';
+    await oemProcessarItensEncontrados([item]);
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar URL: ' + e.message;
+  }
+}
+
+// Raspa uma página de catálogo/categoria do fornecedor com vários produtos
+// (reaproveita /api/catalogo/raspar-lista) e mostra o "carrinho" de seleção.
+async function oemRasparCatalogo() {
+  var url = document.getElementById('oem-catalogo-url-input').value.trim();
+  if (!url) return;
+  var status = document.getElementById('oem-status');
+  status.innerHTML = '⏳ Acessando catálogo e identificando produtos...';
+  try {
+    var r = await api('POST', '/catalogo/raspar-lista', { url: url });
+    if (!r.ok) { status.textContent = '❌ ' + (r.erro || 'Falha ao raspar catálogo'); return; }
+    if (!r.encontrado || !r.produtos.length) { status.textContent = '⚠️ ' + (r.mensagem || 'Nenhum produto identificado nesta página.'); return; }
+    var itens = r.produtos.map(function(p) {
+      return massaNormalizarItem({
+        codigo_fabricante: p.sku, nome: p.nome, fabricante: p.fabricante, preco_custo: p.preco, _url_origem: p.url
+      }, 'catalogo');
+    });
+    status.textContent = '⏳ ' + itens.length + ' produto(s) encontrado(s) — calculando NTC...';
+    await oemProcessarItensEncontrados(itens);
+  } catch (e) {
+    status.textContent = '❌ Erro ao raspar catálogo: ' + e.message;
+  }
+}
+
+// Calcula o NTC de cada item encontrado (PDF/URL/Catálogo). Se for um único
+// produto, carrega direto no Cadastro Completo (Etapa 2). Se forem vários,
+// exibe o "carrinho" para o lojista escolher quais cadastrar.
+async function oemProcessarItensEncontrados(itens) {
+  var status = document.getElementById('oem-status');
+  if (itens.length === 1) {
+    var item = itens[0];
+    try {
+      var r = await api('POST', '/motor/nct', item);
+      item = Object.assign({}, item, { ntc: r.ntc||0, decisao: r.decisao||'REPROVADO', rast_hash: r.rast_hash||'' });
+    } catch(e) {}
+    if (status) status.textContent = '✅ Produto identificado — revise os dados e siga para a Etapa 2.';
+    oemCarregarDados(item);
+    return;
+  }
+  _oemCarrinhoItens = [];
+  for (var i = 0; i < itens.length; i++) {
+    var item = itens[i];
+    try {
+      var r = await api('POST', '/motor/nct', item);
+      item = Object.assign({}, item, { ntc: r.ntc||0, decisao: r.decisao||'REPROVADO', rast_hash: r.rast_hash||'' });
+    } catch(e) {
+      item = Object.assign({}, item, { ntc: 0, decisao: 'REPROVADO' });
+    }
+    item._sel = (item.ntc||0) >= 0.6;
+    _oemCarrinhoItens.push(item);
+  }
+  if (status) status.textContent = '✅ ' + _oemCarrinhoItens.length + ' produto(s) listado(s) abaixo — selecione os que deseja cadastrar.';
+  oemCarrinhoRender();
+}
+
+function oemCarrinhoRender() {
+  var card = document.getElementById('oem-carrinho-card');
+  var tbody = document.getElementById('oem-carrinho-tbody');
+  if (!_oemCarrinhoItens.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  var selecionados = _oemCarrinhoItens.filter(function(i){ return i._sel; }).length;
+  document.getElementById('oem-carrinho-resumo').textContent = _oemCarrinhoItens.length + ' produto(s) — ' + selecionados + ' selecionado(s)';
+  tbody.innerHTML = _oemCarrinhoItens.map(function(item, i) {
+    var ntcPct = Math.round((item.ntc||0)*100);
+    return '<tr>'
+      + '<td style="padding:8px;text-align:center"><input type="checkbox" ' + (item._sel?'checked':'') + ' onchange="oemCarrinhoToggle(' + i + ',this.checked)"></td>'
+      + '<td style="padding:8px"><code style="color:#ff4500">' + esc(item.codigo_fabricante||'—') + '</code></td>'
+      + '<td style="padding:8px">' + esc(item.nome||'—') + '</td>'
+      + '<td class="col-opt" style="padding:8px">' + esc(item.fabricante||'—') + '</td>'
+      + '<td style="padding:8px;text-align:center;font-weight:700">' + ntcPct + '%</td>'
+      + '<td style="padding:8px;text-align:center">' + badgeHtml(item.decisao) + '</td>'
+      + '<td style="padding:8px;text-align:center"><button class="btn btn-sm btn-secondary" onclick="oemCarrinhoCompletar(' + i + ')">Completar</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function oemCarrinhoToggle(idx, checked) {
+  if (_oemCarrinhoItens[idx]) _oemCarrinhoItens[idx]._sel = checked;
+  oemCarrinhoRender();
+}
+
+function oemCarrinhoMarcarTodos(checked) {
+  _oemCarrinhoItens.forEach(function(i){ i._sel = checked; });
+  oemCarrinhoRender();
+}
+
+// Carrega um item do carrinho diretamente no Cadastro Completo (Etapa 2) para
+// revisão individual antes de publicar.
+function oemCarrinhoCompletar(idx) {
+  var item = _oemCarrinhoItens[idx];
+  if (!item) return;
+  oemCarregarDados(item);
+}
+
+// Envia os itens selecionados do carrinho para a fila de Aprovação &
+// Congelados (Pendentes), preservando dados já cadastrados em produtos
+// existentes (mesmo Part Number + Fabricante).
+function oemCarrinhoEnviar() {
+  var selecionados = _oemCarrinhoItens.filter(function(i){ return i._sel; });
+  if (!selecionados.length) { alert('Selecione ao menos um produto.'); return; }
+  var prods = getProds();
+  var enviados = 0, atualizados = 0;
+  selecionados.forEach(function(item) {
+    var jaExistia = _prodEncontrarIndice(prods, item) >= 0;
+    _prodSalvarOuFundir(prods, item, { ntc: item.ntc, decisao: item.decisao, rast_hash: item.rast_hash, _fonte: item._fonte, ts: Date.now() }, 'imp');
+    if (jaExistia) atualizados++; else enviados++;
+  });
+  saveProds(prods);
+  atualizarStats();
+  atualizarBadgeAprovacao();
+  _oemCarrinhoItens = _oemCarrinhoItens.filter(function(i){ return !i._sel; });
+  oemCarrinhoRender();
+  var msg = '✅ ' + enviados + ' produto(s) enviado(s) para Aprovação & Congelados';
+  if (atualizados) msg += ' (' + atualizados + ' já cadastrado(s) — dados atualizados)';
+  document.getElementById('oem-status').textContent = msg;
 }
 
 // ===== ENRIQUECIMENTO EM MASSA =====
@@ -4668,6 +5237,7 @@ function catEnriquecerCadastro() {
     if (_catDados.motor)             document.getElementById('oem-f-motor').value  = _catDados.motor;
     if (_catDados.material)          document.getElementById('oem-f-material').value = _catDados.material;
     document.getElementById('oem-resultado').style.display = 'block';
+    oemIrEtapa(2);
     _cntcRecalcular();
   }, 150);
 }
@@ -5140,6 +5710,11 @@ function catalogoFileSelect(input) {
   var status = document.getElementById('catalogo-file-status');
 
   if (name.endsWith('.pdf')) {
+    if (file.size > PDF_UPLOAD_MAX_BYTES) {
+      status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 20 MB. Tente um arquivo menor ou compacte o PDF.';
+      input.value = '';
+      return;
+    }
     status.textContent = '⏳ Lendo PDF ' + file.name + '...';
     var fd = new FormData();
     fd.append('arquivo', file);
@@ -5160,7 +5735,10 @@ function catalogoFileSelect(input) {
         status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
       }
     }).catch(function(e) {
-      status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+      var msg = (e.message === 'Failed to fetch')
+        ? 'Falha de conexão ao enviar o PDF. Verifique sua internet e tente novamente.'
+        : e.message;
+      status.textContent = '❌ Erro ao enviar PDF: ' + msg;
     });
     return;
   }
@@ -5475,27 +6053,35 @@ function massaToggleModo(modo) {
   var ta = document.getElementById('massa-input');
   if (ta) ta.placeholder = placeholders[modo] || '';
 
-  var dropZone = document.querySelector('#page-massa .cat-drop-zone');
+  var dropZone = document.getElementById('massa-dropzone-generico');
+  var pdfPanel = document.getElementById('massa-modo-pdf');
   var urlRow = document.getElementById('massa-url-row');
   var catalogoRow = document.getElementById('massa-catalogo-url-row');
   var taGroup = document.getElementById('massa-textarea-group');
   var dropHint = document.getElementById('massa-dropzone-hint');
   var ehUrl = modo === 'url';
   var ehCatalogo = modo === 'catalogo';
-  if (dropZone) dropZone.style.display = ehCatalogo ? 'none' : '';
-  if (taGroup) taGroup.style.display = (ehUrl || ehCatalogo) ? 'none' : '';
+  var ehPdf = modo === 'pdf';
+  if (dropZone) dropZone.style.display = (ehCatalogo || ehPdf) ? 'none' : '';
+  if (pdfPanel) pdfPanel.style.display = ehPdf ? 'block' : 'none';
+  if (taGroup) taGroup.style.display = (ehUrl || ehCatalogo || ehPdf) ? 'none' : '';
   if (urlRow) urlRow.style.display = ehUrl ? 'flex' : 'none';
   if (dropHint) dropHint.style.display = ehUrl ? 'block' : 'none';
   if (catalogoRow) catalogoRow.style.display = ehCatalogo ? 'flex' : 'none';
 }
 
-function massaFileSelect(input) {
+function massaFileSelect(input, statusId) {
   var file = input.files[0];
   if (!file) return;
   var name = file.name.toLowerCase();
-  var status = document.getElementById('massa-file-status');
+  var status = document.getElementById(statusId || 'massa-file-status');
 
   if (name.endsWith('.pdf')) {
+    if (file.size > PDF_UPLOAD_MAX_BYTES) {
+      status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 20 MB. Tente um arquivo menor ou compacte o PDF.';
+      input.value = '';
+      return;
+    }
     status.textContent = '⏳ Lendo PDF ' + file.name + '...';
     var fd = new FormData();
     fd.append('arquivo', file);
@@ -5516,7 +6102,10 @@ function massaFileSelect(input) {
         status.textContent = '📎 ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB, ' + r.paginas + ' página(s) extraídas)';
       }
     }).catch(function(e) {
-      status.textContent = '❌ Erro ao enviar PDF: ' + e.message;
+      var msg = (e.message === 'Failed to fetch')
+        ? 'Falha de conexão ao enviar o PDF. Verifique sua internet e tente novamente.'
+        : e.message;
+      status.textContent = '❌ Erro ao enviar PDF: ' + msg;
     });
     return;
   }
@@ -5966,6 +6555,19 @@ function aprovCadImportar() {
 var _aprovEnriqTab = 'principal';
 var _aprovEnriqSort = 'date-desc';
 var _aprovEnriqPage = 0;
+var _aprovEnriqStatus = 'pendentes';
+
+function aprovEnriqSetStatus(status, btn) {
+  _aprovEnriqStatus = status;
+  _aprovEnriqPage = 0;
+  document.querySelectorAll('#aprov-enriq-status-tabs .tab').forEach(function(t){ t.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var aprovarBtn = document.getElementById('aprov-enriq-aprovar-sel');
+  if (aprovarBtn) aprovarBtn.style.display = (status === 'congelados') ? 'none' : '';
+  var chkAll = document.getElementById('aprov-enriq-chk-all');
+  if (chkAll) chkAll.style.visibility = (status === 'congelados') ? 'hidden' : '';
+  aprovEnriqRender();
+}
 
 function aprovEnriqToggleDd(btn) {
   var dd=document.getElementById('aprov-enriq-dd');
@@ -6002,7 +6604,12 @@ function aprovEnriqPgChange(dir){
   aprovEnriqRender();
 }
 function aprovEnriqGetSorted(){
-  var prods=getProds().filter(function(p){ return p.descricao||p.voz_do_lojista||((p.ntc||0)>=0.5); });
+  var prods;
+  if(_aprovEnriqStatus==='congelados'){
+    prods=getProds().filter(function(p){ return p.decisao==='APROVADO' && p._publicado; });
+  }else{
+    prods=getProds().filter(function(p){ return (p.descricao||p.voz_do_lojista||((p.ntc||0)>=0.5)) && !(p.decisao==='APROVADO'&&p._publicado); });
+  }
   var s=_aprovEnriqSort;
   if(s==='date-desc') prods.sort(function(a,b){ return (b._ts||0)-(a._ts||0); });
   else if(s==='date-asc') prods.sort(function(a,b){ return (a._ts||0)-(b._ts||0); });
@@ -6029,8 +6636,11 @@ function aprovEnriqRender(){
   var prev=document.getElementById('aprov-enriq-prev'); if(prev) prev.disabled=_aprovEnriqPage<=0;
   var next=document.getElementById('aprov-enriq-next'); if(next) next.disabled=_aprovEnriqPage>=maxPage;
   var tbody=document.getElementById('aprov-enriq-tbody'); if(!tbody) return;
+  var isCongelados=_aprovEnriqStatus==='congelados';
   if(!prods.length){
-    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:#555">Nenhum produto enriquecido.<br><small>Enriqueça produtos via Voz do Lojista ou Enriquecimento OEM.</small></td></tr>';
+    tbody.innerHTML=isCongelados
+      ?'<tr><td colspan="9" style="text-align:center;padding:40px;color:#555">❄️ Nenhum produto congelado ainda.<br><small>Publique produtos com NTC ≥ 95% na Etapa 2 (Revisão &amp; Publicação) do Cadastro Completo.</small></td></tr>'
+      :'<tr><td colspan="9" style="text-align:center;padding:40px;color:#555">Nenhum produto enriquecido.<br><small>Enriqueça produtos via Voz do Lojista ou Enriquecimento OEM.</small></td></tr>';
     return;
   }
   tbody.innerHTML=prods.map(function(p,i){
@@ -6042,8 +6652,19 @@ function aprovEnriqRender(){
     var hasDesc=!!(p.descricao||p.voz_do_lojista);
     var img=(p.imagens&&p.imagens[0])?'<img src="'+esc(p.imagens[0])+'" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #333">'
       :'<div style="width:36px;height:36px;background:#1a1a1a;border-radius:4px;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:16px">📷</div>';
+    var statusCol=isCongelados
+      ?'<span style="color:#0284c7;font-size:12px">❄️ Congelado</span>'
+      :'<span style="color:'+stClr+';font-size:12px">&#9679; '+stLbl+'</span>';
+    var acoesCol=isCongelados
+      ?'<button class="btn btn-sm btn-primary" style="margin-right:4px" onclick="congeladosAbrirPerfil('+gi+')">&#128269; Perfil Completo</button>'
+        +'<button class="btn btn-sm btn-secondary" style="margin-right:4px" onclick="congeladosReciclar('+gi+')">&#9851; Reciclar</button>'
+        +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640" onclick="congeladosDeletar('+gi+')">&#128465; Deletar</button>'
+      :'<button class="btn btn-sm" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;margin-right:4px" onclick="aprovEnriqAprovar('+gi+')">&#10003; Aprovar</button>'
+        +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640;margin-right:4px" onclick="aprovEnriqReprovar('+gi+')">&#10006; Reprovar</button>'
+        +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerProd('+gi+')" style="margin-right:4px">&#10024; Enriquecer</button>'
+        +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriqVerDesc('+gi+')">&#128065; Ver</button>';
     return '<tr>'
-      +'<td style="padding:8px 6px;text-align:center"><input type="checkbox" class="aprov-enriq-chk" data-gi="'+gi+'"></td>'
+      +'<td style="padding:8px 6px;text-align:center">'+(isCongelados?'':'<input type="checkbox" class="aprov-enriq-chk" data-gi="'+gi+'">')+'</td>'
       +'<td style="padding:8px 6px;color:#555;font-size:12px">'+(start+i+1)+'</td>'
       +'<td style="padding:8px 6px">'+img+'</td>'
       +'<td style="padding:8px 6px"><div style="font-size:13px;font-weight:600">'+esc(p.nome||p.codigo_fabricante||'—')+'</div>'
@@ -6051,13 +6672,8 @@ function aprovEnriqRender(){
       +'<td class="col-opt" style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(p.fabricante||'—')+'</td>'
       +'<td class="col-opt" style="padding:8px 6px;font-size:12px;color:#aaa">'+esc(p.categoria||'—')+'</td>'
       +'<td style="padding:8px 6px;text-align:center"><span style="font-weight:700;color:'+ntcClr+'">'+ntcPct+'%</span></td>'
-      +'<td style="padding:8px 6px;text-align:center"><span style="color:'+stClr+';font-size:12px">&#9679; '+stLbl+'</span></td>'
-      +'<td style="padding:8px 6px;white-space:nowrap">'
-      +'<button class="btn btn-sm" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;margin-right:4px" onclick="aprovEnriqAprovar('+gi+')">&#10003; Aprovar</button>'
-      +'<button class="btn btn-sm" style="background:#f4433620;color:#f44336;border:1px solid #f4433640;margin-right:4px" onclick="aprovEnriqReprovar('+gi+')">&#10006; Reprovar</button>'
-      +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriquecerProd('+gi+')" style="margin-right:4px">&#10024; Enriquecer</button>'
-      +'<button class="btn btn-sm btn-secondary" onclick="aprovEnriqVerDesc('+gi+')">&#128065; Ver</button>'
-      +'</td></tr>';
+      +'<td style="padding:8px 6px;text-align:center">'+statusCol+'</td>'
+      +'<td style="padding:8px 6px;white-space:nowrap">'+acoesCol+'</td></tr>';
   }).join('');
 }
 function aprovEnriqAprovar(idx){
