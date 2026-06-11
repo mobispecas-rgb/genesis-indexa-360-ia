@@ -3361,6 +3361,10 @@ var _oemDnaExtras = {}; // campos extras do agente de DNA sem input próprio nes
 // de um produto já existente na fila (idx) ou em modo "novo produto" (null).
 function oemDefinirModoEdicao(idx) {
   _oemEditIdx = idx;
+  // Limpa os extras do agente de DNA (dimensões, CEST, aplicação veicular etc.)
+  // de uma busca anterior — sem isso, dados de OUTRO produto (ex: dados_fiscais
+  // e logística) podem "vazar" e sobrescrever este produto ao salvar.
+  _oemDnaExtras = {};
   var banner = document.getElementById('oem-edit-banner');
   var btnPublicar = document.getElementById('oem-btn-publicar');
   if (idx != null) {
