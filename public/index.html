@@ -379,6 +379,14 @@ tr:hover td{background:#f9fafb}
           <div id="ia-falta" style="font-size:13px;line-height:2"></div>
         </div>
 
+        <!-- Agente de Enriquecimento de DNA via Web -->
+        <div class="card">
+          <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
+          <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST (validado na TIPI oficial), aplica&ccedil;&atilde;o veicular, motor, material, dimens&otilde;es e c&oacute;digos equivalentes (cross-codes) na web. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, e o NTC abaixo &eacute; recalculado com esses dados, sempre pendente de confirma&ccedil;&atilde;o humana.</p>
+          <button class="btn btn-secondary" onclick="iaBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
+          <div id="ia-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+        </div>
+
         <div id="ia-modules"></div>
 
         <!-- VOZ DO LOJISTA — só disponível com DNA confirmado -->
@@ -2020,6 +2028,156 @@ function renderIAResults(result, texto) {
     vozCard.style.display = 'none';
     window._iaVozParsed = null;
   }
+}
+
+// Rótulos amigáveis dos campos retornados por /api/motor/enriquecer-dna
+var LABELS_DNA = {
+  codigo_oem:'Código OEM', ean:'EAN/GTIN', ncm:'NCM', cest:'CEST', motor:'Motor', codigo_motor:'Código Motor',
+  marca_veiculo:'Marca do Veículo', modelo_veiculo:'Modelo do Veículo', versao_veiculo:'Versão',
+  ano_inicial:'Ano Inicial', ano_final:'Ano Final', cilindrada:'Cilindrada', material:'Material',
+  posicao:'Posição', fmsi:'Código FMSI', comprimento:'Comprimento (cm)', largura:'Largura (cm)',
+  altura:'Altura (cm)', cross_codes:'Cross-Codes (equivalentes)'
+};
+
+// Monta o resumo HTML (campos encontrados com fonte/confiança + pendências) para o agente de DNA via Web
+function _dnaWebListaHtml(campos) {
+  var encontrados = [], pendentes = [];
+  Object.keys(campos).forEach(function(c) {
+    var info = campos[c];
+    if (!info) return;
+    var label = LABELS_DNA[c] || c;
+    if (info.valor != null && info.valor !== '') {
+      encontrados.push({campo: label, valor: info.valor, confianca: info.confianca, fonte: info.fonte, motivo: info.motivo});
+    } else if (info.motivo && info.motivo !== 'fonte não encontrada') {
+      pendentes.push({campo: label, motivo: info.motivo});
+    }
+  });
+  var html = '';
+  if (encontrados.length === 0) {
+    html = '<span style="color:#ffaa00">A IA n&atilde;o encontrou nenhum campo com fonte confi&aacute;vel.</span>';
+  } else {
+    html = '<div style="color:#00ff88;margin-bottom:6px">&#10003; ' + encontrados.length + ' campo(s) encontrado(s) na web &mdash; confira a fonte antes de usar:</div><ul style="margin:0 0 6px;padding-left:18px">';
+    encontrados.forEach(function(p) {
+      var cor = p.confianca === 'alta' ? '#00ff88' : (p.confianca === 'media' ? '#ffaa00' : '#ff6500');
+      html += '<li style="margin-bottom:3px"><strong>' + esc(p.campo) + '</strong>: ' + esc(String(p.valor)) + ' <span style="color:' + cor + '">(' + esc(p.confianca) + ')</span>'
+            + (p.fonte ? ' &mdash; <a href="' + esc(p.fonte) + '" target="_blank" rel="noopener" style="color:#888">fonte</a>' : '')
+            + (p.motivo ? ' &mdash; <span style="color:#ff6500">' + esc(p.motivo) + '</span>' : '')
+            + '</li>';
+    });
+    html += '</ul>';
+  }
+  if (pendentes.length > 0) {
+    html += '<div style="font-size:11px;color:#ff6500;margin-top:4px">&#9888; ' + pendentes.length + ' campo(s) encontrados mas n&atilde;o confi&aacute;veis: ';
+    html += pendentes.map(function(p){ return esc(p.campo) + ' (' + esc(p.motivo) + ')'; }).join(', ');
+    html += '</div>';
+  }
+  return html;
+}
+
+// Busca DNA na web (IA) a partir do produto analisado em "IA Analyzer" e recalcula o NTC real
+async function iaBuscarDnaWeb() {
+  var statusEl = document.getElementById('ia-dna-status');
+  var p = window._iaParsedAtual;
+  if (!p || (!p.sku && !p.descricao)) {
+    statusEl.innerHTML = '<span style="color:#ff6500">&#9888; Analise um produto antes de buscar o DNA na web.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '&#8987; Buscando DNA na web (IA)... isso pode levar at&eacute; 1 minuto.';
+
+  var r;
+  try {
+    r = await api('POST', '/motor/enriquecer-dna', {sku: p.sku || '', fabricante: p.marca || '', nome: p.descricao || ''});
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#ff4500">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+
+  if (!r.ok) {
+    statusEl.innerHTML = '<span style="color:#ff4500">&#9888; ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
+    return;
+  }
+  if (!r.encontrado) {
+    statusEl.innerHTML = '<span style="color:#ffaa00">&#9888; ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
+    return;
+  }
+
+  var campos = r.campos || {};
+  window._iaDnaWeb = campos;
+
+  // Monta os dados completos do produto para recalcular o NTC real (motor 4.0)
+  var dados = {
+    fabricante: p.marca || null,
+    sku: p.sku || null,
+    codigo_fabricante: p.sku || null,
+    nome: p.descricao || null,
+    descricao: p.descricao || null,
+    familia_tecnica: p.familia || null,
+  };
+  Object.keys(MAPA_CAMPOS_DNA).forEach(function(campo) {
+    var info = campos[campo];
+    if (info && info.valor != null && info.valor !== '') dados[MAPA_CAMPOS_DNA[campo].key] = info.valor;
+  });
+  var especificacoes = (p.componentes || []).slice();
+  if (campos.posicao && campos.posicao.valor) especificacoes.push('Posição: ' + campos.posicao.valor);
+  if (campos.fmsi && campos.fmsi.valor) especificacoes.push('Código FMSI: ' + campos.fmsi.valor);
+  if (especificacoes.length) dados.especificacoes = especificacoes;
+  if (campos.cross_codes && campos.cross_codes.valor) {
+    dados.cc_aftermarket = String(campos.cross_codes.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+  }
+  window._iaDadosEnriquecidos = dados;
+
+  // Recalcula o NTC real com o motor 4.0 (backend) e atualiza a tela
+  try {
+    var ntcResult = await api('POST', '/motor/nct', dados);
+    if (ntcResult && ntcResult.ok) {
+      var pct = (ntcResult.ntc * 100).toFixed(1);
+      var cls = ntcResult.decisao === 'APROVADO' ? 'ntc-aprovado' : ntcResult.decisao === 'PENDENTE' ? 'ntc-pendente' : 'ntc-reprovado';
+      document.getElementById('ia-ntc-num').textContent = pct + '%';
+      document.getElementById('ia-ntc-num').className = 'ntc-big ' + cls;
+      document.getElementById('ia-badge').innerHTML = badgeHtml(ntcResult.decisao);
+
+      var scores = ntcResult.scores || {};
+      document.getElementById('ia-modules').innerHTML = Object.keys(PESOS_NTC).map(function(k) {
+        var sc = scores[k] || 0;
+        var w = PESOS_NTC[k];
+        var contrib = (sc * w * 100).toFixed(2);
+        var barColor = sc >= 0.8 ? '#00ff88' : sc >= 0.4 ? '#ffaa00' : '#ff6500';
+        var meta = MODULE_META[k];
+        var itemsHtml = meta.items.map(function(it){
+          var ok = sc > 0.1;
+          return '<span class="' + (ok ? 'check-ok' : 'check-no') + '">' + (ok ? '✔' : '✖') + ' ' + it + '</span>&nbsp;&nbsp;';
+        }).join('');
+        return '<div class="module-card"><div class="module-head"><div class="module-name">' + meta.label + '</div><div class="module-score">' + (sc*100).toFixed(0) + '% &nbsp;<span style="color:#666">+' + contrib + '% (w:' + (w*100).toFixed(0) + '%)</span></div></div><div class="module-bar-wrap"><div class="module-bar" style="width:' + (sc*100) + '%;background:' + barColor + '"></div></div><div class="module-items">' + itemsHtml + '</div></div>';
+      }).join('');
+
+      var falta = Object.keys(PESOS_NTC).filter(function(k){ return (scores[k]||0) < 0.5; });
+      document.getElementById('ia-falta').innerHTML = falta.length
+        ? falta.map(function(k){ return '<div><span class="check-no">✖</span> <strong>' + MODULE_META[k].label + '</strong> &mdash; ' + MODULE_META[k].desc + '</div>'; }).join('')
+        : '<div class="check-ok">✔ Todos os módulos suficientes!</div>';
+    }
+  } catch (e) {}
+
+  // Atualiza os payloads das gavetas (Bling, Wix, Google Shopping) com NCM/EAN encontrados
+  try {
+    if (dados.ncm) {
+      var blingJson = JSON.parse(document.getElementById('gaveta-bling').textContent);
+      blingJson.tributacao = blingJson.tributacao || {};
+      blingJson.tributacao.ncm = dados.ncm;
+      document.getElementById('gaveta-bling').textContent = JSON.stringify(blingJson, null, 2);
+    }
+  } catch(e) {}
+  try {
+    if (dados.ean) {
+      var gshopJson = JSON.parse(document.getElementById('gaveta-gshop').textContent);
+      gshopJson.gtin = dados.ean;
+      document.getElementById('gaveta-gshop').textContent = JSON.stringify(gshopJson, null, 2);
+    }
+  } catch(e) {}
+
+  // Resumo visual com fontes e confiança
+  statusEl.innerHTML = _dnaWebListaHtml(campos)
+    + '<div style="margin-top:6px;font-size:11px;color:#666">Fontes consultadas: ' + (r.fontes_consultadas||[]).length + ' &mdash; NTC recalculado com o Motor 4.0</div>';
 }
 
 // Geração de voz IA — EXIGE DNA confirmado, nunca inventa dados
@@ -4539,6 +4697,28 @@ async function cntcBuscarDnaWeb() {
     }
     preenchidos.push({campo: campo, valor: info.valor, confianca: info.confianca, fonte: info.fonte});
   });
+
+  // Cross-codes (CC) — códigos equivalentes em outras marcas aftermarket
+  (function() {
+    var info = campos.cross_codes;
+    if (!info || info.valor == null || info.valor === '') return;
+    var itens = String(info.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if (itens.length === 0) return;
+    var el = document.getElementById('cntc-cc-after');
+    if (el) {
+      itens.forEach(function(it) {
+        if (el.value.indexOf(it) === -1) el.value = el.value ? (el.value + '\n' + it) : it;
+      });
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+    } else {
+      if (!Array.isArray(_cntcDados.cc_aftermarket)) _cntcDados.cc_aftermarket = [];
+      itens.forEach(function(it) {
+        if (_cntcDados.cc_aftermarket.indexOf(it) === -1) _cntcDados.cc_aftermarket.push(it);
+      });
+    }
+    preenchidos.push({campo: 'cross_codes', valor: itens.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
 
   // Recalcula o NTC com os novos dados preservando os campos já em tela
   await _cntcRecalcular();

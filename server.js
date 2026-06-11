@@ -215,6 +215,17 @@ function validarNCM(codigo) {
   return digitos.length === 8 ? digitos : null;
 }
 
+// Consulta a tabela TIPI oficial (BrasilAPI) para confirmar se o NCM existe.
+// Retorna a descrição oficial do código, ou null se não encontrado/erro.
+async function consultarNCMOficial(ncm8) {
+  try {
+    const data = await httpsJSON({ hostname: 'brasilapi.com.br', path: '/api/ncm/v1/' + ncm8, method: 'GET' }, null, 8000);
+    return (data && data.codigo && data.descricao) ? data.descricao : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Busca web com fallback: Serper.dev (primário) → Google Custom Search (secundário)
 async function buscarWeb(q, num = 10) {
   const resultados = [];
@@ -488,7 +499,8 @@ REGRAS ABSOLUTAS:
 const CAMPOS_DNA = [
     'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
     'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
-    'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura'
+    'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
+    'cross_codes'
 ];
 
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
@@ -546,6 +558,7 @@ Campos:
 - comprimento: comprimento em cm (número)
 - largura: largura em cm (número)
 - altura: altura em cm (número)
+- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket (ex: Gates, Dayco, INA, SKF, Bosch, NGK, Fram, Tecfil). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Gates K015642XS; Dayco KTB1009; INA 530 0453 10")
 
 REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
@@ -591,6 +604,19 @@ REGRAS ABSOLUTAS:
             }
             campos[c] = { valor, fonte: fonte || null, confianca, motivo };
         });
+
+        // Confirma o NCM contra a tabela TIPI oficial (BrasilAPI) — eleva a confiança
+        // se o código existir oficialmente, ou sinaliza confirmação fiscal se não existir
+        if (campos.ncm.valor) {
+            const descOficial = await consultarNCMOficial(campos.ncm.valor);
+            if (descOficial) {
+                campos.ncm.confianca = 'alta';
+                campos.ncm.motivo = 'confirmado na TIPI: ' + descOficial;
+            } else {
+                campos.ncm.confianca = 'baixa';
+                campos.ncm.motivo = 'NCM não encontrado na tabela TIPI oficial — requer confirmação fiscal';
+            }
+        }
 
         const encontrado = CAMPOS_DNA.some(c => campos[c].valor != null);
         res.json({ ok: true, encontrado, campos, fontes_consultadas: trechos.map(t => t.fonte), pendente_confirmacao: true });
