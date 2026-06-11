@@ -375,6 +375,7 @@ tr:hover td{background:#f9fafb}
           <textarea id="ia-input" rows="5" placeholder="Ex: KIT DE DISTRIBUICAO / CORREIA DENTADA - KIT9063 - NYTRON&#10;Ex: PASTILHA DE FREIO DIANTEIRA - PF4201 - FREMAX"></textarea>
         </div>
         <button class="btn btn-primary" onclick="analisarIA()">&#128269; Analisar NTC 4.0</button>
+        <button class="btn btn-secondary" onclick="iaLimparAnalise()">&#128465;&#65039; Limpar An&aacute;lise</button>
       </div>
 
       <div id="ia-results" style="display:none">
@@ -492,8 +493,13 @@ tr:hover td{background:#f9fafb}
             </div>
           </div>
           <div class="form-group"><label>Arquivo</label><input type="file" id="img-file" accept="image/*" style="padding:6px"></div>
-          <button class="btn btn-primary btn-sm" onclick="uploadImagem()">&#128228; Enviar Imagem</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="uploadImagem()">&#128228; Enviar Imagem</button>
+            <button class="btn btn-secondary btn-sm" onclick="iaBuscarImagens()">&#127760; Buscar Imagens (Google)</button>
+          </div>
           <div id="img-upload-msg" style="margin-top:10px;font-size:12px"></div>
+          <div id="ia-img-busca-status" style="margin-top:8px;font-size:12px;color:#6b7280"></div>
+          <div id="ia-img-busca-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px"></div>
         </div>
       </div>
     </div>
@@ -2077,6 +2083,33 @@ function analisarIA() {
   renderIAResults(result, texto);
 }
 
+// Descarta a análise atual (texto, resultados, DNA via web, Voz do Lojista e
+// gavetas) e volta o IA Analyzer ao estado inicial — evita misturar dados de
+// uma análise anterior com a próxima (mesmo princípio do BUG-03).
+function iaLimparAnalise() {
+  document.getElementById('ia-input').value = '';
+  document.getElementById('ia-results').style.display = 'none';
+  document.getElementById('ia-dna-status').innerHTML = '';
+  document.getElementById('ia-modules').innerHTML = '';
+  document.getElementById('ia-falta').innerHTML = '';
+  document.getElementById('ia-voz-output').textContent = '—';
+  document.getElementById('ia-voz-status').innerHTML = '';
+  document.getElementById('ia-voz-meta').style.display = 'none';
+  document.getElementById('ia-voz-card').style.display = 'none';
+  document.getElementById('ia-gavetas-card').style.display = 'none';
+  document.getElementById('gaveta-bling').textContent = '';
+  document.getElementById('gaveta-wix').textContent = '';
+  document.getElementById('gaveta-gshop').textContent = '';
+  document.getElementById('ia-sync-status').textContent = '';
+  document.getElementById('img-prod-id').value = '';
+  document.getElementById('img-upload-msg').textContent = '';
+  window._iaParsedAtual = null;
+  window._iaVozParsed = null;
+  window._iaDnaWeb = null;
+  window._iaDadosEnriquecidos = null;
+  document.getElementById('ia-input').focus();
+}
+
 function renderIAResults(result, texto) {
   var ntc = result.ntc, decisao = result.decisao, scores = result.scores, pesos = result.pesos, parsed = result.parsed;
   var pct = (ntc * 100).toFixed(1);
@@ -2194,7 +2227,8 @@ var LABELS_DNA = {
   marca_veiculo:'Marca do Veículo', modelo_veiculo:'Modelo do Veículo', versao_veiculo:'Versão',
   ano_inicial:'Ano Inicial', ano_final:'Ano Final', cilindrada:'Cilindrada', material:'Material',
   posicao:'Posição', fmsi:'Código FMSI', comprimento:'Comprimento (cm)', largura:'Largura (cm)',
-  altura:'Altura (cm)', cross_codes:'Cross-Codes (equivalentes)', aplicacoes_adicionais:'Aplicações Adicionais'
+  altura:'Altura (cm)', peso_bruto:'Peso Bruto (kg)', peso_liquido:'Peso Líquido (kg)',
+  cross_codes:'Cross-Codes (equivalentes)', aplicacoes_adicionais:'Aplicações Adicionais'
 };
 
 // Monta o resumo HTML (campos encontrados com fonte/confiança + pendências) para o agente de DNA via Web
@@ -2524,6 +2558,57 @@ async function uploadImagem() {
     };
     reader2.readAsDataURL(file);
   }
+}
+
+// Busca imagens do produto no Google/Serper (reaproveita /api/imagens/buscar)
+// e exibe uma grade — clicar numa imagem a anexa ao produto (mesma lista do
+// "Enviar Imagem"), sem precisar fazer upload manual.
+async function iaBuscarImagens() {
+  var status = document.getElementById('ia-img-busca-status');
+  var grid = document.getElementById('ia-img-busca-grid');
+  var p = window._iaParsedAtual || {};
+  var prodId = document.getElementById('img-prod-id').value.trim() || p.sku || '';
+  var q = [p.fabricante, p.sku || prodId, p.descricao].filter(Boolean).join(' ') || prodId;
+  if (!q) { status.textContent = '⚠️ Analise um produto ou informe o ID/Referência antes de buscar imagens.'; return; }
+  if (prodId && !document.getElementById('img-prod-id').value.trim()) document.getElementById('img-prod-id').value = prodId;
+
+  status.textContent = '⏳ Buscando imagens...';
+  grid.innerHTML = '';
+  try {
+    var r = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(q) + '&fonte=ia');
+    if (!r.ok || !r.imagens || !r.imagens.length) {
+      status.innerHTML = r.mensagem
+        ? '&#9888;&#65039; ' + esc(r.mensagem)
+        : '&#9888;&#65039; Nenhuma imagem encontrada para "' + esc(q) + '".';
+      return;
+    }
+    status.textContent = r.imagens.length + ' imagens encontradas. Clique para anexar ao produto.';
+    grid.innerHTML = r.imagens.slice(0, 12).map(function(img) {
+      var thumb = img.thumb || img.url;
+      var thumbProxy = '/api/imagens/proxy?url=' + encodeURIComponent(thumb);
+      var titulo = (img.titulo || q).replace(/'/g, '\\\'');
+      return '<div onclick="iaAnexarImagem(\'' + esc(thumb) + '\')" '
+        + 'style="cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color .15s" '
+        + 'onmouseover="this.style.borderColor=\'#ff4500\'" onmouseout="this.style.borderColor=\'transparent\'" title="' + esc(titulo) + '">'
+        + '<img src="' + thumbProxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" onerror="this.src=\'' + esc(thumb) + '\';this.onerror=null">'
+        + '</div>';
+    }).join('');
+  } catch (e) {
+    status.textContent = '✖ Erro: ' + e.message;
+  }
+}
+
+// Anexa a imagem selecionada (URL via proxy) ao produto informado em
+// "ID / Referência do Produto", na mesma lista usada pelo "Enviar Imagem".
+function iaAnexarImagem(thumbUrl) {
+  var prodId = document.getElementById('img-prod-id').value.trim();
+  var tipo = document.getElementById('img-tipo').value;
+  var msg = document.getElementById('img-upload-msg');
+  if (!prodId) { msg.textContent = 'Preencha o ID do produto antes de anexar a imagem.'; msg.style.color = '#ff6500'; return; }
+  var imgs = getImagens();
+  imgs.push({ ref: prodId, tipo: tipo, src: '/api/imagens/proxy?url=' + encodeURIComponent(thumbUrl), ts: Date.now() });
+  saveImagens(imgs);
+  msg.textContent = '✔ Imagem anexada ao produto ' + prodId + '!'; msg.style.color = '#00ff88';
 }
 
 // ===== IMAGENS PAGE =====
@@ -4039,6 +4124,8 @@ var MAPA_CAMPOS_DNA_EXTRA = {
   comprimento:    { id: 'cntc-fp-comp',  label: 'Comprimento',       key: 'comprimento' },
   largura:        { id: 'cntc-fp-larg',  label: 'Largura',           key: 'largura' },
   altura:         { id: 'cntc-fp-alt',   label: 'Altura',            key: 'altura' },
+  peso_bruto:     { id: 'cntc-fi-pesob', label: 'Peso Bruto',        key: 'peso_bruto' },
+  peso_liquido:   { id: 'cntc-fi-pesol', label: 'Peso Líquido',      key: 'peso_liquido' },
 };
 
 // União dos dois mapas — usado pelo agente de DNA na Web (Cadastro Completo e Voz do Lojista)

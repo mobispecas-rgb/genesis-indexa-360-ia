@@ -524,6 +524,7 @@ const CAMPOS_DNA = [
     'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
     'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
     'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
+    'peso_bruto', 'peso_liquido',
     'cross_codes', 'aplicacoes_adicionais'
 ];
 
@@ -582,6 +583,8 @@ Campos:
 - comprimento: comprimento em cm (número)
 - largura: largura em cm (número)
 - altura: altura em cm (número)
+- peso_bruto: peso bruto do produto (com embalagem), em kg (número)
+- peso_liquido: peso líquido do produto (sem embalagem), em kg (número)
 - cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
 - aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
 
