@@ -33,6 +33,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .sb-item:hover{color:#ddd;background:#ffffff08}
 .sb-item.active{border-left:3px solid #ff4500;background:#ff450010;color:#ff4500}
 .sb-item .icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-more{display:none}
+.sb-more.open{display:block}
+.sb-more-toggle{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:1.2px;border-top:1px solid #1f1f1f;margin-top:6px}
+.sb-more-toggle:hover{color:#ddd;background:#ffffff08}
+.sb-more-toggle .chev{margin-left:auto;transition:transform .2s;font-size:10px}
+.sb-more-toggle.open .chev{transform:rotate(90deg)}
 .sb-badge{margin-left:auto;background:#ff4500;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px}
 .sb-footer{margin-top:auto;padding:12px 14px;border-top:1px solid #1f1f1f;font-size:10px;color:#555;line-height:1.4}
 
@@ -214,13 +220,19 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section">
     <div class="sb-section-label">Principal</div>
     <div class="sb-item active" onclick="nav('dashboard')"><span class="icon">&#128202;</span>Dashboard</div>
+    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
+    <div class="sb-item" onclick="nav('ia')"><span class="icon">&#129302;</span>IA Analyzer (Voz do Lojista)</div>
     <div class="sb-item" onclick="nav('produtos')"><span class="icon">&#128230;</span>Produtos</div>
   </div>
+
+  <div class="sb-more-toggle" id="sb-more-toggle" onclick="toggleMaisFerramentas()">
+    <span class="icon">&#8230;</span>Mais ferramentas<span class="chev">&#9656;</span>
+  </div>
+  <div class="sb-more" id="sb-more">
 
   <div class="sb-section">
     <div class="sb-section-label">Catalogacao</div>
     <div class="sb-item" onclick="nav('catalogo')"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
-    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
     <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
     <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
     <div class="sb-item" onclick="nav('aprovacao-enriq')"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o de Enriquecimento</div>
@@ -241,7 +253,6 @@ tr:hover td{background:#f9fafb}
 
   <div class="sb-section">
     <div class="sb-section-label">Intelig&ecirc;ncia</div>
-    <div class="sb-item" onclick="nav('ia')"><span class="icon">&#129302;</span>IA Analyzer</div>
     <div class="sb-item" onclick="nav('relatorios')"><span class="icon">&#128200;</span>Relat&oacute;rios</div>
   </div>
 
@@ -267,6 +278,8 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section">
     <div class="sb-section-label">Sistema</div>
     <div class="sb-item" onclick="nav('config')"><span class="icon">&#9881;&#65039;</span>Configura&ccedil;&otilde;es</div>
+  </div>
+
   </div>
 
   <div class="sb-footer">
@@ -1615,6 +1628,11 @@ function nav(page, opts) {
   document.querySelectorAll('.sb-item').forEach(function(i) {
     if (i.getAttribute('onclick') === "nav('" + page + "')") i.classList.add('active');
   });
+  var activeItem = document.querySelector('.sb-item.active');
+  if (activeItem && document.getElementById('sb-more') && document.getElementById('sb-more').contains(activeItem)) {
+    document.getElementById('sb-more').classList.add('open');
+    document.getElementById('sb-more-toggle').classList.add('open');
+  }
   if (page === 'oem') oemDefinirModoEdicao((opts && opts.editIdx != null) ? opts.editIdx : null);
   if (page === 'dashboard') loadDashboard();
   if (page === 'produtos') loadProdutos();
@@ -1631,6 +1649,11 @@ function nav(page, opts) {
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
+}
+
+function toggleMaisFerramentas() {
+  document.getElementById('sb-more').classList.toggle('open');
+  document.getElementById('sb-more-toggle').classList.toggle('open');
 }
 
 // ===== HEALTH =====
