@@ -10,6 +10,7 @@ const https = require('https');
 const http = require('http');
 const dns = require('dns').promises;
 const net = require('net');
+const zlib = require('zlib');
 const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
 
@@ -62,8 +63,19 @@ async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
     throw new Error('URL aponta para um endereço interno/privado — não permitido');
   }
   const proto = parsed.protocol === 'https:' ? https : http;
+  // Headers de navegador real — muitas lojas (Tray, VTEX etc.) bloqueiam com
+  // 403/405 requisições que não trazem Accept/Accept-Language/Accept-Encoding
+  // e um User-Agent reconhecido.
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Upgrade-Insecure-Requests': '1'
+  };
   return new Promise((resolve, reject) => {
-    const r = proto.get(parsed, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; iRollo360Bot/1.0)' } }, response => {
+    const r = proto.get(parsed, { headers }, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirectsLeft > 0) {
         response.resume();
         const proxima = new URL(response.headers.location, parsed);
@@ -75,14 +87,26 @@ async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
         reject(new Error(`HTTP ${response.statusCode} ao acessar a URL`));
         return;
       }
-      let dados = '';
+      const partes = [];
       let tamanho = 0;
       response.on('data', chunk => {
         tamanho += chunk.length;
         if (tamanho > 3 * 1024 * 1024) { response.destroy(); reject(new Error('Página muito grande (limite 3MB)')); return; }
-        dados += chunk;
+        partes.push(chunk);
       });
-      response.on('end', () => resolve(dados));
+      response.on('end', () => {
+        const buffer = Buffer.concat(partes);
+        const codificacao = (response.headers['content-encoding'] || '').toLowerCase();
+        try {
+          const descompactado = codificacao === 'br' ? zlib.brotliDecompressSync(buffer)
+            : codificacao === 'gzip' ? zlib.gunzipSync(buffer)
+            : codificacao === 'deflate' ? zlib.inflateSync(buffer)
+            : buffer;
+          resolve(descompactado.toString('utf8'));
+        } catch (e) {
+          resolve(buffer.toString('utf8'));
+        }
+      });
       response.on('error', reject);
     });
     r.on('error', reject);
