@@ -2036,7 +2036,7 @@ var LABELS_DNA = {
   marca_veiculo:'Marca do Veículo', modelo_veiculo:'Modelo do Veículo', versao_veiculo:'Versão',
   ano_inicial:'Ano Inicial', ano_final:'Ano Final', cilindrada:'Cilindrada', material:'Material',
   posicao:'Posição', fmsi:'Código FMSI', comprimento:'Comprimento (cm)', largura:'Largura (cm)',
-  altura:'Altura (cm)', cross_codes:'Cross-Codes (equivalentes)'
+  altura:'Altura (cm)', cross_codes:'Cross-Codes (equivalentes)', aplicacoes_adicionais:'Aplicações Adicionais'
 };
 
 // Monta o resumo HTML (campos encontrados com fonte/confiança + pendências) para o agente de DNA via Web
@@ -2121,6 +2121,11 @@ async function iaBuscarDnaWeb() {
   var especificacoes = (p.componentes || []).slice();
   if (campos.posicao && campos.posicao.valor) especificacoes.push('Posição: ' + campos.posicao.valor);
   if (campos.fmsi && campos.fmsi.valor) especificacoes.push('Código FMSI: ' + campos.fmsi.valor);
+  if (campos.aplicacoes_adicionais && campos.aplicacoes_adicionais.valor) {
+    String(campos.aplicacoes_adicionais.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean).forEach(function(linha) {
+      especificacoes.push('Aplicação adicional: ' + linha);
+    });
+  }
   if (especificacoes.length) dados.especificacoes = especificacoes;
   if (campos.cross_codes && campos.cross_codes.valor) {
     dados.cc_aftermarket = String(campos.cross_codes.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
@@ -3693,6 +3698,32 @@ async function oemBuscarDnaWeb() {
       });
     }
     preenchidos.push({campo: 'Códigos equivalentes', valor: itens.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
+  // Aplicações adicionais (outros veículos/motores/anos além da aplicação
+  // principal já preenchida em AV) — anexa cada uma como linha em "Especificações" (EC)
+  (function() {
+    var info = campos.aplicacoes_adicionais;
+    if (!info || info.valor == null || info.valor === '') return;
+    var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (linhas.length === 0) return;
+    var el = document.getElementById('cntc-ec-espec');
+    linhas.forEach(function(linha) {
+      var texto = 'Aplicação adicional: ' + linha;
+      if (el) {
+        if (el.value.indexOf(texto) === -1) {
+          el.value = el.value ? (el.value + '\n' + texto) : texto;
+        }
+      } else {
+        if (!Array.isArray(_cntcDados.especificacoes)) _cntcDados.especificacoes = [];
+        if (_cntcDados.especificacoes.indexOf(texto) === -1) _cntcDados.especificacoes.push(texto);
+      }
+    });
+    if (el) {
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+    }
+    preenchidos.push({campo: 'Aplicações adicionais', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
   })();
 
   await _cntcRecalcular();

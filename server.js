@@ -524,7 +524,7 @@ const CAMPOS_DNA = [
     'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
     'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
     'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
-    'cross_codes'
+    'cross_codes', 'aplicacoes_adicionais'
 ];
 
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
@@ -582,12 +582,13 @@ Campos:
 - comprimento: comprimento em cm (número)
 - largura: largura em cm (número)
 - altura: altura em cm (número)
-- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket (ex: Gates, Dayco, INA, SKF, Bosch, NGK, Fram, Tecfil). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Gates K015642XS; Dayco KTB1009; INA 530 0453 10")
+- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
+- aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
 
 REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
 2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
-3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null.
+3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
 4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
 5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.`,
             messages: [{
