@@ -653,19 +653,33 @@ REGRAS ABSOLUTAS:
 
 // Extração de texto de PDF — permite importar catálogos/notas de fornecedor em PDF
 // no Catálogo de Produtos (o texto extraído é processado pelo parser de texto livre).
+// Limita o tempo de uma operação do pdf-parse: em PDFs grandes/complexos
+// (catálogos com muitas páginas e imagens), getText/getTable podem demorar
+// demais e deixar a conexão pendurada até o proxy do Render derrubá-la
+// (o navegador então mostra "Failed to fetch" em vez de um erro claro).
+function comTimeout(promise, ms, msg) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(msg)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 app.post('/api/catalogo/extrair-pdf', upload.single('arquivo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ ok: false, erro: 'Arquivo PDF obrigatório' });
+    console.log(`[Extrair PDF] Recebido ${req.file.originalname} (${(req.file.size/1024/1024).toFixed(2)} MB)`);
     const parser = new PDFParse({ data: req.file.buffer });
     try {
-        const resultado = await parser.getText();
+        const resultado = await comTimeout(parser.getText(), 45000, 'PDF muito grande/complexo — tempo limite de leitura excedido');
         const texto = resultado.text.replace(/\n*-- \d+ of \d+ --\n*/g, '\n\n');
 
         // Tenta detectar tabelas (catálogos tabulares: SKU/Descrição/Marca/Preço em colunas).
         // Quando há tabela, ela é convertida em CSV — muito mais confiável para o
         // parser de catálogo do que o texto corrido extraído do PDF.
+        // Tem tempo limite próprio: se demorar demais, segue só com o texto.
         let tabela = null;
         try {
-            const resultadoTabelas = await parser.getTable();
+            const resultadoTabelas = await comTimeout(parser.getTable(), 25000, 'tempo limite na detecção de tabela');
             const candidatas = (resultadoTabelas.mergedTables || [])
                 .filter(t => Array.isArray(t) && t.length >= 2 && Array.isArray(t[0]) && t[0].length >= 2);
             if (candidatas.length) {
@@ -679,7 +693,9 @@ app.post('/api/catalogo/extrair-pdf', upload.single('arquivo'), async (req, res)
             console.error('[Extrair PDF] Tabela:', eTabela.message);
         }
 
-        res.json({ ok: true, texto, tabela, paginas: resultado.pages ? resultado.pages.length : (resultado.total || null) });
+        const paginas = resultado.pages ? resultado.pages.length : (resultado.total || null);
+        console.log(`[Extrair PDF] OK — ${paginas || '?'} página(s), ${texto.length} caracteres${tabela ? ', tabela detectada' : ''}`);
+        res.json({ ok: true, texto, tabela, paginas });
     } catch (e) {
         console.error('[Extrair PDF]', e.message);
         res.status(400).json({ ok: false, erro: 'Falha ao ler PDF: ' + e.message });
