@@ -2920,7 +2920,11 @@ function aprovEnriquecerProd(idx) {
   window._catDados = Object.assign({}, p);
   nav('oem', { editIdx: idx });
   setTimeout(function() {
-    document.getElementById('oem-input').value = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' ');
+    var oemInputEl = document.getElementById('oem-input');
+    oemInputEl.value = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' ');
+    // Seleciona o texto pré-preenchido: ao digitar/colar uma nova busca, o
+    // texto é SUBSTITUÍDO em vez de concatenado ao código do produto atual.
+    oemInputEl.focus(); oemInputEl.select();
     if (p.codigo_fabricante) document.getElementById('oem-f-sku').value = p.codigo_fabricante;
     if (p.fabricante)        document.getElementById('oem-f-fab').value = p.fabricante;
     if (p.nome)              document.getElementById('oem-f-nome').value = p.nome;
@@ -3747,12 +3751,46 @@ async function oemBuscar() {
   var status = document.getElementById('oem-status');
   status.innerHTML = '&#9889; Buscando dados reais...';
   _cntcDados = {};
+  _oemDados = {};
   _cntcIVImagens = null;
   var dnaStatus = document.getElementById('oem-dna-status');
   if (dnaStatus) dnaStatus.innerHTML = '';
 
+  // Limpa campos técnicos (OEM/NCM/EAN/Motor/Material) e suas marcações de
+  // sugestão da IA de uma busca anterior — sem isso, dados de OUTRO produto
+  // (ex: código OEM já preenchido) "vazam" para este novo cadastro.
+  ['oem-f-oem','oem-f-ncm','oem-f-ean','oem-f-motor','oem-f-material'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.value = ''; el.style.borderColor = ''; el.title = ''; }
+  });
+
+  // Limpa módulos NTC (AV/MC/EC/BTA/CC/LG/IV/FI/FP) renderizados para o
+  // produto anterior — evitam "dados fantasma" no novo cadastro.
+  var modulosAnt = document.getElementById('cntc-modulos');
+  if (modulosAnt) modulosAnt.innerHTML = '';
+  var barraAnt = document.getElementById('cntc-ntc-bar');
+  if (barraAnt) barraAnt.style.display = 'none';
+
   // Parse inicial do texto para pré-preencher campos
   var parsed = parseTextoIA(q);
+
+  // Se a nova busca não corresponde ao produto em modo "Reenriquecendo /
+  // editando" (Part Number diferente), sai desse modo — caso contrário
+  // "Salvar rascunho" sobrescreveria o produto errado com os dados desta
+  // nova busca, contaminando-o.
+  if (_oemEditIdx != null) {
+    var prodAtual = (getProds() || [])[_oemEditIdx];
+    var skuNovo = (parsed.sku || '').trim().toUpperCase();
+    var skuAtual = ((prodAtual && prodAtual.codigo_fabricante) || '').trim().toUpperCase();
+    if (!skuNovo || !skuAtual || skuNovo !== skuAtual) {
+      _oemEditIdx = null;
+      var bannerSai = document.getElementById('oem-edit-banner');
+      if (bannerSai) bannerSai.style.display = 'none';
+      var btnPublicarSai = document.getElementById('oem-btn-publicar');
+      if (btnPublicarSai) btnPublicarSai.innerHTML = '&#128230; Publicar no Cat&aacute;logo';
+    }
+  }
+
   document.getElementById('oem-f-sku').value    = parsed.sku || '';
   document.getElementById('oem-f-fab').value    = parsed.fabricante || '';
   document.getElementById('oem-f-nome').value   = parsed.descricao || q;
@@ -3887,6 +3925,16 @@ function _oemAtualizarPainel(dados, r) {
   }
 }
 
+// Mostra a mensagem de status de publicação/atualização em destaque
+// (com fundo colorido), para o lojista perceber claramente o resultado.
+function _oemMostrarPubStatus(html, ok) {
+  var el = document.getElementById('oem-pub-status');
+  el.innerHTML = html;
+  el.style.cssText = 'font-size:13px;margin-top:8px;padding:8px 12px;border-radius:6px;font-weight:600;'
+    + (ok ? 'background:#00c85318;color:#00c853;border:1px solid #00c85340'
+          : 'background:#f4433618;color:#f44336;border:1px solid #f4433640');
+}
+
 async function oemPublicar() {
   var dados = oemColetar();
   var r = _oemDados._ntcResult || {};
@@ -3897,13 +3945,13 @@ async function oemPublicar() {
     prods[_oemEditIdx] = Object.assign({}, prods[_oemEditIdx], dados, extras);
     saveProds(prods);
     atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
-    document.getElementById('oem-pub-status').textContent = '✅ Produto atualizado! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
+    _oemMostrarPubStatus('✅ Rascunho salvo com sucesso! Produto atualizado — NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao, true);
     return;
   }
   prods.push(Object.assign({}, dados, extras, { id: 'oem-' + Date.now(), _fonte: 'oem' }));
   saveProds(prods);
   atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
-  document.getElementById('oem-pub-status').textContent = '✅ Publicado no catálogo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
+  _oemMostrarPubStatus('✅ Rascunho salvo com sucesso! Publicado no catálogo — NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao, true);
 }
 
 // Salva o que está na tela como rascunho na fila de cadastro (sem o bloqueio
@@ -4159,7 +4207,11 @@ function oemCarregarDados(dados) {
   nav('oem', idx >= 0 ? { editIdx: idx } : undefined);
   setTimeout(function() {
     _cntcDados = Object.assign({}, _cntcDados, dados);
-    document.getElementById('oem-input').value = [dados.codigo_fabricante, dados.fabricante, dados.nome].filter(Boolean).join(' ');
+    var oemInputEl = document.getElementById('oem-input');
+    oemInputEl.value = [dados.codigo_fabricante, dados.fabricante, dados.nome].filter(Boolean).join(' ');
+    // Seleciona o texto pré-preenchido: ao digitar/colar uma nova busca, o
+    // texto é SUBSTITUÍDO em vez de concatenado ao código do produto atual.
+    oemInputEl.focus(); oemInputEl.select();
     if (dados.codigo_fabricante) document.getElementById('oem-f-sku').value = dados.codigo_fabricante;
     if (dados.fabricante)        document.getElementById('oem-f-fab').value = dados.fabricante;
     if (dados.nome)              document.getElementById('oem-f-nome').value = dados.nome;
@@ -5225,7 +5277,11 @@ function catEnriquecerCadastro() {
   nav('oem');
   setTimeout(function() {
     var q = [_catDados.codigo_fabricante, _catDados.fabricante, _catDados.nome].filter(Boolean).join(' ');
-    document.getElementById('oem-input').value = q;
+    var oemInputEl = document.getElementById('oem-input');
+    oemInputEl.value = q;
+    // Seleciona o texto pré-preenchido: ao digitar/colar uma nova busca, o
+    // texto é SUBSTITUÍDO em vez de concatenado ao código do produto atual.
+    oemInputEl.focus(); oemInputEl.select();
     // Pré-preenche campos
     if (_catDados.codigo_fabricante) document.getElementById('oem-f-sku').value    = _catDados.codigo_fabricante;
     if (_catDados.fabricante)        document.getElementById('oem-f-fab').value    = _catDados.fabricante;
@@ -5373,8 +5429,8 @@ var CNTC_CAMPOS = {
     desc: 'Peso bruto e líquido com base em documentação.',
     cor: '#888',
     campos: [
-      {id:'cntc-fi-pesob', key:'peso_bruto',   label:'Peso Bruto (kg)',   ph:'1.200', tipo:'number'},
-      {id:'cntc-fi-pesol', key:'peso_liquido', label:'Peso Líquido (kg)', ph:'1.000', tipo:'number'},
+      {id:'cntc-fi-pesob', key:'peso_bruto',   label:'Peso Bruto (kg)',   ph:'Ex: 1.2', tipo:'number'},
+      {id:'cntc-fi-pesol', key:'peso_liquido', label:'Peso Líquido (kg)', ph:'Ex: 1.0', tipo:'number'},
     ]
   },
   FP: {
@@ -5382,9 +5438,9 @@ var CNTC_CAMPOS = {
     desc: 'Comprimento, largura e altura em cm.',
     cor: '#888',
     campos: [
-      {id:'cntc-fp-comp', key:'comprimento', label:'Comprimento (cm)', ph:'35.0', tipo:'number'},
-      {id:'cntc-fp-larg', key:'largura',     label:'Largura (cm)',     ph:'20.0', tipo:'number'},
-      {id:'cntc-fp-alt',  key:'altura',      label:'Altura (cm)',      ph:'10.0', tipo:'number'},
+      {id:'cntc-fp-comp', key:'comprimento', label:'Comprimento (cm)', ph:'Ex: 35', tipo:'number'},
+      {id:'cntc-fp-larg', key:'largura',     label:'Largura (cm)',     ph:'Ex: 20', tipo:'number'},
+      {id:'cntc-fp-alt',  key:'altura',      label:'Altura (cm)',      ph:'Ex: 10', tipo:'number'},
     ]
   },
 };
