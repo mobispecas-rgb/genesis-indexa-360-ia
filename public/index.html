@@ -878,7 +878,7 @@ tr:hover td{background:#f9fafb}
         </div>
         <div id="massa-modo-pdf" style="display:none">
           <div class="cat-drop-zone" onclick="document.getElementById('massa-pdf-input').click()" style="border:2px dashed #333;border-radius:8px;padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;color:#666;font-size:13px">
-            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar (m&aacute;x. 10&nbsp;MB)
+            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar (m&aacute;x. 20&nbsp;MB)
             <input type="file" id="massa-pdf-input" style="display:none" accept=".pdf" onchange="massaFileSelect(this, 'massa-pdf-status')">
             <span id="massa-pdf-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
           </div>
@@ -4179,7 +4179,7 @@ function oemCarregarDados(dados) {
 var _oemCarrinhoItens = [];
 
 // Tamanho máximo de PDF aceito pelo servidor (multer) — ver server.js, upload.
-var PDF_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+var PDF_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 
 function oemToggleModoEntrada(modo) {
   document.querySelectorAll('#oem-modo-tabs .cat-import-btn').forEach(function(b){ b.classList.remove('active-mode'); });
@@ -4199,7 +4199,7 @@ function oemAnexarPdf(input) {
   if (!file) return;
   var status = document.getElementById('oem-pdf-status');
   if (file.size > PDF_UPLOAD_MAX_BYTES) {
-    status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 10 MB. Tente um arquivo menor ou compacte o PDF.';
+    status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 20 MB. Tente um arquivo menor ou compacte o PDF.';
     input.value = '';
     return;
   }
@@ -6070,7 +6070,7 @@ function massaFileSelect(input, statusId) {
 
   if (name.endsWith('.pdf')) {
     if (file.size > PDF_UPLOAD_MAX_BYTES) {
-      status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 10 MB. Tente um arquivo menor ou compacte o PDF.';
+      status.textContent = '❌ PDF muito grande (' + (file.size/1024/1024).toFixed(1) + ' MB) — o limite é 20 MB. Tente um arquivo menor ou compacte o PDF.';
       input.value = '';
       return;
     }

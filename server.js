@@ -16,7 +16,7 @@ const { PDFParse } = require('pdf-parse');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 // Faz uma requisição HTTPS e resolve com o JSON da resposta.
 // Aborta com erro após `timeoutMs` para evitar requisições penduradas
