@@ -664,7 +664,7 @@ tr:hover td{background:#f9fafb}
     </div>
     <div class="page" id="page-oem">
       <div class="page-title">&#10024; Cadastro Completo</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google, preenche os campos e mostra os m&oacute;dulos do NTC 4.0 que faltam para chegar a 95%. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto e clique em &#128269; Buscar: o motor faz a busca completa de uma vez s&oacute; &mdash; identifica&ccedil;&atilde;o b&aacute;sica, imagens, DNA (OEM/EAN/NCM/CEST, motor, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes) &mdash;, preenche os campos, salva o rascunho e mostra os m&oacute;dulos do NTC 4.0 que faltam para chegar a 95%. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
       <div id="oem-edit-banner" style="display:none;background:#ff450015;border:1px solid #ff450040;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ff9800;align-items:center;gap:10px;flex-wrap:wrap">
         <span>&#9999;&#65039; Reenriquecendo / editando: <strong id="oem-edit-nome" style="color:#fff"></strong></span>
         <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="nav('oem')">&#10006; Cancelar edi&ccedil;&atilde;o</button>
@@ -710,6 +710,7 @@ tr:hover td{background:#f9fafb}
         </div>
 
         <div id="oem-status" style="font-size:12px;color:#555"></div>
+        <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
       </div>
 
       <!-- Carrinho de produtos encontrados (PDF com vários itens / Raspar Catálogo) -->
@@ -750,14 +751,6 @@ tr:hover td{background:#f9fafb}
 
         <!-- ETAPA 1: Identificação automática (IA / Voz do Lojista) -->
         <div id="oem-step1" class="oem-step active">
-
-          <!-- Agente de Enriquecimento de DNA via Web -->
-          <div class="card">
-            <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
-            <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, motor/aplica&ccedil;&atilde;o, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes na web e <strong style="color:#ff4500">salva automaticamente</strong> o cadastro (rascunho) com o que for encontrado. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, pendente de confirma&ccedil;&atilde;o humana.</p>
-            <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
-            <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
-          </div>
 
           <!-- Dados confirmados -->
           <div class="card" style="border-color:#ff450030">
@@ -853,7 +846,7 @@ tr:hover td{background:#f9fafb}
             <div class="card" style="border-color:#f4433630;background:#f4433608">
               <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
               <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
-              <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear, ou volte &agrave; Etapa 1 e use o &#127760; Buscar DNA na Web para reenriquecer automaticamente.</div>
+              <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear, ou volte &agrave; Etapa 1 e clique em &#128269; Buscar novamente para reenriquecer automaticamente.</div>
             </div>
           </div>
 
@@ -3992,6 +3985,11 @@ async function oemBuscar() {
   await _cntcRecalcular();
   status.innerHTML = '✅ Campos pré-preenchidos. Confirme os dados e complete o que falta.'
     + (sugeridosIA.length ? '<br>🤖 IA sugeriu (em laranja — confirme antes de salvar): ' + esc(sugeridosIA.join(', ')) : '');
+
+  // Busca única: encadeia o enriquecimento de DNA via web (OEM/EAN/NCM/CEST,
+  // motor, material, dimensões, aplicação veicular, cross-codes) e salva o
+  // rascunho automaticamente — o lojista busca e cadastra tudo de uma vez.
+  await oemBuscarDnaWeb();
 }
 
 function oemColetar() {
