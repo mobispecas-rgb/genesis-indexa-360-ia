@@ -51,9 +51,39 @@ function ipPrivada(ip) {
   return true; // formato desconhecido — bloqueia por segurança
 }
 
+// Perfis de headers de navegador, usados em ordem — muitas lojas (Tray, VTEX,
+// Cloudflare etc.) bloqueiam com 403/405 requisições que não trazem
+// Accept/Accept-Language/Accept-Encoding, um User-Agent reconhecido e os
+// headers "Sec-Fetch-*"/"sec-ch-ua" típicos de um Chrome real. Se o primeiro
+// perfil for recusado (403/405), tenta o próximo (ex: Googlebot, que muitas
+// lojas liberam mesmo bloqueando navegadores "genéricos").
+const FETCH_HEADER_PERFIS = [
+  {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1'
+  },
+  {
+    'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br'
+  }
+];
+
 // Busca o HTML de uma URL pública para o raspador de catálogo.
 // Valida o IP resolvido (anti-SSRF) e segue poucos redirecionamentos.
-async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
+async function fetchHtmlSeguro(urlStr, redirectsLeft = 3, tentativa = 0) {
   const parsed = new URL(urlStr);
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('Apenas URLs http/https são permitidas');
@@ -63,23 +93,18 @@ async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
     throw new Error('URL aponta para um endereço interno/privado — não permitido');
   }
   const proto = parsed.protocol === 'https:' ? https : http;
-  // Headers de navegador real — muitas lojas (Tray, VTEX etc.) bloqueiam com
-  // 403/405 requisições que não trazem Accept/Accept-Language/Accept-Encoding
-  // e um User-Agent reconhecido.
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Cache-Control': 'no-cache',
-    'Upgrade-Insecure-Requests': '1'
-  };
+  const headers = Object.assign({ 'Referer': parsed.origin + '/' }, FETCH_HEADER_PERFIS[Math.min(tentativa, FETCH_HEADER_PERFIS.length - 1)]);
   return new Promise((resolve, reject) => {
     const r = proto.get(parsed, { headers }, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirectsLeft > 0) {
         response.resume();
         const proxima = new URL(response.headers.location, parsed);
-        resolve(fetchHtmlSeguro(proxima.href, redirectsLeft - 1));
+        resolve(fetchHtmlSeguro(proxima.href, redirectsLeft - 1, tentativa));
+        return;
+      }
+      if ((response.statusCode === 403 || response.statusCode === 405) && tentativa < FETCH_HEADER_PERFIS.length - 1) {
+        response.resume();
+        resolve(fetchHtmlSeguro(urlStr, redirectsLeft, tentativa + 1));
         return;
       }
       if (response.statusCode >= 400) {
