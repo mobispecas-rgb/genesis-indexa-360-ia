@@ -3087,7 +3087,6 @@ function aprovEnriquecerProd(idx) {
     if (p.material)          document.getElementById('oem-f-material').value = p.material;
     document.getElementById('oem-resultado').style.display = 'block';
     oemIrEtapa(2);
-    _cntcRecalcular();
   }, 150);
 }
 
@@ -3913,7 +3912,6 @@ function oemDefinirModoEdicao(idx) {
     }
     document.getElementById('oem-resultado').style.display = 'block';
     oemIrEtapa(2);
-    _cntcRecalcular();
   } else {
     _cntcDados = {};
     document.getElementById('oem-resultado').style.display = 'none';
@@ -4052,17 +4050,28 @@ async function oemBuscar() {
 function oemColetar() {
   // _cntcDados traz os campos dos módulos do NTC (AV/MC/EC/BTA/CC/LG/IV/FI/FP e
   // extras do agente de DNA) — os campos do formulário "Dados Confirmados"
-  // sempre têm prioridade sobre eles.
+  // têm prioridade sobre eles QUANDO preenchidos. Se o campo do formulário
+  // estiver vazio mas _cntcDados já tiver um valor (ex: produto em edição,
+  // logo após oemDefinirModoEdicao repopular o formulário), mantém o
+  // valor de _cntcDados em vez de zerar o campo — evita que o NTC regrida e
+  // mostre Part Number/Fabricante/Nome/OEM/NCM/Motor como "faltando" quando
+  // o produto já os possui.
+  function campo(id, key, transform) {
+    var v = document.getElementById(id).value;
+    if (transform) v = transform(v); else v = v.trim();
+    if (v) return v;
+    return (_cntcDados[key] != null && _cntcDados[key] !== '') ? _cntcDados[key] : null;
+  }
   return Object.assign({}, _cntcDados, {
-    codigo_fabricante: document.getElementById('oem-f-sku').value.trim() || null,
-    fabricante:        document.getElementById('oem-f-fab').value.trim() || null,
-    nome:              document.getElementById('oem-f-nome').value.trim() || null,
-    familia_tecnica:   document.getElementById('oem-f-familia').value || null,
-    codigo_oem:        document.getElementById('oem-f-oem').value.trim() || null,
-    ncm:               document.getElementById('oem-f-ncm').value.replace(/\D/g,'') || null,
-    ean:               document.getElementById('oem-f-ean').value.replace(/\D/g,'') || null,
-    motor:             document.getElementById('oem-f-motor').value.trim() || null,
-    material:          document.getElementById('oem-f-material').value.trim() || null,
+    codigo_fabricante: campo('oem-f-sku', 'codigo_fabricante'),
+    fabricante:        campo('oem-f-fab', 'fabricante'),
+    nome:              campo('oem-f-nome', 'nome'),
+    familia_tecnica:   campo('oem-f-familia', 'familia_tecnica'),
+    codigo_oem:        campo('oem-f-oem', 'codigo_oem'),
+    ncm:               campo('oem-f-ncm', 'ncm', function(v){ return v.replace(/\D/g,''); }),
+    ean:               campo('oem-f-ean', 'ean', function(v){ return v.replace(/\D/g,''); }),
+    motor:             campo('oem-f-motor', 'motor'),
+    material:          campo('oem-f-material', 'material'),
   });
 }
 
@@ -4432,7 +4441,6 @@ function oemCarregarDados(dados) {
     if (dados.material)          document.getElementById('oem-f-material').value = dados.material;
     document.getElementById('oem-resultado').style.display = 'block';
     oemIrEtapa(2);
-    _cntcRecalcular();
   }, 150);
 }
 
@@ -5503,7 +5511,6 @@ function catEnriquecerCadastro() {
     if (_catDados.material)          document.getElementById('oem-f-material').value = _catDados.material;
     document.getElementById('oem-resultado').style.display = 'block';
     oemIrEtapa(2);
-    _cntcRecalcular();
   }, 150);
 }
 
@@ -5612,8 +5619,23 @@ var CNTC_CAMPOS = {
       {id:'cntc-iv-ang', key:'iv_angulos',         label:'Qtd de ângulos/fotos',       ph:'6', tipo:'number'},
     ]
   },
+  // NOTA: as chaves FM/CO abaixo correspondem aos módulos de pontuação do
+  // backend (src/services/ntc-engine.js) — FM = Nome Técnico Completo
+  // (baseado em `nome`), CO = Fiscal NCM/CEST/CST (baseado em ncm/cest/cst/
+  // origem). Os campos exibidos em cada cartão precisam pertencer ao módulo
+  // cuja pontuação ("atual: X%") é mostrada, senão preencher o campo nunca
+  // muda o percentual exibido no próprio cartão.
   FM: {
-    label: 'FM — Fiscal & NCM',
+    label: 'FM — Nome Técnico Completo',
+    desc: 'Pontuação calculada a partir do Nome do Produto (Etapa 1 — "Dados Confirmados"). Use no mínimo 3 palavras descritivas (categoria + aplicação).',
+    cor: '#ffaa00',
+    campos: [
+      {id:'cntc-co-oem', key:'codigo_oem', label:'Código OEM / Part Number', ph:'KIT9063, 58101-2BA70...'},
+      {id:'cntc-co-ean', key:'ean',        label:'EAN / GTIN (se houver na embalagem)', ph:'7891234567890', maxlen:'14'},
+    ]
+  },
+  CO: {
+    label: 'CO — Fiscal NCM/CEST/CST',
     desc: 'NCM de 8 dígitos, CEST, CST e origem ICMS.',
     cor: '#ffaa00',
     campos: [
@@ -5622,15 +5644,6 @@ var CNTC_CAMPOS = {
       {id:'cntc-fm-cst',    key:'cst',    label:'CST',                ph:'000'},
       {id:'cntc-fm-origem', key:'origem', label:'Origem ICMS',        ph:'0 = Nacional', tipo:'select',
        opcoes:[{v:'',l:'Selecione...'},{v:'0',l:'0-Nacional'},{v:'1',l:'1-Importado direto'},{v:'2',l:'2-Adquirido merc.int.'},{v:'3',l:'3-Nacional>40%'},{v:'4',l:'4-Processos básicos'},{v:'5',l:'5-Nacional≤40%'},{v:'6',l:'6-Importado c/similar'},{v:'7',l:'7-Sem similar'},{v:'8',l:'8-Nacional>70%'}]},
-    ]
-  },
-  CO: {
-    label: 'CO — Código OEM / Referência',
-    desc: 'Código de referência do fabricante.',
-    cor: '#ffaa00',
-    campos: [
-      {id:'cntc-co-oem', key:'codigo_oem', label:'Código OEM / Part Number', ph:'KIT9063, 58101-2BA70...'},
-      {id:'cntc-co-ean', key:'ean',        label:'EAN / GTIN (se houver na embalagem)', ph:'7891234567890', maxlen:'14'},
     ]
   },
   FI: {
@@ -5657,8 +5670,8 @@ var CNTC_CAMPOS = {
 // Campos dos módulos CNTC já cobertos pelos inputs "Dados Confirmados" do
 // Cadastro Completo (oem-f-*) — não devem ser duplicados nos cartões de módulo.
 var CNTC_CAMPOS_DUPLICADOS = {
-  CO: ['codigo_oem', 'ean'],
-  FM: ['ncm'],
+  FM: ['codigo_oem', 'ean'],
+  CO: ['ncm'],
   MC: ['material'],
   AV: ['motor'],
 };
