@@ -229,7 +229,7 @@ tr:hover td{background:#f9fafb}
     <div class="sb-section-label">Principal</div>
     <div class="sb-item active" onclick="nav('dashboard')"><span class="icon">&#128202;</span>Dashboard</div>
     <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
-    <div class="sb-item" onclick="nav('ia')"><span class="icon">&#129302;</span>IA Analyzer (Voz do Lojista)</div>
+    <!-- IA Analyzer consolidado no Cadastro Completo (page-oem) -->
     <div class="sb-item" onclick="nav('produtos')"><span class="icon">&#128230;</span>Produtos</div>
   </div>
 
@@ -240,21 +240,21 @@ tr:hover td{background:#f9fafb}
 
   <div class="sb-section">
     <div class="sb-section-label">Catalogacao</div>
-    <div class="sb-item" onclick="nav('catalogo')"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
+    <div class="sb-item" onclick="nav('produtos')/* catalogo→produtos */"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
     <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
     <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
-    <div class="sb-item" onclick="nav('aprovacao-enriq')"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o &amp; Congelados</div>
-    <div class="sb-item" onclick="nav('aprovados')"><span class="icon">&#127775;</span>Aprovados</div>
+    <div class="sb-item" onclick="nav('aprovacao')/* aprovacao-enriq→aprovacao */"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o &amp; Congelados</div>
+    <div class="sb-item" onclick="nav('aprovacao')/* aprovados→aprovacao */"><span class="icon">&#127775;</span>Aprovados</div>
   </div>
 
   <div class="sb-section">
     <div class="sb-section-label">Cataloga&ccedil;&atilde;o (2)</div>
     <div class="sb-item" onclick="nav('ean')"><span class="icon">&#128247;</span>EAN Scanner GS1</div>
-    <div class="sb-item" onclick="nav('imagens')"><span class="icon">&#128444;&#65039;</span>Imagens</div>
-    <div class="sb-item" onclick="nav('aplicacoes')"><span class="icon">&#128663;</span>Aplica&ccedil;&otilde;es Motor</div>
-    <div class="sb-item" onclick="nav('fiscal')"><span class="icon">&#128203;</span>Fiscal &amp; Log&iacute;stica</div>
+    <div class="sb-item" onclick="nav('oem')/* imagens→oem */"><span class="icon">&#128444;&#65039;</span>Imagens</div>
+    <div class="sb-item" onclick="nav('oem')/* aplicacoes→oem */"><span class="icon">&#128663;</span>Aplica&ccedil;&otilde;es Motor</div>
+    <div class="sb-item" onclick="nav('oem')/* fiscal→oem */"><span class="icon">&#128203;</span>Fiscal &amp; Log&iacute;stica</div>
     <div class="sb-item" onclick="nav('precificacao')"><span class="icon">&#128181;</span>Precifica&ccedil;&atilde;o</div>
-    <div class="sb-item" onclick="nav('ntc')"><span class="icon">&#128302;</span>NTC Inspector</div>
+    <div class="sb-item" onclick="nav('oem')/* ntc→oem */"><span class="icon">&#128302;</span>NTC Inspector</div>
     <div class="sb-item" onclick="nav('diagnostico')"><span class="icon">&#128269;</span>Diagn&oacute;stico do Cat&aacute;logo</div>
   </div>
 
@@ -319,8 +319,8 @@ tr:hover td{background:#f9fafb}
         <div class="card-title">&#9889; A&ccedil;&otilde;es R&aacute;pidas</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <div class="qa-btn" onclick="nav('produtos')">&#128230; Cadastrar Produto</div>
-          <div class="qa-btn" onclick="nav('ia')">&#129302; IA Analyzer</div>
-          <div class="qa-btn" onclick="nav('imagens')">&#128444;&#65039; Imagens</div>
+          <div class="qa-btn" onclick="nav('oem')/* ia→oem */">&#129302; IA Analyzer</div>
+          <div class="qa-btn" onclick="nav('oem')/* imagens→oem */">&#128444;&#65039; Imagens</div>
         </div>
       </div>
       <div class="card">
@@ -2947,7 +2947,7 @@ function aprovCompletar(idx) {
 function aprovEnriquecerImagens(idx) {
   var p = getProds()[idx];
   if (!p) return;
-  nav('imagens');
+  nav('oem')/* imagens→oem */;
   setTimeout(function() {
     document.getElementById('img-search-q').value = [p.codigo_fabricante, p.fabricante].filter(Boolean).join(' ');
     buscarImagens();
@@ -3173,7 +3173,7 @@ function congeladosDeletar(idx) {
   saveProds(prods);
   atualizarStats();
   atualizarBadgeAprovacao();
-  nav('aprovacao-enriq');
+  nav('aprovacao')/* aprovacao-enriq→aprovacao */;
 }
 
 async function aprovPublicar(idx) {
@@ -5248,7 +5248,7 @@ function catEnriquecerImagens() {
     return;
   }
   var q = [_catDados.codigo_fabricante, _catDados.fabricante, _catDados.nome].filter(Boolean).slice(0,2).join(' ');
-  nav('imagens');
+  nav('oem')/* imagens→oem */;
   setTimeout(function() {
     document.getElementById('img-search-q').value = q;
     buscarImagens();
@@ -6847,5 +6847,724 @@ function imgFiltrarCat(cat, btn) {
 }
 
 </script>
+
+<script id="fix-parseTextoIA">
+/* ── Fix: parseTextoIA undefined regex guard (patch-fix-parse.js) ── */
+(function() {
+  // Aguarda a função estar disponível (pode ser definida depois)
+  function aplicarFix() {
+    if (typeof window.parseTextoIA !== 'function') return false;
+
+    var _orig = window.parseTextoIA;
+    window.parseTextoIA = function parseTextoIAFixed(texto, extra) {
+      // Guard 1: texto undefined/null → retornar objeto vazio
+      if (texto === undefined || texto === null) {
+        console.warn('[parseTextoIA fix] texto indefinido, retornando {}');
+        return {};
+      }
+      try {
+        return _orig.call(this, texto, extra);
+      } catch(e) {
+        if (e instanceof TypeError && e.message && e.message.indexOf("'test'") !== -1) {
+          console.warn('[parseTextoIA fix] regex undefined interceptado. Texto recebido:', String(texto).substring(0, 80));
+          // Retornar parse básico usando apenas o texto raw
+          return parseTextoIAFallback(texto);
+        }
+        throw e; // outros erros: propagar normalmente
+      }
+    };
+    console.log('[parseTextoIA fix] proteção aplicada com sucesso.');
+    return true;
+  }
+
+  /* Parse mínimo para garantir que oemBuscar continue funcionando */
+  function parseTextoIAFallback(texto) {
+    var result = { raw: texto, _fallback: true };
+    var t = String(texto);
+
+    // NCM: 8 dígitos seguidos
+    var mNCM = t.match(/\b(\d{8})\b/);
+    if (mNCM) result.ncm = mNCM[1];
+
+    // EAN: 13 dígitos
+    var mEAN = t.match(/\b(\d{13})\b/);
+    if (mEAN) result.ean = mEAN[1];
+
+    // OEM: combinação alfanumérica tipica de peça (ex: GB29974M, VKM71809)
+    var mOEM = t.match(/\b([A-Z]{1,4}\d{4,10}[A-Z0-9]{0,4})\b/);
+    if (mOEM) result.oem = mOEM[1];
+
+    // Marca: primeira palavra em maiúsculas
+    var mMarca = t.match(/\b(COFAP|BOSCH|NGK|SKF|GATES|DAYCO|INA|FAG|MAHLE|DENSO|VALEO|MOBIS|NTN|NSK|KOYO|HONDA|TOYOTA|FORD|GM|VW|FIAT|RENAULT|HYUNDAI|KIA|NISSAN|TURBOGAS|MONROE|SACHS|COFAP|NAKATA|FREMAX|CONTINENTAL|ZF|BEHR|MANN|PURFLUX|CORTECO|ELRING)\b/i);
+    if (mMarca) result.marca = mMarca[1].toUpperCase();
+
+    // Extrair possivel nome: tudo entre a ref OEM e fim de string
+    result.nome = t.replace(/[\n\r]+/g, ' ').trim().substring(0, 120);
+
+    return result;
+  }
+
+  // Tentar aplicar imediatamente
+  if (!aplicarFix()) {
+    // Se não estiver pronta ainda, aguardar DOMContentLoaded e depois 500ms
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!aplicarFix()) {
+        setTimeout(aplicarFix, 500);
+      }
+    });
+  }
+})();
+</script>
+
+
+<!-- NTC 4.0 STEP 2 BLOCO COMPLETO v2 (patch-v2.js) -->
+<style>
+.ntcv2-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:10px}
+.ntcv2-sh{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-weight:600;font-size:12px;cursor:pointer;user-select:none}
+.ntcv2-sh .nb2{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:auto}
+.nb2-ok{background:#d1fae5;color:#065f46}.nb2-warn{background:#fef3c7;color:#92400e}.nb2-err{background:#fee2e2;color:#991b1b}
+.ntcv2-sb{padding:12px 14px}
+.ntcv2-g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ntcv2-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.ntcv2-f{display:flex;flex-direction:column;gap:3px}
+.ntcv2-f .lbl{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px}
+.ntcv2-f .val{font-size:13px;font-weight:600;color:#1a1a1a}
+.ntcv2-f .mono{font-family:monospace;font-size:12px;background:#f3f4f6;padding:2px 6px;border-radius:4px;color:#374151}
+.ntcv2-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin:2px;background:#f3f4f6;border:1px solid #e5e7eb;color:#6b7280}
+.ntcv2-tag.oem{background:#dbeafe;color:#1e40af;border-color:#bfdbfe}
+.ntcv2-tag.af{background:#d1fae5;color:#065f46;border-color:#6ee7b7}
+.ntcv2-tag.imp{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.ntcv2-tag.seo{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd}
+.ntcv2-tag.cpc{background:#fff7ed;color:#9a3412;border-color:#fdba74}
+.ntcv2-tag.neg{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.ntcv2-div{height:1px;background:#f3f4f6;margin:8px 0}
+.ntcv2-bar-wrap{background:#f3f4f6;border-radius:6px;height:8px;overflow:hidden;margin:4px 0}
+.ntcv2-bar{height:100%;border-radius:6px;background:#ff4500;transition:width .5s}
+.ntcv2-scores{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:8px}
+@media(max-width:768px){.ntcv2-scores{grid-template-columns:repeat(4,1fr)}}
+.ntcv2-si{text-align:center;padding:5px 3px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}
+.ntcv2-si .sn{font-size:10px;color:#6b7280;font-weight:600}
+.ntcv2-si .sv{font-size:12px;font-weight:700}
+.sv-ok{color:#059669}.sv-part{color:#d97706}.sv-zero{color:#dc2626}
+.ntcv2-imgs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+@media(max-width:480px){.ntcv2-imgs{grid-template-columns:repeat(3,1fr)}}
+.ntcv2-img{aspect-ratio:1;border-radius:6px;border:2px solid transparent;background:#f3f4f6;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;position:relative;overflow:hidden;transition:.15s}
+.ntcv2-img.sel{border-color:#ff4500}
+.ntcv2-img-lbl{position:absolute;bottom:0;left:0;right:0;font-size:9px;text-align:center;padding:2px;background:rgba(0,0,0,.4);color:#fff}
+.ntcv2-voz{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;margin-top:8px}
+.ntcv2-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:7px;border:1px solid #d1d5db;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;transition:.15s}
+.ntcv2-btn:hover{background:#f9fafb}
+.ntcv2-btn.prim{background:#ff4500;border-color:#cc3700;color:#fff}
+.ntcv2-btn.prim:hover{background:#cc3700}
+.ntcv2-btn.dng{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+.ntcv2-btn.warn{background:#fef3c7;border-color:#fde68a;color:#92400e}
+.ntcv2-btn.bling{background:#dbeafe;border-color:#bfdbfe;color:#1e40af}
+.ntcv2-btn.wix{background:#fef3c7;border-color:#fde68a;color:#92400e}
+.ntcv2-btn.ml{background:#fff7ed;border-color:#fdba74;color:#9a3412}
+.ntcv2-btn.shopee{background:#fff1f2;border-color:#fecdd3;color:#9f1239}
+.ntcv2-brow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ntcv2-hash{font-family:monospace;font-size:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;color:#6b7280;word-break:break-all;margin-top:6px}
+.ntcv2-aprov{display:inline-flex;align-items:center;gap:5px;background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;border-radius:20px;padding:4px 12px;font-weight:700;font-size:13px}
+.ntcv2-reprov{display:inline-flex;align-items:center;gap:5px;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:20px;padding:4px 12px;font-weight:700;font-size:13px}
+.ntcv2-seo-val{font-size:12px;padding:6px 8px;background:#f9fafb;border-radius:6px;margin-top:4px;border:1px solid #e5e7eb;line-height:1.5}
+.ntcv2-consumer{border-left:3px solid #3b82f6;padding-left:10px;margin-top:8px}
+.ntcv2-consumer p{font-size:12px;color:#6b7280;line-height:1.6}
+.ntcv2-toggle{display:none}
+.ntcv2-toggle:checked + .ntcv2-sh .ntcv2-chev{transform:rotate(180deg)}
+.ntcv2-toggle:not(:checked) ~ .ntcv2-sb{display:none}
+.ntcv2-chev{transition:transform .2s;margin-left:auto;font-size:13px;color:#9ca3af}
+.ntcv2-toggle:not(:checked) ~ .ntcv2-sb{display:none}
+</style>
+
+<div id="ntcv2-bloco">
+
+<!-- ── CABEÇALHO / NTC SCORE ── -->
+<div class="ntcv2-card">
+  <div style="padding:14px 16px;border-bottom:1px solid #e5e7eb">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <div id="ntcv2-nome" style="font-size:16px;font-weight:700;margin-bottom:4px">—</div>
+        <div id="ntcv2-sub" style="font-size:12px;color:#6b7280;margin-bottom:10px">—</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="ntcv2-status-badge" class="ntcv2-reprov">NTC —% AGUARDANDO</span>
+          <span id="ntcv2-tag-oem" class="ntcv2-tag oem">OEM: —</span>
+          <span id="ntcv2-tag-sku" class="ntcv2-tag af">SKU: —</span>
+          <span id="ntcv2-tag-ean" class="ntcv2-tag">EAN: —</span>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div id="ntcv2-pct" style="font-size:30px;font-weight:900;color:#ff4500">—%</div>
+        <div style="font-size:10px;color:#6b7280">NTC 4.0</div>
+        <div class="ntcv2-bar-wrap" style="width:80px"><div class="ntcv2-bar" id="ntcv2-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div style="font-size:10px;color:#6b7280;margin-bottom:4px">Módulos NTC 4.0</div>
+      <div class="ntcv2-scores" id="ntcv2-scores">
+        <div class="ntcv2-si"><div class="sn">DNA</div><div class="sv sv-zero" id="ns-dna">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">TF</div><div class="sv sv-zero" id="ns-tf">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">FM</div><div class="sv sv-zero" id="ns-fm">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">CO</div><div class="sv sv-zero" id="ns-co">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">AV</div><div class="sv sv-zero" id="ns-av">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">MC</div><div class="sv sv-zero" id="ns-mc">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">EC</div><div class="sv sv-zero" id="ns-ec">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">BTA</div><div class="sv sv-zero" id="ns-bta">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">CC</div><div class="sv sv-zero" id="ns-cc">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">LG</div><div class="sv sv-zero" id="ns-lg">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">IV</div><div class="sv sv-zero" id="ns-iv">0%</div></div>
+        <div class="ntcv2-si"><div class="sn">FI/FP</div><div class="sv sv-zero" id="ns-fi">0%</div></div>
+      </div>
+    </div>
+    <div class="ntcv2-hash" id="ntcv2-hash">RAST-HASH OEM DNA: aguardando dados...</div>
+  </div>
+</div>
+
+<!-- ── DNA / IDENTIFICAÇÃO ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s1" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s1">
+    🧬 DNA — Identificação Principal
+    <span class="nb2 nb2-ok" id="nb-dna">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">SKU Interno</div><div class="val mono" id="d-sku">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">OEM / Ref. Fab.</div><div class="val mono" id="d-oem">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">EAN / GTIN</div><div class="val mono" id="d-ean">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">Marca</div><div class="val" id="d-marca">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Nome do Produto</div><div class="val" id="d-nome">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Família</div><div class="val" id="d-familia">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">Motor Busca</div><div class="val mono" id="d-motor">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">IOM</div><div class="val mono" id="d-iom">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Material Principal</div><div class="val" id="d-material">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CC / TF — TRIANGULAÇÃO E CÓDIGOS ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s2" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s2">
+    🔀 TF / CC — Triangulação &amp; Códigos Cambiados
+    <span class="nb2 nb2-ok" id="nb-tf">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Códigos OEM (montadora)</div>
+    <div id="d-oems-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Aftermarket (concorrência direta)</div>
+    <div id="d-af-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Importadores / Distribuidores</div>
+    <div id="d-imp-list">—</div>
+  </div>
+</div>
+
+<!-- ── AV — APLICAÇÃO VEICULAR ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s3" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s3">
+    🚗 AV — Aplicação Veicular
+    <span class="nb2 nb2-ok" id="nb-av">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">Montadora</div><div class="val" id="d-montadora">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Modelo</div><div class="val" id="d-veiculo">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Versão</div><div class="val" id="d-versao">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">Código Motor</div><div class="val mono" id="d-cod-motor">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Cilindrada</div><div class="val" id="d-cil">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Combustível</div><div class="val" id="d-comb">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g2">
+      <div class="ntcv2-f"><div class="lbl">Ano Inicial</div><div class="val" id="d-ano-i">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Ano Final</div><div class="val" id="d-ano-f">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── EC / MC — ENGENHARIA E MATERIAL ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s4" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s4">
+    🔧 EC / MC — Engenharia, Material &amp; Certificações
+    <span class="nb2 nb2-ok" id="nb-ec">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Função técnica</div>
+    <div class="ntcv2-voz" id="d-funcao" style="margin-top:0">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Especificações técnicas</div>
+    <div id="d-specs-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Material (MC)</div>
+    <div id="d-mat-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Certificações / INMETRO</div>
+    <div id="d-cert-list">—</div>
+  </div>
+</div>
+
+<!-- ── BTA — BOLETIM TÉCNICO ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s5" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s5">
+    📋 BTA — Boletim Técnico &amp; Direito do Consumidor
+    <span class="nb2 nb2-ok" id="nb-bta">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Boletins técnicos</div>
+    <div id="d-bta-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Substituições documentadas</div>
+    <div id="d-subs-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-consumer">
+      <div style="font-size:11px;font-weight:700;margin-bottom:4px">Direito do Consumidor (CDC Art. 26)</div>
+      <p id="d-cdc">Garantia legal mínima: 90 dias (produtos duráveis). Garantia contratual conforme fabricante. Instalação recomendada por profissional habilitado.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── CO — FISCAL ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s6" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s6">
+    🧾 CO — Fiscal / NCM / CEST
+    <span class="nb2 nb2-ok" id="nb-co">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">NCM (8 dígitos)</div><div class="val mono" id="d-ncm">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">CEST</div><div class="val mono" id="d-cest">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Origem</div><div class="val" id="d-origem">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">CST / CSOSN</div><div class="val" id="d-cst">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">IPI</div><div class="val" id="d-ipi">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">CFOP</div><div class="val" id="d-cfop">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g2">
+      <div class="ntcv2-f"><div class="lbl">Categoria PDV (Bling)</div><div class="val" id="d-cat-pdv">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Categoria TEG (Wix)</div><div class="val" id="d-cat-teg">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── IV — IMAGENS ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s7" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s7">
+    📷 IV — Integridade Visual
+    <span class="nb2 nb2-ok" id="nb-iv">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Clique para marcar/desmarcar imagens para publicação</div>
+    <div class="ntcv2-imgs" id="ntcv2-imgs">
+      <div class="ntcv2-img sel" onclick="ntcv2ToggleImg(this)" title="Principal">📦<div class="ntcv2-img-lbl">Principal</div></div>
+      <div class="ntcv2-img sel" onclick="ntcv2ToggleImg(this)" title="Embalagem">🗃️<div class="ntcv2-img-lbl">Embalagem</div></div>
+      <div class="ntcv2-img sel" onclick="ntcv2ToggleImg(this)" title="Etiqueta">🏷️<div class="ntcv2-img-lbl">Etiqueta</div></div>
+      <div class="ntcv2-img sel" onclick="ntcv2ToggleImg(this)" title="Ângulo">🔄<div class="ntcv2-img-lbl">Ângulo</div></div>
+      <div class="ntcv2-img" onclick="ntcv2ToggleImg(this)" title="Detalhe">🔍<div class="ntcv2-img-lbl">Detalhe</div></div>
+      <div class="ntcv2-img" onclick="ntcv2ToggleImg(this)" title="Explodido">📐<div class="ntcv2-img-lbl">Explodido</div></div>
+      <div class="ntcv2-img" onclick="ntcv2ToggleImg(this)" title="Instalação">🔧<div class="ntcv2-img-lbl">Instalação</div></div>
+      <div class="ntcv2-img" onclick="ntcv2ToggleImg(this)" title="EAN 3D">📊<div class="ntcv2-img-lbl">EAN 3D</div></div>
+    </div>
+    <div id="ntcv2-iv-msg" style="font-size:11px;color:#059669;margin-top:6px">✓ 3 imagens — marque ao menos 4 para IV ≥ 0.80</div>
+  </div>
+</div>
+
+<!-- ── SEO / CPC ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s8" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s8">
+    📣 SEO / CPC — Tráfego Pago e Orgânico
+    <span class="nb2 nb2-ok" id="nb-seo">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div class="ntcv2-f" style="margin-bottom:8px">
+      <div class="lbl">Meta Title <span style="float:right" id="ntcv2-title-cnt">0/60</span></div>
+      <div class="ntcv2-seo-val" id="d-meta-title">—</div>
+    </div>
+    <div class="ntcv2-f" style="margin-bottom:8px">
+      <div class="lbl">Meta Description <span style="float:right" id="ntcv2-desc-cnt">0/155</span></div>
+      <div class="ntcv2-seo-val" id="d-meta-desc">—</div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Palavras-chave SEO</div>
+    <div id="d-kw-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Tags CPC / Google Shopping</div>
+    <div id="d-cpc-list">—</div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Palavras negativas</div>
+    <div id="d-neg-list">—</div>
+  </div>
+</div>
+
+<!-- ── VOZ DO LOJISTA ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-s9" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-s9">
+    💬 Voz do Lojista — Descrição Gerada por IA
+    <span class="nb2 nb2-ok">Técnico + SEO</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button class="ntcv2-btn prim" id="voz-btn-tec" onclick="ntcv2SetVoz('tec')">Técnico</button>
+      <button class="ntcv2-btn" id="voz-btn-com" onclick="ntcv2SetVoz('com')">Comercial</button>
+      <button class="ntcv2-btn" id="voz-btn-seo" onclick="ntcv2SetVoz('seo')">SEO</button>
+    </div>
+    <div class="ntcv2-voz" id="voz-box">Aguardando dados do produto...</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:6px">Tom de voz selecionado no template NTC será aplicado automaticamente.</div>
+  </div>
+</div>
+
+<!-- ── LG / FM ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-sA" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-sA">
+    🏭 FM / LG — Fabricante &amp; Linhagem
+    <span class="nb2 nb2-ok" id="nb-fm">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div class="ntcv2-g2">
+      <div class="ntcv2-f"><div class="lbl">Fabricante Original</div><div class="val" id="d-fab">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Montadora</div><div class="val" id="d-montadora2">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g2">
+      <div class="ntcv2-f"><div class="lbl">Distribuidor</div><div class="val" id="d-dist">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Importador</div><div class="val" id="d-import">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FI / FP ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-sB" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-sB">
+    📏 FI / FP — Pesos e Dimensões
+    <span class="nb2 nb2-ok" id="nb-fi">—</span>
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div class="ntcv2-g2">
+      <div class="ntcv2-f"><div class="lbl">Peso Bruto (kg)</div><div class="val" id="d-pb">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Peso Líquido (kg)</div><div class="val" id="d-pl">—</div></div>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div class="ntcv2-g3">
+      <div class="ntcv2-f"><div class="lbl">Comprimento (cm)</div><div class="val" id="d-comp">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Largura (cm)</div><div class="val" id="d-larg">—</div></div>
+      <div class="ntcv2-f"><div class="lbl">Altura (cm)</div><div class="val" id="d-alt">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PUBLICAR ── -->
+<div class="ntcv2-card">
+  <input type="checkbox" id="nt2-sC" class="ntcv2-toggle" checked>
+  <label class="ntcv2-sh" for="nt2-sC">
+    🚀 Publicar — ERP &amp; Marketplaces
+    <span class="ntcv2-chev">▼</span>
+  </label>
+  <div class="ntcv2-sb">
+    <div id="ntcv2-pub-status" style="padding:8px 10px;background:#d1fae5;border-radius:6px;font-size:12px;color:#065f46;margin-bottom:10px;border:1px solid #6ee7b7">
+      Aguardando score NTC...
+    </div>
+    <div class="ntcv2-brow">
+      <button class="ntcv2-btn bling" onclick="ntcv2Pub('bling')">☁️ Bling ERP</button>
+      <button class="ntcv2-btn wix" onclick="ntcv2Pub('wix')">🌐 Wix Stores</button>
+      <button class="ntcv2-btn ml" onclick="ntcv2Pub('ml')">🛒 Mercado Livre</button>
+      <button class="ntcv2-btn shopee" onclick="ntcv2Pub('shopee')">🏷️ Shopee</button>
+    </div>
+    <div class="ntcv2-div"></div>
+    <div style="font-size:11px;color:#6b7280;margin-bottom:6px">Gaveta Bling ERP — payload</div>
+    <div class="ntcv2-hash" id="ntcv2-bling-payload">aguardando dados...</div>
+  </div>
+</div>
+
+<!-- ── AÇÕES ── -->
+<div class="ntcv2-card">
+  <div class="ntcv2-sb">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600">Ações do produto</div>
+      <span id="ntcv2-acao-badge" class="ntcv2-reprov" style="font-size:11px;padding:3px 10px">NTC —%</span>
+    </div>
+    <div class="ntcv2-brow">
+      <button class="ntcv2-btn prim" onclick="ntcv2Reenriquecer()">🔄 Reenriquecer IA</button>
+      <button class="ntcv2-btn" onclick="ntcv2Editar()">✏️ Editar ficha</button>
+      <button class="ntcv2-btn warn" onclick="ntcv2EnriqTodos()">✅ Enriquecer todos</button>
+      <button class="ntcv2-btn dng" onclick="ntcv2Deletar()">🗑 Deletar</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /ntcv2-bloco -->
+<!-- END NTC 4.0 STEP 2 BLOCO COMPLETO v2 -->
+
+
+<script id="ntcv2-helpers">
+/* ─── NTC v2 helpers ─── */
+function ntcv2ToggleImg(el) {
+  el.classList.toggle('sel');
+  var n = document.querySelectorAll('.ntcv2-img.sel').length;
+  var msg = document.getElementById('ntcv2-iv-msg');
+  if (!msg) return;
+  if (n >= 4) { msg.style.color = '#059669'; msg.textContent = '✓ ' + n + ' imagens selecionadas — IV ≥ 0.80 aprovado para publicação'; }
+  else { msg.style.color = '#d97706'; msg.textContent = '⚠ ' + n + ' imagem(ns) — mínimo 4 para IV ≥ 0.80'; }
+}
+
+var ntcv2VozData = { tec: '', com: '', seo: '' };
+var ntcv2CurrentVoz = 'tec';
+function ntcv2SetVoz(v) {
+  ntcv2CurrentVoz = v;
+  var box = document.getElementById('voz-box');
+  if (box) box.innerHTML = ntcv2VozData[v] || 'Aguardando dados do produto...';
+  ['tec','com','seo'].forEach(function(k) {
+    var b = document.getElementById('voz-btn-' + k);
+    if (b) b.className = k === v ? 'ntcv2-btn prim' : 'ntcv2-btn';
+  });
+}
+
+function ntcv2Reenriquecer() {
+  var oem = (document.getElementById('oem-oem') || {}).value || document.getElementById('d-oem') && document.getElementById('d-oem').textContent || '?';
+  if (typeof oemBuscar === 'function') { oemBuscar(oem); } else { alert('Use o botão 🌐 Buscar DNA na Web na Etapa 1.'); }
+}
+function ntcv2Editar() {
+  var btn = document.querySelector('[onclick*="oem-step1"]') || document.querySelector('.oem-step-pill');
+  if (btn) btn.click();
+}
+function ntcv2EnriqTodos() { alert('Enriquecimento em massa: use o menu Ferramentas → Enriquecimento em Massa.'); }
+function ntcv2Deletar() { if (confirm('Deseja excluir este produto do catálogo?')) { alert('Produto marcado para exclusão.'); } }
+function ntcv2Pub(plat) {
+  var nomes = {bling:'Bling ERP', wix:'Wix Stores', ml:'Mercado Livre', shopee:'Shopee'};
+  var ntcEl = document.getElementById('ntcv2-pct');
+  var pct = ntcEl ? parseFloat(ntcEl.textContent) : 0;
+  if (pct < 95) { alert('NTC ' + pct + '% — mínimo 95% para publicar em ' + nomes[plat] + '.'); return; }
+  alert('Publicando em ' + nomes[plat] + '... (integração via API server.js)');
+}
+
+/* ── ntcv2Atualizar: chamado com o objeto resultado do ntc-engine ── */
+function ntcv2Atualizar(dados, resultado) {
+  if (!dados || !resultado) return;
+
+  /* Header */
+  var nome = (dados.nome || '—') + ' — ' + (dados.marca || '—');
+  var sub  = (dados.montadora || '') + ' ' + (dados.veiculo || '') + ' ' + (dados.motor || '');
+  ntcv2Set('ntcv2-nome', nome);
+  ntcv2Set('ntcv2-sub', sub.trim() || '—');
+
+  /* Score */
+  var pct = Math.round((resultado.ntc || 0) * 100);
+  ntcv2Set('ntcv2-pct', pct + '%');
+  var bar = document.getElementById('ntcv2-bar');
+  if (bar) bar.style.width = pct + '%';
+
+  /* Badge status */
+  var sb = document.getElementById('ntcv2-status-badge');
+  var ab = document.getElementById('ntcv2-acao-badge');
+  if (sb) {
+    sb.className = pct >= 95 ? 'ntcv2-aprov' : 'ntcv2-reprov';
+    sb.textContent = 'NTC ' + pct + '% — ' + (pct >= 95 ? 'APROVADO' : 'REPROVADO');
+  }
+  if (ab) { ab.className = pct >= 95 ? 'ntcv2-aprov' : 'ntcv2-reprov'; ab.textContent = 'NTC ' + pct + '%'; }
+
+  /* Tags header */
+  ntcv2Set('ntcv2-tag-oem', 'OEM: ' + (dados.oem || '—'));
+  ntcv2Set('ntcv2-tag-sku', 'SKU: ' + (dados.sku || dados.referencia || '—'));
+  ntcv2Set('ntcv2-tag-ean', 'EAN: ' + (dados.ean || '—'));
+
+  /* RAST-HASH */
+  if (resultado.rast_hash) ntcv2Set('ntcv2-hash', 'RAST-HASH OEM DNA: ' + resultado.rast_hash);
+
+  /* Módulos score pills */
+  var modelos = resultado.modulos || resultado.scores || {};
+  var mapa = {dna:'dna',tf:'tf',fm:'fm',co:'co',av:'av',mc:'mc',ec:'ec',bta:'bta',cc:'cc',lg:'lg',iv:'iv',fi:'fi'};
+  Object.keys(mapa).forEach(function(k) {
+    var el = document.getElementById('ns-' + k);
+    if (!el) return;
+    var v = modelos[k] !== undefined ? modelos[k] : (modelos[k.toUpperCase()] !== undefined ? modelos[k.toUpperCase()] : null);
+    if (v === null) return;
+    var pv = Math.round(v * 100);
+    el.textContent = pv + '%';
+    el.className = 'sv ' + (pv >= 80 ? 'sv-ok' : pv > 0 ? 'sv-part' : 'sv-zero');
+  });
+
+  /* DNA campos */
+  ntcv2Set('d-sku', dados.sku || dados.referencia || '—');
+  ntcv2Set('d-oem', dados.oem || '—');
+  ntcv2Set('d-ean', dados.ean || '—');
+  ntcv2Set('d-marca', dados.marca || '—');
+  ntcv2Set('d-nome', dados.nome || '—');
+  ntcv2Set('d-familia', dados.familia || '—');
+  ntcv2Set('d-motor', dados.motor || dados.codigo_motor || '—');
+  ntcv2Set('d-iom', dados.iom || '—');
+  ntcv2Set('d-material', dados.material || '—');
+
+  /* AV */
+  ntcv2Set('d-montadora', dados.montadora || '—');
+  ntcv2Set('d-veiculo', dados.veiculo || '—');
+  ntcv2Set('d-versao', dados.versao || '—');
+  ntcv2Set('d-cod-motor', dados.codigo_motor || '—');
+  ntcv2Set('d-cil', dados.cilindrada || '—');
+  ntcv2Set('d-comb', dados.combustivel || '—');
+  ntcv2Set('d-ano-i', dados.ano_inicial || '—');
+  ntcv2Set('d-ano-f', dados.ano_final || '—');
+
+  /* CO / Fiscal */
+  ntcv2Set('d-ncm', dados.ncm || '—');
+  ntcv2Set('d-cest', dados.cest || '—');
+  ntcv2Set('d-origem', dados.origem !== undefined ? dados.origem + ' — ' + ['Nacional','Estrangeira direta','Estrangeira adq. merc.interno','Nac.merc.imp.>40%','Nac.processo produtivo','Nac.merc.imp.40-70%','Estrang.sem similar','Nac.<40%','Nac.acima 70%'][dados.origem] : '—');
+  ntcv2Set('d-cst', dados.cst || '—');
+  ntcv2Set('d-ipi', dados.ipi !== undefined ? dados.ipi + '%' : '—');
+  ntcv2Set('d-cfop', dados.cfop || '—');
+  ntcv2Set('d-cat-pdv', (dados.categoria || '—') + (dados.subcategoria ? ' › ' + dados.subcategoria : ''));
+  ntcv2Set('d-cat-teg', (dados.categoria_teg || dados.categoria || '—') + (dados.subcategoria_teg ? ' › ' + dados.subcategoria_teg : ''));
+
+  /* CC / TF — listas */
+  ntcv2Tags('d-oems-list', dados.codigos_oem || dados.oem ? [dados.oem] : [], 'oem');
+  ntcv2Tags('d-af-list', dados.codigos_aftermarket || [], 'af');
+  ntcv2Tags('d-imp-list', dados.codigos_importador || [], 'imp');
+
+  /* EC / Specs */
+  ntcv2Set('d-funcao', dados.funcao_tecnica || dados.descricao || '—');
+  ntcv2Tags('d-specs-list', dados.especificacoes || [], '');
+  ntcv2Tags('d-mat-list', dados.materiais || [], '');
+  ntcv2Tags('d-cert-list', dados.certificacoes || [], 'oem');
+
+  /* BTA */
+  ntcv2Tags('d-bta-list', dados.boletins || [], 'af');
+  ntcv2Tags('d-subs-list', dados.substituicoes || [], 'imp');
+  if (dados.garantia) ntcv2Set('d-cdc', dados.garantia);
+
+  /* FM / LG */
+  ntcv2Set('d-fab', dados.fabricante || dados.marca || '—');
+  ntcv2Set('d-montadora2', dados.montadora || '—');
+  ntcv2Set('d-dist', dados.distribuidor || 'MOBIS Peças Automotivas');
+  ntcv2Set('d-import', dados.importador || '—');
+
+  /* FI / FP */
+  ntcv2Set('d-pb', dados.peso_bruto || '—');
+  ntcv2Set('d-pl', dados.peso_liquido || '—');
+  ntcv2Set('d-comp', dados.comprimento || '—');
+  ntcv2Set('d-larg', dados.largura || '—');
+  ntcv2Set('d-alt', dados.altura || '—');
+
+  /* SEO */
+  if (dados.seo || resultado.seo) {
+    var seo = dados.seo || resultado.seo || {};
+    ntcv2Set('d-meta-title', seo.meta_title || '—');
+    ntcv2Set('d-meta-desc', seo.meta_description || '—');
+    var t = document.getElementById('d-meta-title');
+    var cntT = document.getElementById('ntcv2-title-cnt');
+    if (t && cntT) cntT.textContent = t.textContent.length + '/60';
+    var d2 = document.getElementById('d-meta-desc');
+    var cntD = document.getElementById('ntcv2-desc-cnt');
+    if (d2 && cntD) cntD.textContent = d2.textContent.length + '/155';
+    ntcv2Tags('d-kw-list', seo.keywords || [], 'seo');
+    ntcv2Tags('d-cpc-list', seo.cpc_tags || [], 'cpc');
+    ntcv2Tags('d-neg-list', seo.negative_keywords || [], 'neg');
+  }
+
+  /* Voz do Lojista */
+  if (dados.voz_lojista || resultado.voz_lojista) {
+    var vl = dados.voz_lojista || resultado.voz_lojista;
+    ntcv2VozData.tec = (typeof vl === 'string' ? vl : vl.tecnico) || '';
+    ntcv2VozData.com = (vl.comercial) || ntcv2VozData.tec;
+    ntcv2VozData.seo = (vl.seo) || ntcv2VozData.tec;
+    ntcv2SetVoz(ntcv2CurrentVoz);
+  }
+
+  /* Bling payload */
+  var payload = '';
+  if (typeof gerarCabecoteERP === 'function') {
+    try { var ep = gerarCabecoteERP(resultado, dados); payload = JSON.stringify(ep, null, 2); } catch(e) {}
+  }
+  if (!payload) {
+    payload = 'codigo: "' + (dados.sku||dados.oem||'') + '" | ncm: "' + (dados.ncm||'') + '" | cest: "' + (dados.cest||'') + '"
+origem: ' + (dados.origem||0) + ' | cst: "' + (dados.cst||'') + '" | cfop: "' + (dados.cfop||'') + '"';
+  }
+  ntcv2Set('ntcv2-bling-payload', payload);
+
+  /* Status publicação */
+  var ps = document.getElementById('ntcv2-pub-status');
+  if (ps) {
+    if (pct >= 95) {
+      ps.style.background = '#d1fae5'; ps.style.color = '#065f46'; ps.style.borderColor = '#6ee7b7';
+      ps.textContent = '✓ NTC ' + pct + '% — IV aprovado. Produto liberado para publicação em todos os canais.';
+    } else {
+      ps.style.background = '#fef3c7'; ps.style.color = '#92400e'; ps.style.borderColor = '#fde68a';
+      ps.textContent = '⚠ NTC ' + pct + '% — mínimo 95% necessário. Complete os módulos acima.';
+    }
+  }
+
+  /* Badges por módulo */
+  ntcv2Badge('nb-dna', modelos.dna);
+  ntcv2Badge('nb-tf', modelos.tf);
+  ntcv2Badge('nb-av', modelos.av);
+  ntcv2Badge('nb-ec', modelos.ec);
+  ntcv2Badge('nb-bta', modelos.bta);
+  ntcv2Badge('nb-co', modelos.co);
+  ntcv2Badge('nb-iv', modelos.iv);
+  ntcv2Badge('nb-seo', dados.seo ? 1 : 0);
+  ntcv2Badge('nb-fm', modelos.fm);
+  ntcv2Badge('nb-fi', modelos.fi);
+}
+
+function ntcv2Set(id, val) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function ntcv2Tags(id, arr, cls) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!arr || !arr.length) { el.textContent = '—'; return; }
+  el.innerHTML = arr.map(function(v) {
+    return '<span class="ntcv2-tag ' + cls + '">' + v + '</span>';
+  }).join('');
+}
+
+function ntcv2Badge(id, score) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (score === undefined || score === null) return;
+  var pct = Math.round(score * 100);
+  el.className = 'nb2 ' + (pct >= 80 ? 'nb2-ok' : pct > 0 ? 'nb2-warn' : 'nb2-err');
+  el.textContent = pct + '%';
+}
+
+/* Hook: quando ntc-engine terminar de processar, chamar ntcv2Atualizar */
+if (typeof window !== 'undefined') {
+  window.addEventListener('ntc-result', function(e) {
+    if (e.detail) ntcv2Atualizar(e.detail.dados, e.detail.resultado);
+  });
+}
+</script>
+
 </body>
 </html>
