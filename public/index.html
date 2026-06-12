@@ -2317,7 +2317,12 @@ async function iaBuscarDnaWeb() {
   }
   if (especificacoes.length) dados.especificacoes = especificacoes;
   if (campos.cross_codes && campos.cross_codes.valor) {
-    dados.cc_aftermarket = String(campos.cross_codes.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    var crossCodes = String(campos.cross_codes.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    // Remove duplicados mantendo o maior número possível de equivalentes únicos
+    dados.cc_aftermarket = crossCodes.filter(function(c, i){ return crossCodes.indexOf(c) === i; });
+  }
+  if (campos.codigo_oem && campos.codigo_oem.valor) {
+    dados.cc_oem = [String(campos.codigo_oem.valor).trim()];
   }
   window._iaDadosEnriquecidos = dados;
 

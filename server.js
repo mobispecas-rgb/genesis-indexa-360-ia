@@ -547,6 +547,18 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         console.error('[Enriquecer DNA] busca:', e.message);
     }
 
+    // Busca complementar focada em códigos equivalentes/cross-reference (OEM e
+    // aftermarket de outras marcas) — aumenta a chance de encontrar o maior
+    // número possível de cross-codes para o bloco AV
+    try {
+        const trechosCross = await buscarWeb(`${q} código equivalente cross reference substituto OEM`, 10);
+        trechosCross.forEach(t => {
+            if (!trechos.some(e => e.fonte === t.fonte)) trechos.push(t);
+        });
+    } catch (e) {
+        console.error('[Enriquecer DNA] busca cross-codes:', e.message);
+    }
+
     if (trechos.length === 0) {
         return res.json({
             ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
@@ -559,7 +571,7 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
             model: 'claude-sonnet-4-6',
-            max_tokens: 1500,
+            max_tokens: 2000,
             system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
 
 Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
@@ -585,7 +597,7 @@ Campos:
 - altura: altura em cm (número)
 - peso_bruto: peso bruto do produto (com embalagem), em kg (número)
 - peso_liquido: peso líquido do produto (sem embalagem), em kg (número)
-- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
+- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça — inclua TANTO códigos OEM (de outras montadoras/aplicações que usam a mesma peça) QUANTO códigos aftermarket de outras marcas. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). IMPORTANTE: liste o MAIOR número possível de códigos equivalentes com evidência explícita nos resultados — não se limite a 3 ou 4 exemplos; varra TODOS os resultados numerados em busca de códigos adicionais de marcas diferentes. Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361; Toyota 90915-YZZD4; Honda 15400-PLM-A02")
 - aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
 
 REGRAS ABSOLUTAS:
