@@ -1632,7 +1632,41 @@ MEDIDA LARGURA  25 MM"></textarea>
     <div class="page" id="page-pagamentos"><div class="stub-page"><div class="stub-icon">&#128179;</div><h2>Pagamentos</h2><p>Em desenvolvimento &mdash; Pagamentos</p></div></div>
     <div class="page" id="page-planos"><div class="stub-page"><div class="stub-icon">&#128176;</div><h2>Planos</h2><p>Em desenvolvimento &mdash; Planos</p></div></div>
     <div class="page" id="page-usuarios"><div class="stub-page"><div class="stub-icon">&#128101;</div><h2>Usu&aacute;rios</h2><p>Em desenvolvimento &mdash; Usu&aacute;rios</p></div></div>
-    <div class="page" id="page-empresa"><div class="stub-page"><div class="stub-icon">&#127970;</div><h2>Empresa</h2><p>Em desenvolvimento &mdash; Empresa</p></div></div>
+    <div class="page" id="page-empresa">
+      <div class="page-title">&#127970; Empresa &mdash; Padr&otilde;es Fiscais e de Linhagem</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Defina os valores padr&atilde;o usados para preencher automaticamente os m&oacute;dulos <strong>FM (Fiscal/NCM)</strong> e <strong>LG (Linhagem Geneal&oacute;gica)</strong> no Cadastro Completo, sempre que esses campos estiverem vazios. Os valores preenchidos automaticamente ficam marcados em laranja &mdash; confira antes de salvar o produto.</p>
+
+      <div class="card">
+        <div class="card-title">&#9881;&#65039; Linhagem Geneal&oacute;gica (LG)</div>
+        <div class="grid2">
+          <div class="form-group"><label>Distribuidor</label><input id="emp-distribuidor" type="text" placeholder="iRollo 360"></div>
+        </div>
+        <p style="font-size:11px;color:#555;margin-top:4px">Aplicado ao campo "Distribuidor" da Linhagem. O "Fabricante Original" usa o Fabricante j&aacute; digitado no cadastro, e a "Montadora" usa a Marca do Ve&iacute;culo (m&oacute;dulo AV).</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#9881;&#65039; Padr&otilde;es Fiscais (FM)</div>
+        <div class="grid2">
+          <div class="form-group"><label>CST padr&atilde;o</label><input id="emp-cst" type="text" placeholder="000" maxlength="3"></div>
+          <div class="form-group"><label>Origem ICMS padr&atilde;o</label>
+            <select id="emp-origem">
+              <option value="0">0-Nacional</option>
+              <option value="1">1-Importado direto</option>
+              <option value="2">2-Adquirido merc.int.</option>
+              <option value="3">3-Nacional&gt;40%</option>
+              <option value="4">4-Processos b&aacute;sicos</option>
+              <option value="5">5-Nacional&le;40%</option>
+              <option value="6">6-Importado c/similar</option>
+              <option value="7">7-Sem similar</option>
+              <option value="8">8-Nacional&gt;70%</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="empresaSalvarConfig()">&#128190; Salvar Configura&ccedil;&otilde;es</button>
+        <span id="emp-config-status" style="font-size:12px;color:#00c853;margin-left:8px"></span>
+        <p style="font-size:11px;color:#555;margin-top:10px">Estes valores dependem do regime tribut&aacute;rio do vendedor e n&atilde;o s&atilde;o pesquisados na web. Ajuste conforme a configura&ccedil;&atilde;o fiscal da sua empresa.</p>
+      </div>
+    </div>
     <div class="page" id="page-preferencias"><div class="stub-page"><div class="stub-icon">&#127925;</div><h2>Prefer&ecirc;ncias</h2><p>Em desenvolvimento &mdash; Prefer&ecirc;ncias</p></div></div>
     <div class="page" id="page-config"><div class="stub-page"><div class="stub-icon">&#9881;</div><h2>Configura&ccedil;&otilde;es</h2><p>Em desenvolvimento &mdash; Configura&ccedil;&otilde;es</p></div></div>
 
@@ -1740,6 +1774,7 @@ function nav(page, opts) {
   if (page === 'precificacao') precificacaoRender();
   if (page === 'diagnostico') diagnosticoRender();
   if (page === 'wix') wixVerificarStatus();
+  if (page === 'empresa') empresaRender();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -3516,6 +3551,37 @@ function pricingGetConfig() {
 
 function pricingSaveConfig(cfg) { localStorage.setItem('gn_pricing_cfg', JSON.stringify(cfg)); }
 
+// ===== EMPRESA (padrões fiscais FM e de linhagem LG para preenchimento automático) =====
+var EMPRESA_CFG_DEFAULT = { distribuidor: 'iRollo 360', cst: '000', origem: '0' };
+
+function empresaGetConfig() {
+  try {
+    var s = JSON.parse(localStorage.getItem('gn_empresa_cfg') || 'null');
+    return s ? Object.assign({}, EMPRESA_CFG_DEFAULT, s) : Object.assign({}, EMPRESA_CFG_DEFAULT);
+  } catch(e) { return Object.assign({}, EMPRESA_CFG_DEFAULT); }
+}
+
+function empresaSaveConfig(cfg) { localStorage.setItem('gn_empresa_cfg', JSON.stringify(cfg)); }
+
+function empresaRender() {
+  var cfg = empresaGetConfig();
+  document.getElementById('emp-distribuidor').value = cfg.distribuidor;
+  document.getElementById('emp-cst').value = cfg.cst;
+  document.getElementById('emp-origem').value = cfg.origem;
+}
+
+function empresaSalvarConfig() {
+  var cfg = {
+    distribuidor: document.getElementById('emp-distribuidor').value.trim() || EMPRESA_CFG_DEFAULT.distribuidor,
+    cst: document.getElementById('emp-cst').value.trim() || EMPRESA_CFG_DEFAULT.cst,
+    origem: document.getElementById('emp-origem').value || EMPRESA_CFG_DEFAULT.origem
+  };
+  empresaSaveConfig(cfg);
+  var st = document.getElementById('emp-config-status');
+  if (st) { st.textContent = '✔ Salvo'; setTimeout(function(){ st.textContent=''; }, 2000); }
+  empresaRender();
+}
+
 function precoSugerir(custo, cfg) {
   if (custo == null || isNaN(custo)) return null;
   var pctTotal = (Number(cfg.margem)||0) + (Number(cfg.taxaMkt)||0) + (Number(cfg.impostos)||0);
@@ -3865,7 +3931,7 @@ function oemIrEtapa(n) {
   document.getElementById('oem-step2').classList.toggle('active', n === 2);
   document.getElementById('oem-pill-1').classList.toggle('active', n === 1);
   document.getElementById('oem-pill-2').classList.toggle('active', n === 2);
-  if (n === 2) _cntcRecalcular();
+  if (n === 2) { oemPreencherLinhagemFiscal(); _cntcRecalcular(); }
 }
 
 // Dados completos do produto (campos do formulário OEM mesclados com o
@@ -4121,6 +4187,7 @@ var MAPA_CAMPOS_DNA_EXTRA = {
   altura:         { id: 'cntc-fp-alt',   label: 'Altura',            key: 'altura' },
   peso_bruto:     { id: 'cntc-fi-pesob', label: 'Peso Bruto',        key: 'peso_bruto' },
   peso_liquido:   { id: 'cntc-fi-pesol', label: 'Peso Líquido',      key: 'peso_liquido' },
+  funcao_tecnica: { id: 'cntc-ec-funcao',label: 'Função Técnica',    key: 'funcao' },
 };
 
 // União dos dois mapas — usado pelo agente de DNA na Web (Cadastro Completo e Voz do Lojista)
@@ -4150,10 +4217,14 @@ async function oemBuscarDnaWeb() {
 
   if (!r.ok) {
     statusEl.innerHTML = '<span style="color:#ff4500">&#9888; ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
+    oemPreencherLinhagemFiscal();
+    await _cntcRecalcular();
     return;
   }
   if (!r.encontrado) {
     statusEl.innerHTML = '<span style="color:#ffaa00">&#9888; ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
+    oemPreencherLinhagemFiscal();
+    await _cntcRecalcular();
     return;
   }
 
@@ -4227,6 +4298,28 @@ async function oemBuscarDnaWeb() {
     preenchidos.push({campo: 'Códigos equivalentes', valor: itens.join('; '), confianca: info.confianca, fonte: info.fonte});
   })();
 
+  // Boletins técnicos (BTA) — TSBs/recalls/homologações documentados na web
+  (function() {
+    var info = campos.boletins_tecnicos;
+    if (!info || info.valor == null || info.valor === '') return;
+    var itens = String(info.valor).split(/;\s*/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if (itens.length === 0) return;
+    var el = document.getElementById('cntc-bta-boletins');
+    if (el) {
+      itens.forEach(function(it) {
+        if (el.value.indexOf(it) === -1) el.value = el.value ? (el.value + '\n' + it) : it;
+      });
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
+    } else {
+      if (!Array.isArray(_cntcDados.boletins)) _cntcDados.boletins = [];
+      itens.forEach(function(it) {
+        if (_cntcDados.boletins.indexOf(it) === -1) _cntcDados.boletins.push(it);
+      });
+    }
+    preenchidos.push({campo: 'Boletins técnicos', valor: itens.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
   // Aplicações adicionais (outros veículos/motores/anos além da aplicação
   // principal já preenchida em AV) — anexa cada uma como linha em "Especificações" (EC)
   (function() {
@@ -4252,6 +4345,11 @@ async function oemBuscarDnaWeb() {
     }
     preenchidos.push({campo: 'Aplicações adicionais', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
   })();
+
+  // Linhagem (LG) e padrões fiscais (FM) que não dependem de busca na web —
+  // usa a Montadora (AV) recém-preenchida acima, o Fabricante já digitado e
+  // os padrões configurados em "Empresa"
+  oemPreencherLinhagemFiscal();
 
   await _cntcRecalcular();
 
@@ -5576,6 +5674,41 @@ function _cntcQueryProduto() {
     fabricante: dados.fabricante || '',
     nome: dados.nome || ''
   };
+}
+
+// Preenche um campo do CNTC (input visível ou _cntcDados) só se estiver
+// vazio, marcando em laranja com tooltip explicando a origem do valor.
+function _cntcSetCampo(id, key, valor, fonte) {
+  if (valor == null || valor === '') return false;
+  var el = document.getElementById(id);
+  if (el) {
+    if (el.value && String(el.value).trim() !== '') return false;
+    el.value = valor;
+    el.style.borderColor = '#ff9800';
+    el.title = 'Preenchido automaticamente (' + fonte + ') — confirme antes de salvar';
+  } else {
+    if (_cntcDados[key] != null && _cntcDados[key] !== '') return false;
+    _cntcDados[key] = valor;
+  }
+  return true;
+}
+
+// Preenche automaticamente padrões fiscais (FM: CST/Origem ICMS) e de
+// linhagem (LG: Distribuidor, Fabricante Original, Montadora) que não
+// dependem de busca na web — usam a configuração da empresa e dados já
+// digitados/coletados no cadastro (Fabricante, Marca do Veículo em AV).
+function oemPreencherLinhagemFiscal() {
+  var dados = oemColetar();
+  var cfg = empresaGetConfig();
+
+  // LG — Linhagem Genealógica
+  _cntcSetCampo('cntc-lg-dist', 'linhagem_distribuidor', cfg.distribuidor, 'config. Empresa');
+  if (dados.fabricante) _cntcSetCampo('cntc-lg-fab', 'linhagem_fabricante', dados.fabricante, 'campo Fabricante');
+  if (dados.marca) _cntcSetCampo('cntc-lg-mont', 'linhagem_montadora', dados.marca, 'AV — Marca do Veículo');
+
+  // FM — Fiscal & NCM (dependem do regime tributário do vendedor)
+  _cntcSetCampo('cntc-fm-cst', 'cst', cfg.cst, 'config. Empresa');
+  _cntcSetCampo('cntc-fm-origem', 'origem', cfg.origem, 'config. Empresa');
 }
 
 function _cntcRenderModulos(scores) {

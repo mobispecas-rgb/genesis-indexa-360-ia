@@ -454,7 +454,7 @@ const CAMPOS_DNA = [
     'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
     'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
     'peso_bruto', 'peso_liquido',
-    'cross_codes', 'aplicacoes_adicionais'
+    'cross_codes', 'aplicacoes_adicionais', 'funcao_tecnica', 'boletins_tecnicos'
 ];
 
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
@@ -500,7 +500,7 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
             model: 'claude-sonnet-4-6',
-            max_tokens: 2000,
+            max_tokens: 2300,
             system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
 
 Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
@@ -528,12 +528,14 @@ Campos:
 - peso_liquido: peso líquido do produto (sem embalagem), em kg (número)
 - cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça — inclua TANTO códigos OEM (de outras montadoras/aplicações que usam a mesma peça) QUANTO códigos aftermarket de outras marcas. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). IMPORTANTE: liste o MAIOR número possível de códigos equivalentes com evidência explícita nos resultados — não se limite a 3 ou 4 exemplos; varra TODOS os resultados numerados em busca de códigos adicionais de marcas diferentes. Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361; Toyota 90915-YZZD4; Honda 15400-PLM-A02")
 - aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
+- funcao_tecnica: EXCEÇÃO à regra de "nunca inventar" — este campo é uma DESCRIÇÃO TÉCNICA GERADA, não um fato que precise de fonte. Com base no nome/marca/categoria do produto (e em qualquer detalhe técnico encontrado nos resultados), escreva 1-2 frases explicando a função técnica da peça (o que ela faz, onde se monta, princípio de funcionamento). Sempre preencha este campo, mesmo sem resultados específicos sobre o produto exato — use seu conhecimento geral sobre a categoria da peça. "confianca" deve ser "gerado" e "fonte_idx" deve ser null.
+- boletins_tecnicos: boletins técnicos (TSB), recalls, campanhas de revisão ou comunicados de homologação documentados na web para esta peça/aplicação. NUNCA invente — só preencha se houver menção explícita nos resultados. Formato: string com itens separados por "; " (ex: "TSB 2023-01 Toyota — revisão do kit de distribuição; Recall ANVISA 12345").
 
 REGRAS ABSOLUTAS:
-1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
-2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
+1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados — EXCETO "funcao_tecnica", que deve ser sempre gerado (ver regra específica acima).
+2. Se não houver evidência clara para um campo (exceto "funcao_tecnica"), retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
 3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
-4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
+4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente; "gerado" = texto gerado pela IA (uso exclusivo de "funcao_tecnica").
 5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.`,
             messages: [{
                 role: 'user',
@@ -560,7 +562,7 @@ REGRAS ABSOLUTAS:
             const idx = Number(item.fonte_idx);
             const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
             let valor = item.valor;
-            let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
+            let confianca = ['alta', 'media', 'baixa', 'gerado'].includes(item.confianca) ? item.confianca : 'media';
             let motivo = null;
 
             if (c === 'ean') {
