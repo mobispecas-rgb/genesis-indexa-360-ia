@@ -2012,7 +2012,13 @@ function parseTextoIA(texto) {
   }
   var desc_upper = (descricao + ' ' + texto).toUpperCase();
   var familia = null, componentes = [];
-  if (desc_upper.indexOf('DISTRIBUI') >= 0 || desc_upper.indexOf('CORREIA') >= 0 || desc_upper.indexOf('KIT') >= 0) {
+  if (desc_upper.indexOf('EMBREAGEM') >= 0 || desc_upper.indexOf('EMBREAGEN') >= 0) {
+    familia = 'Transmissão';
+    if (desc_upper.indexOf('PLATO') >= 0) componentes.push('plato');
+    if (desc_upper.indexOf('DISCO') >= 0) componentes.push('disco');
+    if (desc_upper.indexOf('ATUADOR') >= 0) componentes.push('atuador');
+    if (desc_upper.indexOf('ROLAMENTO') >= 0) componentes.push('rolamento');
+  } else if (desc_upper.indexOf('DISTRIBUI') >= 0 || desc_upper.indexOf('CORREIA') >= 0 || desc_upper.indexOf('KIT') >= 0) {
     familia = 'Motor';
     if (desc_upper.indexOf('CORREIA') >= 0) componentes.push('correia');
     if (desc_upper.indexOf('TENSOR') >= 0 || desc_upper.indexOf('TENSIONADOR') >= 0) componentes.push('tensor');
