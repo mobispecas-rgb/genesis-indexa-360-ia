@@ -23,6 +23,17 @@
  *   0.60 <= NTC < 0.95   → PENDENTE
  *   NTC < 0.60            → REPROVADO
  *   (nunca usar BLOQUEADO)
+ *
+ * GATE DE TRIANGULAÇÃO (camada adicional, não substitui o fluxo acima):
+ *   Se houver divergência DOCUMENTADA entre Código-Mãe, medidas físicas e
+ *   catálogo OEM/TecDoc (informada em d.tf_divergencias), o NTC é zerado e
+ *   a decisão vira REPROVADO, independente dos demais módulos.
+ *
+ * FAIXAS DE MÍDIA/CPC (camada adicional, apenas classificação informativa):
+ *   NTC >= 0.90           → DOMINANTE            (HIGH_BID_AGGRESSIVE)
+ *   0.75 <= NTC < 0.90    → OPERACIONAL          (MEDIUM_BID_ROAS)
+ *   0.60 <= NTC < 0.75    → VISIBILIDADE_LIMITADA (LOW_BID_VISIBILITY)
+ *   NTC < 0.60            → CRITICO_BLOQUEADO    (QUARANTINE)
  */
 
 const crypto = require('crypto');
@@ -342,6 +353,32 @@ function calcularNTC(scores) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// GATE DE TRIANGULAÇÃO — divergência documentada zera o NTC
+// ─────────────────────────────────────────────────────────────
+function verificarGateTriangulacao(d) {
+  const divergencias = Array.isArray(d.tf_divergencias)
+    ? d.tf_divergencias.filter(Boolean)
+    : [];
+  return { divergente: divergencias.length > 0, divergencias };
+}
+
+// ─────────────────────────────────────────────────────────────
+// CLASSIFICAÇÃO DE MÍDIA/CPC — faixas para Google Ads/PMax/ML
+// ─────────────────────────────────────────────────────────────
+function classificarMidia(ntc) {
+  if (ntc >= 0.90) {
+    return { nivel: 'DOMINANTE', estrategia: 'HIGH_BID_AGGRESSIVE', cpc: 'CPC mínimo — alcance e CTR máximos' };
+  }
+  if (ntc >= 0.75) {
+    return { nivel: 'OPERACIONAL', estrategia: 'MEDIUM_BID_ROAS', cpc: 'CPC controlado — foco em buscas técnicas' };
+  }
+  if (ntc >= 0.60) {
+    return { nivel: 'VISIBILIDADE_LIMITADA', estrategia: 'LOW_BID_VISIBILITY', cpc: 'CPC mínimo — exposição reduzida' };
+  }
+  return { nivel: 'CRITICO_BLOQUEADO', estrategia: 'QUARANTINE', cpc: 'CPC zero — quarentena técnica automática' };
+}
+
+// ─────────────────────────────────────────────────────────────
 // VALIDAR BLOQUEIOS OBRIGATÓRIOS
 // ─────────────────────────────────────────────────────────────
 function validarBloqueios(modulos, ntc) {
@@ -400,10 +437,27 @@ function processar(dados) {
   for (const [k, m] of Object.entries(modulos)) scores[k] = m.score;
 
   // Calcular NTC
-  const { ntc, decisao } = calcularNTC(scores);
+  let { ntc, decisao } = calcularNTC(scores);
+
+  // Gate de triangulação — divergência documentada zera o NTC, independente
+  // dos demais módulos (ex: medidas/código-mãe não batem com catálogo OEM/TecDoc)
+  const gateTF = verificarGateTriangulacao(d);
+  if (gateTF.divergente) {
+    ntc = 0;
+    decisao = 'REPROVADO';
+  }
 
   // Validar bloqueios
-  const { impedimentos, podeCadastrar, podePublicar, publicavel } = validarBloqueios(modulos, ntc);
+  let { impedimentos, podeCadastrar, podePublicar, publicavel } = validarBloqueios(modulos, ntc);
+  if (gateTF.divergente) {
+    impedimentos = ['TRIANGULAÇÃO DIVERGENTE — ' + gateTF.divergencias.join('; ')].concat(impedimentos);
+    podeCadastrar = false;
+    podePublicar = false;
+    publicavel = false;
+  }
+
+  // Classificação de mídia/CPC (informativa — não altera decisão de cadastro)
+  const midia = classificarMidia(ntc);
 
   // Gerar RAST-HASH com todos os campos
   const rast_hash = gerarRastHash({
@@ -431,6 +485,8 @@ function processar(dados) {
     podeCadastrar,
     podePublicar,
     publicavel,
+    gateTriangulacao: gateTF,
+    midia,
     fonte_real: false,
   };
 }
@@ -520,6 +576,8 @@ module.exports = {
   validarBloqueios,
   gerarCabecoteERP,
   gerarEstruturaWix,
+  verificarGateTriangulacao,
+  classificarMidia,
   moduloDNA, moduloTF, moduloFM, moduloCO, moduloAV,
   moduloMC,  moduloEC, moduloBTA, moduloCC, moduloLG,
   moduloIV,  moduloFI, moduloFP,

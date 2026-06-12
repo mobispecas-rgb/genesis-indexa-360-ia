@@ -51,9 +51,39 @@ function ipPrivada(ip) {
   return true; // formato desconhecido — bloqueia por segurança
 }
 
+// Perfis de headers de navegador, usados em ordem — muitas lojas (Tray, VTEX,
+// Cloudflare etc.) bloqueiam com 403/405 requisições que não trazem
+// Accept/Accept-Language/Accept-Encoding, um User-Agent reconhecido e os
+// headers "Sec-Fetch-*"/"sec-ch-ua" típicos de um Chrome real. Se o primeiro
+// perfil for recusado (403/405), tenta o próximo (ex: Googlebot, que muitas
+// lojas liberam mesmo bloqueando navegadores "genéricos").
+const FETCH_HEADER_PERFIS = [
+  {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1'
+  },
+  {
+    'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br'
+  }
+];
+
 // Busca o HTML de uma URL pública para o raspador de catálogo.
 // Valida o IP resolvido (anti-SSRF) e segue poucos redirecionamentos.
-async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
+async function fetchHtmlSeguro(urlStr, redirectsLeft = 3, tentativa = 0) {
   const parsed = new URL(urlStr);
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('Apenas URLs http/https são permitidas');
@@ -63,23 +93,18 @@ async function fetchHtmlSeguro(urlStr, redirectsLeft = 3) {
     throw new Error('URL aponta para um endereço interno/privado — não permitido');
   }
   const proto = parsed.protocol === 'https:' ? https : http;
-  // Headers de navegador real — muitas lojas (Tray, VTEX etc.) bloqueiam com
-  // 403/405 requisições que não trazem Accept/Accept-Language/Accept-Encoding
-  // e um User-Agent reconhecido.
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Cache-Control': 'no-cache',
-    'Upgrade-Insecure-Requests': '1'
-  };
+  const headers = Object.assign({ 'Referer': parsed.origin + '/' }, FETCH_HEADER_PERFIS[Math.min(tentativa, FETCH_HEADER_PERFIS.length - 1)]);
   return new Promise((resolve, reject) => {
     const r = proto.get(parsed, { headers }, response => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirectsLeft > 0) {
         response.resume();
         const proxima = new URL(response.headers.location, parsed);
-        resolve(fetchHtmlSeguro(proxima.href, redirectsLeft - 1));
+        resolve(fetchHtmlSeguro(proxima.href, redirectsLeft - 1, tentativa));
+        return;
+      }
+      if ((response.statusCode === 403 || response.statusCode === 405) && tentativa < FETCH_HEADER_PERFIS.length - 1) {
+        response.resume();
+        resolve(fetchHtmlSeguro(urlStr, redirectsLeft, tentativa + 1));
         return;
       }
       if (response.statusCode >= 400) {
@@ -442,77 +467,6 @@ app.post('/api/motor/enriquecer', (req, res) => {
     });
 });
 
-// Motor Extração Técnica — busca web (Serper) + IA extraem OEM/NCM/EAN/Motor/Material
-// NUNCA inventa: campo fica null se não estiver explícito nos resultados de busca
-app.post('/api/motor/extrair-tecnico', async (req, res) => {
-    const { sku, fabricante, nome } = req.body;
-    const vazio = { codigo_oem: null, ncm: null, ean: null, motor: null, material: null };
-    if (!nome && !sku) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
-    if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', dados: vazio });
-
-    const q = [fabricante, sku, nome].filter(Boolean).join(' ');
-    let trechos = [];
-    if (process.env.SERPER_API_KEY) {
-        try {
-            const body = JSON.stringify({ q, num: 10, gl: 'br', hl: 'pt-br' });
-            const data = await httpsJSON({
-                hostname: 'google.serper.dev', path: '/search', method: 'POST',
-                headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-            }, body);
-            trechos = (data.organic || []).slice(0, 8)
-                .filter(item => item.title && item.snippet)
-                .map(item => ({ titulo: item.title, fonte: item.link, trecho: item.snippet }));
-        } catch (e) {
-            console.error('[Extrair Técnico] busca:', e.message);
-        }
-    }
-
-    if (trechos.length === 0) {
-        return res.json({ ok: true, encontrado: false, dados: vazio, mensagem: 'Sem resultados de busca para extrair dados técnicos.' });
-    }
-
-    try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 500,
-            system: `Você é um especialista técnico em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e trechos de resultados de busca na web sobre esse produto.
-
-Sua tarefa: extrair os seguintes dados técnicos, SOMENTE se estiverem EXPLICITAMENTE presentes nos trechos fornecidos:
-- codigo_oem: código OEM (Original Equipment Manufacturer) do fabricante do veículo
-- ncm: código NCM (8 dígitos numéricos)
-- ean: código EAN/GTIN (8, 12, 13 ou 14 dígitos numéricos)
-- motor: aplicação de motor/veículo (ex: "GM Família I 8V", "Fiat Fire 1.0/1.4")
-- material: material/composição da peça
-
-REGRAS ABSOLUTAS:
-1. NUNCA invente, estime ou deduza valores que não estejam escritos nos trechos.
-2. Se um dado não estiver EXPLICITAMENTE nos trechos, retorne null para esse campo.
-3. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, no formato exato:
-{"codigo_oem": null, "ncm": null, "ean": null, "motor": null, "material": null}`,
-            messages: [{
-                role: 'user',
-                content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca:\n`
-                    + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n')
-            }]
-        });
-        const texto = msg.content?.[0]?.text || '{}';
-        let dados;
-        try {
-            const jsonMatch = texto.match(/\{[\s\S]*\}/);
-            dados = Object.assign({}, vazio, JSON.parse(jsonMatch ? jsonMatch[0] : texto));
-        } catch (e) {
-            dados = vazio;
-        }
-        const encontrado = Object.keys(vazio).some(k => dados[k] != null && dados[k] !== '');
-        res.json({ ok: true, encontrado, dados, fontes: trechos.map(t => t.fonte) });
-    } catch (e) {
-        console.error('[Extrair Técnico] IA:', e.message);
-        res.json({ ok: false, erro: e.message, dados: vazio });
-    }
-});
-
 // Agente de Enriquecimento de DNA via Web — busca na web os campos dos módulos
 // CO/AV/FM/MC/FP do NTC (código OEM, EAN/GTIN, NCM/CEST, aplicação veicular,
 // material, dimensões, FMSI etc.) e devolve, para cada campo, o valor, a fonte
@@ -524,7 +478,8 @@ const CAMPOS_DNA = [
     'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
     'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
     'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
-    'cross_codes', 'aplicacoes_adicionais'
+    'peso_bruto', 'peso_liquido',
+    'cross_codes', 'aplicacoes_adicionais', 'funcao_tecnica', 'boletins_tecnicos'
 ];
 
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
@@ -546,6 +501,18 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         console.error('[Enriquecer DNA] busca:', e.message);
     }
 
+    // Busca complementar focada em códigos equivalentes/cross-reference (OEM e
+    // aftermarket de outras marcas) — aumenta a chance de encontrar o maior
+    // número possível de cross-codes para o bloco AV
+    try {
+        const trechosCross = await buscarWeb(`${q} código equivalente cross reference substituto OEM`, 10);
+        trechosCross.forEach(t => {
+            if (!trechos.some(e => e.fonte === t.fonte)) trechos.push(t);
+        });
+    } catch (e) {
+        console.error('[Enriquecer DNA] busca cross-codes:', e.message);
+    }
+
     if (trechos.length === 0) {
         return res.json({
             ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
@@ -558,7 +525,7 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
             model: 'claude-sonnet-4-6',
-            max_tokens: 1500,
+            max_tokens: 2300,
             system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
 
 Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
@@ -582,14 +549,18 @@ Campos:
 - comprimento: comprimento em cm (número)
 - largura: largura em cm (número)
 - altura: altura em cm (número)
-- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
+- peso_bruto: peso bruto do produto (com embalagem), em kg (número)
+- peso_liquido: peso líquido do produto (sem embalagem), em kg (número)
+- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça — inclua TANTO códigos OEM (de outras montadoras/aplicações que usam a mesma peça) QUANTO códigos aftermarket de outras marcas. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). IMPORTANTE: liste o MAIOR número possível de códigos equivalentes com evidência explícita nos resultados — não se limite a 3 ou 4 exemplos; varra TODOS os resultados numerados em busca de códigos adicionais de marcas diferentes. Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361; Toyota 90915-YZZD4; Honda 15400-PLM-A02")
 - aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
+- funcao_tecnica: EXCEÇÃO à regra de "nunca inventar" — este campo é uma DESCRIÇÃO TÉCNICA GERADA, não um fato que precise de fonte. Com base no nome/marca/categoria do produto (e em qualquer detalhe técnico encontrado nos resultados), escreva 1-2 frases explicando a função técnica da peça (o que ela faz, onde se monta, princípio de funcionamento). Sempre preencha este campo, mesmo sem resultados específicos sobre o produto exato — use seu conhecimento geral sobre a categoria da peça. "confianca" deve ser "gerado" e "fonte_idx" deve ser null.
+- boletins_tecnicos: boletins técnicos (TSB), recalls, campanhas de revisão ou comunicados de homologação documentados na web para esta peça/aplicação. NUNCA invente — só preencha se houver menção explícita nos resultados. Formato: string com itens separados por "; " (ex: "TSB 2023-01 Toyota — revisão do kit de distribuição; Recall ANVISA 12345").
 
 REGRAS ABSOLUTAS:
-1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
-2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
+1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados — EXCETO "funcao_tecnica", que deve ser sempre gerado (ver regra específica acima).
+2. Se não houver evidência clara para um campo (exceto "funcao_tecnica"), retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
 3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
-4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
+4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente; "gerado" = texto gerado pela IA (uso exclusivo de "funcao_tecnica").
 5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.`,
             messages: [{
                 role: 'user',
@@ -616,7 +587,7 @@ REGRAS ABSOLUTAS:
             const idx = Number(item.fonte_idx);
             const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
             let valor = item.valor;
-            let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
+            let confianca = ['alta', 'media', 'baixa', 'gerado'].includes(item.confianca) ? item.confianca : 'media';
             let motivo = null;
 
             if (c === 'ean') {
