@@ -745,6 +745,13 @@ tr:hover td{background:#f9fafb}
         <!-- ETAPA 1: Identificação automática (IA / Voz do Lojista) -->
         <div id="oem-step1" class="oem-step active">
 
+          <!-- Agente de Enriquecimento de DNA via Web -->
+          <div class="card">
+            <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
+            <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, motor/aplica&ccedil;&atilde;o, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes na web e <strong style="color:#ff4500">salva automaticamente</strong> o cadastro (rascunho) com o que for encontrado. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, pendente de confirma&ccedil;&atilde;o humana.</p>
+            <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
+          </div>
+
           <!-- Dados confirmados -->
           <div class="card" style="border-color:#ff450030">
             <div class="card-title">&#9989; Dados Confirmados (preenchidos pela busca)</div>
@@ -839,7 +846,7 @@ tr:hover td{background:#f9fafb}
             <div class="card" style="border-color:#f4433630;background:#f4433608">
               <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
               <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
-              <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear, ou volte &agrave; Etapa 1 e clique em &#128269; Buscar novamente para reenriquecer automaticamente.</div>
+              <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear, ou volte &agrave; Etapa 1 e use o &#127760; Buscar DNA na Web para reenriquecer automaticamente.</div>
             </div>
           </div>
 
