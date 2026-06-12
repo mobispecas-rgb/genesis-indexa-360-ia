@@ -393,13 +393,6 @@ tr:hover td{background:#f9fafb}
         <div class="card">
           <div class="card-title">&#9888;&#65039; O que Falta para Aprova&ccedil;&atilde;o</div>
           <div id="ia-falta" style="font-size:13px;line-height:2"></div>
-        </div>
-
-        <!-- Agente de Enriquecimento de DNA via Web -->
-        <div class="card">
-          <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
-          <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST (validado na TIPI oficial), aplica&ccedil;&atilde;o veicular, motor, material, dimens&otilde;es e c&oacute;digos equivalentes (cross-codes) na web. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, e o NTC abaixo &eacute; recalculado com esses dados, sempre pendente de confirma&ccedil;&atilde;o humana.</p>
-          <button class="btn btn-secondary" onclick="iaBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
           <div id="ia-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
         </div>
 
@@ -2074,12 +2067,17 @@ var MODULE_META = {
   FP:  { label: 'Fiscal Pleno', desc: 'Tributação completa (não detectável via texto)', items: ['Tributação informada'] },
 };
 
-function analisarIA() {
+async function analisarIA() {
   var texto = document.getElementById('ia-input').value.trim();
   if (!texto) { alert('Digite o texto do produto.'); return; }
   var parsed = parseTextoIA(texto);
   var result = calcNTCFromText(parsed);
   renderIAResults(result, texto);
+
+  // Análise única: encadeia o enriquecimento de DNA via web (OEM/EAN/NCM/CEST,
+  // motor, material, dimensões, aplicação veicular, cross-codes) — a Voz do
+  // Lojista analisa e enriquece tudo numa só ação.
+  await iaBuscarDnaWeb();
 }
 
 // Descarta a análise atual (texto, resultados, DNA via web, Voz do Lojista e
@@ -3827,6 +3825,24 @@ function oemDefinirModoEdicao(idx) {
       document.getElementById('oem-edit-nome').textContent = (p && (p.nome || p.codigo_fabricante)) || ('#' + idx);
     }
     if (btnPublicar) btnPublicar.innerHTML = '&#128190; Atualizar Produto';
+    // Preenche "Dados Confirmados" com os dados já salvos do produto — sem
+    // isso, o NTC mostra campos básicos (Part Number, Fabricante, Nome, OEM,
+    // NCM, Motor) como "faltando" mesmo quando o produto já os tem.
+    if (p) {
+      document.getElementById('oem-input').value     = [p.codigo_fabricante, p.fabricante, p.nome].filter(Boolean).join(' ');
+      document.getElementById('oem-f-sku').value      = p.codigo_fabricante || '';
+      document.getElementById('oem-f-fab').value      = p.fabricante || '';
+      document.getElementById('oem-f-nome').value     = p.nome || '';
+      document.getElementById('oem-f-familia').value  = p.familia_tecnica || '';
+      document.getElementById('oem-f-oem').value      = p.codigo_oem || '';
+      document.getElementById('oem-f-ncm').value      = p.ncm || '';
+      document.getElementById('oem-f-ean').value      = p.ean || '';
+      document.getElementById('oem-f-motor').value    = p.motor || '';
+      document.getElementById('oem-f-material').value = p.material || '';
+    }
+    document.getElementById('oem-resultado').style.display = 'block';
+    oemIrEtapa(2);
+    _cntcRecalcular();
   } else {
     _cntcDados = {};
     document.getElementById('oem-resultado').style.display = 'none';
