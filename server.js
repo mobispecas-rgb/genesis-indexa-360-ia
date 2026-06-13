@@ -533,7 +533,11 @@ const CAMPOS_DNA = [
     'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
     'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
     'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
-    'cross_codes', 'aplicacoes_adicionais'
+    'cross_codes', 'aplicacoes_adicionais',
+    // NTC completo — módulos EC, BTA, LG, FI, CC-OEM
+    'funcao_tecnica', 'boletins', 'substituicoes',
+    'fabricante_original', 'montadora',
+    'cc_oem', 'peso_bruto', 'peso_liquido'
 ];
 
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
@@ -593,6 +597,14 @@ Campos:
 - altura: altura em cm (número)
 - cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
 - aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
+- funcao_tecnica: descrição técnica da função da peça em 1-2 frases claras (ex: "Absorve impactos e vibrações da suspensão dianteira, garantindo estabilidade e conforto." ou "Filtra impurezas do óleo lubrificante, protegendo o motor contra desgaste prematuro.")
+- boletins: boletins técnicos do fabricante, homologações ou normas aplicáveis. Um item por linha separado por "\n". Ex: "Homologado VW AG\nAtende norma ABNT NBR 6560\nBoletim COFAP BT-2022-014". Null se não houver evidência.
+- substituicoes: códigos de peças substituídas ou substitutas (mesmo fit). Um código por linha separado por "\n". Null se não houver.
+- fabricante_original: nome do fabricante original da peça (ex: "COFAP", "INA", "Mann Filter", "Bosch", "Gates", "Mahle"). Extraia do SKU, nome ou resultados de busca.
+- montadora: nome do fabricante do veículo (montadora) para o qual esta peça foi originalmente projetada (ex: "Toyota Motor Corporation", "Volkswagen AG", "Hyundai Motor Company"). Se atende múltiplas, coloque a principal.
+- cc_oem: código(s) OEM de catálogo oficial da montadora para esta peça. Um por linha separado por "\n". Ex: "58101-2BA70\nMB 012 988 17 20". Null se não encontrado.
+- peso_bruto: peso bruto do produto com embalagem em kg, número decimal (ex: 0.380). Null se não encontrado.
+- peso_liquido: peso líquido do produto sem embalagem em kg, número decimal (ex: 0.280). Null se não encontrado.
 
 REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.

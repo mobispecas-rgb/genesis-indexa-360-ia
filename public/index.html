@@ -3761,10 +3761,28 @@ async function oemBuscar() {
   try {
     var r = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(qBusca) + '&fonte=oem');
     if (r.ok && r.imagens && r.imagens.length > 0) {
+      // Auto-adiciona as 3 primeiras imagens nos slots IV (sem sobrescrever slots já preenchidos)
+      for (var _si = 0; _si < Math.min(3, r.imagens.length); _si++) {
+        var _img = r.imagens[_si];
+        var _slotVazio = -1;
+        for (var _sv = 0; _sv < _imgSlots.length; _sv++) { if (!_imgSlots[_sv]) { _slotVazio = _sv; break; } }
+        if (_slotVazio >= 0) {
+          _imgSlots[_slotVazio] = { url: _img.url, thumb: _img.thumb || _img.url, titulo: _img.titulo || qBusca };
+        }
+      }
+      if (typeof imgSlotRender === 'function') imgSlotRender();
+      // Marca IV como parcialmente confirmado no _cntcDados
+      _cntcDados.iv_foto_principal = true;
+      _cntcDados.iv_qtd_fotos = _imgSlots.filter(Boolean).length;
+      var elIVFoto = document.getElementById('cntc-iv-foto');
+      if (elIVFoto) { elIVFoto.checked = true; }
+      var elIVQtd = document.getElementById('cntc-iv-qtd');
+      if (elIVQtd && !elIVQtd.value) elIVQtd.value = String(_imgSlots.filter(Boolean).length);
+
       var card = document.getElementById('oem-google-card');
       card.style.display = 'block';
       document.getElementById('oem-google-results').innerHTML =
-        '<p style="font-size:11px;color:#555;margin-bottom:8px">&#9888;&#65039; Clique numa imagem para adicion&aacute;-la &agrave; sele&ccedil;&atilde;o (aba Imagens). Confirme os dados antes de usar.</p>'
+        '<p style="font-size:11px;color:#00cc66;margin-bottom:8px">&#9989; ' + Math.min(3, r.imagens.length) + ' imagem(ns) adicionada(s) automaticamente ao IV. Clique para adicionar mais.</p>'
         + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
         + r.imagens.slice(0,9).map(function(img) {
           var thumb = img.thumb || img.url;
@@ -3960,6 +3978,12 @@ var MAPA_CAMPOS_DNA_EXTRA = {
   comprimento:    { id: 'cntc-fp-comp',  label: 'Comprimento',       key: 'comprimento' },
   largura:        { id: 'cntc-fp-larg',  label: 'Largura',           key: 'largura' },
   altura:         { id: 'cntc-fp-alt',   label: 'Altura',            key: 'altura' },
+  // Módulos EC, LG, FI — preenchidos pelo enriquecedor DNA completo
+  funcao_tecnica:      { id: 'cntc-ec-funcao',  label: 'Função Técnica',       key: 'funcao' },
+  fabricante_original: { id: 'cntc-lg-fab',     label: 'Fabricante Original',  key: 'linhagem_fabricante' },
+  montadora:           { id: 'cntc-lg-mont',    label: 'Montadora',            key: 'linhagem_montadora' },
+  peso_bruto:          { id: 'cntc-fi-pesob',   label: 'Peso Bruto (kg)',      key: 'peso_bruto' },
+  peso_liquido:        { id: 'cntc-fi-pesol',   label: 'Peso Líquido (kg)',    key: 'peso_liquido' },
 };
 
 // União dos dois mapas — usado pelo agente de DNA na Web (Cadastro Completo e Voz do Lojista)
@@ -4149,6 +4173,62 @@ async function oemBuscarDnaWeb() {
       el.title = 'Sugestão IA (confiança ' + info.confianca + ') — Fonte: ' + (info.fonte || 'desconhecida');
     }
     preenchidos.push({campo: 'Aplicações adicionais', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
+  // BTA — Boletins técnicos
+  (function() {
+    var info = campos.boletins;
+    if (!info || info.valor == null || info.valor === '') return;
+    var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (linhas.length === 0) return;
+    var el = document.getElementById('cntc-bta-boletins');
+    if (el && !el.value.trim()) {
+      el.value = linhas.join('\n');
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    }
+    preenchidos.push({campo: 'Boletins Técnicos', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
+  // BTA — Substituições
+  (function() {
+    var info = campos.substituicoes;
+    if (!info || info.valor == null || info.valor === '') return;
+    var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (linhas.length === 0) return;
+    var el = document.getElementById('cntc-bta-subst');
+    if (el && !el.value.trim()) {
+      el.value = linhas.join('\n');
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    }
+    preenchidos.push({campo: 'Substituições', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
+  // CC — Códigos OEM de montadora
+  (function() {
+    var info = campos.cc_oem;
+    if (!info || info.valor == null || info.valor === '') return;
+    var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (linhas.length === 0) return;
+    var el = document.getElementById('cntc-cc-oem');
+    if (el) {
+      linhas.forEach(function(it) {
+        if (el.value.indexOf(it) === -1) el.value = el.value ? (el.value + '\n' + it) : it;
+      });
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    }
+    preenchidos.push({campo: 'Códigos OEM montadora', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
+  // LG — Auto-setar distribuidor como MOBIS Autoparts
+  (function() {
+    var elDist = document.getElementById('cntc-lg-dist');
+    if (elDist && !elDist.value.trim()) {
+      elDist.value = 'MOBIS Autoparts';
+      elDist.style.borderColor = '#00cc66';
+    }
   })();
 
   await _cntcRecalcular();
