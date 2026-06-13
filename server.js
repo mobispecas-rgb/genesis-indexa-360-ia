@@ -400,8 +400,32 @@ app.get('/api/ia/status', async (req, res) => {
 const ntcEngine = require('./src/services/ntc-engine');
 
 // Motor NTC — 13 componentes — NUNCA inventa dados
+// normalizaAliases: converte os nomes que o frontend/DNA envia para os nomes que o ntc-engine lê
+function normalizaAliases(d) {
+    const r = Object.assign({}, d);
+    // AV — aplicação veicular
+    if (!r.marca  && r.marca_veiculo)    r.marca  = r.marca_veiculo;
+    if (!r.modelo && r.modelo_veiculo)   r.modelo = r.modelo_veiculo;
+    if (!r.motor  && r.motor_aplicacao)  r.motor  = r.motor_aplicacao;
+    // DNA
+    if (!r.fabricante && r.fabricante_original) r.fabricante = r.fabricante_original;
+    if (!r.codigo_fabricante && r.sku)          r.codigo_fabricante = r.sku;
+    if (!r.familia_tecnica && r.familia)        r.familia_tecnica = r.familia;
+    // EC
+    if (!r.funcao && r.funcao_tecnica) r.funcao = r.funcao_tecnica;
+    // LG — linhagem genealógica
+    if (!r.linhagem_fabricante && r.fabricante_original) r.linhagem_fabricante = r.fabricante_original;
+    if (!r.linhagem_montadora  && r.montadora)           r.linhagem_montadora  = r.montadora;
+    if (!r.linhagem_distribuidor && r.distribuidor)      r.linhagem_distribuidor = r.distribuidor;
+    if (!r.linhagem_importador && r.importador)          r.linhagem_importador = r.importador;
+    // MC — material
+    if (!r.material && r.material_composicao) r.material = r.material_composicao;
+    return r;
+}
+
 app.post('/api/motor/nct', (req, res) => {
-    const resultado = ntcEngine.processar(req.body);
+    const dados = normalizaAliases(req.body);
+    const resultado = ntcEngine.processar(dados);
     res.json({ ok: true, ...resultado, nct: resultado.ntc, nct_componentes: resultado.componentes });
 });
 
@@ -414,7 +438,7 @@ app.post('/api/motor/hash', (req, res) => {
 
 // Motor Enriquecer — NULL em campos sem evidência documental
 app.post('/api/motor/enriquecer', (req, res) => {
-    const dados = req.body;
+    const dados = normalizaAliases(req.body);
     if (!dados.oem && !dados.nome && !dados.codigo_oem) {
         return res.status(400).json({ ok: false, erro: 'OEM ou Nome obrigatório' });
     }
