@@ -260,8 +260,21 @@ async function consultarNCMOficial(ncm8) {
 }
 
 // Busca web com fallback: Serper.dev (primário) → Google Custom Search (secundário)
+// Extrai texto limpo de HTML — remove tags, scripts, estilos
+function htmlParaTexto(html, maxChars = 4000) {
+  let t = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ').trim();
+  return t.length > maxChars ? t.substring(0, maxChars) : t;
+}
+
 async function buscarWeb(q, num = 10) {
   const resultados = [];
+
+  // 1. Busca Google via Serper
   if (process.env.SERPER_API_KEY) {
     try {
       const body = JSON.stringify({ q, num, gl: 'br', hl: 'pt-br' });
@@ -276,6 +289,8 @@ async function buscarWeb(q, num = 10) {
       console.error('[Busca Web] Serper:', e.message);
     }
   }
+
+  // 2. Fallback Google Custom Search
   if (resultados.length < num && process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
     try {
       const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&num=10`);
@@ -289,6 +304,24 @@ async function buscarWeb(q, num = 10) {
       console.error('[Busca Web] Google:', e.message);
     }
   }
+
+  // 3. FIX: Fetch real das 3 primeiras páginas para capturar "Similares", aplicações completas, etc.
+  // Snippet do Google tem ~150 chars — seções como "Similares: NAKATA 42835 · CORVEN N444128"
+  // só aparecem no corpo completo da página.
+  const top3 = resultados.slice(0, 3);
+  await Promise.all(top3.map(async (item, idx) => {
+    try {
+      const html = await fetchHtmlSeguro(item.fonte);
+      const textoCompleto = htmlParaTexto(html, 5000);
+      if (textoCompleto.length > item.trecho.length) {
+        resultados[idx].trecho = textoCompleto;
+        resultados[idx].trecho_completo = true;
+      }
+    } catch (e) {
+      // Silencia erros de fetch individual — snippet do Google ainda está disponível
+    }
+  }));
+
   return resultados.slice(0, num);
 }
 
@@ -575,10 +608,34 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true });
     }
 
-    const q = [fabricante, sku, nome].filter(Boolean).join(' ');
+    // FIX: múltiplas queries especializadas para cobrir similares, aplicação e fiscal
+    const qBase    = [fabricante, sku, nome].filter(Boolean).join(' ');
+    const qSimilar = (sku || nome) + ' similares cross-reference aftermarket';
+    const qFiscal  = (sku || nome) + (fabricante ? ' ' + fabricante : '') + ' NCM EAN ficha técnica';
+    const qAplic   = [fabricante, sku, nome].filter(Boolean).join(' ') + ' aplicação veicular motor';
+
     let trechos = [];
     try {
-        trechos = await buscarWeb(q, 10);
+        // Busca base (10 resultados com fetch real das top-3)
+        const r1 = await buscarWeb(qBase, 10);
+        // Busca de similares/cross-codes (5 resultados adicionais)
+        const r2 = await buscarWeb(qSimilar, 5);
+        // Busca fiscal (5 resultados adicionais)
+        const r3 = await buscarWeb(qFiscal, 5);
+        // Busca de aplicação veicular (5 resultados adicionais)
+        const r4 = await buscarWeb(qAplic, 5);
+
+        // Une e deduplica por URL
+        const vistos = new Set();
+        for (const lista of [r1, r2, r3, r4]) {
+            for (const item of lista) {
+                if (!vistos.has(item.fonte)) {
+                    vistos.add(item.fonte);
+                    trechos.push(item);
+                }
+            }
+        }
+        trechos = trechos.slice(0, 20); // max 20 fontes para a IA
     } catch (e) {
         console.error('[Enriquecer DNA] busca:', e.message);
     }
@@ -595,7 +652,7 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
             model: 'claude-sonnet-4-6',
-            max_tokens: 1500,
+            max_tokens: 2500,
             system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
 
 Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
@@ -606,10 +663,10 @@ Campos:
 - ncm: código NCM (8 dígitos numéricos)
 - cest: código CEST (formato NN.NNN.NN), se aplicável
 - motor: aplicação de motor/veículo (texto livre, ex: "1.0 12V Flex")
-- codigo_motor: código interno do motor (ex: "EA211", "1GD-FTV")
+- codigo_motor: código interno do motor (ex: "EA211", "1GD-FTV", "D4BH", "J2"). Para Hyundai HR procure "D4BH". Para Kia Bongo procure "J2". Verifique a aplicação completa nos resultados — muitas lojas incluem o código do motor na descrição
 - marca_veiculo: marca do veículo de aplicação (ex: "Toyota")
 - modelo_veiculo: modelo do veículo (ex: "Hilux")
-- versao_veiculo: versão/trim do veículo (ex: "SRV", "SR")
+- versao_veiculo: versão/trim do veículo (ex: "SRV", "SR", "STD GL", "LX"). PRESTE ATENÇÃO a padrões como "CHASSIS ALTO STD GL", "LONGUE DECK STD" nos resultados de autopeças — extraia a versão da string de aplicação completa
 - ano_inicial: ano inicial de aplicação (número de 4 dígitos)
 - ano_final: ano final de aplicação (número de 4 dígitos)
 - cilindrada: cilindrada em cm³ (número)
@@ -619,14 +676,14 @@ Campos:
 - comprimento: comprimento em cm (número)
 - largura: largura em cm (número)
 - altura: altura em cm (número)
-- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
+- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. PRESTE ATENÇÃO ESPECIAL a seções com títulos como "Similares", "Similar", "Equivalentes", "Cross-reference", "Substitutos", "Aplicação", ou padrões como "MARCA CÓDIGO · MARCA CÓDIGO" nos trechos. Ex de padrão a detectar: "Similares> AC31146 - NAKATA 42835 - CORVEN N444128 - KYB 543104F000" → extrair NAKATA 42835; CORVEN N444128; KYB 543104F000. Use as marcas adequadas à categoria — filtros (Fram, Mann, Mahle, Wega, Tecfil), correias/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch), amortecedores (Nakata, Monroe, Gabriel, Sachs, KYB), ignição (NGK, Bosch). Formato: string com itens "MARCA CÓDIGO" separados por "; "
 - aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
 - funcao_tecnica: descrição técnica da função da peça em 1-2 frases claras (ex: "Absorve impactos e vibrações da suspensão dianteira, garantindo estabilidade e conforto." ou "Filtra impurezas do óleo lubrificante, protegendo o motor contra desgaste prematuro.")
 - boletins: boletins técnicos do fabricante, homologações ou normas aplicáveis. Um item por linha separado por "\n". Ex: "Homologado VW AG\nAtende norma ABNT NBR 6560\nBoletim COFAP BT-2022-014". Null se não houver evidência.
 - substituicoes: códigos de peças substituídas ou substitutas (mesmo fit). Um código por linha separado por "\n". Null se não houver.
 - fabricante_original: nome do fabricante original da peça (ex: "COFAP", "INA", "Mann Filter", "Bosch", "Gates", "Mahle"). Extraia do SKU, nome ou resultados de busca.
 - montadora: nome do fabricante do veículo (montadora) para o qual esta peça foi originalmente projetada (ex: "Toyota Motor Corporation", "Volkswagen AG", "Hyundai Motor Company"). Se atende múltiplas, coloque a principal.
-- cc_oem: código(s) OEM de catálogo oficial da montadora para esta peça. Um por linha separado por "\n". Ex: "58101-2BA70\nMB 012 988 17 20". Null se não encontrado.
+- cc_oem: código(s) OEM de catálogo oficial da montadora para esta peça. PRESTE ATENÇÃO ao padrão "CÓDIGO - OE" nos resultados (ex: "543104F000 - OE" ou "KYB 543104F000 - OE"), que indica o código OEM original da montadora. Também verifique URLs de produtos que contenham o código no slug (ex: ".../b50994m-ac31146-543104f000"). Um código por linha separado por "\n". Ex: "58101-2BA70\n543104F000". Null se não encontrado.
 - peso_bruto: peso bruto do produto com embalagem em kg, número decimal (ex: 0.380). Null se não encontrado.
 - peso_liquido: peso líquido do produto sem embalagem em kg, número decimal (ex: 0.280). Null se não encontrado.
 
