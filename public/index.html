@@ -3879,6 +3879,10 @@ function _oemAtualizarPainel(dados, r) {
   document.getElementById('oem-ntc-num').style.color = cor;
   document.getElementById('oem-ntc-badge').innerHTML = badgeHtml(r.decisao);
 
+  // FIX: alimenta o painel ntcv2 com os dados do enriquecimento
+  if (typeof ntcv2Atualizar === 'function') { ntcv2Atualizar(dados, r); }
+  try { window.dispatchEvent(new CustomEvent('ntc-result', { detail: { dados: dados, resultado: r } })); } catch(e) {}
+
   // Mostra o que falta
   var falta = [];
   if (!dados.codigo_fabricante) falta.push('Part Number');
@@ -7519,6 +7523,16 @@ function ntcv2Pub(plat) {
 function ntcv2Atualizar(dados, resultado) {
   if (!dados || !resultado) return;
 
+  /* Normaliza aliases de campo — oemColetar usa nomes diferentes dos esperados aqui */
+  dados = Object.assign({}, dados);
+  if (!dados.oem)       dados.oem       = dados.codigo_oem  || dados.codigo_fabricante || null;
+  if (!dados.sku)       dados.sku       = dados.codigo_fabricante || null;
+  if (!dados.marca)     dados.marca     = dados.fabricante  || null;
+  if (!dados.familia)   dados.familia   = dados.familia_tecnica || null;
+  if (!dados.motor)     dados.motor     = dados.motor_aplicacao || null;
+  if (!dados.material)  dados.material  = dados.material_composicao || null;
+  if (!dados.ncm)       dados.ncm       = dados.ncm8 || null;
+
   /* Header */
   var nome = (dados.nome || '—') + ' — ' + (dados.marca || '—');
   var sub  = (dados.montadora || '') + ' ' + (dados.veiculo || '') + ' ' + (dados.motor || '');
@@ -7548,14 +7562,22 @@ function ntcv2Atualizar(dados, resultado) {
   /* RAST-HASH */
   if (resultado.rast_hash) ntcv2Set('ntcv2-hash', 'RAST-HASH OEM DNA: ' + resultado.rast_hash);
 
-  /* Módulos score pills */
-  var modelos = resultado.modulos || resultado.scores || {};
+  /* Módulos score pills — normaliza chaves para minúsculo */
+  var rawScores = resultado.scores || resultado.modulos || {};
+  var modelos = {};
+  Object.keys(rawScores).forEach(function(k) {
+    var v = rawScores[k];
+    // ntc-engine retorna modulos com .score dentro
+    modelos[k.toLowerCase()] = (v !== null && typeof v === 'object' && v.score !== undefined) ? v.score : (v || 0);
+  });
+  // aliases fi/fp -> fi
+  if (modelos['fp'] !== undefined && modelos['fi'] === undefined) modelos['fi'] = modelos['fp'];
   var mapa = {dna:'dna',tf:'tf',fm:'fm',co:'co',av:'av',mc:'mc',ec:'ec',bta:'bta',cc:'cc',lg:'lg',iv:'iv',fi:'fi'};
   Object.keys(mapa).forEach(function(k) {
     var el = document.getElementById('ns-' + k);
     if (!el) return;
-    var v = modelos[k] !== undefined ? modelos[k] : (modelos[k.toUpperCase()] !== undefined ? modelos[k.toUpperCase()] : null);
-    if (v === null) return;
+    var v = modelos[k];
+    if (v === undefined || v === null) return;
     var pv = Math.round(v * 100);
     el.textContent = pv + '%';
     el.className = 'sv ' + (pv >= 80 ? 'sv-ok' : pv > 0 ? 'sv-part' : 'sv-zero');
