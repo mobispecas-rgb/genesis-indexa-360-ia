@@ -57,10 +57,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .page.active{display:block}
 .oem-step{display:none}
 .oem-step.active{display:block}
-.oem-step-pill{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;background:#f3f4f6;color:#6b7280;cursor:pointer;border:1px solid #d1d5db;display:flex;align-items:center;gap:6px}
-.oem-step-pill.active{background:#ff450012;color:#ff4500;border-color:#ff450040}
-.oem-step-pill .num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#d1d5db;color:#6b7280;font-size:10px;font-weight:800}
-.oem-step-pill.active .num{background:#ff4500;color:#fff}
+/* Bloco único: pills ocultos */
+.oem-step-pill{display:none!important}
 
 /* CARDS / COMMON */
 .page-title{font-size:20px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px}
@@ -737,11 +735,7 @@ tr:hover td{background:#f9fafb}
       <!-- Resultado da busca -->
       <div id="oem-resultado" style="display:none">
 
-        <!-- Indicador de etapas -->
-        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-          <div class="oem-step-pill active" id="oem-pill-1" onclick="oemIrEtapa(1)"><span class="num">1</span> Identifica&ccedil;&atilde;o (IA / Voz do Lojista)</div>
-          <div class="oem-step-pill" id="oem-pill-2" onclick="oemIrEtapa(2)"><span class="num">2</span> Revis&atilde;o &amp; Publica&ccedil;&atilde;o</div>
-        </div>
+        <!-- Navegação de etapas removida — bloco único -->
 
         <!-- ETAPA 1: Identificação automática (IA / Voz do Lojista) -->
         <div id="oem-step1" class="oem-step active">
@@ -783,17 +777,11 @@ tr:hover td{background:#f9fafb}
             <div id="oem-google-results" style="font-size:13px;color:#aaa;line-height:1.8"></div>
           </div>
 
-          <div style="display:flex;justify-content:flex-end;margin-bottom:18px">
-            <button class="btn btn-primary" onclick="oemIrEtapa(2)">Avan&ccedil;ar para Revis&atilde;o &amp; Publica&ccedil;&atilde;o &#8594;</button>
-          </div>
         </div>
 
         <!-- ETAPA 2: Revisão do lojista (imagens, NTC e publicação) -->
         <div id="oem-step2" class="oem-step">
 
-          <div style="margin-bottom:14px">
-            <button class="btn btn-secondary" onclick="oemIrEtapa(1)">&#8592; Voltar / Reenriquecer (IA)</button>
-          </div>
 
           <!-- NTC em tempo real -->
           <div class="card">
@@ -3724,11 +3712,10 @@ function oemDefinirModoEdicao(idx) {
 // 1) Identificação automática (IA / Voz do Lojista)
 // 2) Revisão do lojista (NTC, imagens) e publicação
 function oemIrEtapa(n) {
-  document.getElementById('oem-step1').classList.toggle('active', n === 1);
-  document.getElementById('oem-step2').classList.toggle('active', n === 2);
-  document.getElementById('oem-pill-1').classList.toggle('active', n === 1);
-  document.getElementById('oem-pill-2').classList.toggle('active', n === 2);
-  if (n === 2) _cntcRecalcular();
+  // Bloco único: sempre exibe ambos os painéis juntos
+  document.getElementById('oem-step1').classList.add('active');
+  document.getElementById('oem-step2').classList.add('active');
+  _cntcRecalcular();
 }
 
 // Dados completos do produto (campos do formulário OEM mesclados com o
@@ -3832,9 +3819,14 @@ async function oemBuscar() {
       el.onchange = _cntcOnInput;
     }
   });
+  // Auto-enriquecimento completo: busca DNA + módulos NTC em cadeia
+  status.innerHTML = '🌐 Enriquecendo DNA completo via IA (OEM, NCM, AV, EC, CC…)…';
+  try { await oemBuscarDnaWeb(); } catch(e) { console.warn('[oemBuscar] DNA chain error:', e); }
   await _cntcRecalcular();
-  status.innerHTML = '✅ Campos pré-preenchidos. Confirme os dados e complete o que falta.'
-    + (sugeridosIA.length ? '<br>🤖 IA sugeriu (em laranja — confirme antes de salvar): ' + esc(sugeridosIA.join(', ')) : '');
+  status.innerHTML = '✅ Enriquecimento completo!'
+    + (sugeridosIA.length ? ' 🤖 IA sugeriu (em laranja): ' + esc(sugeridosIA.join(', ')) : '');
+  // Exibir bloco único (campos + NTC + módulos)
+  oemIrEtapa(2);
 }
 
 function oemColetar() {
@@ -5463,6 +5455,16 @@ function _cntcRenderModulos(scores) {
       el.addEventListener('change', _cntcOnInput);
       // Pré-preenche com dado existente
       var val = _cntcDados[c.key];
+      // Fallback: chaves _txt buscam o array real em _cntcDados
+      if (val == null && c.key && c.key.endsWith('_txt')) {
+        var _PREFILL_MAP = {
+          '_especificacoes_txt':'especificacoes','_boletins_txt':'boletins',
+          '_revisoes_txt':'revisoes','_substituicoes_txt':'substituicoes',
+          '_cc_oem_txt':'cc_oem','_cc_after_txt':'cc_aftermarket','_cc_import_txt':'cc_importadores'
+        };
+        var _rk = _PREFILL_MAP[c.key];
+        if (_rk && _cntcDados[_rk] != null) val = _cntcDados[_rk];
+      }
       if (val != null) {
         if (c.tipo === 'check') { el.checked = !!val; }
         else { el.value = Array.isArray(val) ? val.join('\n') : val; }
