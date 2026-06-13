@@ -18,6 +18,15 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
+// ── Keep-alive: evita cold start no Render free tier ────────────────────────
+// Pinga o próprio /api/health a cada 14 min (Render dorme após 15 min de idle)
+const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+setInterval(() => {
+  const mod = SELF_URL.startsWith('https') ? https : http;
+  mod.get(`${SELF_URL}/api/health`, () => {}).on('error', () => {});
+}, 14 * 60 * 1000);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Faz uma requisição HTTPS e resolve com o JSON da resposta.
 // Aborta com erro após `timeoutMs` para evitar requisições penduradas
 // (causa de "travamentos" quando Bling/Wix/Serper não respondem).

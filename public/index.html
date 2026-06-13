@@ -672,9 +672,14 @@ tr:hover td{background:#f9fafb}
           <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-catalogo" onclick="oemToggleModoEntrada('catalogo')">&#128722; Raspar Cat&aacute;logo (v&aacute;rios)</button>
         </div>
 
-        <div id="oem-modo-busca" class="oem-modo-painel" style="display:flex;gap:8px;margin-bottom:12px">
-          <input id="oem-input" style="flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
-          <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
+        <div id="oem-modo-busca" class="oem-modo-painel" style="margin-bottom:12px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="oem-input" style="flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
+            <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
+          </div>
+          <!-- Botão DNA sempre visível — enriquece diretamente sem depender do resultado da busca -->
+          <button id="oem-dna-btn-topo" class="btn btn-secondary" style="width:100%;font-size:13px;padding:10px;border:1px dashed #ff450060;color:#ff4500;background:#ff450008" onclick="oemDnaDiretoWeb()">&#127760; Buscar DNA na Web (IA) — preenche OEM, NCM, AV, CC, EC automaticamente</button>
+          <div id="oem-dna-status-topo" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
         </div>
 
         <div id="oem-modo-pdf" class="oem-modo-painel" style="display:none">
@@ -3959,6 +3964,65 @@ var MAPA_CAMPOS_DNA_EXTRA = {
 
 // União dos dois mapas — usado pelo agente de DNA na Web (Cadastro Completo e Voz do Lojista)
 var MAPA_CAMPOS_DNA_TODOS = Object.assign({}, MAPA_CAMPOS_DNA_OEM, MAPA_CAMPOS_DNA_EXTRA);
+
+// Busca DNA diretamente pelo input principal (#oem-input) sem precisar
+// de oemBuscar() prévio. Botão sempre visível no topo da página de cadastro.
+async function oemDnaDiretoWeb() {
+  var q = (document.getElementById('oem-input').value || '').trim();
+  var statusEl = document.getElementById('oem-dna-status-topo');
+  if (!q) {
+    statusEl.innerHTML = '<span style="color:#ff6500">⚠ Digite o código OEM ou nome do produto no campo acima.</span>';
+    return;
+  }
+  statusEl.innerHTML = '⏳ Buscando DNA na web (IA)… pode levar até 1 min.';
+
+  // Garante que o painel de resultado está visível para exibir os campos
+  var resultado = document.getElementById('oem-resultado');
+  if (resultado) resultado.style.display = 'block';
+  oemIrEtapa(2);
+
+  // Preenche os campos de identidade com o que foi digitado (sku ou nome)
+  var sku = q.match(/^[A-Z0-9\-\.]{3,20}$/i) ? q : '';
+  var nome = sku ? '' : q;
+  var elSku = document.getElementById('oem-f-sku');
+  if (elSku && !elSku.value) elSku.value = sku || q;
+
+  var r;
+  try {
+    r = await api('POST', '/motor/enriquecer-dna', {sku: sku || q, fabricante: '', nome: nome});
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#ff4500">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+  if (!r.ok) { statusEl.innerHTML = '<span style="color:#ff4500">⚠ ' + esc(r.erro || 'Falha na busca DNA') + '</span>'; return; }
+  if (!r.encontrado) { statusEl.innerHTML = '<span style="color:#ffaa00">⚠ ' + esc(r.mensagem || 'Nenhum dado encontrado.') + '</span>'; return; }
+
+  var campos = r.campos || {};
+  var preenchidos = [];
+  Object.keys(MAPA_CAMPOS_DNA_TODOS).forEach(function(campo) {
+    var info = campos[campo];
+    if (!info || info.valor == null || info.valor === '') return;
+    var map = MAPA_CAMPOS_DNA_TODOS[campo];
+    var el = document.getElementById(map.id);
+    if (el) {
+      if (!el.value || !el.value.trim()) {
+        el.value = info.valor;
+        el.style.borderColor = '#ff9800';
+        el.title = 'IA (' + info.confianca + ') — ' + (info.fonte || '');
+      }
+    } else {
+      if (_cntcDados[map.key] == null || _cntcDados[map.key] === '') _cntcDados[map.key] = info.valor;
+    }
+    preenchidos.push(map.label + ': ' + String(info.valor));
+  });
+
+  await _cntcRecalcular();
+  var html = '<span style="color:#00ff88">✓ ' + preenchidos.length + ' campo(s) preenchido(s) pela IA:</span> '
+    + preenchidos.slice(0,5).map(function(s){ return esc(s); }).join(' · ')
+    + (preenchidos.length > 5 ? ' …e mais ' + (preenchidos.length-5) : '')
+    + ' <span style="color:#666">(' + (r.fontes_consultadas||[]).length + ' fontes)</span>';
+  statusEl.innerHTML = html;
+}
 
 async function oemBuscarDnaWeb() {
   var statusEl = document.getElementById('oem-dna-status');
