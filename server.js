@@ -692,7 +692,8 @@ REGRAS ABSOLUTAS:
 2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
 3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
 4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
-5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.`,
+5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.
+6. NUNCA preencha "marca_veiculo" ou "montadora" com o nome do FABRICANTE DA PEÇA (ex: VALEO, Bosch, Mahle, NGK, TRW, Magneti Marelli, Delphi, Denso, Continental são fabricantes de autopeças — NÃO são montadoras de veículo). Esses nomes pertencem apenas a "fabricante_original". "marca_veiculo"/"montadora" só podem ser marcas de veículos (ex: Toyota, Volkswagen, Fiat, Chevrolet, Hyundai, Ford).`,
             messages: [{
                 role: 'user',
                 content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca numerados:\n`
