@@ -238,79 +238,37 @@ tr:hover td{background:#f9fafb}
 <!-- SIDEBAR -->
 <nav id="sidebar">
   <div class="sb-logo">
-    <div class="logo-icon">&#9889;</div>
-    <div>
-      <div class="logo-text">iRollo 360</div>
-      <div class="logo-sub">Motor NTC 4.0 &bull; iRollo</div>
-    </div>
+    <span style="font-size:20px">⚡</span>
+    <div><div style="font-size:13px;font-weight:600;color:#fff">iRollo 360</div><div style="font-size:10px;color:#555">Motor NTC 4.0 · iRollo</div></div>
   </div>
 
-  <div class="sb-section">
+  <div id="sb-scroll">
+
     <div class="sb-section-label">Principal</div>
-    <div class="sb-item active" onclick="nav('dashboard')"><span class="icon">&#128202;</span>Dashboard</div>
-    <div class="sb-item" onclick="nav('oem')"><span class="icon">&#10024;</span>Cadastro Completo</div>
-    <!-- IA Analyzer consolidado no Cadastro Completo (page-oem) -->
-    <div class="sb-item" onclick="nav('produtos')"><span class="icon">&#128230;</span>Produtos</div>
-  </div>
+    <div class="sb-item active" onclick="nav('dashboard')"><span class="icon">📊</span>Dashboard</div>
+    <div class="sb-item" onclick="nav('oem')"><span class="icon">✨</span>Cadastro Completo</div>
+    <div class="sb-item" onclick="nav('produtos')"><span class="icon">📦</span>Produtos</div>
 
-  <div class="sb-more-toggle" id="sb-more-toggle" onclick="toggleMaisFerramentas()">
-    <span class="icon">&#8230;</span>Mais ferramentas<span class="chev">&#9656;</span>
-  </div>
-  <div class="sb-more" id="sb-more">
+    <div class="sb-section-label">Catalogação</div>
+    <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">✅</span>Aprovação &amp; Congelados<span class="sb-badge" id="badge-aprovacao">0</span></div>
+    <div class="sb-item" onclick="nav('imagens-aprovacao')"><span class="icon">🖼️</span>Imagens</div>
+    <div class="sb-item" onclick="nav('ean')"><span class="icon">📷</span>EAN Scanner GS1</div>
+    <div class="sb-item" onclick="nav('precificacao')"><span class="icon">💰</span>Precificação</div>
+    <div class="sb-item" onclick="nav('diagnostico')"><span class="icon">🔍</span>Diagnóstico do Catálogo</div>
 
-  <div class="sb-section">
-    <div class="sb-section-label">Catalogacao</div>
-    <div class="sb-item" onclick="nav('produtos')/* catalogo→produtos */"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
-    <!-- Enriquecimento unificado no Cadastro Completo -->
-    <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
-    <div class="sb-item" onclick="nav('aprovacao')/* aprovacao-enriq→aprovacao */"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o &amp; Congelados</div>
-    <div class="sb-item" onclick="nav('aprovacao')/* aprovados→aprovacao */"><span class="icon">&#127775;</span>Aprovados</div>
-  </div>
+    <div class="sb-section-label">Integração</div>
+    <div class="sb-item" onclick="nav('bling-erp')"><span class="icon">🔵</span>Bling ERP</div>
+    <div class="sb-item" onclick="nav('wix')"><span class="icon">🟣</span>Wix Stores</div>
+    <div class="sb-item" onclick="nav('importar')"><span class="icon">📥</span>Importar Catálogo</div>
 
-  <div class="sb-section">
-    <div class="sb-section-label">Cataloga&ccedil;&atilde;o (2)</div>
-    <div class="sb-item" onclick="nav('ean')"><span class="icon">&#128247;</span>EAN Scanner GS1</div>
-    <div class="sb-item" onclick="nav('oem')/* imagens→oem */"><span class="icon">&#128444;&#65039;</span>Imagens</div>
-    <div class="sb-item" onclick="nav('oem')/* aplicacoes→oem */"><span class="icon">&#128663;</span>Aplica&ccedil;&otilde;es Motor</div>
-    <div class="sb-item" onclick="nav('oem')/* fiscal→oem */"><span class="icon">&#128203;</span>Fiscal &amp; Log&iacute;stica</div>
-    <div class="sb-item" onclick="nav('precificacao')"><span class="icon">&#128181;</span>Precifica&ccedil;&atilde;o</div>
-    <div class="sb-item" onclick="nav('oem')/* ntc→oem */"><span class="icon">&#128302;</span>NTC Inspector</div>
-    <div class="sb-item" onclick="nav('diagnostico')"><span class="icon">&#128269;</span>Diagn&oacute;stico do Cat&aacute;logo</div>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-section-label">Intelig&ecirc;ncia</div>
-    <div class="sb-item" onclick="nav('relatorios')"><span class="icon">&#128200;</span>Relat&oacute;rios</div>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-section-label">Integra&ccedil;&atilde;o</div>
-    <div class="sb-item" onclick="nav('importar')"><span class="icon">&#128229;</span>Importar Cat&aacute;logo</div>
-    <div class="sb-item" onclick="nav('wix')"><span class="icon">&#128279;</span>Wix Stores</div>
-    <div class="sb-item" onclick="nav('pdv')"><span class="icon">&#127978;</span>PDV</div>
-    <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">&#128268;</span>Integra&ccedil;&otilde;es de Plataforma</div>
-  </div>
-
-  <div class="sb-section">
     <div class="sb-section-label">Plataforma</div>
-    <div class="sb-item" onclick="nav('categoria')"><span class="icon">&#127991;&#65039;</span>Categoria</div>
-    <div class="sb-item" onclick="nav('templates')"><span class="icon">&#128221;</span>Templates</div>
-    <div class="sb-item" onclick="nav('pagamentos')"><span class="icon">&#128179;</span>Pagamentos</div>
-    <div class="sb-item" onclick="nav('planos')"><span class="icon">&#128176;</span>Planos</div>
-    <div class="sb-item" onclick="nav('usuarios')"><span class="icon">&#128101;</span>Usu&aacute;rios</div>
-    <div class="sb-item" onclick="nav('empresa')"><span class="icon">&#127970;</span>Empresa</div>
-    <div class="sb-item" onclick="nav('preferencias')"><span class="icon">&#127925;</span>Prefer&ecirc;ncias</div>
-  </div>
-
-  <div class="sb-section">
-    <div class="sb-section-label">Sistema</div>
-    <div class="sb-item" onclick="nav('config')"><span class="icon">&#9881;&#65039;</span>Configura&ccedil;&otilde;es</div>
-  </div>
+    <div class="sb-item" onclick="nav('relatorios')"><span class="icon">📈</span>Relatórios</div>
+    <div class="sb-item" onclick="nav('config')"><span class="icon">⚙️</span>Configurações</div>
 
   </div>
 
   <div class="sb-footer">
-    <button id="pwa-install-btn" class="btn btn-sm btn-secondary" style="width:100%;display:none;margin-bottom:8px" onclick="pwaInstalar()">&#128241; Instalar App</button>
+    <button id="pwa-install-btn" class="btn btn-sm btn-secondary" style="width:100%;display:none;margin-bottom:8px" onclick="pwaInstalar()">📱 Instalar App</button>
     Administrador<br>iRollo 360
   </div>
 </nav>
@@ -1678,7 +1636,72 @@ MEDIDA LARGURA  25 MM"></textarea>
     <div class="page" id="page-preferencias"><div class="stub-page"><div class="stub-icon">&#127925;</div><h2>Prefer&ecirc;ncias</h2><p>Em desenvolvimento &mdash; Prefer&ecirc;ncias</p></div></div>
     <div class="page" id="page-config"><div class="stub-page"><div class="stub-icon">&#9881;</div><h2>Configura&ccedil;&otilde;es</h2><p>Em desenvolvimento &mdash; Configura&ccedil;&otilde;es</p></div></div>
 
-  </div><!-- /content -->
+
+    <!-- ═══════════════════════════════════════════
+         IMAGENS — Aprovação, Sincronização e Congelamento
+    ═══════════════════════════════════════════ -->
+    <div class="page" id="page-imagens-aprovacao">
+      <div class="page-title">🖼️ Imagens — Aprovação &amp; Congelamento</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Revise as imagens de cada produto. Aprove para sincronizar com Bling/Wix ou congele o bloco para mantê-lo imutável.</p>
+
+      <!-- Toolbar -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-sm btn-primary" onclick="imgAprovarSelecionadas()">✅ Aprovar selecionadas</button>
+        <button class="btn btn-sm btn-secondary" onclick="imgCongelarSelecionadas()" style="color:#1a73e8;border-color:#1a73e840">❄️ Congelar bloco</button>
+        <button class="btn btn-sm btn-secondary" onclick="imgSincronizarSelecionadas()" style="color:#00c853;border-color:#00c85340">🔄 Sincronizar</button>
+        <button class="btn btn-sm btn-secondary" onclick="imgAuditarSelecionadas()" style="color:#ff9800;border-color:#ff980040">🔎 Auditar</button>
+        <span style="margin-left:auto;font-size:12px;color:#555" id="img-aprov-count"></span>
+      </div>
+
+      <!-- Filtros status -->
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="cat-import-btn active-mode" onclick="imgFiltrar('todos',this)" style="cursor:pointer;padding:6px 12px;border-radius:20px;font-size:12px">Todos</span>
+        <span class="cat-import-btn" onclick="imgFiltrar('pendente',this)" style="cursor:pointer;padding:6px 12px;border-radius:20px;font-size:12px">⏳ Pendente</span>
+        <span class="cat-import-btn" onclick="imgFiltrar('aprovado',this)" style="cursor:pointer;padding:6px 12px;border-radius:20px;font-size:12px">✅ Aprovado</span>
+        <span class="cat-import-btn" onclick="imgFiltrar('congelado',this)" style="cursor:pointer;padding:6px 12px;border-radius:20px;font-size:12px">❄️ Congelado</span>
+        <span class="cat-import-btn" onclick="imgFiltrar('sem-imagem',this)" style="cursor:pointer;padding:6px 12px;border-radius:20px;font-size:12px">🚫 Sem imagem</span>
+      </div>
+
+      <!-- Lista de produtos com imagens -->
+      <div id="img-aprov-lista">
+        <div class="card" style="text-align:center;padding:40px;color:#555">
+          <div style="font-size:32px;margin-bottom:8px">🖼️</div>
+          <div>Carregando produtos...</div>
+          <button class="btn btn-sm btn-secondary" style="margin-top:12px" onclick="imgCarregar()">🔄 Carregar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         BLING ERP — Status e configuração
+    ═══════════════════════════════════════════ -->
+    <div class="page" id="page-bling-erp">
+      <div class="page-title">🔵 Bling ERP</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Status da integração com o Bling v3. Sincronize produtos, categorias e estoques.</p>
+
+      <div class="card" id="bling-status-card">
+        <div class="card-title">Status da Conexão</div>
+        <div id="bling-status-info" style="font-size:13px;color:#555">Verificando...</div>
+        <button class="btn btn-sm btn-secondary" style="margin-top:10px" onclick="blingVerificarStatus()">🔄 Verificar conexão</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚡ Ações Rápidas</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-secondary" onclick="aprovSincronizarAprovadosLote()" style="color:#00c853;border-color:#00c85340">🚀 Sincronizar todos aprovados → Bling</button>
+          <button class="btn btn-secondary" onclick="nav('aprovacao')">📋 Ver fila de aprovação</button>
+          <button class="btn btn-secondary" onclick="nav('config')">⚙️ Configurar token Bling</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Última sincronização</div>
+        <div id="bling-sync-info" style="font-size:12px;color:#555">Nenhuma sincronização registrada.</div>
+      </div>
+    </div>
+
+
+    </div><!-- /content -->
 </div><!-- /main -->
 
 <script>
@@ -1777,6 +1800,8 @@ function nav(page, opts) {
   if (page === 'dashboard') loadDashboard();
   if (page === 'produtos') loadProdutos();
   if (page === 'imagens') loadMinhasImagens();
+  if (page === 'imagens-aprovacao') setTimeout(imgInicializar, 100);
+  if (page === 'bling-erp') setTimeout(blingVerificarStatus, 100);
   if (page === 'aprovacao') { atualizarBadgeAprovacao(); aprovRenderLista(); }
   if (page === 'aprovados') aprovRenderAprovados();
   if (page === 'precificacao') precificacaoRender();
@@ -4153,6 +4178,170 @@ function ntcAtualizarCabecalho(pct, decisao, sku, oem, ean) {
   if (document.getElementById('ntc-hdr-sku')) document.getElementById('ntc-hdr-sku').textContent = sku||'—';
   if (document.getElementById('ntc-hdr-oem')) document.getElementById('ntc-hdr-oem').textContent = oem||'—';
   if (document.getElementById('ntc-hdr-ean')) document.getElementById('ntc-hdr-ean').textContent = ean||'—';
+}
+
+// ═══════════════════════════════════════════
+// IMAGENS — Aprovação, Congelamento, Auditoria
+// ═══════════════════════════════════════════
+var _imgFiltroAtual = 'todos';
+
+function imgCarregar() {
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  var lista = document.getElementById('img-aprov-lista');
+  var count = document.getElementById('img-aprov-count');
+  if (!lista) return;
+
+  var filtrados = prods.filter(function(p) {
+    if (_imgFiltroAtual === 'todos') return true;
+    if (_imgFiltroAtual === 'sem-imagem') return !p.imagens || p.imagens.length === 0;
+    if (_imgFiltroAtual === 'congelado') return p.img_congelado;
+    if (_imgFiltroAtual === 'aprovado') return p.img_aprovado && !p.img_congelado;
+    if (_imgFiltroAtual === 'pendente') return !p.img_aprovado && !p.img_congelado;
+    return true;
+  });
+
+  if (count) count.textContent = filtrados.length + ' produto(s)';
+
+  if (filtrados.length === 0) {
+    lista.innerHTML = '<div class="card" style="text-align:center;padding:40px;color:#555"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div>Nenhum produto encontrado</div></div>';
+    return;
+  }
+
+  lista.innerHTML = filtrados.map(function(p, i) {
+    var imgs = p.imagens || [];
+    var status = p.img_congelado ? '❄️ Congelado' : p.img_aprovado ? '✅ Aprovado' : '⏳ Pendente';
+    var statusCor = p.img_congelado ? '#1a73e8' : p.img_aprovado ? '#00c853' : '#ff9800';
+    var imgSlots = imgs.length > 0
+      ? imgs.slice(0,5).map(function(url) {
+          return '<img src="'+url+'" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid #333">';
+        }).join('')
+      : '<div style="width:52px;height:52px;border-radius:6px;border:2px dashed #333;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px">📷</div>';
+
+    return '<div class="card" style="margin-bottom:8px">' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<input type="checkbox" data-idx="'+i+'" style="width:18px;height:18px;flex-shrink:0">' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">' + imgSlots + '</div>' +
+        '<div style="flex:2;min-width:120px">' +
+          '<div style="font-size:13px;font-weight:500;color:#fff">' + (p.nome||p.sku||'Sem nome') + '</div>' +
+          '<div style="font-size:11px;color:#555">' + (p.sku||'') + ' · ' + (p.fabricante||'') + '</div>' +
+          '<div style="font-size:11px;font-weight:600;color:'+statusCor+';margin-top:2px">' + status + '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:4px">' +
+          '<button onclick="imgAprovarUm('+i+')" style="background:#00c85320;color:#00c853;border:1px solid #00c85340;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">✅ Aprovar</button>' +
+          '<button onclick="imgCongelarUm('+i+')" style="background:#1a73e820;color:#1a73e8;border:1px solid #1a73e840;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">❄️ Congelar</button>' +
+          '<button onclick="imgEditarUm('+i+')" style="background:#ff450020;color:#ff4500;border:1px solid #ff450040;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">✏️ Editar</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function imgFiltrar(filtro, el) {
+  _imgFiltroAtual = filtro;
+  document.querySelectorAll('#page-imagens-aprovacao .cat-import-btn').forEach(function(b) {
+    b.classList.remove('active-mode');
+  });
+  if (el) el.classList.add('active-mode');
+  imgCarregar();
+}
+
+function _imgGetSelecionados() {
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  var checks = document.querySelectorAll('#img-aprov-lista input[type=checkbox]:checked');
+  return Array.from(checks).map(function(c) { return parseInt(c.dataset.idx); });
+}
+
+function imgAprovarSelecionadas() {
+  var idxs = _imgGetSelecionados();
+  if (!idxs.length) { alert('Selecione ao menos um produto.'); return; }
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  idxs.forEach(function(i) { if (prods[i]) prods[i].img_aprovado = true; });
+  localStorage.setItem('genesis_produtos', JSON.stringify(prods));
+  imgCarregar();
+}
+
+function imgCongelarSelecionadas() {
+  var idxs = _imgGetSelecionados();
+  if (!idxs.length) { alert('Selecione ao menos um produto.'); return; }
+  if (!confirm('Congelar bloco de imagens dos produtos selecionados? As imagens ficam imutáveis até descongelar.')) return;
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  idxs.forEach(function(i) { if (prods[i]) { prods[i].img_congelado = true; prods[i].img_aprovado = true; } });
+  localStorage.setItem('genesis_produtos', JSON.stringify(prods));
+  imgCarregar();
+}
+
+function imgSincronizarSelecionadas() {
+  var idxs = _imgGetSelecionados();
+  if (!idxs.length) { alert('Selecione ao menos um produto.'); return; }
+  alert('Sincronizando ' + idxs.length + ' produto(s) com Bling/Wix...
+(Conecte o Bling nas Configurações para sincronização real)');
+}
+
+function imgAuditarSelecionadas() {
+  var idxs = _imgGetSelecionados();
+  if (!idxs.length) { alert('Selecione ao menos um produto.'); return; }
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  var relatorio = idxs.map(function(i) {
+    var p = prods[i];
+    if (!p) return '';
+    var imgs = p.imagens || [];
+    return (p.nome||p.sku) + ': ' + imgs.length + ' imagem(ns) — ' + (p.img_congelado ? 'CONGELADO' : p.img_aprovado ? 'APROVADO' : 'PENDENTE');
+  }).join('
+');
+  alert('📋 AUDITORIA DE IMAGENS
+
+' + relatorio);
+}
+
+function imgAprovarUm(idx) {
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  if (prods[idx]) { prods[idx].img_aprovado = true; }
+  localStorage.setItem('genesis_produtos', JSON.stringify(prods));
+  imgCarregar();
+}
+
+function imgCongelarUm(idx) {
+  if (!confirm('Congelar bloco de imagens deste produto?')) return;
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  if (prods[idx]) { prods[idx].img_congelado = true; prods[idx].img_aprovado = true; }
+  localStorage.setItem('genesis_produtos', JSON.stringify(prods));
+  imgCarregar();
+}
+
+function imgEditarUm(idx) {
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  if (!prods[idx]) return;
+  if (prods[idx].img_congelado) {
+    if (!confirm('Este produto está CONGELADO. Descongelar imagens para editar?')) return;
+    prods[idx].img_congelado = false;
+    localStorage.setItem('genesis_produtos', JSON.stringify(prods));
+  }
+  // Navega para o cadastro completo em modo edição
+  oemDefinirModoEdicao(idx);
+  nav('oem');
+}
+
+// Carregar imagens ao abrir a aba
+function imgInicializar() {
+  imgCarregar();
+}
+
+// Bling ERP — verificar status
+async function blingVerificarStatus() {
+  var el = document.getElementById('bling-status-info');
+  if (el) el.innerHTML = '🔄 Verificando...';
+  try {
+    var r = await api('GET', '/bling/status');
+    if (el) {
+      if (r.ok) {
+        el.innerHTML = '<span style="color:#00c853">✅ Conectado ao Bling v3</span><br><span style="font-size:11px;color:#555">' + (r.mensagem||'') + '</span>';
+      } else {
+        el.innerHTML = '<span style="color:#f44336">❌ Não conectado</span><br><span style="font-size:11px;color:#555">' + (r.mensagem||'Configure o token em ⚙️ Configurações') + '</span>';
+      }
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<span style="color:#f44336">❌ Erro: ' + e.message + '</span>';
+  }
 }
 
 function oemScrollTopo() {
