@@ -13,6 +13,12 @@ const net = require('net');
 const zlib = require('zlib');
 const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
+const { httpsJSON, validarGTIN, validarNCM, consultarNCMOficial, buscarWeb } = require('./src/services/web-utils');
+const { enriquecerDnaViaWeb } = require('./src/services/dna-enricher');
+const { buscarImagensReais } = require('./src/services/image-search');
+const db = require('./src/services/db');
+const autoEnrich = require('./src/services/auto-enrich');
+const { parseNFeXML } = require('./src/services/nfe-parser');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -27,22 +33,16 @@ setInterval(() => {
 }, 14 * 60 * 1000);
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Faz uma requisição HTTPS e resolve com o JSON da resposta.
-// Aborta com erro após `timeoutMs` para evitar requisições penduradas
-// (causa de "travamentos" quando Bling/Wix/Serper não respondem).
-function httpsJSON(opts, body, timeoutMs = 15000) {
-  return new Promise((resolve, reject) => {
-    const req = https.request(opts, r => {
-      let b = '';
-      r.on('data', d => b += d);
-      r.on('end', () => { try { resolve(JSON.parse(b)); } catch(e) { reject(e); } });
-    });
-    req.on('error', reject);
-    req.setTimeout(timeoutMs, () => req.destroy(new Error(`Timeout: sem resposta de ${opts.hostname} em ${timeoutMs/1000}s`)));
-    if (body) req.write(body);
-    req.end();
-  });
+// ── Auto-Enriquecimento 24/7 — melhora produtos já cadastrados em background ─
+// Processa um lote por ciclo: rastreabilidade (fornecedor/avulso) → DNA na
+// Web → colonização de imagens reais → recálculo do NTC 4.0.
+const AUTO_ENRICH_INTERVAL_MIN = Number(process.env.AUTO_ENRICH_INTERVAL_MIN) || 10;
+if (process.env.AUTO_ENRICH_ENABLED !== 'false') {
+  setInterval(() => {
+    autoEnrich.rodarCicloAutoEnrich().catch(e => console.error('[Auto-Enrich]', e.message));
+  }, AUTO_ENRICH_INTERVAL_MIN * 60 * 1000);
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Verifica se um IP é privado/local — usado para impedir SSRF no raspador de URLs
 function ipPrivada(ip) {
@@ -225,71 +225,6 @@ function extrairListaProdutosLd(html, baseUrl) {
     }
   }
   return produtos;
-}
-
-// Valida checksum de GTIN-8/12/13/14 (módulo 10, peso 3/1 a partir do dígito mais à direita)
-function validarGTIN(codigo) {
-  const digitos = String(codigo == null ? '' : codigo).replace(/\D/g, '');
-  if (![8, 12, 13, 14].includes(digitos.length)) return false;
-  const nums = digitos.split('').map(Number);
-  const check = nums.pop();
-  let soma = 0;
-  for (let i = 0; i < nums.length; i++) {
-    const posicaoDaDireita = nums.length - i;
-    soma += nums[i] * (posicaoDaDireita % 2 === 1 ? 3 : 1);
-  }
-  const digitoCalculado = (10 - (soma % 10)) % 10;
-  return digitoCalculado === check;
-}
-
-// Valida NCM: precisa ter exatamente 8 dígitos numéricos (TIPI). Retorna o código limpo ou null.
-function validarNCM(codigo) {
-  const digitos = String(codigo == null ? '' : codigo).replace(/\D/g, '');
-  return digitos.length === 8 ? digitos : null;
-}
-
-// Consulta a tabela TIPI oficial (BrasilAPI) para confirmar se o NCM existe.
-// Retorna a descrição oficial do código, ou null se não encontrado/erro.
-async function consultarNCMOficial(ncm8) {
-  try {
-    const data = await httpsJSON({ hostname: 'brasilapi.com.br', path: '/api/ncm/v1/' + ncm8, method: 'GET' }, null, 8000);
-    return (data && data.codigo && data.descricao) ? data.descricao : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// Busca web com fallback: Serper.dev (primário) → Google Custom Search (secundário)
-async function buscarWeb(q, num = 10) {
-  const resultados = [];
-  if (process.env.SERPER_API_KEY) {
-    try {
-      const body = JSON.stringify({ q, num, gl: 'br', hl: 'pt-br' });
-      const data = await httpsJSON({
-        hostname: 'google.serper.dev', path: '/search', method: 'POST',
-        headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-      }, body);
-      (data.organic || []).forEach(item => {
-        if (item.title && item.snippet) resultados.push({ titulo: item.title, fonte: item.link, trecho: item.snippet });
-      });
-    } catch (e) {
-      console.error('[Busca Web] Serper:', e.message);
-    }
-  }
-  if (resultados.length < num && process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
-    try {
-      const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&num=10`);
-      const data = await httpsJSON({ hostname: url.hostname, path: url.pathname + url.search, method: 'GET' });
-      (data.items || []).forEach(item => {
-        if (item.title && item.snippet && !resultados.some(r => r.fonte === item.link)) {
-          resultados.push({ titulo: item.title, fonte: item.link, trecho: item.snippet });
-        }
-      });
-    } catch (e) {
-      console.error('[Busca Web] Google:', e.message);
-    }
-  }
-  return resultados.slice(0, num);
 }
 
 // -----------------------------------------------------------
@@ -529,147 +464,12 @@ REGRAS ABSOLUTAS:
 // volta null com confiança "baixa" e motivo "fonte não encontrada". EAN passa
 // por checksum GTIN e NCM precisa ter 8 dígitos — senão é marcado para
 // confirmação fiscal. Resultado sempre "pendente_confirmacao": nunca auto-aprova.
-const CAMPOS_DNA = [
-    'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
-    'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
-    'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
-    'cross_codes', 'aplicacoes_adicionais',
-    // NTC completo — módulos EC, BTA, LG, FI, CC-OEM
-    'funcao_tecnica', 'boletins', 'substituicoes',
-    'fabricante_original', 'montadora',
-    'cc_oem', 'peso_bruto', 'peso_liquido'
-];
-
+// (lógica compartilhada com o job de auto-enriquecimento em src/services/dna-enricher.js)
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
     const { sku, fabricante, nome } = req.body;
     if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
-
-    const vazio = {};
-    CAMPOS_DNA.forEach(c => { vazio[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' }; });
-
-    if (!process.env.ANTHROPIC_API_KEY) {
-        return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true });
-    }
-
-    const q = [fabricante, sku, nome].filter(Boolean).join(' ');
-    let trechos = [];
-    try {
-        trechos = await buscarWeb(q, 10);
-    } catch (e) {
-        console.error('[Enriquecer DNA] busca:', e.message);
-    }
-
-    if (trechos.length === 0) {
-        return res.json({
-            ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
-            mensagem: 'Sem resultados de busca — nenhuma fonte encontrada.'
-        });
-    }
-
-    try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1500,
-            system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
-
-Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
-
-Campos:
-- codigo_oem: código OEM / part number de referência do fabricante do veículo
-- ean: código EAN/GTIN do produto (8, 12, 13 ou 14 dígitos numéricos)
-- ncm: código NCM (8 dígitos numéricos)
-- cest: código CEST (formato NN.NNN.NN), se aplicável
-- motor: aplicação de motor/veículo (texto livre, ex: "1.0 12V Flex")
-- codigo_motor: código interno do motor (ex: "EA211", "1GD-FTV")
-- marca_veiculo: marca do veículo de aplicação (ex: "Toyota")
-- modelo_veiculo: modelo do veículo (ex: "Hilux")
-- versao_veiculo: versão/trim do veículo (ex: "SRV", "SR")
-- ano_inicial: ano inicial de aplicação (número de 4 dígitos)
-- ano_final: ano final de aplicação (número de 4 dígitos)
-- cilindrada: cilindrada em cm³ (número)
-- material: material/composição da peça
-- posicao: posição de montagem (ex: "Dianteiro", "Traseiro Esquerdo")
-- fmsi: código de referência FMSI (padrão usado em pastilhas/lonas de freio)
-- comprimento: comprimento em cm (número)
-- largura: largura em cm (número)
-- altura: altura em cm (número)
-- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. Use as marcas adequadas à categoria do produto — ex: filtros (Fram, Mann Filter, Mahle, Wega, Tecfil), correias/tensores/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch, Fras-le), ignição/elétrica (NGK, Bosch, Magneti Marelli). Formato: string com itens "MARCA CÓDIGO" separados por "; " (ex: "Fram CA10262; Mann Filter CU2939; Mahle LAK295; Wega AKX31361")
-- aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
-- funcao_tecnica: descrição técnica da função da peça em 1-2 frases claras (ex: "Absorve impactos e vibrações da suspensão dianteira, garantindo estabilidade e conforto." ou "Filtra impurezas do óleo lubrificante, protegendo o motor contra desgaste prematuro.")
-- boletins: boletins técnicos do fabricante, homologações ou normas aplicáveis. Um item por linha separado por "\n". Ex: "Homologado VW AG\nAtende norma ABNT NBR 6560\nBoletim COFAP BT-2022-014". Null se não houver evidência.
-- substituicoes: códigos de peças substituídas ou substitutas (mesmo fit). Um código por linha separado por "\n". Null se não houver.
-- fabricante_original: nome do fabricante original da peça (ex: "COFAP", "INA", "Mann Filter", "Bosch", "Gates", "Mahle"). Extraia do SKU, nome ou resultados de busca.
-- montadora: nome do fabricante do veículo (montadora) para o qual esta peça foi originalmente projetada (ex: "Toyota Motor Corporation", "Volkswagen AG", "Hyundai Motor Company"). Se atende múltiplas, coloque a principal.
-- cc_oem: código(s) OEM de catálogo oficial da montadora para esta peça. Um por linha separado por "\n". Ex: "58101-2BA70\nMB 012 988 17 20". Null se não encontrado.
-- peso_bruto: peso bruto do produto com embalagem em kg, número decimal (ex: 0.380). Null se não encontrado.
-- peso_liquido: peso líquido do produto sem embalagem em kg, número decimal (ex: 0.280). Null se não encontrado.
-
-REGRAS ABSOLUTAS:
-1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
-2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
-3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
-4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
-5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.`,
-            messages: [{
-                role: 'user',
-                content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca numerados:\n`
-                    + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n')
-            }]
-        });
-        const texto = msg.content?.[0]?.text || '{}';
-        let bruto;
-        try {
-            const jsonMatch = texto.match(/\{[\s\S]*\}/);
-            bruto = JSON.parse(jsonMatch ? jsonMatch[0] : texto);
-        } catch (e) {
-            bruto = {};
-        }
-
-        const campos = {};
-        CAMPOS_DNA.forEach(c => {
-            const item = bruto[c];
-            if (!item || item.valor == null || item.valor === '') {
-                campos[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' };
-                return;
-            }
-            const idx = Number(item.fonte_idx);
-            const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
-            let valor = item.valor;
-            let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
-            let motivo = null;
-
-            if (c === 'ean') {
-                if (!validarGTIN(valor)) { valor = null; confianca = 'baixa'; motivo = 'GTIN inválido (checksum)'; }
-            }
-            if (c === 'ncm') {
-                const ncmLimpo = validarNCM(valor);
-                if (!ncmLimpo) { confianca = 'baixa'; motivo = 'requer confirmação fiscal — NCM deve ter 8 dígitos'; }
-                else valor = ncmLimpo;
-            }
-            campos[c] = { valor, fonte: fonte || null, confianca, motivo };
-        });
-
-        // Confirma o NCM contra a tabela TIPI oficial (BrasilAPI) — eleva a confiança
-        // se o código existir oficialmente, ou sinaliza confirmação fiscal se não existir
-        if (campos.ncm.valor) {
-            const descOficial = await consultarNCMOficial(campos.ncm.valor);
-            if (descOficial) {
-                campos.ncm.confianca = 'alta';
-                campos.ncm.motivo = 'confirmado na TIPI: ' + descOficial;
-            } else {
-                campos.ncm.confianca = 'baixa';
-                campos.ncm.motivo = 'NCM não encontrado na tabela TIPI oficial — requer confirmação fiscal';
-            }
-        }
-
-        const encontrado = CAMPOS_DNA.some(c => campos[c].valor != null);
-        res.json({ ok: true, encontrado, campos, fontes_consultadas: trechos.map(t => t.fonte), pendente_confirmacao: true });
-    } catch (e) {
-        console.error('[Enriquecer DNA] IA:', e.message);
-        res.json({ ok: false, erro: e.message, campos: vazio, pendente_confirmacao: true });
-    }
+    const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome });
+    res.json(resultado);
 });
 
 // Extração de texto de PDF — permite importar catálogos/notas de fornecedor em PDF
@@ -893,65 +693,162 @@ app.get('/api/imagens/proxy', (req, res) => {
 });
 
 // Busca de Imagens — Serper.dev (primário) ou Google Custom Search (fallback)
+// (lógica compartilhada com o job de auto-enriquecimento em src/services/image-search.js)
 app.get('/api/imagens/buscar', async (req, res) => {
     const { q, fonte } = req.query;
     if (!q) return res.json({ ok: false, erro: 'Parametro q obrigatorio', imagens: [] });
 
-    // 1) Serper.dev — 2.500 buscas grátis, depois $1/1.000 (só 1 chave)
-    if (process.env.SERPER_API_KEY) {
-        try {
-            const body = JSON.stringify({ q, num: 12 });
-            const data = await httpsJSON({
-                hostname: 'google.serper.dev', path: '/images', method: 'POST',
-                headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-            }, body);
-            const imagens = (data.images||[]).map(item => ({
-                url: item.imageUrl,
-                thumb: item.thumbnailUrl || item.imageUrl,
-                titulo: item.title,
-                fonte: item.source
-            }));
-            return res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider: 'serper' });
-        } catch(e) {
-            return res.json({ ok: false, erro: 'Erro Serper: ' + e.message, imagens: [] });
-        }
+    if (!process.env.SERPER_API_KEY && !(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX)) {
+        return res.json({
+            ok: false, imagens: [],
+            mensagem: 'Configure SERPER_API_KEY no Render para busca de imagens (2.500 buscas grátis em serper.dev).',
+            q, fonte
+        });
     }
 
-    // 2) Google Custom Search — 100 buscas/dia grátis (fallback)
-    if (process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
-        try {
-            const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&searchType=image&num=12`);
-            const data = await httpsJSON({ hostname: url.hostname, path: url.pathname + url.search, method: 'GET' });
-            const imagens = (data.items||[]).map(item => ({
-                url: item.link,
-                thumb: item.image && item.image.thumbnailLink,
-                titulo: item.title,
-                fonte: item.displayLink
-            }));
-            return res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider: 'google' });
-        } catch(e) {
-            return res.json({ ok: false, erro: 'Erro Google Search: ' + e.message, imagens: [] });
-        }
+    try {
+        const imagens = await buscarImagensReais(q, 12);
+        const provider = process.env.SERPER_API_KEY ? 'serper' : 'google';
+        res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, imagens: [] });
     }
-
-    // Sem API configurada
-    res.json({
-        ok: false, imagens: [],
-        mensagem: 'Configure SERPER_API_KEY no Render para busca de imagens (2.500 buscas grátis em serper.dev).',
-        q, fonte
-    });
 });
 
-// Produtos (stub)
+// ─── PRODUTOS — Catálogo persistido (SQLite) ──────────────────────────
+// Cada produto guarda os dados completos do NTC (`dados`), além de
+// fornecedor/nota fiscal (rastreabilidade) e o NTC já calculado.
 app.get('/api/produtos', (req, res) => {
-    res.json({ ok: true, produtos: [], total: 0 });
+    try {
+        const limit = Math.min(parseInt(req.query.limite) || 50, 200);
+        const offset = parseInt(req.query.offset) || 0;
+        const { decisao, fonte } = req.query;
+        const produtos = db.listarProdutos({ limit, offset, decisao, fonte });
+        res.json({ ok: true, produtos, total: db.contarProdutos() });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, produtos: [] });
+    }
 });
+
+app.get('/api/produtos/:id', (req, res) => {
+    const produto = db.obterProduto(req.params.id);
+    if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+    res.json({ ok: true, produto });
+});
+
+// Cria/atualiza um produto (upsert pelo SKU), calcula o NTC 4.0 e persiste.
 app.post('/api/produtos', (req, res) => {
-    const rast_hash = require('crypto').createHash('md5').update((req.body.sku||'')+(req.body.oem||'')+'MOBIS').digest('hex').substring(0,16);
-    res.json({ ok: true, id_bling: 'LOCAL-' + Date.now(), nct: 0.90, rast_hash });
+    try {
+        const body = req.body || {};
+        const dados = body.dados && typeof body.dados === 'object' ? body.dados : body;
+        const sku = body.sku || dados.codigo_fabricante || dados.sku || dados.codigo_oem;
+        if (!sku) return res.status(400).json({ ok: false, erro: 'sku (ou codigo_fabricante) obrigatório' });
+
+        const resultado = ntcEngine.processar(dados);
+        const fonte = body.fonte || (body.fornecedor_nome ? 'fornecedor' : 'avulso');
+
+        const produto = db.upsertProduto({
+            sku: String(sku),
+            nome: dados.nome || null,
+            dados,
+            fornecedor_nome: body.fornecedor_nome || null,
+            fornecedor_cnpj: body.fornecedor_cnpj || null,
+            nota_fiscal_chave: body.nota_fiscal_chave || null,
+            fonte,
+            ntc: resultado.ntc,
+            decisao: resultado.decisao,
+            rast_hash: resultado.rast_hash,
+        });
+
+        res.json({ ok: true, produto, ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
 });
-app.delete('/api/produtos/:id', (req, res) => { res.json({ ok: true }); });
-app.post('/api/produtos/:id/enriquecer', (req, res) => { res.json({ ok: true }); });
+
+app.delete('/api/produtos/:id', (req, res) => {
+    try {
+        db.excluirProduto(req.params.id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Força o reprocessamento (DNA web + imagens + NTC) de um produto específico
+app.post('/api/produtos/:id/enriquecer', async (req, res) => {
+    try {
+        const produto = db.obterProduto(req.params.id);
+        if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+        const resultado = await autoEnrich.enriquecerProdutoAuto(produto);
+        res.json({ ok: true, resultado });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// ─── AUTO-ENRIQUECIMENTO 24/7 — status e disparo manual ───────────────
+app.get('/api/auto-enrich/status', (req, res) => {
+    res.json({ ok: true, ...autoEnrich.obterStatus() });
+});
+
+app.post('/api/auto-enrich/trigger', async (req, res) => {
+    const batchSize = parseInt(req.body && req.body.batchSize) || undefined;
+    const resultado = await autoEnrich.rodarCicloAutoEnrich(batchSize);
+    res.json(resultado);
+});
+
+// ─── NOTAS FISCAIS DE ENTRADA (NF-e XML) ──────────────────────────────
+// Importa uma NF-e XML de fornecedor: cada item da nota é cadastrado/
+// atualizado preservando o fornecedor (CNPJ/nome) e a chave da nota para
+// rastreabilidade. Produtos sem nota associada continuam marcados como
+// "avulso" pelo job de auto-enriquecimento.
+app.post('/api/notas/importar-xml', upload.single('arquivo'), async (req, res) => {
+    try {
+        const xml = req.file ? req.file.buffer.toString('utf8') : (req.body && req.body.xml);
+        if (!xml || !xml.includes('<infNFe')) {
+            return res.json({ ok: false, erro: 'XML de NF-e inválido — envie o arquivo no campo "arquivo" ou o conteúdo em "xml".' });
+        }
+
+        const { chave, fornecedor, itens } = parseNFeXML(xml);
+        if (!itens.length) return res.json({ ok: false, erro: 'Nenhum item encontrado na NF-e' });
+
+        const produtos = [];
+        for (const item of itens) {
+            const sku = item.codigo || item.ean || ('NF-' + (chave || Date.now()) + '-' + (produtos.length + 1));
+            const existente = db.obterProdutoPorSku(sku);
+            const dados = existente ? { ...existente.dados } : {};
+
+            if (!dados.nome && item.nome) dados.nome = item.nome;
+            if (!dados.codigo_fabricante && item.codigo) dados.codigo_fabricante = item.codigo;
+            if (!dados.ean && item.ean && validarGTIN(item.ean)) dados.ean = item.ean;
+            if (!dados.ncm && item.ncm) dados.ncm = validarNCM(item.ncm) || dados.ncm;
+            if (!dados.cest && item.cest) dados.cest = item.cest;
+            // Rastreabilidade: fornecedor da nota entra na Linhagem Genealógica (LG),
+            // nunca substitui o fabricante/DNA do produto.
+            if (!dados.linhagem_distribuidor && fornecedor.nome) dados.linhagem_distribuidor = fornecedor.nome;
+
+            const resultado = ntcEngine.processar(dados);
+            const produto = db.upsertProduto({
+                sku: String(sku),
+                nome: dados.nome || null,
+                dados,
+                fornecedor_nome: fornecedor.nome,
+                fornecedor_cnpj: fornecedor.cnpj,
+                nota_fiscal_chave: chave,
+                fonte: 'fornecedor',
+                ntc: resultado.ntc,
+                decisao: resultado.decisao,
+                rast_hash: resultado.rast_hash,
+            });
+            produtos.push({ sku: produto.sku, nome: produto.nome, ntc: produto.ntc, decisao: produto.decisao });
+        }
+
+        res.json({ ok: true, chave, fornecedor, total: itens.length, produtos });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
 
 // Bling — token OAuth2
 let _blingToken = null;
@@ -1191,6 +1088,71 @@ app.get('/api/bling/produtos', async (req, res) => {
     }));
     res.json({ ok: true, produtos: prods, total: prods.length, pagina, temMais: prods.length === limite });
   } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
+// ─── BLING — Importar produtos para o catálogo local (rastreabilidade) ─
+// Traz produtos do Bling para o banco local do auto-enriquecimento. Quando
+// `comFornecedor` é true, consulta o fornecedor vinculado de cada produto no
+// Bling (1 cadastro = 1 fornecedor) e preserva o vínculo (LG/rastreabilidade);
+// sem fornecedor vinculado, o produto entra como "avulso".
+app.post('/api/bling/sync-produtos', async (req, res) => {
+  try {
+    const pagina = parseInt(req.body.pagina) || 1;
+    const limite = Math.min(parseInt(req.body.limite) || 20, 100);
+    const comFornecedor = !!req.body.comFornecedor;
+
+    const data = await blingRequest('GET', `/produtos?situacao=A&pagina=${pagina}&limite=${limite}`);
+    const blingProds = data.data || [];
+
+    const resultados = [];
+    for (const bp of blingProds) {
+      const dadosBling = {
+        nome: bp.nome || null,
+        codigo_fabricante: bp.codigo || null,
+        ean: bp.gtin || null,
+        fabricante: bp.marca && bp.marca.nome || null,
+      };
+
+      let fornecedor = null;
+      if (comFornecedor) {
+        try {
+          const detalhe = await blingRequest('GET', `/produtos/${bp.id}`);
+          if (detalhe.data?.tributacao?.ncm) dadosBling.ncm = detalhe.data.tributacao.ncm;
+          const f = detalhe.data && detalhe.data.fornecedor;
+          if (f && f.id) {
+            try {
+              const fDet = await blingRequest('GET', `/fornecedores/${f.id}`);
+              fornecedor = { nome: (fDet.data && fDet.data.nome) || f.nome || null, cnpj: (fDet.data && fDet.data.numeroDocumento) || null };
+            } catch (e) {
+              fornecedor = { nome: f.nome || null, cnpj: null };
+            }
+          }
+        } catch (e) { /* segue sem detalhe — best-effort */ }
+      }
+
+      const sku = dadosBling.codigo_fabricante || String(bp.id);
+      const existente = db.obterProdutoPorSku(sku);
+      const dadosFinal = existente ? { ...existente.dados } : {};
+      for (const [k, v] of Object.entries(dadosBling)) {
+        if (v != null && v !== '' && (dadosFinal[k] == null || dadosFinal[k] === '')) dadosFinal[k] = v;
+      }
+
+      const resultado = ntcEngine.processar(dadosFinal);
+      const produto = db.upsertProduto({
+        sku: String(sku),
+        nome: dadosFinal.nome || null,
+        dados: dadosFinal,
+        fornecedor_nome: fornecedor ? fornecedor.nome : (existente ? existente.fornecedor_nome : null),
+        fornecedor_cnpj: fornecedor ? fornecedor.cnpj : (existente ? existente.fornecedor_cnpj : null),
+        fonte: (fornecedor && fornecedor.nome) ? 'fornecedor' : (existente ? existente.fonte : 'avulso'),
+        bling_id: String(bp.id),
+        ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash,
+      });
+      resultados.push({ sku: produto.sku, nome: produto.nome, ntc: produto.ntc, decisao: produto.decisao, fonte: produto.fonte });
+    }
+
+    res.json({ ok: true, total: blingProds.length, pagina, temMais: blingProds.length === limite, produtos: resultados });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
 
 // ─── WIX STORES — www.mobisautoparts.com.br ───────────────────

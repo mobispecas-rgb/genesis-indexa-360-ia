@@ -267,7 +267,7 @@ tr:hover td{background:#f9fafb}
     <div class="sb-item" onclick="nav('importar')"><span class="icon">&#128229;</span>Importar Cat&aacute;logo</div>
     <div class="sb-item" onclick="nav('wix')"><span class="icon">&#128279;</span>Wix Stores</div>
     <div class="sb-item" onclick="nav('pdv')"><span class="icon">&#127978;</span>PDV</div>
-    <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">&#128268;</span>Integra&ccedil;&otilde;es de Plataforma</div>
+    <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">&#129302;</span>Auto-Enriquecimento 24/7</div>
   </div>
 
   <div class="sb-section">
@@ -1460,7 +1460,56 @@ MEDIDA LARGURA  25 MM"></textarea>
       </div>
     </div>
     <div class="page" id="page-pdv"><div class="stub-page"><div class="stub-icon">&#127978;</div><h2>PDV</h2><p>Em desenvolvimento &mdash; PDV</p></div></div>
-    <div class="page" id="page-plataforma-int"><div class="stub-page"><div class="stub-icon">&#128268;</div><h2>Integra&ccedil;&otilde;es de Plataforma</h2><p>Em desenvolvimento &mdash; Integra&ccedil;&otilde;es de Plataforma</p></div></div>
+    <!-- AUTO-ENRIQUECIMENTO 24/7 -->
+    <div class="page" id="page-plataforma-int">
+      <div class="page-title">&#129302; Auto-Enriquecimento 24/7</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Job em segundo plano que melhora continuamente os produtos j&aacute; cadastrados: preserva o fornecedor da nota fiscal de entrada na Linhagem Geneal&oacute;gica (rastreabilidade) ou marca o cadastro como "avulso" quando n&atilde;o h&aacute; fornecedor, busca o DNA na Web (OEM/EAN/NCM/CEST/aplica&ccedil;&atilde;o/motor/material/dimens&otilde;es) e coloniza imagens reais para elevar o m&oacute;dulo IV — sempre recalculando o NTC 4.0.</p>
+
+      <div class="card">
+        <div class="card-title">&#128202; Status do Job</div>
+        <div class="grid4" id="ae-status" style="gap:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-primary btn-sm" onclick="aeRodarCiclo()">&#9654;&#65039; Rodar ciclo agora</button>
+          <button class="btn btn-secondary btn-sm" onclick="aeAtualizar()">&#128260; Atualizar</button>
+        </div>
+        <div id="ae-status-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128200; Estat&iacute;sticas do Cat&aacute;logo</div>
+        <div class="grid4" id="ae-stats" style="gap:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128229; Importar Nota Fiscal de Entrada (XML)</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa os itens da NF-e preservando o fornecedor (emitente) para rastreabilidade. Os produtos entram na fila do auto-enriquecimento.</div>
+        <input type="file" id="ae-nfe-file" accept=".xml" style="margin-bottom:8px;display:block">
+        <button class="btn btn-primary btn-sm" onclick="aeImportarNFe()">&#128228; Importar XML</button>
+        <div id="ae-nfe-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128279; Sincronizar do Bling</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa produtos ativos do Bling para o cat&aacute;logo local. Com "Buscar fornecedor vinculado", consulta o fornecedor de cada produto no Bling (rastreabilidade); sem fornecedor vinculado, o produto entra como "avulso".</div>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px"><input type="checkbox" id="ae-bling-fornecedor"> Buscar fornecedor vinculado (mais lento)</label>
+        <button class="btn btn-secondary btn-sm" onclick="aeSyncBling()">&#11015;&#65039; Importar do Bling</button>
+        <div id="ae-bling-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128193; Atividade Recente</div>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Data</th><th>SKU</th><th>A&ccedil;&atilde;o</th><th>NTC antes</th><th>NTC depois</th>
+            </tr></thead>
+            <tbody id="ae-logs-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
     <div class="page" id="page-templates">
       <div class="page-title">&#128221; Templates de Enriquecimento</div>
@@ -1742,6 +1791,7 @@ function nav(page, opts) {
   if (page === 'precificacao') precificacaoRender();
   if (page === 'diagnostico') diagnosticoRender();
   if (page === 'wix') wixVerificarStatus();
+  if (page === 'plataforma-int') aeAtualizar();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -6935,6 +6985,119 @@ async function wixVerificarStatus() {
     elI.textContent = r && r.ok ? '✓ Conectado' : '✗ ' + ((r && r.mensagem) || 'Erro');
     elI.style.color = r && r.ok ? '#16a34a' : '#dc2626';
   }).catch(function(e) { if (elI) { elI.textContent = '✗ ' + e.message; elI.style.color = '#dc2626'; } });
+}
+
+// ===== AUTO-ENRIQUECIMENTO 24/7 =====
+function aeCard(valor, label, cor) {
+  return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;text-align:center">'
+    + '<div style="font-size:24px;font-weight:900;color:'+(cor||'#fff')+'">'+valor+'</div>'
+    + '<div style="font-size:11px;color:#888;margin-top:4px">'+label+'</div></div>';
+}
+
+async function aeAtualizar() {
+  var msgEl = document.getElementById('ae-status-msg');
+  var r = await api('GET', '/auto-enrich/status');
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">Erro ao carregar status do job.</span>';
+    return;
+  }
+
+  var statusEl = document.getElementById('ae-status');
+  if (statusEl) {
+    statusEl.innerHTML = aeCard(r.habilitado ? 'Sim' : 'Não', 'Job habilitado', r.habilitado ? '#00c853' : '#f44336')
+      + aeCard(r.rodando ? 'Rodando...' : 'Ocioso', 'Status agora', r.rodando ? '#ff9800' : '#00c853')
+      + aeCard(r.ultima_execucao ? new Date(r.ultima_execucao).toLocaleString('pt-BR') : '—', 'Última execução')
+      + aeCard(r.fila_pendente != null ? r.fila_pendente : 0, 'Pendentes (NTC < 95%)', (r.fila_pendente||0) > 0 ? '#ff9800' : '#00c853');
+  }
+
+  var statsEl = document.getElementById('ae-stats');
+  if (statsEl && r.estatisticas) {
+    var e = r.estatisticas;
+    var pd = e.por_decisao || {};
+    var pf = e.por_fonte || {};
+    statsEl.innerHTML = aeCard(e.total || 0, 'Produtos no catálogo')
+      + aeCard(Math.round((e.media_ntc || 0) * 100) + '%', 'NTC médio', (e.media_ntc||0) >= 0.95 ? '#00c853' : (e.media_ntc||0) >= 0.6 ? '#ff9800' : '#f44336')
+      + aeCard(pd.APROVADO || 0, 'Aprovados', '#00c853')
+      + aeCard(pd.PENDENTE || 0, 'Pendentes', '#ff9800')
+      + aeCard(pd.REPROVADO || 0, 'Reprovados', '#f44336')
+      + aeCard(pf.fornecedor || 0, 'Com fornecedor (rastreados)', '#00c853')
+      + aeCard(pf.avulso || 0, 'Cadastro avulso', '#ff9800')
+      + aeCard(e.pendentes_enriquecer || 0, 'Na fila do job');
+  }
+
+  var tbody = document.getElementById('ae-logs-tbody');
+  if (tbody) {
+    var logs = r.logs_recentes || [];
+    if (!logs.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#555">Nenhuma atividade registrada ainda.</td></tr>';
+    } else {
+      tbody.innerHTML = logs.map(function(l) {
+        var antes = l.ntc_antes != null ? Math.round(l.ntc_antes * 100) + '%' : '—';
+        var depois = l.ntc_depois != null ? Math.round(l.ntc_depois * 100) + '%' : '—';
+        return '<tr>'
+          + '<td style="padding:8px 6px;font-size:12px">' + esc(l.criado_em) + '</td>'
+          + '<td style="padding:8px 6px"><code style="color:#ff6b00">' + esc(l.sku) + '</code></td>'
+          + '<td style="padding:8px 6px;font-size:12px">' + esc(l.acao) + '</td>'
+          + '<td style="padding:8px 6px">' + antes + '</td>'
+          + '<td style="padding:8px 6px">' + depois + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
+
+  if (msgEl) msgEl.innerHTML = '';
+}
+
+async function aeRodarCiclo() {
+  var msgEl = document.getElementById('ae-status-msg');
+  if (msgEl) msgEl.innerHTML = '⏳ Processando lote...';
+  var r = await api('POST', '/auto-enrich/trigger', {});
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao rodar ciclo.') + '</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '✅ ' + r.processados + ' produto(s) processado(s) neste ciclo.';
+  aeAtualizar();
+}
+
+async function aeImportarNFe() {
+  var fileEl = document.getElementById('ae-nfe-file');
+  var msgEl = document.getElementById('ae-nfe-msg');
+  if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">Selecione o arquivo XML da NF-e.</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '⏳ Importando NF-e...';
+  try {
+    var fd = new FormData();
+    fd.append('arquivo', fileEl.files[0]);
+    var headers = {};
+    var tok = localStorage.getItem('gn_token') || '';
+    if (tok) headers['Authorization'] = 'Bearer ' + tok;
+    var resp = await fetch('/api/notas/importar-xml', { method: 'POST', headers: headers, body: fd });
+    var r = await resp.json();
+    if (!r.ok) {
+      if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc(r.erro || 'Erro ao importar XML.') + '</span>';
+      return;
+    }
+    if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' item(ns) importado(s) — fornecedor: ' + esc((r.fornecedor && r.fornecedor.nome) || '—');
+    aeAtualizar();
+  } catch (e) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc(e.message) + '</span>';
+  }
+}
+
+async function aeSyncBling() {
+  var msgEl = document.getElementById('ae-bling-msg');
+  var comFornecedorEl = document.getElementById('ae-bling-fornecedor');
+  if (msgEl) msgEl.innerHTML = '⏳ Importando do Bling...';
+  var r = await api('POST', '/bling/sync-produtos', { limite: 20, comFornecedor: !!(comFornecedorEl && comFornecedorEl.checked) });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao importar do Bling.') + '</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' produto(s) importado(s) do Bling.';
+  aeAtualizar();
 }
 
 async function wixImportarBling() {
