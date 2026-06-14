@@ -5,6 +5,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <style>
+/* Garante que Cadastro Completo sempre mostra busca no topo */
+@media (max-width: 768px) {
+  #page-oem { scroll-margin-top: 0; }
+  #page-oem .card:first-of-type { 
+    border: 2px solid #ff450060 !important; 
+    background: #fff8f5 !important;
+  }
+  #oem-input { font-size: 16px !important; }
+  #oem-dna-btn-topo { font-size: 13px !important; padding: 12px 8px !important; }
+}
+</style>
+<style>
 /* Mobile touch fixes */
 @media (max-width: 768px) {
   input, textarea, select { font-size: 16px !important; }
@@ -758,10 +770,9 @@ tr:hover td{background:#f9fafb}
         <!-- ETAPA 1: Identificação automática (IA / Voz do Lojista) -->
         <div id="oem-step1" class="oem-step active">
 
-          <!-- Agente de Enriquecimento de DNA via Web -->
-          <div class="card">
+          <!-- Agente de Enriquecimento de DNA via Web (desktop) -->
+          <div class="card" style="display:none" id="oem-dna-card-old">
             <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
-            <p style="font-size:12px;color:#555;margin-bottom:10px">Busca OEM, EAN/GTIN, NCM/CEST, motor/aplica&ccedil;&atilde;o, material, dimens&otilde;es, aplica&ccedil;&atilde;o veicular e c&oacute;digos equivalentes na web e <strong style="color:#ff4500">salva automaticamente</strong> o cadastro (rascunho) com o que for encontrado. <strong style="color:#ff4500">Nunca inventa</strong> &mdash; cada sugest&atilde;o vem com fonte e n&iacute;vel de confian&ccedil;a, pendente de confirma&ccedil;&atilde;o humana.</p>
             <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
             <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
           </div>
@@ -1757,6 +1768,15 @@ function nav(page, opts) {
   if (page === 'wix') wixVerificarStatus();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
+    // Scroll ao topo sempre que mudar de página no mobile
+    setTimeout(function() { window.scrollTo(0, 0); }, 50);
+  }
+  // Se for oem, garante que o card de busca fica visível no topo
+  if (page === 'oem') {
+    setTimeout(function() {
+      window.scrollTo(0, 0);
+      oemIniciarFabObserver();
+    }, 100);
   }
 }
 
