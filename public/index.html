@@ -7166,6 +7166,15 @@ function imgFiltrarCat(cat, btn) {
   </div>
 </div>
 
+<!-- ── BUSCAR DNA NA WEB (IA) ── -->
+<div class="ntcv2-card">
+  <div class="ntcv2-sb">
+    <button class="ntcv2-btn prim" onclick="ntcv2BuscarDnaWeb()">🌐 Buscar DNA na Web (IA)</button>
+    <div style="font-size:11px;color:#6b7280;margin-top:6px">Busca OEM, EAN/GTIN, NCM/CEST, aplicação veicular, motor, material, dimensões e cross-codes na web e recalcula o NTC. Nunca inventa — cada sugestão vem com fonte e confiança, pendente de confirmação humana.</div>
+    <div id="ntcv2-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+  </div>
+</div>
+
 <!-- ── DNA / IDENTIFICAÇÃO ── -->
 <div class="ntcv2-card">
   <input type="checkbox" id="nt2-s1" class="ntcv2-toggle" checked>
@@ -7500,6 +7509,63 @@ function ntcv2SetVoz(v) {
 function ntcv2Reenriquecer() {
   var oem = (document.getElementById('oem-oem') || {}).value || document.getElementById('d-oem') && document.getElementById('d-oem').textContent || '?';
   if (typeof oemBuscar === 'function') { oemBuscar(oem); } else { alert('Use o botão 🌐 Buscar DNA na Web na Etapa 1.'); }
+}
+
+// Busca DNA na web (IA) a partir dos dados já exibidos neste produto e recalcula o NTC real
+async function ntcv2BuscarDnaWeb() {
+  var statusEl = document.getElementById('ntcv2-dna-status');
+  var get = function(id) {
+    var el = document.getElementById(id);
+    var v = el ? el.textContent.trim() : '';
+    return (!v || v === '—') ? '' : v;
+  };
+  var sku   = get('d-sku');
+  var oem   = get('d-oem');
+  var nome  = get('d-nome');
+  var marca = get('d-marca');
+
+  if (!sku && !oem && !nome) {
+    statusEl.innerHTML = '<span style="color:#d97706">⚠ Preencha o SKU, OEM ou Nome do produto antes de buscar.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '⏳ Buscando DNA na web (IA)... isso pode levar até 1 minuto.';
+
+  var r;
+  try {
+    r = await api('POST', '/motor/enriquecer-dna', { sku: sku || oem, fabricante: marca, nome: nome });
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#dc2626">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+
+  if (!r.ok) {
+    statusEl.innerHTML = '<span style="color:#dc2626">⚠ ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
+    return;
+  }
+  if (!r.encontrado) {
+    statusEl.innerHTML = '<span style="color:#d97706">⚠ ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
+    return;
+  }
+
+  var campos = r.campos || {};
+  var dados = {
+    sku: sku || null, codigo_fabricante: sku || null,
+    oem: oem || null, codigo_oem: oem || null,
+    nome: nome || null, fabricante: marca || null,
+  };
+  Object.keys(MAPA_CAMPOS_DNA_TODOS).forEach(function(campo) {
+    var info = campos[campo];
+    if (info && info.valor != null && info.valor !== '') dados[MAPA_CAMPOS_DNA_TODOS[campo].key] = info.valor;
+  });
+
+  try {
+    var ntcResult = await api('POST', '/motor/nct', dados);
+    if (ntcResult && ntcResult.ok) ntcv2Atualizar(dados, ntcResult);
+  } catch (e) {}
+
+  statusEl.innerHTML = _dnaWebListaHtml(campos)
+    + '<div style="margin-top:6px;font-size:11px;color:#6b7280">Fontes consultadas: ' + (r.fontes_consultadas || []).length + ' — NTC recalculado com o Motor 4.0. Confira as fontes antes de confirmar.</div>';
 }
 function ntcv2Editar() {
   var btn = document.querySelector('[onclick*="oem-step1"]') || document.querySelector('.oem-step-pill');
