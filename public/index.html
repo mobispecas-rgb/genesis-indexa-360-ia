@@ -80,6 +80,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .badge-green{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840}
 .badge-orange{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040}
 .badge-red{background:#ff450020;color:#ff6500;border:1px solid #ff450040}
+/* Selo de Qualidade NTC — anel giratório indica que o job 24/7 monitora o item;
+   verde = alta qualidade, amarelo/vermelho piscam para chamar atenção. */
+.selo-ntc{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;font-size:11px;font-weight:900;flex-shrink:0}
+.selo-ntc::before{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:currentColor;animation:selo-spin 1.4s linear infinite;opacity:.65}
+.selo-verde{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840}
+.selo-amarelo{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040;animation:selo-pisca-amarelo 1.6s infinite}
+.selo-vermelho{background:#ff450020;color:#ff4500;border:1px solid #ff450040;animation:selo-pisca-vermelho 1.2s infinite}
+@keyframes selo-spin{to{transform:rotate(360deg)}}
+@keyframes selo-pisca-amarelo{0%,100%{box-shadow:0 0 0 0 #ffaa0055}50%{box-shadow:0 0 0 6px #ffaa0000}}
+@keyframes selo-pisca-vermelho{0%,100%{box-shadow:0 0 0 0 #ff450055}50%{box-shadow:0 0 0 6px #ff450000}}
+@keyframes spin{to{transform:rotate(360deg)}}
 input,select,textarea{background:#fff;border:1px solid #d1d5db;color:#1a1a1a;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:#ff4500}
 select option{background:#fff;color:#1a1a1a}
@@ -1481,6 +1492,33 @@ MEDIDA LARGURA  25 MM"></textarea>
       </div>
 
       <div class="card">
+        <div class="card-title">&#127991;&#65039; Cat&aacute;logo &mdash; Selo de Qualidade NTC</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">O selo giratório confirma que o item está sob monitoramento do job 24/7: <strong style="color:#00ff88">verde</strong> = alta qualidade (NTC&nbsp;&ge;&nbsp;95%), <strong style="color:#ffaa00">amarelo</strong> = pendente (60&ndash;95%, pisca), <strong style="color:#ff4500">vermelho</strong> = baixa qualidade (&lt;60%, pisca). Use "Sincronizar" para enviar SKU, código OEM, códigos cambiados, medidas/pesos de fábrica, categoria/subcategoria e o código de rastreamento para o Wix (site) e o Bling (PDV/ERP).</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="ae-cat-categoria" onchange="aeCarregarCatalogo()" style="max-width:200px"><option value="">Todas as categorias</option></select>
+          <select id="ae-cat-subcategoria" onchange="aeCarregarCatalogo()" style="max-width:200px"><option value="">Todas as subcategorias</option></select>
+          <select id="ae-cat-decisao" onchange="aeCarregarCatalogo()" style="max-width:160px">
+            <option value="">Todas as decis&otilde;es</option>
+            <option value="APROVADO">Aprovado</option>
+            <option value="PENDENTE">Pendente</option>
+            <option value="REPROVADO">Reprovado</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="aeCarregarCatalogo()">&#128260; Atualizar</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Selo</th><th>SKU</th><th>Nome</th><th class="col-opt">Categoria / Subcategoria</th><th class="col-opt">Fonte</th><th>A&ccedil;&otilde;es</th>
+            </tr></thead>
+            <tbody id="ae-catalogo-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="ae-catalogo-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">&#128229; Importar Nota Fiscal de Entrada (XML)</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa os itens da NF-e preservando o fornecedor (emitente) para rastreabilidade. Os produtos entram na fila do auto-enriquecimento.</div>
         <input type="file" id="ae-nfe-file" accept=".xml" style="margin-bottom:8px;display:block">
@@ -1791,7 +1829,7 @@ function nav(page, opts) {
   if (page === 'precificacao') precificacaoRender();
   if (page === 'diagnostico') diagnosticoRender();
   if (page === 'wix') wixVerificarStatus();
-  if (page === 'plataforma-int') aeAtualizar();
+  if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -7098,6 +7136,104 @@ async function aeSyncBling() {
   }
   if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' produto(s) importado(s) do Bling.';
   aeAtualizar();
+  aeCarregarCatalogo();
+}
+
+// Selo de Qualidade NTC — anel giratório (sempre ativo, mostra que o item
+// está sob monitoramento do job 24/7); verde = alto, amarelo/vermelho piscam.
+function aeSeloHtml(ntc, decisao) {
+  var pct = ntc != null ? Math.round(ntc * 100) : 0;
+  var classe = ntc >= 0.95 ? 'selo-verde' : ntc >= 0.60 ? 'selo-amarelo' : 'selo-vermelho';
+  return '<div class="selo-ntc ' + classe + '" title="NTC ' + pct + '% — ' + esc(decisao || '—') + '">' + pct + '%</div>';
+}
+
+var _aeCategorias = [];
+
+async function aeCarregarCategorias() {
+  var r = await api('GET', '/categorias');
+  if (!r || !r.ok) return;
+  _aeCategorias = r.categorias || [];
+
+  var selCat = document.getElementById('ae-cat-categoria');
+  var atualCat = selCat.value;
+  var categoriasUnicas = [...new Set(_aeCategorias.map(function(c){ return c.categoria; }))];
+  selCat.innerHTML = '<option value="">Todas as categorias</option>'
+    + categoriasUnicas.map(function(c){ return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+  selCat.value = atualCat;
+
+  aeAtualizarSubcategorias();
+}
+
+function aeAtualizarSubcategorias() {
+  var selCat = document.getElementById('ae-cat-categoria');
+  var selSub = document.getElementById('ae-cat-subcategoria');
+  var atualSub = selSub.value;
+  var subs = _aeCategorias
+    .filter(function(c){ return c.subcategoria && (!selCat.value || c.categoria === selCat.value); })
+    .map(function(c){ return c.subcategoria; });
+  var subsUnicas = [...new Set(subs)];
+  selSub.innerHTML = '<option value="">Todas as subcategorias</option>'
+    + subsUnicas.map(function(s){ return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+  selSub.value = atualSub;
+}
+
+async function aeCarregarCatalogo() {
+  var tbody = document.getElementById('ae-catalogo-tbody');
+  if (!tbody) return;
+  if (!_aeCategorias.length) await aeCarregarCategorias();
+  else aeAtualizarSubcategorias();
+
+  var decisao = document.getElementById('ae-cat-decisao').value;
+  var categoria = document.getElementById('ae-cat-categoria').value;
+  var subcategoria = document.getElementById('ae-cat-subcategoria').value;
+
+  var params = ['limite=200'];
+  if (decisao) params.push('decisao=' + encodeURIComponent(decisao));
+  if (categoria) params.push('categoria=' + encodeURIComponent(categoria));
+  if (subcategoria) params.push('subcategoria=' + encodeURIComponent(subcategoria));
+
+  var r = await api('GET', '/produtos?' + params.join('&'));
+  if (!r || !r.ok) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#dc2626">Erro ao carregar catálogo.</td></tr>';
+    return;
+  }
+
+  var produtos = r.produtos || [];
+  if (!produtos.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Nenhum produto encontrado para esse filtro.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = produtos.map(function(p) {
+    var catTxt = p.categoria ? esc(p.categoria) + (p.subcategoria ? ' / ' + esc(p.subcategoria) : '') : '—';
+    var fonteBadge = p.fonte === 'fornecedor'
+      ? '<span class="badge badge-green">Fornecedor</span>'
+      : '<span class="badge badge-orange">Avulso</span>';
+    return '<tr>'
+      + '<td>' + aeSeloHtml(p.ntc, p.decisao) + '</td>'
+      + '<td><code style="color:#ff6b00;font-size:11px">' + esc(p.sku) + '</code></td>'
+      + '<td>' + esc(p.nome || '—') + '</td>'
+      + '<td class="col-opt">' + catTxt + '</td>'
+      + '<td class="col-opt">' + fonteBadge + '</td>'
+      + '<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="aeSincronizarProduto(' + p.id + ', this)">&#128279; Sincronizar</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function aeSincronizarProduto(id, btn) {
+  var msgEl = document.getElementById('ae-catalogo-msg');
+  var original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Sincronizando...'; }
+  var r = await api('POST', '/produtos/' + id + '/sincronizar', {});
+  if (btn) { btn.disabled = false; btn.innerHTML = original; }
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao sincronizar.') + '</span>';
+    return;
+  }
+  var partes = [];
+  if (r.wix) partes.push('Wix: ' + (r.wix.ok ? '✅ ok' : '❌ ' + esc(r.wix.erro || '')));
+  if (r.bling) partes.push('Bling: ' + (r.bling.ok ? '✅ ok' : '❌ ' + esc(r.bling.erro || '')));
+  if (msgEl) msgEl.innerHTML = partes.join(' &nbsp;|&nbsp; ');
 }
 
 async function wixImportarBling() {

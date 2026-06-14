@@ -722,8 +722,21 @@ app.get('/api/produtos', (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limite) || 50, 200);
         const offset = parseInt(req.query.offset) || 0;
-        const { decisao, fonte } = req.query;
-        const produtos = db.listarProdutos({ limit, offset, decisao, fonte });
+        const { decisao, fonte, categoria, subcategoria } = req.query;
+        let produtos = db.listarProdutos({ limit, offset, decisao, fonte });
+
+        produtos = produtos.map(p => {
+            const familia = p.dados.familia_tecnica || p.dados.familia || null;
+            return {
+                ...p,
+                categoria: familia ? nomeCategoriaPrincipal(familia) : null,
+                subcategoria: familia ? classificarSubcategoria(familia, p.nome) : null,
+            };
+        });
+
+        if (categoria) produtos = produtos.filter(p => p.categoria === categoria);
+        if (subcategoria) produtos = produtos.filter(p => p.subcategoria === subcategoria);
+
         res.json({ ok: true, produtos, total: db.contarProdutos() });
     } catch (e) {
         res.json({ ok: false, erro: e.message, produtos: [] });
@@ -784,6 +797,90 @@ app.post('/api/produtos/:id/enriquecer', async (req, res) => {
         res.json({ ok: true, resultado });
     } catch (e) {
         res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Sincroniza um produto do catálogo local com Wix e Bling, levando o Selo de
+// Qualidade NTC, código de rastreamento (rast_hash), códigos cambiados,
+// medidas/pesos de fábrica e categoria/subcategoria resolvidas automaticamente.
+app.post('/api/produtos/:id/sincronizar', async (req, res) => {
+    try {
+        const produto = db.obterProduto(req.params.id);
+        if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+
+        const p = {
+            ...produto.dados,
+            sku: produto.sku,
+            codigo_fabricante: produto.dados.codigo_fabricante || produto.sku,
+            nome: produto.nome || produto.dados.nome,
+            ntc: produto.ntc,
+            decisao: produto.decisao,
+            rast_hash: produto.rast_hash,
+        };
+
+        const resultado = { ok: true, wix: null, bling: null };
+        const atualizacao = {};
+
+        if (process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
+            try {
+                const { payload, categoriaIds } = await montarPayloadProdutoWix(p);
+                const data = await wixRequest('POST', '/stores/v3/products-with-inventory', payload);
+                if (data.product && data.product.id) {
+                    await atribuirCategoriasWix(data.product.id, categoriaIds);
+                    atualizacao.wix_id = data.product.id;
+                    resultado.wix = { ok: true, id: data.product.id, categorias: categoriaIds || null };
+                } else {
+                    resultado.wix = { ok: false, erro: JSON.stringify(data) };
+                }
+            } catch (e) { resultado.wix = { ok: false, erro: e.message }; }
+        } else {
+            resultado.wix = { ok: false, erro: 'WIX_API_KEY/WIX_SITE_ID não configurados' };
+        }
+
+        if (process.env.BLING_API_KEY || process.env.BLING_CLIENT_ID) {
+            try {
+                const payload = await montarPayloadProdutoBling(p);
+                const data = await blingRequest('POST', '/produtos', payload);
+                if (data.data && data.data.id) {
+                    atualizacao.bling_id = data.data.id;
+                    resultado.bling = { ok: true, id: data.data.id, categoria: payload.categoria || null };
+                } else {
+                    resultado.bling = { ok: false, erro: JSON.stringify(data.error || data) };
+                }
+            } catch (e) { resultado.bling = { ok: false, erro: e.message }; }
+        } else {
+            resultado.bling = { ok: false, erro: 'BLING_API_KEY/BLING_CLIENT_ID não configurados' };
+        }
+
+        if (Object.keys(atualizacao).length) {
+            db.upsertProduto({ sku: produto.sku, dados: produto.dados, ...atualizacao });
+        }
+
+        res.json(resultado);
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Lista categorias/subcategorias resolvidas (mesma taxonomia usada no Wix e no
+// Bling) a partir do catálogo local — usada para filtrar produtos por
+// categoria/subcategoria dentro do app.
+app.get('/api/categorias', (req, res) => {
+    try {
+        const produtos = db.listarProdutos({ limit: 1000 });
+        const mapa = new Map();
+        for (const produto of produtos) {
+            const familia = produto.dados.familia_tecnica || produto.dados.familia;
+            if (!familia) continue;
+            const categoria = nomeCategoriaPrincipal(familia);
+            const subcategoria = classificarSubcategoria(familia, produto.nome) || null;
+            const chave = categoria + '|' + (subcategoria || '');
+            if (!mapa.has(chave)) mapa.set(chave, { categoria, subcategoria, total: 0 });
+            mapa.get(chave).total += 1;
+        }
+        res.json({ ok: true, categorias: [...mapa.values()] });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, categorias: [] });
     }
 });
 
@@ -993,13 +1090,44 @@ async function resolverCategoriaBling(familia, nomeProduto) {
   }
 }
 
-// Monta a descrição complementar (ficha técnica) usada no PDV/Bling
+// Selo de Qualidade NTC em texto (🟢 alto / 🟡 médio / 🔴 baixo) — usado no
+// PDV (Bling) e na ficha técnica, para confirmar visualmente que o produto
+// já passou pelo enriquecimento automático e qual o nível de confiança dele.
+function seloQualidadeNTC(p) {
+  if (p.ntc == null) return null;
+  const pct = Math.round(p.ntc * 100);
+  const cor = p.ntc >= 0.95 ? '🟢' : p.ntc >= 0.60 ? '🟡' : '🔴';
+  return cor + ' Selo de Qualidade NTC: ' + pct + '% (' + (p.decisao || '—') + ')';
+}
+
+// Monta a descrição complementar (ficha técnica) usada no PDV/Bling — sempre
+// que disponível, traz SKU + código de fábrica original, o maior número
+// possível de códigos cambiados (fabricante original e aftermarket), medidas
+// e pesos de fábrica, o Selo de Qualidade NTC e o código de rastreamento (hash).
 function montarFichaTecnica(p) {
   const linhas = [];
-  if (p.codigo_oem) linhas.push('Código OEM: ' + p.codigo_oem);
+  if (p.codigo_fabricante || p.sku) linhas.push('SKU / Código de Fábrica: ' + (p.codigo_fabricante || p.sku));
+  if (p.codigo_oem) linhas.push('Código OEM Original: ' + p.codigo_oem);
   if (p.motor) linhas.push('Motor/Aplicação: ' + p.motor);
   if (p.material) linhas.push('Material: ' + p.material);
   if (p.ean) linhas.push('EAN/GTIN: ' + p.ean);
+
+  const ccOem = Array.isArray(p.cc_oem) ? p.cc_oem.filter(Boolean) : [];
+  if (ccOem.length) linhas.push('Códigos Cambiados (Fabricante Original): ' + ccOem.join(', '));
+  const ccAftermarket = Array.isArray(p.cc_aftermarket) ? p.cc_aftermarket.filter(Boolean) : [];
+  if (ccAftermarket.length) linhas.push('Códigos Cambiados (Aftermarket): ' + ccAftermarket.join(', '));
+
+  if (p.comprimento || p.largura || p.altura) {
+    linhas.push('Dimensões de Fábrica (C x L x A): ' + [p.comprimento, p.largura, p.altura].map(v => v || '—').join(' x ') + ' cm');
+  }
+  if (p.peso_bruto || p.peso_liquido) {
+    linhas.push('Peso de Fábrica: bruto ' + (p.peso_bruto || '—') + ' kg / líquido ' + (p.peso_liquido || '—') + ' kg');
+  }
+
+  const selo = seloQualidadeNTC(p);
+  if (selo) linhas.push(selo);
+  if (p.rast_hash) linhas.push('Código de Rastreamento (RAST-HASH): ' + p.rast_hash);
+
   return linhas.join('\n');
 }
 
@@ -1011,6 +1139,14 @@ async function montarPayloadProdutoBling(p) {
   const fichaTecnica = montarFichaTecnica(p);
   const familia = p.familia_tecnica || p.familia;
   const idCategoria = await resolverCategoriaBling(familia, p.nome);
+  const pesoBruto = parseFloat(p.peso_bruto || p.peso_liquido) || null;
+  const dimensoes = (p.comprimento || p.largura || p.altura || pesoBruto) ? {
+    largura: parseFloat(p.largura) || 0,
+    altura: parseFloat(p.altura) || 0,
+    profundidade: parseFloat(p.comprimento) || 0,
+    unidadeMedida: 'CM',
+    ...(pesoBruto ? { pesoBruto } : {}),
+  } : null;
   return {
     nome: p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome',
     codigo: p.codigo_fabricante || p.sku || '',
@@ -1024,7 +1160,8 @@ async function montarPayloadProdutoBling(p) {
     ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
     ...(midia.length ? { midia } : {}),
     ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {}),
-    ...(idCategoria ? { categoria: { id: idCategoria } } : {})
+    ...(idCategoria ? { categoria: { id: idCategoria } } : {}),
+    ...(dimensoes ? { dimensoes } : {}),
   };
 }
 
@@ -1246,13 +1383,17 @@ async function montarPayloadProdutoWix(p) {
   const mediaItems = (p.imagens || []).slice(0, 8).map(url => ({ mediaType: 'IMAGE', image: { url } }));
   const familia = p.familia_tecnica || p.familia;
   const categoriaIds = await resolverCategoriasWix(familia, p.nome);
+  const peso = parseFloat(p.peso_liquido || p.peso_bruto) || null;
+  const physicalProperties = peso ? { weight: peso } : {};
+  const fichaTecnica = montarFichaTecnica(p);
+  const descricao = [p.descricao || p.voz_do_lojista || '', fichaTecnica].filter(Boolean).join('\n\n');
   const payload = {
     product: {
       name: p.nome || p.codigo_fabricante || 'Produto',
       visible: true,
       productType: 'PHYSICAL',
-      plainDescription: p.descricao || p.voz_do_lojista || '',
-      physicalProperties: {},
+      plainDescription: descricao,
+      physicalProperties,
       ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
       variantsInfo: {
         variants: [{
@@ -1260,7 +1401,7 @@ async function montarPayloadProdutoWix(p) {
           visible: true,
           price: { actualPrice: { amount: preco } },
           inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
-          physicalProperties: {}
+          physicalProperties
         }]
       }
     }
