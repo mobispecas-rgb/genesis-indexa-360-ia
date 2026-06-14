@@ -1879,8 +1879,9 @@ setInterval(checkHealth, 30000);
 // ===== PWA: Service Worker (instalação / "Adicionar à tela inicial") =====
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js').catch(function(e) {
-      console.error('[Service Worker]', e.message);
+    // Limpar service workers antigos que podem estar cacheando versão antiga
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+      registrations.forEach(function(reg) { reg.unregister(); });
     });
   });
 }
@@ -1908,11 +1909,13 @@ window.addEventListener('appinstalled', function() {
   var btn = document.getElementById('pwa-install-btn');
   if (btn) btn.style.display = 'none';
 });
+// Uptime atualizado a cada 30s para não travar mobile
 setInterval(function() {
   var up = Math.floor((Date.now() - startTime) / 1000);
   var m = Math.floor(up/60), s = up%60;
-  document.getElementById('uptimeText').textContent = 'Uptime: ' + (m > 0 ? m + 'm ' : '') + s + 's';
-}, 1000);
+  var el = document.getElementById('uptimeText');
+  if (el) el.textContent = 'Uptime: ' + (m > 0 ? m + 'm ' : '') + s + 's';
+}, 30000);
 
 // ===== LOCALSTORAGE =====
 function getProds() {
