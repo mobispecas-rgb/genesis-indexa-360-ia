@@ -951,19 +951,34 @@ app.post('/api/notas/importar-xml', upload.single('arquivo'), async (req, res) =
 let _blingToken = null;
 let _blingTokenExp = 0;
 
-async function getBlingToken() {
-  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY;
-  if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
-  if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
+// Troca um refresh_token (ou authorization code) por um novo par de tokens
+// junto à API OAuth2 do Bling, e persiste o resultado no banco local.
+async function trocarTokenBling(qs) {
   const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
-  const qs = 'grant_type=client_credentials';
   const data = await httpsJSON({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + creds, 'Content-Length': Buffer.byteLength(qs) }
   }, qs);
   if (!data.access_token) throw new Error('Bling token inválido: ' + JSON.stringify(data));
+  db.salvarBlingOAuth(data);
   _blingToken = data.access_token;
-  _blingTokenExp = Date.now() + (data.expires_in || 3600) * 1000 - 60000;
+  _blingTokenExp = Date.now() + (data.expires_in || 21600) * 1000 - 60000;
   return _blingToken;
+}
+
+async function getBlingToken() {
+  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY;
+  if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
+  if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
+  const tokens = db.obterBlingOAuth();
+  if (tokens && tokens.access_token && Date.now() < tokens.expires_em) {
+    _blingToken = tokens.access_token;
+    _blingTokenExp = tokens.expires_em;
+    return _blingToken;
+  }
+  if (!tokens || !tokens.refresh_token) {
+    throw new Error('Bling não autorizado ainda — acesse o link de autorização do app no painel do Bling (Informações do app → Link de convite) para conectar.');
+  }
+  return trocarTokenBling('grant_type=refresh_token&refresh_token=' + encodeURIComponent(tokens.refresh_token));
 }
 
 async function blingRequest(method, path, payload) {
@@ -1180,14 +1195,36 @@ app.get('/api/bling/status', async (req, res) => {
 app.post('/api/bling/token/renovar', (req, res) => { _blingToken = null; _blingTokenExp = 0; res.json({ ok: true, mensagem: 'Cache de token limpo — será renovado automaticamente' }); });
 
 // ─── Bling — URL de redirecionamento do app (cadastro do aplicativo no Bling) ─
-app.get('/api/bling/callback', (req, res) => {
-  const ok = !req.query.error;
-  res.status(ok ? 200 : 400).send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Bling — Genesis iRollo 360</title></head>
+// Recebe o "code" da autorização OAuth2, troca por access_token+refresh_token
+// e persiste no banco local para uso futuro (renovação automática).
+function paginaBlingCallback(ok, mensagem) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Bling — Genesis iRollo 360</title></head>
 <body style="font-family:Arial,sans-serif;text-align:center;padding:60px;background:#0f172a;color:#e2e8f0">
 ${ok
   ? '<h2>✅ Autorização Bling recebida</h2><p>O Genesis iRollo 360 — Motor NTC 4.0 foi autorizado com sucesso. Você já pode fechar esta janela.</p>'
   : '<h2>❌ Autorização não concluída</h2><p>Não foi possível concluir a autorização com o Bling. Tente novamente a partir do painel do aplicativo.</p>'}
-</body></html>`);
+${mensagem ? '<p style="color:#94a3b8;font-size:.85em">' + mensagem.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + '</p>' : ''}
+</body></html>`;
+}
+
+app.get('/api/bling/callback', async (req, res) => {
+  if (req.query.error) {
+    return res.status(400).send(paginaBlingCallback(false, req.query.error_description || req.query.error));
+  }
+  if (!req.query.code) {
+    return res.send(paginaBlingCallback(true, null));
+  }
+  try {
+    if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) {
+      throw new Error('BLING_CLIENT_ID/BLING_CLIENT_SECRET não configurados no Render');
+    }
+    const redirectUri = req.protocol + '://' + req.get('host') + '/api/bling/callback';
+    const qs = 'grant_type=authorization_code&code=' + encodeURIComponent(req.query.code) + '&redirect_uri=' + encodeURIComponent(redirectUri);
+    await trocarTokenBling(qs);
+    res.send(paginaBlingCallback(true, null));
+  } catch (e) {
+    res.status(400).send(paginaBlingCallback(false, e.message));
+  }
 });
 
 app.get('/api/bling/buscar', async (req, res) => {

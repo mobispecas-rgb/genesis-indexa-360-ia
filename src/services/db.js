@@ -46,6 +46,14 @@ CREATE TABLE IF NOT EXISTS auto_enrich_log (
 CREATE INDEX IF NOT EXISTS idx_produtos_ntc ON produtos(ntc);
 CREATE INDEX IF NOT EXISTS idx_produtos_fonte ON produtos(fonte);
 CREATE INDEX IF NOT EXISTS idx_log_criado ON auto_enrich_log(criado_em);
+
+CREATE TABLE IF NOT EXISTS bling_oauth (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  access_token TEXT,
+  refresh_token TEXT,
+  expires_em INTEGER,
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
 
 function linhaParaProduto(row) {
@@ -175,6 +183,21 @@ function obterEstatisticas() {
   };
 }
 
+// Tokens OAuth2 do Bling (authorization_code), persistidos em disco para
+// sobreviver a reinícios do servidor. `expires_em` é timestamp Unix (ms).
+function salvarBlingOAuth({ access_token, refresh_token, expires_in }) {
+  const expires_em = Date.now() + (expires_in || 21600) * 1000;
+  db.prepare(`INSERT INTO bling_oauth (id, access_token, refresh_token, expires_em, atualizado_em)
+    VALUES (1, @access_token, @refresh_token, @expires_em, datetime('now'))
+    ON CONFLICT(id) DO UPDATE SET access_token=@access_token, refresh_token=@refresh_token,
+      expires_em=@expires_em, atualizado_em=datetime('now')`)
+    .run({ access_token, refresh_token, expires_em });
+}
+
+function obterBlingOAuth() {
+  return db.prepare('SELECT * FROM bling_oauth WHERE id = 1').get() || null;
+}
+
 module.exports = {
   db,
   upsertProduto,
@@ -188,4 +211,6 @@ module.exports = {
   registrarLog,
   listarLogsRecentes,
   obterEstatisticas,
+  salvarBlingOAuth,
+  obterBlingOAuth,
 };
