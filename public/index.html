@@ -3,7 +3,16 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<style>
+/* Mobile touch fixes */
+@media (max-width: 768px) {
+  input, textarea, select { font-size: 16px !important; }
+  button { min-height: 44px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .btn { padding: 12px 16px !important; }
+  #oem-input { font-size: 16px !important; padding: 12px !important; }
+}
+</style>
 <title>iRollo 360 — Motor NTC 4.0</title>
 
 <!-- PWA: permite instalar o iRollo 360 na tela inicial do celular (Add to Home Screen) -->
@@ -520,7 +529,7 @@ tr:hover td{background:#f9fafb}
         <div class="tab-content active" id="itab-busca">
           <!-- Barra de busca -->
           <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-            <input id="img-search-q" style="flex:1;min-width:200px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:10px 14px;font-size:13px;color:#1a1a1a" placeholder="OEM, SKU, EAN ou nome do produto..." onkeydown="if(event.key==='Enter')buscarImagens()">
+            <input id="img-search-q" style="flex:1;min-width:200px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:10px 14px;font-size:16px;color:#1a1a1a" placeholder="OEM, SKU, EAN ou nome do produto..." onkeydown="if(event.key==='Enter')buscarImagens()">
             <button style="padding:10px 20px;background:#ff4500;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" onclick="buscarImagens()">&#128269; Buscar Google</button>
             <button style="padding:10px 14px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;font-size:12px;color:#555;cursor:pointer" onclick="imgLimparSlots()">&#10005; Limpar</button>
           </div>
@@ -610,7 +619,7 @@ tr:hover td{background:#f9fafb}
           &#128279; Cole o link da p&aacute;gina do produto/fornecedor. A IA l&ecirc; a p&aacute;gina e identifica SKU, fabricante, nome, OEM, NCM, EAN, motor, material e pre&ccedil;o &mdash; confirme antes de usar.
         </div>
         <div id="catalogo-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <input id="catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+          <input id="catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/produto/...">
           <button class="btn btn-primary" onclick="catalogoRasparUrl()">&#128279; Raspar e Identificar</button>
         </div>
         <div id="catalogo-dropzone-hint" style="display:none;font-size:11px;color:#6b7280;margin:-4px 0 8px">
@@ -673,12 +682,12 @@ tr:hover td{background:#f9fafb}
         </div>
 
         <div id="oem-modo-busca" class="oem-modo-painel" style="margin-bottom:12px">
-          <div style="display:flex;gap:8px;margin-bottom:8px">
-            <input id="oem-input" style="flex:1;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="Ex: 93353848  ou  TENSOR DA CORREIA - VKM71809 - SKF">
-            <button class="btn btn-primary" onclick="oemBuscar()">&#128269; Buscar</button>
+          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <input id="oem-input" style="flex:1;min-width:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:12px;color:#1a1a1a;font-size:16px;-webkit-appearance:none;appearance:none" placeholder="Ex: B50994M COFAP ou AMORTECEDOR DIANTEIRO" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search" onkeydown="if(event.key==='Enter'){event.preventDefault();oemBuscar();}">
+            <button class="btn btn-primary" onclick="oemBuscar()" style="white-space:nowrap;padding:12px 20px;font-size:15px;min-height:48px;touch-action:manipulation">&#128269; Buscar</button>
           </div>
           <!-- Botão DNA sempre visível — enriquece diretamente sem depender do resultado da busca -->
-          <button id="oem-dna-btn-topo" class="btn btn-secondary" style="width:100%;font-size:13px;padding:10px;border:1px dashed #ff450060;color:#ff4500;background:#ff450008" onclick="oemDnaDiretoWeb()">&#127760; Buscar DNA na Web (IA) — preenche OEM, NCM, AV, CC, EC automaticamente</button>
+          <button id="oem-dna-btn-topo" class="btn btn-secondary" style="width:100%;font-size:14px;padding:14px 10px;border:1px dashed #ff450060;color:#ff4500;background:#ff450008;min-height:48px;touch-action:manipulation;-webkit-tap-highlight-color:transparent" onclick="oemDnaDiretoWeb()">&#127760; Buscar DNA na Web (IA) — preenche OEM, NCM, AV, CC, EC automaticamente</button>
           <div id="oem-dna-status-topo" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
         </div>
 
@@ -693,7 +702,7 @@ tr:hover td{background:#f9fafb}
         <div id="oem-modo-url" class="oem-modo-painel" style="display:none">
           <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link da p&aacute;gina do produto no site do fornecedor. A IA l&ecirc; a p&aacute;gina e identifica SKU, fabricante, nome, OEM, NCM, EAN, motor, material e pre&ccedil;o &mdash; confirme antes de usar.</p>
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <input id="oem-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+            <input id="oem-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/produto/...">
             <button class="btn btn-primary" onclick="oemRasparUrl()">&#128279; Raspar e Identificar</button>
           </div>
           <div style="font-size:11px;color:#6b7280">&#128161; Se o site bloquear a raspagem (erro HTTP 403/405), use a aba &#128196; Anexar PDF com a ficha t&eacute;cnica/p&aacute;gina do produto.</div>
@@ -702,7 +711,7 @@ tr:hover td{background:#f9fafb}
         <div id="oem-modo-catalogo" class="oem-modo-painel" style="display:none">
           <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link de uma p&aacute;gina de categoria/cat&aacute;logo do fornecedor com v&aacute;rios produtos (ex: resultado de busca ou carrinho). A IA identifica os produtos listados para voc&ecirc; selecionar quais cadastrar.</p>
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <input id="oem-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/categoria/...">
+            <input id="oem-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/categoria/...">
             <button class="btn btn-primary" onclick="oemRasparCatalogo()">&#128722; Raspar Cat&aacute;logo</button>
           </div>
         </div>
@@ -878,14 +887,14 @@ tr:hover td{background:#f9fafb}
           </div>
         </div>
         <div id="massa-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <input id="massa-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/produto/...">
+          <input id="massa-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/produto/...">
           <button class="btn btn-primary" onclick="massaRasparUrl()">&#128279; Raspar e Identificar</button>
         </div>
         <div id="massa-dropzone-hint" style="display:none;font-size:11px;color:#6b7280;margin:-4px 0 8px">
           &#128161; Se o site bloquear a raspagem (erro HTTP 403/405), use a &aacute;rea acima para anexar a ficha t&eacute;cnica/p&aacute;gina do produto em PDF.
         </div>
         <div id="massa-catalogo-url-row" style="display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <input id="massa-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:13px" placeholder="https://www.fornecedor.com.br/categoria/...">
+          <input id="massa-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/categoria/...">
           <button class="btn btn-primary" onclick="massaRasparCatalogo()">&#128218; Raspar Cat&aacute;logo (v&aacute;rios produtos)</button>
         </div>
         <div class="form-group" id="massa-textarea-group">
@@ -1414,11 +1423,11 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
           <div style="flex:1;min-width:90px">
             <label style="font-size:12px;color:#555;display:block;margin-bottom:4px">P&aacute;gina Bling</label>
-            <input type="number" id="wix-imp-pag" value="1" min="1" style="width:100%;background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:13px;color:#1a1a1a">
+            <input type="number" id="wix-imp-pag" value="1" min="1" style="width:100%;background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:16px;color:#1a1a1a">
           </div>
           <div style="flex:1;min-width:90px">
             <label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Limite (m&aacute;x 100)</label>
-            <input type="number" id="wix-imp-lim" value="50" min="1" max="100" style="width:100%;background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:13px;color:#1a1a1a">
+            <input type="number" id="wix-imp-lim" value="50" min="1" max="100" style="width:100%;background:#fff;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:16px;color:#1a1a1a">
           </div>
           <button class="btn btn-primary" onclick="wixImportarBling()" style="white-space:nowrap">&#128268; Importar Bling &#8594; Wix</button>
         </div>
@@ -1507,7 +1516,7 @@ MEDIDA LARGURA  25 MM"></textarea>
           <label style="font-size:13px;color:#6b7280;font-weight:600">Tom de voz</label>
           <input id="tpl-tom-custom" name="prompt_voice_tone" list="tpl-tom-list"
             placeholder="Escolha um tom de voz ou escreva um novo"
-            style="padding:10px 14px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#374151;font-size:13px;font-family:inherit">
+            style="padding:10px 14px;background:#fff;border:1px solid #d1d5db;border-radius:8px;color:#374151;font-size:16px;font-family:inherit">
           <datalist id="tpl-tom-list">
             <option value="Profissional e direto">Crie de forma objetiva, t&eacute;cnica e sem rodeios. N&atilde;o use emojis nem frases desnecess&aacute;rias.</option>
             <option value="Did&aacute;tico">Explique de forma simples, linguagem acess&iacute;vel e v&aacute; direto ao ponto.</option>
@@ -1599,12 +1608,12 @@ MEDIDA LARGURA  25 MM"></textarea>
           <div>
             <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Nome do Produto</label>
             <input id="tpl-test-nome" type="text" autofocus placeholder="EX: Tensor da Correia Dentada"
-              style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:9px 12px;font-size:13px;font-family:inherit">
+              style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:9px 12px;font-size:16px;font-family:inherit">
           </div>
           <div>
             <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Marca do Produto</label>
             <input id="tpl-test-marca" type="text" placeholder="EX: SKF"
-              style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:9px 12px;font-size:13px;font-family:inherit">
+              style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:9px 12px;font-size:16px;font-family:inherit">
           </div>
         </div>
         <div id="tpl-test-output" style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:7px;padding:12px;font-size:13px;color:#aaa;min-height:60px;white-space:pre-wrap;margin-bottom:16px;display:none"></div>
@@ -1622,7 +1631,7 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div style="font-size:15px;font-weight:700;margin-bottom:14px">&#128190; Salvar Template</div>
         <label style="font-size:12px;color:#888;display:block;margin-bottom:4px">Nome do template</label>
         <input id="tpl-nome" type="text" placeholder="EX: Modelo — Motor Premium"
-          style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:10px 12px;font-size:13px;font-family:inherit;margin-bottom:14px">
+          style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#ccc;border-radius:7px;padding:10px 12px;font-size:16px;font-family:inherit;margin-bottom:14px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="tplSalvar()">&#10003; Salvar Altera&ccedil;&otilde;es</button>
           <button class="btn btn-secondary" onclick="document.getElementById('tpl-dialog-save').close()">Cancelar</button>
@@ -2859,7 +2868,7 @@ function aprovRevisarDetalhe(idx) {
     + '<div class="grid2" style="gap:8px;margin-bottom:12px">'
     + PD_CAMPOS_EDIT.map(function(c){
         return '<div class="form-group" style="margin-bottom:0"><label style="font-size:10px;color:#555;text-transform:uppercase">'+c[1]+'</label>'
-          + '<input id="pd-'+c[0]+'" type="'+c[2]+'"'+(c[2]==='number'?' step="0.01"':'')+' value="'+esc(p[c[0]]!=null?String(p[c[0]]):'')+'" style="width:100%;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;color:#ccc;font-size:13px">'
+          + '<input id="pd-'+c[0]+'" type="'+c[2]+'"'+(c[2]==='number'?' step="0.01"':'')+' value="'+esc(p[c[0]]!=null?String(p[c[0]]):'')+'" style="width:100%;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;color:#ccc;font-size:16px">'
           + '</div>';
       }).join('')
     + '</div>'
@@ -3432,7 +3441,7 @@ function precificacaoRender() {
       + '<div style="font-size:11px;color:#555"><code style="color:#ff6b00">'+esc(p.codigo_fabricante||'')+'</code></div></td>'
       + '<td style="padding:8px 6px;font-size:12px">'+(p.preco_custo!=null?'R$ '+Number(p.preco_custo).toFixed(2).replace('.',','):'—')+'</td>'
       + '<td style="padding:8px 6px;font-size:12px">'+(p.preco_venda!=null?'R$ '+Number(p.preco_venda).toFixed(2).replace('.',','):'—')+'</td>'
-      + '<td style="padding:8px 6px"><input type="number" step="0.01" min="0" value="'+(p.preco_mercado!=null?p.preco_mercado:'')+'" placeholder="—" style="width:90px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:6px;color:#ccc;font-size:12px" onchange="precificacaoSalvarMercado('+i+',this.value)"></td>'
+      + '<td style="padding:8px 6px"><input type="number" step="0.01" min="0" value="'+(p.preco_mercado!=null?p.preco_mercado:'')+'" placeholder="—" style="width:90px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:6px;color:#ccc;font-size:16px" onchange="precificacaoSalvarMercado('+i+',this.value)"></td>'
       + '<td style="padding:8px 6px;font-size:12px;font-weight:700;color:#00c853">'+(sugerido!=null?'R$ '+sugerido.toFixed(2).replace('.',','):'—')+'</td>'
       + '<td class="col-opt" style="padding:8px 6px">'+posic+'</td>'
       + '<td style="padding:8px 6px"><button class="btn btn-sm btn-secondary" onclick="precificacaoAplicar('+i+')"'+(sugerido==null?' disabled':'')+'>&#10003; Aplicar</button></td>'
@@ -3753,6 +3762,13 @@ async function oemBuscar() {
 
   document.getElementById('oem-resultado').style.display = 'block';
   oemIrEtapa(1);
+  // Mobile: scroll para o resultado após teclado fechar
+  if (window.innerWidth <= 768) {
+    setTimeout(function() {
+      var el = document.getElementById('oem-resultado');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }
 
   // Busca imagens/dados via Google Search (reutiliza endpoint existente)
   // Usa os campos já interpretados (fabricante + SKU + descrição) em vez do
