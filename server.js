@@ -1178,12 +1178,56 @@ async function resolverCategoriaBling(familia, nomeProduto) {
 }
 
 // Monta a descrição complementar (ficha técnica) usada no PDV/Bling
+// Inclui todos os campos do Motor NTC 4.0 que forem preenchidos
 function montarFichaTecnica(p) {
   const linhas = [];
-  if (p.codigo_oem) linhas.push('Código OEM: ' + p.codigo_oem);
-  if (p.motor) linhas.push('Motor/Aplicação: ' + p.motor);
-  if (p.material) linhas.push('Material: ' + p.material);
-  if (p.ean) linhas.push('EAN/GTIN: ' + p.ean);
+
+  // ── DNA / Identificação ──
+  if (p.familia_tecnica || p.familia) linhas.push('Família: ' + (p.familia_tecnica || p.familia));
+  if (p.posicao)         linhas.push('Posição: ' + p.posicao);
+
+  // ── AV — Aplicação Veicular ──
+  const av = [p.marca_veiculo || p.marca, p.modelo_veiculo || p.modelo, p.versao_veiculo || p.versao].filter(Boolean).join(' ');
+  if (av)                linhas.push('Veículo: ' + av);
+  const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join(' a ');
+  if (anos)              linhas.push('Anos: ' + anos);
+  if (p.motor || p.motor_aplicacao) linhas.push('Motor: ' + (p.motor || p.motor_aplicacao));
+  if (p.codigo_motor)    linhas.push('Código motor: ' + p.codigo_motor);
+  if (p.cilindrada)      linhas.push('Cilindrada: ' + p.cilindrada + ' cc');
+
+  // ── TF — Triangulação ──
+  const oems = [p.codigo_oem, ...(p.cc_oem || [])].filter(Boolean);
+  const oemsUniq = [...new Set(oems)];
+  if (oemsUniq.length)   linhas.push('Código OEM: ' + oemsUniq.join(' / '));
+
+  // ── CC — Cross-codes aftermarket ──
+  const cc = (p.cc_aftermarket || []).filter(Boolean);
+  if (cc.length)         linhas.push('Equivalentes: ' + cc.join(' | '));
+  if (p.cross_codes)     linhas.push('Similares: ' + p.cross_codes);
+
+  // ── MC — Material ──
+  if (p.material || p.material_composicao) linhas.push('Material: ' + (p.material || p.material_composicao));
+
+  // ── EC — Especificações ──
+  if (Array.isArray(p.especificacoes) && p.especificacoes.length)
+    p.especificacoes.forEach(e => linhas.push(e));
+
+  // ── FI/FP — Físico ──
+  if (p.peso_bruto)      linhas.push('Peso bruto: ' + p.peso_bruto + ' kg');
+  if (p.peso_liquido)    linhas.push('Peso líquido: ' + p.peso_liquido + ' kg');
+  const dim = [p.comprimento && p.comprimento+'cm', p.largura && p.largura+'cm', p.altura && p.altura+'cm'].filter(Boolean);
+  if (dim.length)        linhas.push('Dimensões (C×L×A): ' + dim.join(' × '));
+
+  // ── Fiscal ──
+  if (p.ean)             linhas.push('EAN/GTIN: ' + p.ean);
+  if (p.ncm)             linhas.push('NCM: ' + p.ncm);
+  if (p.cest)            linhas.push('CEST: ' + p.cest);
+
+  // ── NTC ──
+  if (p.rast_hash)       linhas.push('RAST-HASH NTC: ' + p.rast_hash);
+  if (p.ntc !== undefined && p.ntc !== null)
+    linhas.push('NTC 4.0: ' + Math.round(p.ntc * 100) + '% — ' + (p.decisao || ''));
+
   return linhas.join('\n');
 }
 
@@ -1195,16 +1239,44 @@ async function montarPayloadProdutoBling(p) {
   const fichaTecnica = montarFichaTecnica(p);
   const familia = p.familia_tecnica || p.familia;
   const idCategoria = await resolverCategoriaBling(familia, p.nome);
+  // Nome inteligente: SKU + nome_enriquecido + fabricante + aplicação
+  const nomeBase = p.nome_enriquecido || p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome';
+  const nomeFinal = nomeBase.length > 120
+    ? nomeBase.substring(0, 120).trim()
+    : nomeBase;
+
+  // descricaoCurta: texto da voz do lojista OU descrição curta OU monta automático
+  const autoDescCurta = (() => {
+    const partes = [];
+    if (p.posicao) partes.push(p.posicao + '.');
+    const vei = [p.marca_veiculo || p.marca, p.modelo_veiculo || p.modelo].filter(Boolean).join(' ');
+    if (vei) partes.push('Aplicação: ' + vei);
+    const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join('-');
+    if (anos) partes.push(anos + '.');
+    if (p.motor || p.motor_aplicacao) partes.push('Motor ' + (p.motor || p.motor_aplicacao) + '.');
+    return partes.join(' ');
+  })();
+  const descCurta = (p.descricao || p.voz_do_lojista || autoDescCurta).substring(0, 300);
+
+  // cst — origem fiscal
+  const origemFiscal = (p.origem !== undefined && p.origem !== null && p.origem !== '') ? parseInt(p.origem) : 0;
+
   return {
-    nome: p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome',
+    nome: nomeFinal,
     codigo: p.codigo_fabricante || p.sku || '',
     tipo: 'P', situacao: 'A', formato: 'S',
     unidade: 'UN',
-    descricaoCurta: (p.descricao || p.voz_do_lojista || '').substring(0, 300),
+    descricaoCurta: descCurta,
     descricaoComplementar: [p.descricao_tecnica || '', fichaTecnica].filter(Boolean).join('\n\n'),
-    tributacao: { ncm, origem: (p.origem !== undefined && p.origem !== null && p.origem !== '') ? parseInt(p.origem) : 0 },
+    tributacao: {
+      ncm,
+      origem: origemFiscal,
+      ...(p.cest ? { cest: (p.cest || '').replace(/\D/g, '') } : {}),
+    },
     estoque: { minimo: 0, maximo: 0, crossdocking: 0, localizacao: '' },
     ...(ean ? { gtin: ean } : {}),
+    ...(p.peso_bruto ? { pesoBruto: parseFloat(p.peso_bruto) } : {}),
+    ...(p.peso_liquido ? { pesoLiquido: parseFloat(p.peso_liquido) } : {}),
     ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
     ...(midia.length ? { midia } : {}),
     ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {}),
@@ -1367,19 +1439,47 @@ async function montarPayloadProdutoWix(p) {
   const categoriaIds = await resolverCategoriasWix(familia, p.nome);
   const payload = {
     product: {
-      name: p.nome || p.codigo_fabricante || 'Produto',
+      name: p.nome_enriquecido || p.nome || p.codigo_fabricante || 'Produto',
       visible: true,
       productType: 'PHYSICAL',
-      plainDescription: p.descricao || p.voz_do_lojista || '',
-      physicalProperties: {},
+      plainDescription: [
+        p.descricao || p.voz_do_lojista || '',
+        // Aplicação veicular
+        (() => {
+          const vei = [p.marca_veiculo||p.marca, p.modelo_veiculo||p.modelo, p.versao_veiculo||p.versao].filter(Boolean).join(' ');
+          const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join('-');
+          const motor = p.motor || p.motor_aplicacao;
+          if (!vei) return '';
+          return '\nAplicação: ' + vei + (anos?' ('+anos+')':'') + (motor?' — Motor '+motor:'');
+        })(),
+        // Cross-codes
+        (() => {
+          const cc = (p.cc_aftermarket||[]).filter(Boolean);
+          if (!cc.length && !p.cross_codes) return '';
+          return '\nEquivalentes: ' + (p.cross_codes || cc.join(' | '));
+        })(),
+        // OEM
+        p.codigo_oem ? '\nCódigo OEM: ' + p.codigo_oem : '',
+        // NTC rastreabilidade
+        p.rast_hash ? '\nRASTREABILIDADE: RAST-HASH ' + p.rast_hash + ' | NTC ' + Math.round((p.ntc||0)*100) + '%' : '',
+      ].filter(Boolean).join(''),
       ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
+      // SEO
+      seoData: {
+        tags: [
+          { type: 'title',       value: (p.nome_enriquecido||p.nome||'') + ' — ' + (p.fabricante||'') + ' — MOBIS Autopeças' },
+          { type: 'description', value: (p.descricao||p.voz_do_lojista||'').substring(0,160) },
+        ]
+      },
       variantsInfo: {
         variants: [{
           sku: p.codigo_fabricante || p.sku || '',
           visible: true,
           price: { actualPrice: { amount: preco } },
           inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
-          physicalProperties: {}
+          physicalProperties: {
+            ...(p.peso_bruto ? { weight: parseFloat(p.peso_bruto) } : {}),
+          }
         }]
       }
     }
