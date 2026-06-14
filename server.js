@@ -1360,6 +1360,13 @@ app.put('/api/bling/produto/:id', async (req, res) => {
   } catch(e) { res.json({ ok: false, erro: e.message }); }
 });
 
+// ─── Conector MCP — expõe as ferramentas do Bling e do Wix em /sse para o Claude ──
+const { registrarRotasMcp } = require('./src/services/bling-mcp');
+registrarRotasMcp(app, {
+  blingRequest, montarPayloadProdutoBling, listarBlingCategorias, idCategoriaPai: _idCategoriaPai,
+  wixRequest, montarPayloadProdutoWix, atribuirCategoriasWix,
+});
+
 // ─── BLING — Lista de produtos com paginação ─────────────────
 app.get('/api/bling/produtos', async (req, res) => {
   try {
