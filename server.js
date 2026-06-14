@@ -1179,6 +1179,17 @@ app.get('/api/bling/status', async (req, res) => {
 
 app.post('/api/bling/token/renovar', (req, res) => { _blingToken = null; _blingTokenExp = 0; res.json({ ok: true, mensagem: 'Cache de token limpo — será renovado automaticamente' }); });
 
+// ─── Bling — URL de redirecionamento do app (cadastro do aplicativo no Bling) ─
+app.get('/api/bling/callback', (req, res) => {
+  const ok = !req.query.error;
+  res.status(ok ? 200 : 400).send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Bling — Genesis iRollo 360</title></head>
+<body style="font-family:Arial,sans-serif;text-align:center;padding:60px;background:#0f172a;color:#e2e8f0">
+${ok
+  ? '<h2>✅ Autorização Bling recebida</h2><p>O Genesis iRollo 360 — Motor NTC 4.0 foi autorizado com sucesso. Você já pode fechar esta janela.</p>'
+  : '<h2>❌ Autorização não concluída</h2><p>Não foi possível concluir a autorização com o Bling. Tente novamente a partir do painel do aplicativo.</p>'}
+</body></html>`);
+});
+
 app.get('/api/bling/buscar', async (req, res) => {
   try {
     const data = await blingRequest('GET', '/produtos?situacao=A&pagina=1&limite=20');
