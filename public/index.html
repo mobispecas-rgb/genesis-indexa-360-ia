@@ -261,7 +261,7 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section">
     <div class="sb-section-label">Catalogacao</div>
     <div class="sb-item" onclick="nav('produtos')/* catalogo→produtos */"><span class="icon">&#128218;</span>Cat&aacute;logo de Produtos</div>
-    <div class="sb-item" onclick="nav('massa')"><span class="icon">&#128194;</span>Enriquecimento por ID/Massa</div>
+    <!-- Enriquecimento unificado no Cadastro Completo -->
     <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">&#9989;</span>Aprova&ccedil;&atilde;o de Cadastro<span class="sb-badge" id="badge-aprovacao">0</span></div>
     <div class="sb-item" onclick="nav('aprovacao')/* aprovacao-enriq→aprovacao */"><span class="icon">&#128204;</span>Aprova&ccedil;&atilde;o &amp; Congelados</div>
     <div class="sb-item" onclick="nav('aprovacao')/* aprovados→aprovacao */"><span class="icon">&#127775;</span>Aprovados</div>
@@ -677,202 +677,218 @@ tr:hover td{background:#f9fafb}
       </div>
     </div>
     <div class="page" id="page-oem">
-      <!-- FAB mobile: botão flutuante sempre visível para Buscar DNA na Web -->
-      <button id="oem-fab-dna" onclick="oemScrollTopo()" style="display:none;position:fixed;bottom:80px;right:16px;z-index:999;background:#ff4500;color:#fff;border:none;border-radius:50px;padding:12px 18px;font-size:13px;font-weight:500;box-shadow:0 4px 16px #ff450060;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent">
-        &#127760; Buscar DNA
-      </button>
-      <div class="page-title">&#10024; Cadastro Completo</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google, preenche os campos e mostra os m&oacute;dulos do NTC 4.0 que faltam para chegar a 95%. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
-      <div id="oem-edit-banner" style="display:none;background:#ff450015;border:1px solid #ff450040;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ff9800;align-items:center;gap:10px;flex-wrap:wrap">
-        <span>&#9999;&#65039; Reenriquecendo / editando: <strong id="oem-edit-nome" style="color:#fff"></strong></span>
-        <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="nav('oem')">&#10006; Cancelar edi&ccedil;&atilde;o</button>
+
+      <!-- ════════════════════════════════════════════════
+           CADASTRO COMPLETO — TELA ÚNICA POR ETAPAS
+           iRollo 360 · Motor NTC 4.0
+      ════════════════════════════════════════════════ -->
+
+      <!-- CABEÇALHO NTC FIXO (sempre visível) -->
+      <div style="background:#111;border:1px solid #1f1f1f;border-radius:12px;padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:10px;color:#555;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Motor NTC 4.0</div>
+            <div id="ntc-hdr-badge" style="font-size:22px;font-weight:700;color:#ff6500">—% AGUARDANDO</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <div style="font-size:11px;color:#555">OEM: <span id="ntc-hdr-oem" style="color:#aaa">—</span></div>
+            <div style="font-size:11px;color:#555">SKU: <span id="ntc-hdr-sku" style="color:#aaa">—</span></div>
+            <div style="font-size:11px;color:#555">EAN: <span id="ntc-hdr-ean" style="color:#aaa">—</span></div>
+          </div>
+          <div id="ntc-hdr-pct" style="font-size:36px;font-weight:900;color:#ff6500;line-height:1">—%</div>
+        </div>
+        <!-- Barra de progresso NTC -->
+        <div style="height:8px;background:#1f1f1f;border-radius:4px;overflow:hidden;margin-top:10px;position:relative">
+          <div id="ntc-hdr-fill" style="height:100%;width:0%;background:#ff6500;border-radius:4px;transition:width .4s,background .4s"></div>
+          <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.5"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#333;margin-top:2px"><span>0%</span><span style="color:#00ff88">95% meta</span><span>100%</span></div>
       </div>
 
-      <div class="card">
-        <div class="card-title">&#128269; Busca de Enriquecimento</div>
-        <div id="oem-modo-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-          <button class="btn btn-sm cat-import-btn active-mode" id="oem-modo-btn-busca" onclick="oemToggleModoEntrada('busca')">&#128269; Buscar por c&oacute;digo/nome</button>
-          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-pdf" onclick="oemToggleModoEntrada('pdf')">&#128196; Anexar PDF</button>
-          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-url" onclick="oemToggleModoEntrada('url')">&#128279; Raspar URL</button>
-          <button class="btn btn-sm cat-import-btn" id="oem-modo-btn-catalogo" onclick="oemToggleModoEntrada('catalogo')">&#128722; Raspar Cat&aacute;logo (v&aacute;rios)</button>
+      <!-- ── ETAPA 1: BUSCA ── -->
+      <div id="oem-s1" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:24px;height:24px;border-radius:50%;background:#ff4500;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+          <div style="font-size:14px;font-weight:600;color:#fff">Buscar Produto</div>
         </div>
-
-        <div id="oem-modo-busca" class="oem-modo-painel" style="margin-bottom:12px">
-          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-            <input id="oem-input" style="flex:1;min-width:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:12px;color:#1a1a1a;font-size:16px;-webkit-appearance:none;appearance:none" placeholder="Ex: B50994M COFAP ou AMORTECEDOR DIANTEIRO" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search" onkeydown="if(event.key==='Enter'){event.preventDefault();oemBuscar();}">
-            <button class="btn btn-primary" onclick="oemBuscar()" style="white-space:nowrap;padding:12px 20px;font-size:15px;min-height:48px;touch-action:manipulation">&#128269; Buscar</button>
+        <div class="card" style="border-color:#ff450040;background:#ff450006">
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <input id="oem-input" style="flex:1;min-width:0;background:#fff;border:2px solid #ff450060;border-radius:8px;padding:14px 12px;color:#1a1a1a;font-size:16px;font-weight:500;-webkit-appearance:none;appearance:none" placeholder="SKU, código OEM ou nome do produto..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search" onkeydown="if(event.key==='Enter'){event.preventDefault();oemBuscar();}">
+            <button onclick="oemBuscar()" style="background:#ff4500;color:#fff;border:none;border-radius:8px;padding:14px 20px;font-size:15px;font-weight:600;min-height:52px;touch-action:manipulation;cursor:pointer;white-space:nowrap">🔍 Buscar</button>
           </div>
-          <!-- Botão DNA sempre visível — enriquece diretamente sem depender do resultado da busca -->
-          <button id="oem-dna-btn-topo" class="btn btn-secondary" style="width:100%;font-size:14px;padding:14px 10px;border:1px dashed #ff450060;color:#ff4500;background:#ff450008;min-height:48px;touch-action:manipulation;-webkit-tap-highlight-color:transparent" onclick="oemDnaDiretoWeb()">&#127760; Buscar DNA na Web (IA) — preenche OEM, NCM, AV, CC, EC automaticamente</button>
-          <div id="oem-dna-status-topo" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
-        </div>
-
-        <div id="oem-modo-pdf" class="oem-modo-painel" style="display:none">
-          <div class="cat-drop-zone" onclick="document.getElementById('oem-pdf-input').click()" style="border:2px dashed #d1d5db;border-radius:8px;padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;color:#6b7280;font-size:13px">
-            &#128196; Arraste a ficha t&eacute;cnica ou cat&aacute;logo do fornecedor em PDF aqui, ou clique para selecionar
-            <input type="file" id="oem-pdf-input" style="display:none" accept=".pdf" onchange="oemAnexarPdf(this)">
-            <span id="oem-pdf-status" style="display:block;font-size:11px;color:#888;margin-top:4px"></span>
-          </div>
-        </div>
-
-        <div id="oem-modo-url" class="oem-modo-painel" style="display:none">
-          <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link da p&aacute;gina do produto no site do fornecedor. A IA l&ecirc; a p&aacute;gina e identifica SKU, fabricante, nome, OEM, NCM, EAN, motor, material e pre&ccedil;o &mdash; confirme antes de usar.</p>
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <input id="oem-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/produto/...">
-            <button class="btn btn-primary" onclick="oemRasparUrl()">&#128279; Raspar e Identificar</button>
-          </div>
-          <div style="font-size:11px;color:#6b7280">&#128161; Se o site bloquear a raspagem (erro HTTP 403/405), use a aba &#128196; Anexar PDF com a ficha t&eacute;cnica/p&aacute;gina do produto.</div>
-        </div>
-
-        <div id="oem-modo-catalogo" class="oem-modo-painel" style="display:none">
-          <p style="font-size:12px;color:#555;margin-bottom:8px">Cole o link de uma p&aacute;gina de categoria/cat&aacute;logo do fornecedor com v&aacute;rios produtos (ex: resultado de busca ou carrinho). A IA identifica os produtos listados para voc&ecirc; selecionar quais cadastrar.</p>
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <input id="oem-catalogo-url-input" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;color:#1a1a1a;font-size:16px" placeholder="https://www.fornecedor.com.br/categoria/...">
-            <button class="btn btn-primary" onclick="oemRasparCatalogo()">&#128722; Raspar Cat&aacute;logo</button>
-          </div>
-        </div>
-
-        <div id="oem-status" style="font-size:12px;color:#555"></div>
-      </div>
-
-      <!-- Carrinho de produtos encontrados (PDF com vários itens / Raspar Catálogo) -->
-      <div class="card" id="oem-carrinho-card" style="display:none;border-color:#ff450030">
-        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <span>&#128722; Produtos Encontrados &mdash; Selecione para Cadastrar</span>
-          <span id="oem-carrinho-resumo" style="font-size:12px;color:#888"></span>
-        </div>
-        <div style="overflow-x:auto">
-          <table style="width:100%;font-size:13px">
-            <thead>
-              <tr>
-                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb"><input type="checkbox" id="oem-carrinho-chk-all" onclick="oemCarrinhoMarcarTodos(this.checked)"></th>
-                <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">SKU</th>
-                <th style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Nome</th>
-                <th class="col-opt" style="text-align:left;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Fabricante</th>
-                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">NTC%</th>
-                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">Status</th>
-                <th style="text-align:center;padding:8px;color:#555;border-bottom:1px solid #e5e7eb">A&ccedil;&atilde;o</th>
-              </tr>
-            </thead>
-            <tbody id="oem-carrinho-tbody"></tbody>
-          </table>
-        </div>
-        <div style="margin-top:14px">
-          <button class="btn btn-primary" onclick="oemCarrinhoEnviar()">&#10003; Cadastrar selecionados</button>
+          <button id="oem-dna-btn-topo" onclick="oemDnaDiretoWeb()" style="width:100%;background:transparent;border:1.5px dashed #ff450080;border-radius:8px;color:#ff4500;padding:12px;font-size:14px;font-weight:500;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:48px">
+            🌐 Buscar DNA na Web (IA) — preenche todos os módulos automaticamente
+          </button>
+          <div id="oem-dna-status-topo" style="font-size:12px;color:#6b7280;margin-top:6px;text-align:center"></div>
+          <div id="oem-status" style="font-size:12px;color:#555;margin-top:6px"></div>
         </div>
       </div>
 
-      <!-- Resultado da busca -->
+      <!-- ── ETAPA 2: DADOS DO PRODUTO (aparece após busca) ── -->
       <div id="oem-resultado" style="display:none">
 
-        <!-- Navegação de etapas removida — bloco único -->
+        <!-- Módulos NTC 4.0 em tempo real -->
+        <div id="cntc-ntc-bar" style="display:none;margin-bottom:12px" class="card">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div>
+              <div id="cntc-ntc-pct" style="font-size:38px;font-weight:900;color:#ff6500;line-height:1">0%</div>
+              <div style="font-size:11px;color:#666">NTC 4.0</div>
+            </div>
+            <div style="flex:1;min-width:160px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
+                <span id="cntc-decisao-label">—</span><span>Meta: 95%</span>
+              </div>
+              <div style="height:10px;background:#1f1f1f;border-radius:5px;overflow:hidden;position:relative">
+                <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:5px;transition:width .4s,background .4s"></div>
+                <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
+              </div>
+            </div>
+            <div>
+              <div id="cntc-ganho-label" style="font-size:12px;color:#00c853"></div>
+              <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
+            </div>
+          </div>
+        </div>
 
-        <!-- ETAPA 1: Identificação automática (IA / Voz do Lojista) -->
+        <!-- Módulos do NTC -->
+        <div id="cntc-modulos" style="margin-bottom:12px"></div>
+
+        <!-- step1/step2 mantidos para compatibilidade JS -->
         <div id="oem-step1" class="oem-step active">
 
-          <!-- Agente de Enriquecimento de DNA via Web (desktop) -->
-          <div class="card" style="display:none" id="oem-dna-card-old">
-            <div class="card-title">&#127760; Buscar DNA na Web (IA)</div>
-            <button class="btn btn-secondary" onclick="oemBuscarDnaWeb()">&#127760; Buscar DNA na Web</button>
-            <div id="oem-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+          <!-- ── ETAPA 2: DADOS DNA ── -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:24px;height:24px;border-radius:50%;background:#1a73e8;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div style="font-size:14px;font-weight:600;color:#fff">Identificação do Produto</div>
           </div>
-
-          <!-- Dados confirmados -->
-          <div class="card" style="border-color:#ff450030">
-            <div class="card-title">&#9989; Dados Confirmados (preenchidos pela busca)</div>
-            <div class="grid2" style="gap:10px;margin-bottom:12px">
-              <div class="form-group"><label>Part Number / SKU *</label><input id="oem-f-sku" placeholder="Ex: VKM71809"></div>
-              <div class="form-group"><label>Fabricante *</label><input id="oem-f-fab" placeholder="Ex: SKF"></div>
-              <div class="form-group"><label>Nome do Produto *</label><input id="oem-f-nome" placeholder="Ex: Tensor de Correia Dentada"></div>
-              <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label>
-                <select id="oem-f-familia">
+          <div class="card" style="border-color:#1a73e830;margin-bottom:12px">
+            <div class="grid2" style="gap:10px;margin-bottom:10px">
+              <div class="form-group"><label>SKU / Part Number *</label><input id="oem-f-sku" placeholder="Ex: B50994M" style="font-size:16px"></div>
+              <div class="form-group"><label>Fabricante *</label><input id="oem-f-fab" placeholder="Ex: COFAP" style="font-size:16px"></div>
+              <div class="form-group"><label>Nome do Produto *</label><input id="oem-f-nome" placeholder="Ex: Amortecedor Dianteiro" style="font-size:16px"></div>
+              <div class="form-group"><label>Família Técnica</label>
+                <select id="oem-f-familia" style="font-size:16px;background:#fff;color:#1a1a1a;border:1px solid #d1d5db;border-radius:6px;padding:10px">
                   <option value="">— selecione —</option>
-                  <option>Motor</option><option>Freios</option><option>Suspens&atilde;o</option>
-                  <option>Filtros</option><option>Arrefecimento</option><option>El&eacute;trica</option>
-                  <option>Transmiss&atilde;o</option><option>Dire&ccedil;&atilde;o</option>
+                  <option>Motor</option><option>Freios</option><option>Suspensão</option>
+                  <option>Filtros</option><option>Arrefecimento</option><option>Elétrica</option>
+                  <option>Transmissão</option><option>Direção</option>
                 </select>
               </div>
-              <div class="form-group"><label>C&oacute;digo OEM (principal)</label><input id="oem-f-oem" placeholder="Ex: 93353848"></div>
-              <div class="form-group"><label>NCM</label><input id="oem-f-ncm" placeholder="Ex: 84835010" maxlength="10"></div>
-              <div class="form-group"><label>EAN / GTIN</label><input id="oem-f-ean" placeholder="Ex: 7316572455985" maxlength="14"></div>
-              <div class="form-group"><label>Motor / Aplica&ccedil;&atilde;o</label><input id="oem-f-motor" placeholder="Ex: GM Família I 8V"></div>
+              <div class="form-group"><label>Código OEM (montadora)</label><input id="oem-f-oem" placeholder="Ex: 543104F000" style="font-size:16px"></div>
+              <div class="form-group"><label>NCM (8 dígitos)</label><input id="oem-f-ncm" placeholder="Ex: 87088000" maxlength="10" style="font-size:16px"></div>
+              <div class="form-group"><label>EAN / GTIN</label><input id="oem-f-ean" placeholder="Ex: 7891579325846" maxlength="14" style="font-size:16px"></div>
+              <div class="form-group"><label>Motor / Aplicação</label><input id="oem-f-motor" placeholder="Ex: D4BH 2.5L HR 2005-2013" style="font-size:16px"></div>
             </div>
-            <div class="form-group"><label>Material / Composi&ccedil;&atilde;o</label><input id="oem-f-material" placeholder="Ex: Aço estampado nitretado | Esferas radiais"></div>
+            <div class="form-group"><label>Material / Composição</label><input id="oem-f-material" placeholder="Ex: Aço estampado bitubular, fluido hidráulico" style="font-size:16px"></div>
           </div>
 
-          <!-- Resultados Google -->
-          <div class="card" id="oem-google-card" style="display:none">
-            <div class="card-title">&#127760; Resultados da Busca — Confirme os dados antes de usar</div>
+          <!-- Resultados da busca web -->
+          <div class="card" id="oem-google-card" style="display:none;margin-bottom:12px">
+            <div class="card-title">🌐 Dados encontrados na Web — confirme antes de usar</div>
             <div id="oem-google-results" style="font-size:13px;color:#aaa;line-height:1.8"></div>
           </div>
 
-        </div>
+        </div><!-- /oem-step1 -->
 
-        <!-- ETAPA 2: Revisão do lojista (imagens, NTC e publicação) -->
-        <div id="oem-step2" class="oem-step">
+        <div id="oem-step2" class="oem-step active">
 
+          <!-- ── ETAPA 3: IMAGENS ── -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;margin-top:4px">
+            <div style="width:24px;height:24px;border-radius:50%;background:#9c27b0;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div style="font-size:14px;font-weight:600;color:#fff">Imagens do Produto</div>
+          </div>
+          <div class="card" style="border-color:#9c27b030;margin-bottom:12px">
+            <div style="font-size:12px;color:#666;margin-bottom:10px">Selecione as imagens para publicação. Toque para marcar/desmarcar. ✅ = publicar</div>
+            <div id="oem-iv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:10px">
+              <!-- Slots de imagem gerados via JS -->
+              <div class="iv-slot" id="iv-slot-0" onclick="ivToggle(0)" style="position:relative;border-radius:8px;border:2px solid #333;overflow:hidden;aspect-ratio:1;cursor:pointer;background:#1a1a1a;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:28px">📦</span>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:#0008;font-size:9px;color:#aaa;text-align:center;padding:2px">Principal</div>
+              </div>
+              <div class="iv-slot" id="iv-slot-1" onclick="ivToggle(1)" style="position:relative;border-radius:8px;border:2px solid #333;overflow:hidden;aspect-ratio:1;cursor:pointer;background:#1a1a1a;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:28px">🗂️</span>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:#0008;font-size:9px;color:#aaa;text-align:center;padding:2px">Embalagem</div>
+              </div>
+              <div class="iv-slot" id="iv-slot-2" onclick="ivToggle(2)" style="position:relative;border-radius:8px;border:2px solid #333;overflow:hidden;aspect-ratio:1;cursor:pointer;background:#1a1a1a;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:28px">🏷️</span>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:#0008;font-size:9px;color:#aaa;text-align:center;padding:2px">Etiqueta</div>
+              </div>
+              <div class="iv-slot" id="iv-slot-3" onclick="ivToggle(3)" style="position:relative;border-radius:8px;border:2px solid #333;overflow:hidden;aspect-ratio:1;cursor:pointer;background:#1a1a1a;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:28px">📐</span>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:#0008;font-size:9px;color:#aaa;text-align:center;padding:2px">Lateral</div>
+              </div>
+              <div class="iv-slot" id="iv-slot-4" onclick="ivToggle(4)" style="position:relative;border-radius:8px;border:2px solid #333;overflow:hidden;aspect-ratio:1;cursor:pointer;background:#1a1a1a;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:28px">🔍</span>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:#0008;font-size:9px;color:#aaa;text-align:center;padding:2px">Detalhe</div>
+              </div>
+              <!-- + Adicionar -->
+              <label style="border-radius:8px;border:2px dashed #333;aspect-ratio:1;cursor:pointer;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;touch-action:manipulation">
+                <span style="font-size:24px;color:#555">+</span>
+                <span style="font-size:9px;color:#555">Adicionar</span>
+                <input type="file" accept="image/*" multiple style="display:none" onchange="ivAdicionarArquivos(this)">
+              </label>
+            </div>
+            <div id="oem-iv-status" style="font-size:11px;color:#6b7280"></div>
+          </div>
 
-          <!-- NTC em tempo real -->
-          <div class="card">
-            <div class="card-title">&#9889; NTC 4.0 — Atualiza em tempo real</div>
-            <div id="oem-ntc-live" style="text-align:center;padding:10px">
-              <div style="font-size:40px;font-weight:900;color:#555" id="oem-ntc-num">0%</div>
-              <div id="oem-ntc-badge"></div>
-              <div style="font-size:11px;color:#444;margin-top:6px" id="oem-ntc-falta"></div>
+          <!-- ── ETAPA 4: AÇÕES FINAIS ── -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:24px;height:24px;border-radius:50%;background:#00c853;color:#000;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+            <div style="font-size:14px;font-weight:600;color:#fff">Ações</div>
+          </div>
+
+          <!-- Botões principais -->
+          <div class="card" style="border-color:#00c85330;margin-bottom:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <button onclick="oemDnaDiretoWeb()" style="background:#ff4500;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+                🌐 Reenriquecer
+              </button>
+              <button onclick="oemPublicar()" id="oem-btn-publicar" style="background:#00c853;color:#000;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+                📦 Publicar
+              </button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+              <button onclick="oemEnviarBling()" style="background:#1a73e8;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
+                🔵 Bling
+              </button>
+              <button onclick="oemEnviarWix()" style="background:#9c27b0;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
+                🟣 Wix
+              </button>
+              <button onclick="oemCongelar()" style="background:#0d47a1;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
+                ❄️ Congelar
+              </button>
             </div>
           </div>
 
-          <!-- Barra NTC completa (meta 95%) -->
-          <div id="cntc-ntc-bar" style="display:none" class="card">
-            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-              <div>
-                <div id="cntc-ntc-pct" style="font-size:42px;font-weight:900;color:#ff6500;line-height:1">0%</div>
-                <div style="font-size:12px;color:#666">NTC atual</div>
-              </div>
-              <div style="flex:1;min-width:200px">
-                <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:4px">
-                  <span id="cntc-decisao-label">REPROVADO</span>
-                  <span>Meta: 95% APROVADO</span>
-                </div>
-                <div style="height:12px;background:#1f1f1f;border-radius:6px;overflow:hidden;position:relative">
-                  <div id="cntc-ntc-fill" style="height:100%;width:0%;background:#ff6500;border-radius:6px;transition:width .4s,background .4s"></div>
-                  <div style="position:absolute;top:0;left:95%;height:100%;width:2px;background:#00ff88;opacity:.6"></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:10px;color:#444;margin-top:3px"><span>0%</span><span>60%</span><span style="color:#00ff88">95%</span><span>100%</span></div>
-              </div>
-              <div style="text-align:right">
-                <div id="cntc-ganho-label" style="font-size:12px;color:#00ff88"></div>
-                <div id="cntc-faltam-label" style="font-size:11px;color:#666"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Módulos do NTC para completar até 95% -->
-          <div id="cntc-modulos"></div>
-
-          <!-- Botões de ação -->
-          <div id="oem-acoes" style="display:none">
-            <div class="card" style="border-color:#00c85330">
-              <div class="card-title" style="color:#00c853">&#128640; Pronto para Publicar</div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn btn-primary" style="flex:1" id="oem-btn-publicar" onclick="oemPublicar()">&#128230; Publicar no Cat&aacute;logo</button>
-                <button class="btn btn-secondary" onclick="oemEnviarBling()">&#129695; Enviar ao Bling</button>
-                <button class="btn btn-secondary" onclick="oemEnviarWix()">&#127760; Sincronizar Wix</button>
-              </div>
-            </div>
-          </div>
-          <div id="oem-acoes-bloqueado" style="display:none">
+          <!-- Status NTC insuficiente -->
+          <div id="oem-acoes-bloqueado" style="display:none;margin-bottom:12px">
             <div class="card" style="border-color:#f4433630;background:#f4433608">
-              <div class="card-title" style="color:#f44336">&#128683; Cadastro Bloqueado — NTC Insuficiente</div>
-              <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:10px"></div>
-              <div style="font-size:12px;color:#888">&#128071; Complete os m&oacute;dulos do NTC abaixo para aumentar a pontua&ccedil;&atilde;o e desbloquear, ou volte &agrave; Etapa 1 e use o &#127760; Buscar DNA na Web para reenriquecer automaticamente.</div>
+              <div class="card-title" style="color:#f44336">⚠️ NTC insuficiente para publicar</div>
+              <div id="oem-bloqueado-motivo" style="font-size:13px;color:#f44336;margin-bottom:8px"></div>
+              <div style="font-size:12px;color:#888">Complete os módulos NTC acima ou clique em 🌐 Reenriquecer</div>
             </div>
           </div>
+          <!-- Status vazio compatibilidade -->
+          <div id="oem-acoes" style="display:none"></div>
 
-          <div id="oem-pub-status" style="font-size:12px;color:#555;margin-top:8px"></div>
-        </div>
+          <div id="oem-pub-status" style="font-size:12px;color:#555;margin-top:8px;text-align:center"></div>
+
+        </div><!-- /oem-step2 -->
+
+      </div><!-- /oem-resultado -->
+
+      <!-- Banner edição -->
+      <div id="oem-edit-banner" style="display:none;background:#ff450015;border:1px solid #ff450040;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ff9800;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>✏️ Reenriquecendo: <strong id="oem-edit-nome" style="color:#fff"></strong></span>
+        <button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="nav('oem')">✖ Cancelar</button>
       </div>
-    </div>
+
+      <!-- FAB mobile -->
+      <button id="oem-fab-dna" onclick="oemScrollTopo()" style="display:none;position:fixed;bottom:80px;right:16px;z-index:999;background:#ff4500;color:#fff;border:none;border-radius:50px;padding:12px 18px;font-size:13px;font-weight:500;box-shadow:0 4px 16px #ff450060;touch-action:manipulation;cursor:pointer">
+        🌐 Buscar DNA
+      </button>
+
+    </div><!-- /page-oem -->
     <div class="page" id="page-massa">
       <div class="page-title">&#128194; Enriquecimento por ID / Massa</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Cole uma lista de c&oacute;digos (SKU, OEM, Part Number) &mdash; um por linha &mdash;, importe arquivo JSON, CSV, XML ou PDF, ou raspe uma URL (produto &uacute;nico ou cat&aacute;logo com v&aacute;rios produtos). O motor calcula o NTC 4.0 de cada um e exibe o resultado em lote.</p>
@@ -2958,6 +2974,8 @@ function aprovEnriquecerProd(idx) {
     if (p.motor)             document.getElementById('oem-f-motor').value = p.motor;
     if (p.material)          document.getElementById('oem-f-material').value = p.material;
     document.getElementById('oem-resultado').style.display = 'block';
+  // Inicializar slots de imagem
+  if (typeof ivInicializar === 'function') setTimeout(ivInicializar, 100);
     oemIrEtapa(2);
     _cntcRecalcular();
   }, 150);
@@ -4035,6 +4053,108 @@ var MAPA_CAMPOS_DNA_TODOS = Object.assign({}, MAPA_CAMPOS_DNA_OEM, MAPA_CAMPOS_D
 
 // Busca DNA diretamente pelo input principal (#oem-input) sem precisar
 // de oemBuscar() prévio. Botão sempre visível no topo da página de cadastro.
+// ── IMAGENS: toggle seleção ──
+var _ivSelecionadas = [true,true,true,false,false]; // Principal e Embalagem por padrão
+function ivToggle(idx) {
+  _ivSelecionadas[idx] = !_ivSelecionadas[idx];
+  var slot = document.getElementById('iv-slot-' + idx);
+  if (!slot) return;
+  if (_ivSelecionadas[idx]) {
+    slot.style.borderColor = '#00c853';
+    slot.style.boxShadow = '0 0 0 2px #00c85340';
+    // Adiciona ✅ se não tiver
+    if (!slot.querySelector('.iv-check')) {
+      var ck = document.createElement('div');
+      ck.className = 'iv-check';
+      ck.style.cssText = 'position:absolute;top:4px;right:4px;background:#00c853;color:#000;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700';
+      ck.textContent = '✓';
+      slot.appendChild(ck);
+    }
+  } else {
+    slot.style.borderColor = '#333';
+    slot.style.boxShadow = '';
+    var ck = slot.querySelector('.iv-check');
+    if (ck) ck.remove();
+  }
+  var sel = _ivSelecionadas.filter(Boolean).length;
+  var st = document.getElementById('oem-iv-status');
+  if (st) st.textContent = sel + ' imagem(ns) selecionada(s) para publicação';
+}
+
+// Inicializar slots com estado padrão
+function ivInicializar() {
+  _ivSelecionadas.forEach(function(sel, idx) { if (sel) ivToggle(idx); });
+}
+
+// Adicionar imagens via upload
+function ivAdicionarArquivos(input) {
+  var files = Array.from(input.files);
+  var grid = document.getElementById('oem-iv-grid');
+  if (!grid) return;
+  files.forEach(function(file, i) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var idx = _ivSelecionadas.length;
+      _ivSelecionadas.push(true);
+      var slot = document.createElement('div');
+      slot.className = 'iv-slot';
+      slot.id = 'iv-slot-' + idx;
+      slot.onclick = function() { ivToggle(idx); };
+      slot.style.cssText = 'position:relative;border-radius:8px;border:2px solid #00c853;overflow:hidden;aspect-ratio:1;cursor:pointer;background:#1a1a1a;box-shadow:0 0 0 2px #00c85340';
+      var img = document.createElement('img');
+      img.src = e.target.result;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      slot.appendChild(img);
+      var ck = document.createElement('div');
+      ck.className = 'iv-check';
+      ck.style.cssText = 'position:absolute;top:4px;right:4px;background:#00c853;color:#000;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700';
+      ck.textContent = '✓';
+      slot.appendChild(ck);
+      // Inserir antes do botão "+"
+      var addBtn = grid.querySelector('label');
+      grid.insertBefore(slot, addBtn);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Congelar produto
+function oemCongelar() {
+  var dados = oemDadosCompletos ? oemDadosCompletos() : {};
+  if (!dados.sku && !dados.codigo_fabricante) {
+    alert('Salve o produto antes de congelar.');
+    return;
+  }
+  if (!confirm('Congelar este produto? Dados ficam imutáveis até descongelar.')) return;
+  // Marcar como congelado no localStorage
+  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
+  var idx = prods.findIndex(function(p) { return (p.sku||p.codigo_fabricante) === (dados.sku||dados.codigo_fabricante); });
+  if (idx >= 0) {
+    prods[idx].congelado = true;
+    prods[idx].status_congelado = 'CONGELADO';
+    localStorage.setItem('genesis_produtos', JSON.stringify(prods));
+    var st = document.getElementById('oem-pub-status');
+    if (st) st.innerHTML = '<span style="color:#1a73e8">❄️ Produto CONGELADO com sucesso.</span>';
+  } else {
+    alert('Produto não encontrado no catálogo. Publique primeiro.');
+  }
+}
+
+// Atualiza cabeçalho NTC (badge no topo da tela)
+function ntcAtualizarCabecalho(pct, decisao, sku, oem, ean) {
+  var badge = document.getElementById('ntc-hdr-badge');
+  var pctEl = document.getElementById('ntc-hdr-pct');
+  var fill = document.getElementById('ntc-hdr-fill');
+  var cores = { APROVADO: '#00c853', PENDENTE: '#ff9800', REPROVADO: '#f44336' };
+  var cor = cores[decisao] || '#ff6500';
+  if (badge) { badge.textContent = pct + '% ' + (decisao||'AGUARDANDO'); badge.style.color = cor; }
+  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = cor; }
+  if (fill) { fill.style.width = Math.min(pct,100) + '%'; fill.style.background = cor; }
+  if (document.getElementById('ntc-hdr-sku')) document.getElementById('ntc-hdr-sku').textContent = sku||'—';
+  if (document.getElementById('ntc-hdr-oem')) document.getElementById('ntc-hdr-oem').textContent = oem||'—';
+  if (document.getElementById('ntc-hdr-ean')) document.getElementById('ntc-hdr-ean').textContent = ean||'—';
+}
+
 function oemScrollTopo() {
   // Scrolla para o topo da page-oem e foca no campo de busca
   const page = document.getElementById('page-oem');
@@ -5875,6 +5995,11 @@ function _cntcAtualizarBarra(ntc, decisao) {
   else if (ganho) { ganho.textContent = '✅ APROVADO!'; }
   if (faltam && pct < 95) { faltam.textContent = 'Faltam ' + (95 - pct) + ' pontos'; }
   else if (faltam) { faltam.textContent = 'Pode publicar no marketplace'; }
+  // Atualiza cabeçalho NTC (topo da tela)
+  if (typeof ntcAtualizarCabecalho === 'function') {
+    var d = window._oemDados || {};
+    ntcAtualizarCabecalho(pct, decisao, d.sku||d.codigo_fabricante, d.codigo_oem||d.oem, d.ean);
+  }
 }
 
 // =============================================
