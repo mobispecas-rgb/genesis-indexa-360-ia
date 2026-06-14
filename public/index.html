@@ -4009,10 +4009,6 @@ function oemColetar() {
 function _oemAtualizarPainel(dados, r) {
   var ntc = r.ntc || 0;
   var pct = Math.round(ntc * 100);
-  var cor = r.decisao === 'APROVADO' ? '#00c853' : r.decisao === 'PENDENTE' ? '#ff9800' : '#f44336';
-  document.getElementById('oem-ntc-num').textContent = pct + '%';
-  document.getElementById('oem-ntc-num').style.color = cor;
-  document.getElementById('oem-ntc-badge').innerHTML = badgeHtml(r.decisao);
 
   // FIX: alimenta o painel ntcv2 com os dados do enriquecimento
   if (typeof ntcv2Atualizar === 'function') { ntcv2Atualizar(dados, r); }
@@ -4026,19 +4022,23 @@ function _oemAtualizarPainel(dados, r) {
   if (!dados.codigo_oem) falta.push('OEM');
   if (!dados.ncm) falta.push('NCM');
   if (!dados.motor) falta.push('Motor/Aplicação');
-  document.getElementById('oem-ntc-falta').textContent = falta.length ? 'Faltando: ' + falta.join(', ') : '';
+  var elFalta = document.getElementById('oem-ntc-falta');
+  if (elFalta) elFalta.textContent = falta.length ? 'Faltando: ' + falta.join(', ') : '';
 
   // Botões: só libera com NTC ≥ 0.60
   var bloqueado = ntc < 0.60 || !dados.fabricante || !dados.codigo_fabricante || !dados.nome;
-  document.getElementById('oem-acoes').style.display          = bloqueado ? 'none' : 'block';
-  document.getElementById('oem-acoes-bloqueado').style.display = bloqueado ? 'block' : 'none';
+  var elAcoes = document.getElementById('oem-acoes');
+  var elAcoesBloqueado = document.getElementById('oem-acoes-bloqueado');
+  if (elAcoes) elAcoes.style.display = bloqueado ? 'none' : 'block';
+  if (elAcoesBloqueado) elAcoesBloqueado.style.display = bloqueado ? 'block' : 'none';
   if (bloqueado) {
     var motivos = [];
     if (ntc < 0.60) motivos.push('NTC ' + pct + '% (mínimo 60%)');
     if (!dados.fabricante) motivos.push('Fabricante obrigatório');
     if (!dados.codigo_fabricante) motivos.push('Part Number obrigatório');
     if (!dados.nome) motivos.push('Nome obrigatório');
-    document.getElementById('oem-bloqueado-motivo').textContent = motivos.join(' · ');
+    var elMotivo = document.getElementById('oem-bloqueado-motivo');
+    if (elMotivo) elMotivo.textContent = motivos.join(' · ');
   }
 }
 
@@ -5026,10 +5026,12 @@ async function oemProcessarItensEncontrados(itens) {
 function oemCarrinhoRender() {
   var card = document.getElementById('oem-carrinho-card');
   var tbody = document.getElementById('oem-carrinho-tbody');
-  if (!_oemCarrinhoItens.length) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
+  var resumo = document.getElementById('oem-carrinho-resumo');
+  if (!_oemCarrinhoItens.length) { if (card) card.style.display = 'none'; return; }
+  if (card) card.style.display = 'block';
   var selecionados = _oemCarrinhoItens.filter(function(i){ return i._sel; }).length;
-  document.getElementById('oem-carrinho-resumo').textContent = _oemCarrinhoItens.length + ' produto(s) — ' + selecionados + ' selecionado(s)';
+  if (resumo) resumo.textContent = _oemCarrinhoItens.length + ' produto(s) — ' + selecionados + ' selecionado(s)';
+  if (!tbody) return;
   tbody.innerHTML = _oemCarrinhoItens.map(function(item, i) {
     var ntcPct = Math.round((item.ntc||0)*100);
     return '<tr>'
@@ -8392,8 +8394,8 @@ function ntcv2Atualizar(dados, resultado) {
     try { var ep = gerarCabecoteERP(resultado, dados); payload = JSON.stringify(ep, null, 2); } catch(e) {}
   }
   if (!payload) {
-    payload = 'codigo: "' + (dados.sku||dados.oem||'') + '" | ncm: "' + (dados.ncm||'') + '" | cest: "' + (dados.cest||'') + '"
-origem: ' + (dados.origem||0) + ' | cst: "' + (dados.cst||'') + '" | cfop: "' + (dados.cfop||'') + '"';
+    payload = 'codigo: "' + (dados.sku||dados.oem||'') + '" | ncm: "' + (dados.ncm||'') + '" | cest: "' + (dados.cest||'') + '"\n'
+      + 'origem: ' + (dados.origem||0) + ' | cst: "' + (dados.cst||'') + '" | cfop: "' + (dados.cfop||'') + '"';
   }
   ntcv2Set('ntcv2-bling-payload', payload);
 
