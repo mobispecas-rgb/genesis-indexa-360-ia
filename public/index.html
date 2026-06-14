@@ -665,6 +665,10 @@ tr:hover td{background:#f9fafb}
       </div>
     </div>
     <div class="page" id="page-oem">
+      <!-- FAB mobile: botão flutuante sempre visível para Buscar DNA na Web -->
+      <button id="oem-fab-dna" onclick="oemScrollTopo()" style="display:none;position:fixed;bottom:80px;right:16px;z-index:999;background:#ff4500;color:#fff;border:none;border-radius:50px;padding:12px 18px;font-size:13px;font-weight:500;box-shadow:0 4px 16px #ff450060;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        &#127760; Buscar DNA
+      </button>
       <div class="page-title">&#10024; Cadastro Completo</div>
       <p style="color:#666;font-size:13px;margin-bottom:18px">Digite o c&oacute;digo OEM ou nome do produto. O motor busca dados reais via Google, preenche os campos e mostra os m&oacute;dulos do NTC 4.0 que faltam para chegar a 95%. <strong style="color:#ff4500">Sem dados confirmados = sem cadastro.</strong></p>
       <div id="oem-edit-banner" style="display:none;background:#ff450015;border:1px solid #ff450040;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#ff9800;align-items:center;gap:10px;flex-wrap:wrap">
@@ -4011,6 +4015,34 @@ var MAPA_CAMPOS_DNA_TODOS = Object.assign({}, MAPA_CAMPOS_DNA_OEM, MAPA_CAMPOS_D
 
 // Busca DNA diretamente pelo input principal (#oem-input) sem precisar
 // de oemBuscar() prévio. Botão sempre visível no topo da página de cadastro.
+function oemScrollTopo() {
+  // Scrolla para o topo da page-oem e foca no campo de busca
+  const page = document.getElementById('page-oem');
+  if (page) page.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => {
+    const input = document.getElementById('oem-input');
+    if (input) input.focus();
+    // Garante que o modo busca está visível
+    oemToggleModoEntrada('busca');
+  }, 400);
+}
+
+// Mostra/esconde FAB mobile baseado no scroll
+function oemIniciarFabObserver() {
+  if (window.innerWidth > 768) return;
+  const fab = document.getElementById('oem-fab-dna');
+  const card = document.querySelector('#page-oem .card');
+  if (!fab || !card) return;
+  fab.style.display = 'block';
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      // FAB some quando o card de busca está visível
+      fab.style.display = e.isIntersecting ? 'none' : 'block';
+    });
+  }, { threshold: 0.3 });
+  obs.observe(card);
+}
+
 async function oemDnaDiretoWeb() {
   var q = (document.getElementById('oem-input').value || '').trim();
   var statusEl = document.getElementById('oem-dna-status-topo');
