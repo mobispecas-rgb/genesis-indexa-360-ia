@@ -4280,7 +4280,7 @@ function imgAprovRender() {
     var imgSlots = '';
     if (imgs.length) {
       imgSlots = imgs.slice(0,5).map(function(url) {
-        return '<img src="'+url+'" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f" onerror="this.style.display='none'">';
+        return '<img src="'+url+'" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f" onerror="this.style.display=\'none\'">';
       }).join('');
     } else {
       imgSlots = '<div style="display:flex;gap:6px">'
@@ -4469,8 +4469,7 @@ function imgCongelarSelecionadas() {
 function imgSincronizarSelecionadas() {
   var idxs = _imgGetSelecionados();
   if (!idxs.length) { alert('Selecione ao menos um produto.'); return; }
-  alert('Sincronizando ' + idxs.length + ' produto(s) com Bling/Wix...
-(Conecte o Bling nas Configurações para sincronização real)');
+  alert('Sincronizando ' + idxs.length + ' produto(s) com Bling/Wix... (Conecte o Bling nas Configurações para sincronização real)');
 }
 
 function imgAuditarSelecionadas() {
@@ -4482,11 +4481,8 @@ function imgAuditarSelecionadas() {
     if (!p) return '';
     var imgs = p.imagens || [];
     return (p.nome||p.sku) + ': ' + imgs.length + ' imagem(ns) — ' + (p.img_congelado ? 'CONGELADO' : p.img_aprovado ? 'APROVADO' : 'PENDENTE');
-  }).join('
-');
-  alert('📋 AUDITORIA DE IMAGENS
-
-' + relatorio);
+  }).join('\n');
+  alert('AUDITORIA DE IMAGENS\n\n' + relatorio);
 }
 
 function imgAprovarUm(idx) {
@@ -6443,7 +6439,7 @@ function imgAprovRender() {
     var imgSlots = '';
     if (imgs.length) {
       imgSlots = imgs.slice(0,5).map(function(url) {
-        return '<img src="'+url+'" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f" onerror="this.style.display='none'">';
+        return '<img src="'+url+'" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f" onerror="this.style.display=\'none\'">';
       }).join('');
     } else {
       imgSlots = '<div style="display:flex;gap:6px">'
