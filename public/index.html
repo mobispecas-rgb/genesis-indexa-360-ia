@@ -1826,7 +1826,17 @@ function nav(page, opts) {
     document.getElementById('sb-more').classList.add('open');
     document.getElementById('sb-more-toggle').classList.add('open');
   }
-  if (page === 'oem') oemDefinirModoEdicao((opts && opts.editIdx != null) ? opts.editIdx : null);
+  if (page === 'oem') {
+    oemDefinirModoEdicao((opts && opts.editIdx != null) ? opts.editIdx : null);
+    // Garantir visibilidade do campo de busca
+    var s1 = document.getElementById('oem-s1');
+    if (s1) s1.style.display = 'block';
+    // Se não está editando, esconder resultado e mostrar só busca
+    if (!opts || opts.editIdx == null) {
+      var res = document.getElementById('oem-resultado');
+      if (res) res.style.display = 'none';
+    }
+  }
   if (page === 'dashboard') loadDashboard();
   if (page === 'produtos') loadProdutos();
   if (page === 'imagens') loadMinhasImagens();
@@ -3818,7 +3828,8 @@ function oemDefinirModoEdicao(idx) {
     document.getElementById('oem-resultado').style.display = 'none';
     if (banner) banner.style.display = 'none';
     if (btnPublicar) btnPublicar.innerHTML = '&#128230; Publicar no Cat&aacute;logo';
-    oemIrEtapa(1);
+    // NÃO chamar oemIrEtapa aqui — deixar o oem-resultado escondido
+    // O campo de busca (oem-s1) deve aparecer limpo
   }
 }
 
@@ -3826,10 +3837,18 @@ function oemDefinirModoEdicao(idx) {
 // 1) Identificação automática (IA / Voz do Lojista)
 // 2) Revisão do lojista (NTC, imagens) e publicação
 function oemIrEtapa(n) {
-  // Bloco único: sempre exibe ambos os painéis juntos
-  document.getElementById('oem-step1').classList.add('active');
-  document.getElementById('oem-step2').classList.add('active');
+  // Mostrar resultado e ativar steps
+  var res = document.getElementById('oem-resultado');
+  if (res) res.style.display = 'block';
+  var s1 = document.getElementById('oem-step1');
+  var s2 = document.getElementById('oem-step2');
+  if (s1) s1.classList.add('active');
+  if (s2) s2.classList.add('active');
   _cntcRecalcular();
+  // Scroll para resultado
+  if (res && window.innerWidth <= 768) {
+    setTimeout(function() { res.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
+  }
 }
 
 // Dados completos do produto (campos do formulário OEM mesclados com o
