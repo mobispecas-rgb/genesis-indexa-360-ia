@@ -1039,7 +1039,7 @@ let _blingToken = null;
 let _blingTokenExp = 0;
 
 async function getBlingToken() {
-  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY;
+  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY.trim().replace(/[\r\n]/g, '');
   if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
   if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
   const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
@@ -1283,6 +1283,33 @@ async function montarPayloadProdutoBling(p) {
     ...(idCategoria ? { categoria: { id: idCategoria } } : {})
   };
 }
+
+// Diagnóstico Bling — mostra o problema exato da variável
+app.get('/api/bling/diagnostico', (req, res) => {
+  const apiKey = process.env.BLING_API_KEY || '';
+  const clientId = process.env.BLING_CLIENT_ID || '';
+  const secret = process.env.BLING_CLIENT_SECRET || '';
+  // Detectar caracteres problemáticos
+  const problemas = [];
+  if (apiKey) {
+    if (/\n|\r/.test(apiKey)) problemas.push('BLING_API_KEY tem quebra de linha');
+    if (/\s/.test(apiKey.trim()) ) problemas.push('BLING_API_KEY tem espaços internos');
+    if (apiKey !== apiKey.trim()) problemas.push('BLING_API_KEY tem espaço no início/fim');
+  }
+  if (clientId && clientId !== clientId.trim()) problemas.push('BLING_CLIENT_ID tem espaço');
+  if (secret && secret !== secret.trim()) problemas.push('BLING_CLIENT_SECRET tem espaço');
+  res.json({
+    ok: problemas.length === 0,
+    tem_api_key: !!apiKey,
+    tem_client_id: !!clientId,
+    tem_client_secret: !!secret,
+    api_key_tamanho: apiKey.length,
+    api_key_primeiros: apiKey ? apiKey.substring(0,12)+'...' : '—',
+    client_id_tamanho: clientId.length,
+    problemas,
+    solucao: problemas.length ? 'Corrija as variáveis no Render: dashboard.render.com → Environment → BLING_API_KEY (sem espaços)' : 'Variáveis OK'
+  });
+});
 
 app.get('/api/bling/status', async (req, res) => {
   if (!process.env.BLING_API_KEY && !process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_API_KEY ou BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
