@@ -65,7 +65,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .sb-footer{margin-top:auto;padding:12px 14px;border-top:1px solid #1f1f1f;font-size:10px;color:#555;line-height:1.4}
 
 /* MAIN */
-#main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;overflow:visible;transition:margin-left .3s}
+#main{margin-left:220px;flex:1;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;transition:margin-left .3s}
 #topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
 #hamburger{background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;display:none;padding:4px}
 .health-dot{width:8px;height:8px;background:#00ff88;border-radius:50%;animation:pulse 2s infinite;flex-shrink:0}
@@ -73,7 +73,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .health-text{font-size:12px;color:#6b7280}
 .health-text span{color:#00c96b}
 .topbar-right{margin-left:auto;font-size:11px;color:#9ca3af}
-#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;min-height:0}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px;height:0}
 .page{display:none}
 .page.active{display:block}
 .oem-step{display:none}
@@ -196,7 +196,7 @@ tr:hover td{background:#f9fafb}
   #hamburger{display:block}
   #sidebar{transform:translateX(-220px)}
   #sidebar.open{transform:translateX(0)}
-  #main{margin-left:0}
+  #main{margin-left:0;height:100vh;height:100dvh;overflow:hidden}
   .grid4{grid-template-columns:1fr 1fr}
   .grid3{grid-template-columns:1fr}
   .grid2{grid-template-columns:1fr}
