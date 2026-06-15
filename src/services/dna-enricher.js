@@ -37,11 +37,16 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
         return { ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true };
     }
 
-    // Múltiplas queries especializadas para cobrir similares, aplicação e fiscal
-    const qBase    = [fabricante, sku, nome].filter(Boolean).join(' ');
-    const qSimilar = (sku || nome) + ' similares cross-reference aftermarket';
-    const qFiscal  = (sku || nome) + (fabricante ? ' ' + fabricante : '') + ' NCM EAN ficha técnica';
-    const qAplic   = [fabricante, sku, nome].filter(Boolean).join(' ') + ' aplicação veicular motor';
+    // Múltiplas queries especializadas para cobrir similares, aplicação, fiscal,
+    // marketplaces e catálogos de fabricante/distribuidores — quanto mais fontes
+    // diferentes, maior a chance de completar os 28 campos do DNA e elevar o NTC.
+    const termoBase = [fabricante, sku, nome].filter(Boolean).join(' ');
+    const qBase      = termoBase;
+    const qSimilar   = (sku || nome) + ' similares cross-reference aftermarket';
+    const qFiscal    = (sku || nome) + (fabricante ? ' ' + fabricante : '') + ' NCM EAN ficha técnica';
+    const qAplic     = termoBase + ' aplicação veicular motor';
+    const qML        = termoBase + ' site:mercadolivre.com.br';
+    const qCatalogo  = termoBase + ' catálogo peças OEM ficha técnica especificações dimensões peso';
 
     let trechos = [];
     try {
@@ -53,10 +58,16 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
         const r3 = await buscarWeb(qFiscal, 5);
         // Busca de aplicação veicular (5 resultados adicionais)
         const r4 = await buscarWeb(qAplic, 5);
+        // Busca em marketplaces (Mercado Livre) — fichas de produto costumam
+        // trazer EAN, dimensões, peso e cross-codes (5 resultados adicionais)
+        const r5 = await buscarWeb(qML, 5);
+        // Busca em catálogos de fabricantes/distribuidores e fichas técnicas
+        // (5 resultados adicionais)
+        const r6 = await buscarWeb(qCatalogo, 5);
 
         // Une e deduplica por URL
         const vistos = new Set();
-        for (const lista of [r1, r2, r3, r4]) {
+        for (const lista of [r1, r2, r3, r4, r5, r6]) {
             for (const item of lista) {
                 if (!vistos.has(item.fonte)) {
                     vistos.add(item.fonte);
@@ -64,7 +75,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
                 }
             }
         }
-        trechos = trechos.slice(0, 20); // max 20 fontes para a IA
+        trechos = trechos.slice(0, 28); // max 28 fontes para a IA
     } catch (e) {
         console.error('[Enriquecer DNA] busca:', e.message);
     }
