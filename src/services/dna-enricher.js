@@ -95,7 +95,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
             max_tokens: 2500,
             system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
 
-Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
+Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa", "motivo": "..."}. "motivo" é opcional, exceto para "cc_oem" e "fabricante_original" quando "confianca" não for "alta" (ver REGRA 7).
 
 Campos:
 - codigo_oem: código OEM / part number de referência do fabricante do veículo
@@ -127,13 +127,35 @@ Campos:
 - peso_bruto: peso bruto do produto com embalagem em kg, número decimal (ex: 0.380). Null se não encontrado.
 - peso_liquido: peso líquido do produto sem embalagem em kg, número decimal (ex: 0.280). Null se não encontrado.
 
+CONTEXTO — DNA GENEALÓGICO AUTOMOTIVO (peça original × clone certificado × veículo-irmão × clone aftermarket × importado com código adulterado):
+Toda peça nasce de um projeto de uma montadora para um veículo específico (código OEM/CC-OEM original). A partir daí ela se multiplica em:
+ a) CLONES CERTIFICADOS — fabricantes de autopeças licenciados/homologados pela própria montadora para produção no Brasil (ex.: COFAP, Nakata, Mahle, Bosch, Frasle, Wega, ZF, TRW, Magneti Marelli, Sabó, MTE-Thomson) fabricam a MESMA peça com qualidade homologada; cc_oem continua sendo o código da montadora, fabricante_original é o fabricante certificado.
+ b) VEÍCULOS-IRMÃOS (parcerias/plataformas compartilhadas entre montadoras — "badge engineering") — a MESMA peça física atende veículos de marcas diferentes, cada um com seu próprio código OEM. Famílias conhecidas no mercado brasileiro:
+    - Hyundai HR ↔ Kia Bongo K2500 (Hyundai Motor Group — motor/plataforma compartilhados)
+    - Fiat Ducato ↔ Peugeot Boxer ↔ Citroën Jumper (trio Stellantis)
+    - Fiat Doblo (geração antiga) ↔ Citroën Berlingo / Peugeot Partner (geração antiga)
+    - Fiat Toro ↔ Jeep Compass / Renegade / Commander (plataforma Small-Wide 4x4 — Stellantis, motores Firefly/T270/T350/T370/GSE T6)
+    - Ford Ranger (2ª/3ª geração) ↔ Mazda BT-50
+    - Volkswagen Amarok (2ª geração, 2023+) ↔ Ford Ranger (plataforma T6.2)
+    - Chevrolet S10 / TrailBlazer (motor 2.8 Duramax/4JJ) ↔ Isuzu D-Max / MU-X
+    - Renault Master ↔ Nissan NV400/Interstar ↔ Opel/Vauxhall Movano (trio de furgões — Aliança Renault-Nissan)
+    - Toyota Hilux ↔ Toyota Fortuner/SW4 (plataforma IMV)
+ c) CLONES AFTERMARKET (cross-reference) — fabricantes independentes (Nakata, Monroe, TRW, Frasle, Gates, Dayco, INA, SKF, NGK, Fram, Mann, Mahle, Tecfil, Wega, ContiTech, KYB, Sachs, Gabriel, Corven etc.) produzem peças equivalentes SEM licença da montadora — vão para cross_codes/substituicoes.
+ d) IMPORTADOS COM CÓDIGO ADULTERADO — importadores de peças genéricas (frequentemente chinesas) anunciam códigos OEM de montadoras apenas para indicar "compatibilidade/aplicação", sem a peça ser genuína, clone certificado ou aftermarket de fabricante reconhecido. Esses anúncios NÃO são fonte confiável para fabricante_original/cc_oem com confiança alta.
+
+COMO USAR ESSE CONTEXTO (sem inventar):
+- Use o conhecimento acima SOMENTE para INTERPRETAR e CONECTAR evidências que já aparecem nos resultados numerados — ex.: se um resultado diz que a peça serve "Hyundai HR 2.5 2006-2012" e outro resultado (do mesmo SKU ou de um cross-code já identificado nos resultados) menciona "Kia Bongo K2500 2.5 2006-2012", registre AMBAS as aplicações em aplicacoes_adicionais e os respectivos códigos em cc_oem — pois fazem parte da mesma família genealógica.
+- NUNCA adicione aplicação, código ou fabricante de veículo-irmão que não tenha aparecido em NENHUM resultado — o conhecimento de parcerias serve para reconhecer/relacionar evidências já textuais, nunca para criar dados novos.
+- Para fabricante_original, priorize fabricantes certificados/licenciados citados explicitamente (catálogos oficiais, lojas especializadas) sobre anúncios genéricos de marketplace sem menção de marca/fabricante (caso (d) acima).
+
 REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
 2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
 3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
 4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
 5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.
-6. NUNCA preencha "marca_veiculo" ou "montadora" com o nome do FABRICANTE DA PEÇA (ex: VALEO, Bosch, Mahle, NGK, TRW, Magneti Marelli, Delphi, Denso, Continental são fabricantes de autopeças — NÃO são montadoras de veículo). Esses nomes pertencem apenas a "fabricante_original". "marca_veiculo"/"montadora" só podem ser marcas de veículos (ex: Toyota, Volkswagen, Fiat, Chevrolet, Hyundai, Ford).`,
+6. NUNCA preencha "marca_veiculo" ou "montadora" com o nome do FABRICANTE DA PEÇA (ex: VALEO, Bosch, Mahle, NGK, TRW, Magneti Marelli, Delphi, Denso, Continental são fabricantes de autopeças — NÃO são montadoras de veículo). Esses nomes pertencem apenas a "fabricante_original". "marca_veiculo"/"montadora" só podem ser marcas de veículos (ex: Toyota, Volkswagen, Fiat, Chevrolet, Hyundai, Ford).
+7. Antes de extrair "cc_oem"/"fabricante_original" com confiança "alta", avalie a fonte conforme o CONTEXTO — DNA GENEALÓGICO acima: catálogos oficiais, fabricantes certificados e lojas especializadas que citam "OEM"/"original"/"homologado" têm prioridade. Anúncios genéricos de marketplace (especialmente de peças importadas/genéricas sem marca/fabricante identificado) que apenas citam um código OEM para indicar aplicação devem entrar com confiança "media" ou "baixa", e o "motivo" deve indicar que o código pode ser de aplicação cruzada e não de origem genuína.`,
             messages: [{
                 role: 'user',
                 content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca numerados:\n`
@@ -160,7 +182,7 @@ REGRAS ABSOLUTAS:
             const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
             let valor = item.valor;
             let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
-            let motivo = null;
+            let motivo = (typeof item.motivo === 'string' && item.motivo.trim()) ? item.motivo.trim() : null;
 
             if (c === 'ean') {
                 if (!validarGTIN(valor)) { valor = null; confianca = 'baixa'; motivo = 'GTIN inválido (checksum)'; }
