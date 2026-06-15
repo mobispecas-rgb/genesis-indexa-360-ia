@@ -94,31 +94,46 @@ function aplicarFornecedorOuAvulso(row, dados, acoes) {
 
 // Passo 2 — DNA na Web: preenche campos vazios via busca web + IA (com
 // cooldown para não repetir buscas sem sentido em produtos sem fonte).
-async function enriquecerDnaSeNecessario(row, dados, acoes) {
+// Quando `forcar` é true (disparo manual via "Enriquecer agora"), ignora o
+// cooldown e a verificação de "campos-chave já preenchidos" — o usuário
+// pediu explicitamente uma nova busca para completar TODOS os campos do DNA
+// (cross-codes, boletins, substituições, cc_oem, pesos, dimensões etc.).
+async function enriquecerDnaSeNecessario(row, dados, acoes, forcar) {
   if (!process.env.ANTHROPIC_API_KEY) return;
 
-  const ultimaTentativa = dados._auto_dna_tentativa ? new Date(dados._auto_dna_tentativa).getTime() : 0;
-  if (Date.now() - ultimaTentativa < DNA_COOLDOWN_MS) return;
+  if (!forcar) {
+    const ultimaTentativa = dados._auto_dna_tentativa ? new Date(dados._auto_dna_tentativa).getTime() : 0;
+    if (Date.now() - ultimaTentativa < DNA_COOLDOWN_MS) return;
 
-  const camposChaveFaltando = !dados.codigo_oem || !dados.ean || !dados.ncm
-    || !dados.motor || !dados.material || !dados.cilindrada;
-  if (!camposChaveFaltando) return;
+    const camposChaveFaltando = !dados.codigo_oem || !dados.ean || !dados.ncm
+      || !dados.motor || !dados.material || !dados.cilindrada;
+    if (!camposChaveFaltando) return;
+  }
 
   dados._auto_dna_tentativa = new Date().toISOString();
   const resultado = await enriquecerDnaViaWeb({ sku: row.sku, fabricante: dados.fabricante, nome: dados.nome });
   if (resultado.ok && resultado.encontrado) {
     aplicarCamposDna(dados, resultado.campos, acoes);
+  } else if (!resultado.ok) {
+    acoes.push('dna:erro(' + (resultado.erro || 'falha desconhecida') + ')');
+  } else if (!resultado.encontrado) {
+    acoes.push('dna:sem_resultado');
   }
 }
 
 // Passo 3 — Colonização de imagens reais: eleva o módulo IV buscando fotos
 // reais do produto na web quando o cadastro ainda tem poucas imagens.
-async function colonizarImagensSeNecessario(row, dados, acoes) {
+// Quando `forcar` é true, ignora o cooldown e o piso de MIN_IMAGENS_IV (mas
+// não busca de novo se já atingiu o teto de 8 imagens).
+async function colonizarImagensSeNecessario(row, dados, acoes, forcar) {
   const imagens = Array.isArray(dados.imagens) ? dados.imagens : [];
-  if (imagens.length >= MIN_IMAGENS_IV) return;
+  if (imagens.length >= 8) return;
+  if (!forcar) {
+    if (imagens.length >= MIN_IMAGENS_IV) return;
 
-  const ultimaTentativa = dados._auto_iv_tentativa ? new Date(dados._auto_iv_tentativa).getTime() : 0;
-  if (Date.now() - ultimaTentativa < IMG_COOLDOWN_MS) return;
+    const ultimaTentativa = dados._auto_iv_tentativa ? new Date(dados._auto_iv_tentativa).getTime() : 0;
+    if (Date.now() - ultimaTentativa < IMG_COOLDOWN_MS) return;
+  }
 
   const q = [dados.fabricante, row.sku, dados.nome].filter(Boolean).join(' ');
   if (!q) return;
@@ -137,15 +152,18 @@ async function colonizarImagensSeNecessario(row, dados, acoes) {
 }
 
 // Processa um único produto: rastreabilidade → DNA web → imagens → recálculo NTC → persistência.
-async function enriquecerProdutoAuto(row) {
+// `opts.forcar` (disparo manual via "Enriquecer agora") ignora os cooldowns
+// e o gate de "campos-chave já preenchidos" do job 24/7.
+async function enriquecerProdutoAuto(row, opts = {}) {
   const dados = { ...row.dados };
   const acoes = [];
+  const forcar = !!opts.forcar;
 
   const antes = ntcEngine.processar(dados);
 
   const fonte = aplicarFornecedorOuAvulso(row, dados, acoes);
-  await enriquecerDnaSeNecessario(row, dados, acoes);
-  await colonizarImagensSeNecessario(row, dados, acoes);
+  await enriquecerDnaSeNecessario(row, dados, acoes, forcar);
+  await colonizarImagensSeNecessario(row, dados, acoes, forcar);
 
   const depois = ntcEngine.processar(dados);
 

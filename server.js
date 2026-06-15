@@ -831,7 +831,7 @@ app.post('/api/produtos/:id/enriquecer', async (req, res) => {
     try {
         const produto = db.obterProduto(req.params.id);
         if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
-        const resultado = await autoEnrich.enriquecerProdutoAuto(produto);
+        const resultado = await autoEnrich.enriquecerProdutoAuto(produto, { forcar: true });
         res.json({ ok: true, resultado });
     } catch (e) {
         res.json({ ok: false, erro: e.message });
