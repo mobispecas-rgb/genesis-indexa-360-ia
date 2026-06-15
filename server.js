@@ -335,8 +335,32 @@ app.get('/api/ia/status', async (req, res) => {
 const ntcEngine = require('./src/services/ntc-engine');
 
 // Motor NTC — 13 componentes — NUNCA inventa dados
+// normalizaAliases: converte os nomes que o frontend/DNA envia para os nomes que o ntc-engine lê
+function normalizaAliases(d) {
+    const r = Object.assign({}, d);
+    // AV — aplicação veicular
+    if (!r.marca  && r.marca_veiculo)    r.marca  = r.marca_veiculo;
+    if (!r.modelo && r.modelo_veiculo)   r.modelo = r.modelo_veiculo;
+    if (!r.motor  && r.motor_aplicacao)  r.motor  = r.motor_aplicacao;
+    // DNA
+    if (!r.fabricante && r.fabricante_original) r.fabricante = r.fabricante_original;
+    if (!r.codigo_fabricante && r.sku)          r.codigo_fabricante = r.sku;
+    if (!r.familia_tecnica && r.familia)        r.familia_tecnica = r.familia;
+    // EC
+    if (!r.funcao && r.funcao_tecnica) r.funcao = r.funcao_tecnica;
+    // LG — linhagem genealógica
+    if (!r.linhagem_fabricante && r.fabricante_original) r.linhagem_fabricante = r.fabricante_original;
+    if (!r.linhagem_montadora  && r.montadora)           r.linhagem_montadora  = r.montadora;
+    if (!r.linhagem_distribuidor && r.distribuidor)      r.linhagem_distribuidor = r.distribuidor;
+    if (!r.linhagem_importador && r.importador)          r.linhagem_importador = r.importador;
+    // MC — material
+    if (!r.material && r.material_composicao) r.material = r.material_composicao;
+    return r;
+}
+
 app.post('/api/motor/nct', (req, res) => {
-    const resultado = ntcEngine.processar(req.body);
+    const dados = normalizaAliases(req.body);
+    const resultado = ntcEngine.processar(dados);
     res.json({ ok: true, ...resultado, nct: resultado.ntc, nct_componentes: resultado.componentes });
 });
 
@@ -349,7 +373,7 @@ app.post('/api/motor/hash', (req, res) => {
 
 // Motor Enriquecer — NULL em campos sem evidência documental
 app.post('/api/motor/enriquecer', (req, res) => {
-    const dados = req.body;
+    const dados = normalizaAliases(req.body);
     if (!dados.oem && !dados.nome && !dados.codigo_oem) {
         return res.status(400).json({ ok: false, erro: 'OEM ou Nome obrigatório' });
     }
@@ -951,8 +975,9 @@ app.post('/api/notas/importar-xml', upload.single('arquivo'), async (req, res) =
 let _blingToken = null;
 let _blingTokenExp = 0;
 
-// Troca um refresh_token (ou authorization code) por um novo par de tokens
-// junto à API OAuth2 do Bling, e persiste o resultado no banco local.
+// Troca um refresh_token (renovação automática) ou authorization code (primeira
+// autorização, via /api/bling/callback) por um novo par de tokens junto à API
+// OAuth2 do Bling, e persiste o resultado no banco local.
 async function trocarTokenBling(qs) {
   const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
   const data = await httpsJSON({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
@@ -966,19 +991,32 @@ async function trocarTokenBling(qs) {
 }
 
 async function getBlingToken() {
-  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY;
+  if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY.trim().replace(/[\r\n]/g, '');
   if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
   if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
+
+  // Se já existe autorização OAuth persistida (authorization_code via /api/bling/callback),
+  // usa o access_token salvo ou renova com o refresh_token
   const tokens = db.obterBlingOAuth();
   if (tokens && tokens.access_token && Date.now() < tokens.expires_em) {
     _blingToken = tokens.access_token;
     _blingTokenExp = tokens.expires_em;
     return _blingToken;
   }
-  if (!tokens || !tokens.refresh_token) {
-    throw new Error('Bling não autorizado ainda — acesse o link de autorização do app no painel do Bling (Informações do app → Link de convite) para conectar.');
+  if (tokens && tokens.refresh_token) {
+    return trocarTokenBling('grant_type=refresh_token&refresh_token=' + encodeURIComponent(tokens.refresh_token));
   }
-  return trocarTokenBling('grant_type=refresh_token&refresh_token=' + encodeURIComponent(tokens.refresh_token));
+
+  // Caso contrário, client_credentials direto (modo simples por app do Bling)
+  const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
+  const qs = 'grant_type=client_credentials';
+  const data = await httpsJSON({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + creds, 'Content-Length': Buffer.byteLength(qs) }
+  }, qs);
+  if (!data.access_token) throw new Error('Bling token inválido: ' + JSON.stringify(data));
+  _blingToken = data.access_token;
+  _blingTokenExp = Date.now() + (data.expires_in || 3600) * 1000 - 60000;
+  return _blingToken;
 }
 
 async function blingRequest(method, path, payload) {
@@ -1115,33 +1153,57 @@ function seloQualidadeNTC(p) {
   return cor + ' Selo de Qualidade NTC: ' + pct + '% (' + (p.decisao || '—') + ')';
 }
 
-// Monta a descrição complementar (ficha técnica) usada no PDV/Bling — sempre
-// que disponível, traz SKU + código de fábrica original, o maior número
-// possível de códigos cambiados (fabricante original e aftermarket), medidas
-// e pesos de fábrica, o Selo de Qualidade NTC e o código de rastreamento (hash).
+// Monta a descrição complementar (ficha técnica) usada no PDV/Bling
+// Inclui todos os campos do Motor NTC 4.0 que forem preenchidos
 function montarFichaTecnica(p) {
   const linhas = [];
+
+  // ── DNA / Identificação ──
   if (p.codigo_fabricante || p.sku) linhas.push('SKU / Código de Fábrica: ' + (p.codigo_fabricante || p.sku));
-  if (p.codigo_oem) linhas.push('Código OEM Original: ' + p.codigo_oem);
-  if (p.motor) linhas.push('Motor/Aplicação: ' + p.motor);
-  if (p.material) linhas.push('Material: ' + p.material);
-  if (p.ean) linhas.push('EAN/GTIN: ' + p.ean);
+  if (p.familia_tecnica || p.familia) linhas.push('Família: ' + (p.familia_tecnica || p.familia));
+  if (p.posicao)         linhas.push('Posição: ' + p.posicao);
 
-  const ccOem = Array.isArray(p.cc_oem) ? p.cc_oem.filter(Boolean) : [];
-  if (ccOem.length) linhas.push('Códigos Cambiados (Fabricante Original): ' + ccOem.join(', '));
-  const ccAftermarket = Array.isArray(p.cc_aftermarket) ? p.cc_aftermarket.filter(Boolean) : [];
-  if (ccAftermarket.length) linhas.push('Códigos Cambiados (Aftermarket): ' + ccAftermarket.join(', '));
+  // ── AV — Aplicação Veicular ──
+  const av = [p.marca_veiculo || p.marca, p.modelo_veiculo || p.modelo, p.versao_veiculo || p.versao].filter(Boolean).join(' ');
+  if (av)                linhas.push('Veículo: ' + av);
+  const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join(' a ');
+  if (anos)              linhas.push('Anos: ' + anos);
+  if (p.motor || p.motor_aplicacao) linhas.push('Motor: ' + (p.motor || p.motor_aplicacao));
+  if (p.codigo_motor)    linhas.push('Código motor: ' + p.codigo_motor);
+  if (p.cilindrada)      linhas.push('Cilindrada: ' + p.cilindrada + ' cc');
 
-  if (p.comprimento || p.largura || p.altura) {
-    linhas.push('Dimensões de Fábrica (C x L x A): ' + [p.comprimento, p.largura, p.altura].map(v => v || '—').join(' x ') + ' cm');
-  }
-  if (p.peso_bruto || p.peso_liquido) {
-    linhas.push('Peso de Fábrica: bruto ' + (p.peso_bruto || '—') + ' kg / líquido ' + (p.peso_liquido || '—') + ' kg');
-  }
+  // ── TF — Triangulação ──
+  const oems = [p.codigo_oem, ...(p.cc_oem || [])].filter(Boolean);
+  const oemsUniq = [...new Set(oems)];
+  if (oemsUniq.length)   linhas.push('Código OEM: ' + oemsUniq.join(' / '));
 
+  // ── CC — Cross-codes aftermarket ──
+  const cc = (p.cc_aftermarket || []).filter(Boolean);
+  if (cc.length)         linhas.push('Equivalentes: ' + cc.join(' | '));
+  if (p.cross_codes)     linhas.push('Similares: ' + p.cross_codes);
+
+  // ── MC — Material ──
+  if (p.material || p.material_composicao) linhas.push('Material: ' + (p.material || p.material_composicao));
+
+  // ── EC — Especificações ──
+  if (Array.isArray(p.especificacoes) && p.especificacoes.length)
+    p.especificacoes.forEach(e => linhas.push(e));
+
+  // ── FI/FP — Físico ──
+  if (p.peso_bruto)      linhas.push('Peso bruto: ' + p.peso_bruto + ' kg');
+  if (p.peso_liquido)    linhas.push('Peso líquido: ' + p.peso_liquido + ' kg');
+  const dim = [p.comprimento && p.comprimento+'cm', p.largura && p.largura+'cm', p.altura && p.altura+'cm'].filter(Boolean);
+  if (dim.length)        linhas.push('Dimensões (C×L×A): ' + dim.join(' × '));
+
+  // ── Fiscal ──
+  if (p.ean)             linhas.push('EAN/GTIN: ' + p.ean);
+  if (p.ncm)             linhas.push('NCM: ' + p.ncm);
+  if (p.cest)            linhas.push('CEST: ' + p.cest);
+
+  // ── NTC ──
+  if (p.rast_hash)       linhas.push('RAST-HASH NTC: ' + p.rast_hash);
   const selo = seloQualidadeNTC(p);
-  if (selo) linhas.push(selo);
-  if (p.rast_hash) linhas.push('Código de Rastreamento (RAST-HASH): ' + p.rast_hash);
+  if (selo)              linhas.push(selo);
 
   return linhas.join('\n');
 }
@@ -1162,16 +1224,45 @@ async function montarPayloadProdutoBling(p) {
     unidadeMedida: 'CM',
     ...(pesoBruto ? { pesoBruto } : {}),
   } : null;
+
+  // Nome inteligente: SKU + nome_enriquecido + fabricante + aplicação
+  const nomeBase = p.nome_enriquecido || p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome';
+  const nomeFinal = nomeBase.length > 120
+    ? nomeBase.substring(0, 120).trim()
+    : nomeBase;
+
+  // descricaoCurta: texto da voz do lojista OU descrição curta OU monta automático
+  const autoDescCurta = (() => {
+    const partes = [];
+    if (p.posicao) partes.push(p.posicao + '.');
+    const vei = [p.marca_veiculo || p.marca, p.modelo_veiculo || p.modelo].filter(Boolean).join(' ');
+    if (vei) partes.push('Aplicação: ' + vei);
+    const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join('-');
+    if (anos) partes.push(anos + '.');
+    if (p.motor || p.motor_aplicacao) partes.push('Motor ' + (p.motor || p.motor_aplicacao) + '.');
+    return partes.join(' ');
+  })();
+  const descCurta = (p.descricao || p.voz_do_lojista || autoDescCurta).substring(0, 300);
+
+  // cst — origem fiscal
+  const origemFiscal = (p.origem !== undefined && p.origem !== null && p.origem !== '') ? parseInt(p.origem) : 0;
+
   return {
-    nome: p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome',
+    nome: nomeFinal,
     codigo: p.codigo_fabricante || p.sku || '',
     tipo: 'P', situacao: 'A', formato: 'S',
     unidade: 'UN',
-    descricaoCurta: (p.descricao || p.voz_do_lojista || '').substring(0, 300),
+    descricaoCurta: descCurta,
     descricaoComplementar: [p.descricao_tecnica || '', fichaTecnica].filter(Boolean).join('\n\n'),
-    tributacao: { ncm, origem: (p.origem !== undefined && p.origem !== null && p.origem !== '') ? parseInt(p.origem) : 0 },
+    tributacao: {
+      ncm,
+      origem: origemFiscal,
+      ...(p.cest ? { cest: (p.cest || '').replace(/\D/g, '') } : {}),
+    },
     estoque: { minimo: 0, maximo: 0, crossdocking: 0, localizacao: '' },
     ...(ean ? { gtin: ean } : {}),
+    ...(p.peso_bruto ? { pesoBruto: parseFloat(p.peso_bruto) } : {}),
+    ...(p.peso_liquido ? { pesoLiquido: parseFloat(p.peso_liquido) } : {}),
     ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
     ...(midia.length ? { midia } : {}),
     ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {}),
@@ -1179,6 +1270,33 @@ async function montarPayloadProdutoBling(p) {
     ...(dimensoes ? { dimensoes } : {}),
   };
 }
+
+// Diagnóstico Bling — mostra o problema exato da variável
+app.get('/api/bling/diagnostico', (req, res) => {
+  const apiKey = process.env.BLING_API_KEY || '';
+  const clientId = process.env.BLING_CLIENT_ID || '';
+  const secret = process.env.BLING_CLIENT_SECRET || '';
+  // Detectar caracteres problemáticos
+  const problemas = [];
+  if (apiKey) {
+    if (/\n|\r/.test(apiKey)) problemas.push('BLING_API_KEY tem quebra de linha');
+    if (/\s/.test(apiKey.trim()) ) problemas.push('BLING_API_KEY tem espaços internos');
+    if (apiKey !== apiKey.trim()) problemas.push('BLING_API_KEY tem espaço no início/fim');
+  }
+  if (clientId && clientId !== clientId.trim()) problemas.push('BLING_CLIENT_ID tem espaço');
+  if (secret && secret !== secret.trim()) problemas.push('BLING_CLIENT_SECRET tem espaço');
+  res.json({
+    ok: problemas.length === 0,
+    tem_api_key: !!apiKey,
+    tem_client_id: !!clientId,
+    tem_client_secret: !!secret,
+    api_key_tamanho: apiKey.length,
+    api_key_primeiros: apiKey ? apiKey.substring(0,12)+'...' : '—',
+    client_id_tamanho: clientId.length,
+    problemas,
+    solucao: problemas.length ? 'Corrija as variáveis no Render: dashboard.render.com → Environment → BLING_API_KEY (sem espaços)' : 'Variáveis OK'
+  });
+});
 
 app.get('/api/bling/status', async (req, res) => {
   if (!process.env.BLING_API_KEY && !process.env.BLING_CLIENT_ID) return res.json({ ok: false, configurado: false, mensagem: 'Configure BLING_API_KEY ou BLING_CLIENT_ID e BLING_CLIENT_SECRET no Render' });
@@ -1260,6 +1378,13 @@ app.put('/api/bling/produto/:id', async (req, res) => {
     const data = await blingRequest('PUT', '/produtos/' + req.params.id, payload);
     res.json({ ok: true, data });
   } catch(e) { res.json({ ok: false, erro: e.message }); }
+});
+
+// ─── Conector MCP — expõe as ferramentas do Bling e do Wix em /sse para o Claude ──
+const { registrarRotasMcp } = require('./src/services/bling-mcp');
+registrarRotasMcp(app, {
+  blingRequest, montarPayloadProdutoBling, listarBlingCategorias, idCategoriaPai: _idCategoriaPai,
+  wixRequest, montarPayloadProdutoWix, atribuirCategoriasWix,
 });
 
 // ─── BLING — Lista de produtos com paginação ─────────────────
@@ -1437,12 +1562,19 @@ async function montarPayloadProdutoWix(p) {
   const descricao = [p.descricao || p.voz_do_lojista || '', fichaTecnica].filter(Boolean).join('\n\n');
   const payload = {
     product: {
-      name: p.nome || p.codigo_fabricante || 'Produto',
+      name: p.nome_enriquecido || p.nome || p.codigo_fabricante || 'Produto',
       visible: true,
       productType: 'PHYSICAL',
       plainDescription: descricao,
       physicalProperties,
       ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
+      // SEO
+      seoData: {
+        tags: [
+          { type: 'title',       value: (p.nome_enriquecido||p.nome||'') + ' — ' + (p.fabricante||'') + ' — MOBIS Autopeças' },
+          { type: 'description', value: (p.descricao||p.voz_do_lojista||'').substring(0,160) },
+        ]
+      },
       variantsInfo: {
         variants: [{
           sku: p.codigo_fabricante || p.sku || '',

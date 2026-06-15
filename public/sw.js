@@ -2,7 +2,7 @@
 // e acesso offline ao app shell. Chamadas para /api/* nunca são cacheadas:
 // sempre vão direto para a rede, para manter os dados sempre atualizados.
 
-const CACHE_NAME = 'irollo360-shell-v1';
+const CACHE_NAME = 'irollo360-shell-v12';
 const APP_SHELL = [
   '/',
   '/index.html',
