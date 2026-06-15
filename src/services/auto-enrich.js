@@ -143,6 +143,15 @@ async function colonizarImagensSeNecessario(row, dados, acoes, forcar) {
   const urls = encontradas.map(i => i.url).filter(Boolean);
   if (!urls.length) return;
 
+  // Guarda título/fonte de cada imagem encontrada — usado no "Perfil Completo
+  // do Produto" para o lojista auditar a procedência (nível de confiança)
+  // antes de escolher quais manter e qual será a imagem principal.
+  const meta = (dados.imagens_meta && typeof dados.imagens_meta === 'object') ? { ...dados.imagens_meta } : {};
+  encontradas.forEach(item => {
+    if (item.url) meta[item.url] = { titulo: item.titulo || null, fonte: item.fonte || null };
+  });
+  dados.imagens_meta = meta;
+
   const todas = [...new Set([...imagens, ...urls])].slice(0, 8);
   if (todas.length > imagens.length) {
     dados.imagens = todas;
