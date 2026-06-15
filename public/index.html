@@ -3371,7 +3371,6 @@ function aprovEnriquecerProd(idx) {
   // Inicializar slots de imagem
   if (typeof ivInicializar === 'function') setTimeout(ivInicializar, 100);
     oemIrEtapa(2);
-    _cntcRecalcular();
   }, 150);
 }
 
@@ -4221,11 +4220,14 @@ function oemIrEtapa(n) {
   var s2 = document.getElementById('oem-step2');
   if (s1) s1.classList.add('active');
   if (s2) s2.classList.add('active');
-  _cntcRecalcular();
   // Scroll para resultado
   if (res && window.innerWidth <= 768) {
     setTimeout(function() { res.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
   }
+  // Retorna a Promise do recálculo para quem precisar aguardar a
+  // renderização dos módulos antes de continuar (evita 2 recalcs
+  // concorrentes disputando #cntc-modulos — ver oemBuscar/oemBuscarDnaWeb).
+  return _cntcRecalcular();
 }
 
 // Dados completos do produto (campos do formulário OEM mesclados com o
@@ -4257,7 +4259,7 @@ async function oemBuscar() {
   document.getElementById('oem-f-familia').value = parsed.familia || '';
 
   document.getElementById('oem-resultado').style.display = 'block';
-  oemIrEtapa(1);
+  await oemIrEtapa(1);
   // Mobile: scroll para o resultado após teclado fechar
   if (window.innerWidth <= 768) {
     setTimeout(function() {
@@ -4360,7 +4362,7 @@ async function oemBuscar() {
   status.innerHTML = '✅ Enriquecimento completo!'
     + (sugeridosIA.length ? ' 🤖 IA sugeriu (em laranja): ' + esc(sugeridosIA.join(', ')) : '');
   // Exibir bloco único (campos + NTC + módulos)
-  oemIrEtapa(2);
+  await oemIrEtapa(2);
 }
 
 function oemColetar() {
@@ -5028,7 +5030,7 @@ async function oemBuscarDnaWeb() {
     if (elSku && !elSku.value) elSku.value = sku || q;
     var resultado = document.getElementById('oem-resultado');
     if (resultado) resultado.style.display = 'block';
-    oemIrEtapa(2);
+    await oemIrEtapa(2);
   }
 
   _oemDnaEmAndamento = true;
@@ -5320,7 +5322,6 @@ function oemCarregarDados(dados) {
     if (dados.material)          document.getElementById('oem-f-material').value = dados.material;
     document.getElementById('oem-resultado').style.display = 'block';
     oemIrEtapa(2);
-    _cntcRecalcular();
   }, 150);
 }
 
@@ -6389,7 +6390,6 @@ function catEnriquecerCadastro() {
     if (_catDados.material)          document.getElementById('oem-f-material').value = _catDados.material;
     document.getElementById('oem-resultado').style.display = 'block';
     oemIrEtapa(2);
-    _cntcRecalcular();
   }, 150);
 }
 
