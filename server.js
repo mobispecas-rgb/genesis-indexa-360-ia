@@ -964,23 +964,19 @@ app.delete('/api/ntc-referencias/:id', (req, res) => {
     }
 });
 
-// Faz uma requisição HTTP/HTTPS autenticada para a URL do conector (Basic Auth
-// se usuario/senha fornecidos). Retorna status, latência e corpo (até 64 KB).
-function _fetchConector(url, usuario, senha, timeout = 14000) {
+// Faz GET HTTP/HTTPS para um URL. authHeader sobrepõe Basic Auth quando fornecido.
+function _fetchConector(url, usuario, senha, timeout = 14000, authHeader = null) {
     return new Promise((resolve, reject) => {
         let parsed;
         try { parsed = new URL(url); } catch (e) { return reject(new Error('URL inválida: ' + url)); }
         const proto = parsed.protocol === 'https:' ? https : http;
         const headers = { 'User-Agent': 'Genesis-NTC-Conector/4.0', 'Accept': 'application/json, text/csv, application/xml, text/html, */*', 'Accept-Encoding': 'identity' };
-        if (usuario || senha) {
+        if (authHeader) {
+            headers['Authorization'] = authHeader;
+        } else if (usuario || senha) {
             headers['Authorization'] = 'Basic ' + Buffer.from(`${usuario || ''}:${senha || ''}`).toString('base64');
         }
-        const opts = {
-            hostname: parsed.hostname,
-            port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-            path: (parsed.pathname || '/') + (parsed.search || ''),
-            headers,
-        };
+        const opts = { hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: (parsed.pathname || '/') + (parsed.search || ''), headers };
         const t0 = Date.now();
         const req = proto.get(opts, (r) => {
             const latencia = Date.now() - t0;
@@ -994,25 +990,87 @@ function _fetchConector(url, usuario, senha, timeout = 14000) {
     });
 }
 
+// Faz POST HTTP/HTTPS com corpo JSON. Retorna {status, corpo}.
+function _httpPostJson(url, payload, authHeader = null, timeout = 12000) {
+    return new Promise((resolve, reject) => {
+        let parsed;
+        try { parsed = new URL(url); } catch (e) { return reject(new Error('URL inválida: ' + url)); }
+        const proto = parsed.protocol === 'https:' ? https : http;
+        const body = JSON.stringify(payload);
+        const headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'User-Agent': 'Genesis-NTC-Conector/4.0', 'Accept': 'application/json' };
+        if (authHeader) headers['Authorization'] = authHeader;
+        const opts = { hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: (parsed.pathname || '/') + (parsed.search || ''), method: 'POST', headers };
+        const req = proto.request(opts, (r) => {
+            let corpo = '';
+            r.setEncoding('utf8');
+            r.on('data', c => { corpo += c; });
+            r.on('end', () => resolve({ status: r.statusCode, corpo }));
+        });
+        req.setTimeout(timeout, () => { req.destroy(); reject(new Error('Timeout POST ' + timeout + 'ms')); });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+}
+
+// Tenta autenticar em uma loja Magento 2 via REST API.
+// Retorna { base, token, tipo } ou null se não for Magento / auth falhar.
+async function _tentarMagentoAuth(urlOriginal, usuario, senha) {
+    if (!usuario && !senha) return null;
+    let base;
+    try { base = new URL(urlOriginal).origin; } catch (_) { return null; }
+
+    // Tenta token de cliente primeiro (permissões limitadas mas mais seguro)
+    for (const tipo of ['customer', 'admin']) {
+        const endpoint = `${base}/rest/V1/integration/${tipo}/token`;
+        try {
+            const r = await _httpPostJson(endpoint, { username: usuario || '', password: senha || '' });
+            if (r.status === 200) {
+                const token = JSON.parse(r.corpo);
+                if (typeof token === 'string' && token.length > 10) return { base, token, tipo };
+            }
+        } catch (_) {}
+    }
+    return null;
+}
+
+// Extrai produtos de uma resposta Magento 2 REST (/rest/V1/products).
+function _parseMagentoProducts(corpo) {
+    try {
+        const data = JSON.parse(corpo);
+        const items = data.items || (Array.isArray(data) ? data : null);
+        if (!items) return null;
+        return {
+            formato: 'magento2',
+            itens: items.map(p => ({
+                sku: p.sku || '',
+                nome: p.name || '',
+                preco: p.price != null ? p.price : '',
+                status: p.status === 1 ? 'Ativo' : 'Inativo',
+                tipo: p.type_id || '',
+                peso: p.weight || '',
+            })),
+            total: data.total_count || items.length,
+        };
+    } catch (_) { return null; }
+}
+
 // Tenta detectar e parsear os dados recebidos do conector em um array de
 // produtos/objetos. Suporta JSON (array ou {data/itens/produtos:[]}) e CSV.
 function _parseConectorCorpo(corpo, contentType) {
     const ct = (contentType || '').toLowerCase();
 
-    // JSON
     if (ct.includes('json') || corpo.trimStart().startsWith('{') || corpo.trimStart().startsWith('[')) {
         try {
             const parsed = JSON.parse(corpo);
             if (Array.isArray(parsed)) return { formato: 'json', itens: parsed };
-            // Tenta encontrar array dentro de chaves comuns
-            for (const k of ['data', 'items', 'itens', 'produtos', 'products', 'result', 'results', 'rows', 'records']) {
-                if (parsed[k] && Array.isArray(parsed[k])) return { formato: 'json', itens: parsed[k], total: parsed.total || parsed.count || null };
+            for (const k of ['items', 'data', 'itens', 'produtos', 'products', 'result', 'results', 'rows', 'records']) {
+                if (parsed[k] && Array.isArray(parsed[k])) return { formato: 'json', itens: parsed[k], total: parsed.total_count || parsed.total || parsed.count || null };
             }
             return { formato: 'json', itens: [parsed] };
         } catch (_) {}
     }
 
-    // CSV (ponto-e-vírgula ou vírgula como separador)
     if (ct.includes('csv') || ct.includes('text/plain') || corpo.includes(';') || corpo.includes(',')) {
         try {
             const linhas = corpo.trim().split(/\r?\n/).filter(Boolean);
@@ -1029,27 +1087,38 @@ function _parseConectorCorpo(corpo, contentType) {
         } catch (_) {}
     }
 
-    // HTML / outro — retorna preview do corpo
     return { formato: 'html', itens: [], preview: corpo.substring(0, 800) };
 }
 
-// Testa se um conector consegue se conectar ao URL cadastrado (com credenciais).
+// Testa se um conector consegue se conectar ao URL cadastrado.
+// Se o servidor retornar 401, tenta autenticação Magento 2 automaticamente.
 app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
         if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
         if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
 
-        const r = await _fetchConector(item.url, item.usuario, item.senha);
-        const preview = r.corpo.substring(0, 500);
-        res.json({ ok: r.status < 400, status: r.status, latencia_ms: r.latencia_ms, content_type: r.content_type, preview, location: r.location || undefined });
+        let r = await _fetchConector(item.url, item.usuario, item.senha);
+        let auth_tipo = (item.usuario || item.senha) ? 'basic' : 'none';
+
+        if (r.status === 401) {
+            const mg = await _tentarMagentoAuth(item.url, item.usuario, item.senha);
+            if (mg) {
+                // Confirmação via endpoint de informações do cliente
+                const meUrl = mg.base + '/rest/V1/customers/me';
+                r = await _fetchConector(meUrl, null, null, 10000, 'Bearer ' + mg.token);
+                auth_tipo = 'magento2-' + mg.tipo;
+            }
+        }
+
+        res.json({ ok: r.status < 400, status: r.status, latencia_ms: r.latencia_ms, content_type: r.content_type, auth_tipo, preview: r.corpo.substring(0, 500), location: r.location || undefined });
     } catch (e) {
         res.json({ ok: false, erro: e.message });
     }
 });
 
-// Importa até `limite` produtos/registros do conector, detectando o formato
-// (JSON array, {data:[]}, CSV com cabeçalho) automaticamente.
+// Importa até `limite` produtos do conector, com fallback automático para
+// Magento 2 REST API quando a primeira tentativa retorna 401.
 app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
@@ -1057,7 +1126,26 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
         if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
 
         const limite = Math.min(parseInt((req.body && req.body.limite) || 20), 200);
-        const r = await _fetchConector(item.url, item.usuario, item.senha);
+
+        let r = await _fetchConector(item.url, item.usuario, item.senha);
+
+        // Fallback Magento 2: tenta token + API de produtos
+        if (r.status === 401 || r.status === 403) {
+            const mg = await _tentarMagentoAuth(item.url, item.usuario, item.senha);
+            if (mg) {
+                const prodUrl = `${mg.base}/rest/V1/products?searchCriteria[pageSize]=${limite}&searchCriteria[currentPage]=1`;
+                r = await _fetchConector(prodUrl, null, null, 20000, 'Bearer ' + mg.token);
+                if (r.status === 200) {
+                    const parsed = _parseMagentoProducts(r.corpo);
+                    if (parsed) {
+                        return res.json({ ok: true, ...parsed, preview_itens: parsed.itens.slice(0, limite), latencia_ms: r.latencia_ms, auth_tipo: 'magento2-' + mg.tipo });
+                    }
+                }
+                // Token funcionou mas /products falhou — cliente sem permissão de listar
+                return res.json({ ok: false, erro: `Autenticação Magento 2 (${mg.tipo}) OK, mas /rest/V1/products retornou HTTP ${r.status}. Conta precisa de permissão de catálogo ou use uma conta admin.`, status: r.status, auth_tipo: 'magento2-' + mg.tipo });
+            }
+        }
+
         if (r.status >= 400) return res.json({ ok: false, erro: `Servidor respondeu com HTTP ${r.status}.`, status: r.status });
 
         const { formato, itens, total, preview } = _parseConectorCorpo(r.corpo, r.content_type);
