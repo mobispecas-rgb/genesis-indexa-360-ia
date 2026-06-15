@@ -13,6 +13,12 @@ const net = require('net');
 const zlib = require('zlib');
 const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
+const { httpsJSON, validarGTIN, validarNCM, consultarNCMOficial, buscarWeb } = require('./src/services/web-utils');
+const { enriquecerDnaViaWeb } = require('./src/services/dna-enricher');
+const { buscarImagensReais } = require('./src/services/image-search');
+const db = require('./src/services/db');
+const autoEnrich = require('./src/services/auto-enrich');
+const { parseNFeXML } = require('./src/services/nfe-parser');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -27,22 +33,16 @@ setInterval(() => {
 }, 14 * 60 * 1000);
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Faz uma requisição HTTPS e resolve com o JSON da resposta.
-// Aborta com erro após `timeoutMs` para evitar requisições penduradas
-// (causa de "travamentos" quando Bling/Wix/Serper não respondem).
-function httpsJSON(opts, body, timeoutMs = 15000) {
-  return new Promise((resolve, reject) => {
-    const req = https.request(opts, r => {
-      let b = '';
-      r.on('data', d => b += d);
-      r.on('end', () => { try { resolve(JSON.parse(b)); } catch(e) { reject(e); } });
-    });
-    req.on('error', reject);
-    req.setTimeout(timeoutMs, () => req.destroy(new Error(`Timeout: sem resposta de ${opts.hostname} em ${timeoutMs/1000}s`)));
-    if (body) req.write(body);
-    req.end();
-  });
+// ── Auto-Enriquecimento 24/7 — melhora produtos já cadastrados em background ─
+// Processa um lote por ciclo: rastreabilidade (fornecedor/avulso) → DNA na
+// Web → colonização de imagens reais → recálculo do NTC 4.0.
+const AUTO_ENRICH_INTERVAL_MIN = Number(process.env.AUTO_ENRICH_INTERVAL_MIN) || 10;
+if (process.env.AUTO_ENRICH_ENABLED !== 'false') {
+  setInterval(() => {
+    autoEnrich.rodarCicloAutoEnrich().catch(e => console.error('[Auto-Enrich]', e.message));
+  }, AUTO_ENRICH_INTERVAL_MIN * 60 * 1000);
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Verifica se um IP é privado/local — usado para impedir SSRF no raspador de URLs
 function ipPrivada(ip) {
@@ -225,104 +225,6 @@ function extrairListaProdutosLd(html, baseUrl) {
     }
   }
   return produtos;
-}
-
-// Valida checksum de GTIN-8/12/13/14 (módulo 10, peso 3/1 a partir do dígito mais à direita)
-function validarGTIN(codigo) {
-  const digitos = String(codigo == null ? '' : codigo).replace(/\D/g, '');
-  if (![8, 12, 13, 14].includes(digitos.length)) return false;
-  const nums = digitos.split('').map(Number);
-  const check = nums.pop();
-  let soma = 0;
-  for (let i = 0; i < nums.length; i++) {
-    const posicaoDaDireita = nums.length - i;
-    soma += nums[i] * (posicaoDaDireita % 2 === 1 ? 3 : 1);
-  }
-  const digitoCalculado = (10 - (soma % 10)) % 10;
-  return digitoCalculado === check;
-}
-
-// Valida NCM: precisa ter exatamente 8 dígitos numéricos (TIPI). Retorna o código limpo ou null.
-function validarNCM(codigo) {
-  const digitos = String(codigo == null ? '' : codigo).replace(/\D/g, '');
-  return digitos.length === 8 ? digitos : null;
-}
-
-// Consulta a tabela TIPI oficial (BrasilAPI) para confirmar se o NCM existe.
-// Retorna a descrição oficial do código, ou null se não encontrado/erro.
-async function consultarNCMOficial(ncm8) {
-  try {
-    const data = await httpsJSON({ hostname: 'brasilapi.com.br', path: '/api/ncm/v1/' + ncm8, method: 'GET' }, null, 8000);
-    return (data && data.codigo && data.descricao) ? data.descricao : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// Busca web com fallback: Serper.dev (primário) → Google Custom Search (secundário)
-// Extrai texto limpo de HTML — remove tags, scripts, estilos
-function htmlParaTexto(html, maxChars = 4000) {
-  let t = html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ').trim();
-  return t.length > maxChars ? t.substring(0, maxChars) : t;
-}
-
-async function buscarWeb(q, num = 10) {
-  const resultados = [];
-
-  // 1. Busca Google via Serper
-  if (process.env.SERPER_API_KEY) {
-    try {
-      const body = JSON.stringify({ q, num, gl: 'br', hl: 'pt-br' });
-      const data = await httpsJSON({
-        hostname: 'google.serper.dev', path: '/search', method: 'POST',
-        headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-      }, body);
-      (data.organic || []).forEach(item => {
-        if (item.title && item.snippet) resultados.push({ titulo: item.title, fonte: item.link, trecho: item.snippet });
-      });
-    } catch (e) {
-      console.error('[Busca Web] Serper:', e.message);
-    }
-  }
-
-  // 2. Fallback Google Custom Search
-  if (resultados.length < num && process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
-    try {
-      const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&num=10`);
-      const data = await httpsJSON({ hostname: url.hostname, path: url.pathname + url.search, method: 'GET' });
-      (data.items || []).forEach(item => {
-        if (item.title && item.snippet && !resultados.some(r => r.fonte === item.link)) {
-          resultados.push({ titulo: item.title, fonte: item.link, trecho: item.snippet });
-        }
-      });
-    } catch (e) {
-      console.error('[Busca Web] Google:', e.message);
-    }
-  }
-
-  // 3. FIX: Fetch real das 3 primeiras páginas para capturar "Similares", aplicações completas, etc.
-  // Snippet do Google tem ~150 chars — seções como "Similares: NAKATA 42835 · CORVEN N444128"
-  // só aparecem no corpo completo da página.
-  const top3 = resultados.slice(0, 3);
-  await Promise.all(top3.map(async (item, idx) => {
-    try {
-      const html = await fetchHtmlSeguro(item.fonte);
-      const textoCompleto = htmlParaTexto(html, 5000);
-      if (textoCompleto.length > item.trecho.length) {
-        resultados[idx].trecho = textoCompleto;
-        resultados[idx].trecho_completo = true;
-      }
-    } catch (e) {
-      // Silencia erros de fetch individual — snippet do Google ainda está disponível
-    }
-  }));
-
-  return resultados.slice(0, num);
 }
 
 // -----------------------------------------------------------
@@ -586,172 +488,12 @@ REGRAS ABSOLUTAS:
 // volta null com confiança "baixa" e motivo "fonte não encontrada". EAN passa
 // por checksum GTIN e NCM precisa ter 8 dígitos — senão é marcado para
 // confirmação fiscal. Resultado sempre "pendente_confirmacao": nunca auto-aprova.
-const CAMPOS_DNA = [
-    'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
-    'marca_veiculo', 'modelo_veiculo', 'versao_veiculo', 'ano_inicial', 'ano_final',
-    'cilindrada', 'material', 'posicao', 'fmsi', 'comprimento', 'largura', 'altura',
-    'cross_codes', 'aplicacoes_adicionais',
-    // NTC completo — módulos EC, BTA, LG, FI, CC-OEM
-    'funcao_tecnica', 'boletins', 'substituicoes',
-    'fabricante_original', 'montadora',
-    'cc_oem', 'peso_bruto', 'peso_liquido'
-];
-
+// (lógica compartilhada com o job de auto-enriquecimento em src/services/dna-enricher.js)
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
     const { sku, fabricante, nome } = req.body;
     if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
-
-    const vazio = {};
-    CAMPOS_DNA.forEach(c => { vazio[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' }; });
-
-    if (!process.env.ANTHROPIC_API_KEY) {
-        return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true });
-    }
-
-    // FIX: múltiplas queries especializadas para cobrir similares, aplicação e fiscal
-    const qBase    = [fabricante, sku, nome].filter(Boolean).join(' ');
-    const qSimilar = (sku || nome) + ' similares cross-reference aftermarket';
-    const qFiscal  = (sku || nome) + (fabricante ? ' ' + fabricante : '') + ' NCM EAN ficha técnica';
-    const qAplic   = [fabricante, sku, nome].filter(Boolean).join(' ') + ' aplicação veicular motor';
-
-    let trechos = [];
-    try {
-        // Busca base (10 resultados com fetch real das top-3)
-        const r1 = await buscarWeb(qBase, 10);
-        // Busca de similares/cross-codes (5 resultados adicionais)
-        const r2 = await buscarWeb(qSimilar, 5);
-        // Busca fiscal (5 resultados adicionais)
-        const r3 = await buscarWeb(qFiscal, 5);
-        // Busca de aplicação veicular (5 resultados adicionais)
-        const r4 = await buscarWeb(qAplic, 5);
-
-        // Une e deduplica por URL
-        const vistos = new Set();
-        for (const lista of [r1, r2, r3, r4]) {
-            for (const item of lista) {
-                if (!vistos.has(item.fonte)) {
-                    vistos.add(item.fonte);
-                    trechos.push(item);
-                }
-            }
-        }
-        trechos = trechos.slice(0, 20); // max 20 fontes para a IA
-    } catch (e) {
-        console.error('[Enriquecer DNA] busca:', e.message);
-    }
-
-    if (trechos.length === 0) {
-        return res.json({
-            ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
-            mensagem: 'Sem resultados de busca — nenhuma fonte encontrada.'
-        });
-    }
-
-    try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 2500,
-            system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
-
-Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa"}.
-
-Campos:
-- codigo_oem: código OEM / part number de referência do fabricante do veículo
-- ean: código EAN/GTIN do produto (8, 12, 13 ou 14 dígitos numéricos)
-- ncm: código NCM (8 dígitos numéricos)
-- cest: código CEST (formato NN.NNN.NN), se aplicável
-- motor: aplicação de motor/veículo (texto livre, ex: "1.0 12V Flex")
-- codigo_motor: código interno do motor (ex: "EA211", "1GD-FTV", "D4BH", "J2"). Para Hyundai HR procure "D4BH". Para Kia Bongo procure "J2". Verifique a aplicação completa nos resultados — muitas lojas incluem o código do motor na descrição
-- marca_veiculo: marca do veículo de aplicação (ex: "Toyota")
-- modelo_veiculo: modelo do veículo (ex: "Hilux")
-- versao_veiculo: versão/trim do veículo (ex: "SRV", "SR", "STD GL", "LX"). PRESTE ATENÇÃO a padrões como "CHASSIS ALTO STD GL", "LONGUE DECK STD" nos resultados de autopeças — extraia a versão da string de aplicação completa
-- ano_inicial: ano inicial de aplicação (número de 4 dígitos)
-- ano_final: ano final de aplicação (número de 4 dígitos)
-- cilindrada: cilindrada em cm³ (número)
-- material: material/composição da peça
-- posicao: posição de montagem (ex: "Dianteiro", "Traseiro Esquerdo")
-- fmsi: código de referência FMSI (padrão usado em pastilhas/lonas de freio)
-- comprimento: comprimento em cm (número)
-- largura: largura em cm (número)
-- altura: altura em cm (número)
-- cross_codes: códigos equivalentes/substitutos (cross-reference) desta peça em OUTRAS marcas aftermarket. PRESTE ATENÇÃO ESPECIAL a seções com títulos como "Similares", "Similar", "Equivalentes", "Cross-reference", "Substitutos", "Aplicação", ou padrões como "MARCA CÓDIGO · MARCA CÓDIGO" nos trechos. Ex de padrão a detectar: "Similares> AC31146 - NAKATA 42835 - CORVEN N444128 - KYB 543104F000" → extrair NAKATA 42835; CORVEN N444128; KYB 543104F000. Use as marcas adequadas à categoria — filtros (Fram, Mann, Mahle, Wega, Tecfil), correias/rolamentos (Gates, Dayco, INA, SKF, ContiTech), freios (TRW, Frasle, Bosch), amortecedores (Nakata, Monroe, Gabriel, Sachs, KYB), ignição (NGK, Bosch). Formato: string com itens "MARCA CÓDIGO" separados por "; "
-- aplicacoes_adicionais: MUITOS produtos (filtros, correias, pastilhas etc.) servem para vários veículos/motores/anos diferentes — não apenas um. Os campos marca_veiculo/modelo_veiculo/versao_veiculo/motor/codigo_motor/cilindrada/ano_inicial/ano_final acima devem trazer a aplicação MAIS REPRESENTATIVA (ex: a mais citada nos resultados ou a primeira/principal). Todas as OUTRAS aplicações encontradas (combinações diferentes de marca/modelo/motor/ano) devem ser listadas aqui. Formato: string com uma aplicação por linha (separadas por "\n"), no padrão "Marca Modelo Motor (AnoInicial-AnoFinal)" (ex: "Jeep Compass 2.0 16V Flex (2017-2023)\nJeep Renegade 1.8 16V Flex (2015-2022)\nJeep Commander 1.3 Turbo Flex (2022-2024)").
-- funcao_tecnica: descrição técnica da função da peça em 1-2 frases claras (ex: "Absorve impactos e vibrações da suspensão dianteira, garantindo estabilidade e conforto." ou "Filtra impurezas do óleo lubrificante, protegendo o motor contra desgaste prematuro.")
-- boletins: boletins técnicos do fabricante, homologações ou normas aplicáveis. Um item por linha separado por "\n". Ex: "Homologado VW AG\nAtende norma ABNT NBR 6560\nBoletim COFAP BT-2022-014". Null se não houver evidência.
-- substituicoes: códigos de peças substituídas ou substitutas (mesmo fit). Um código por linha separado por "\n". Null se não houver.
-- fabricante_original: nome do fabricante original da peça (ex: "COFAP", "INA", "Mann Filter", "Bosch", "Gates", "Mahle"). Extraia do SKU, nome ou resultados de busca.
-- montadora: nome do fabricante do veículo (montadora) para o qual esta peça foi originalmente projetada (ex: "Toyota Motor Corporation", "Volkswagen AG", "Hyundai Motor Company"). Se atende múltiplas, coloque a principal.
-- cc_oem: código(s) OEM de catálogo oficial da montadora para esta peça. PRESTE ATENÇÃO ao padrão "CÓDIGO - OE" nos resultados (ex: "543104F000 - OE" ou "KYB 543104F000 - OE"), que indica o código OEM original da montadora. Também verifique URLs de produtos que contenham o código no slug (ex: ".../b50994m-ac31146-543104f000"). Um código por linha separado por "\n". Ex: "58101-2BA70\n543104F000". Null se não encontrado.
-- peso_bruto: peso bruto do produto com embalagem em kg, número decimal (ex: 0.380). Null se não encontrado.
-- peso_liquido: peso líquido do produto sem embalagem em kg, número decimal (ex: 0.280). Null se não encontrado.
-
-REGRAS ABSOLUTAS:
-1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
-2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
-3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
-4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
-5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.
-6. NUNCA preencha "marca_veiculo" ou "montadora" com o nome do FABRICANTE DA PEÇA (ex: VALEO, Bosch, Mahle, NGK, TRW, Magneti Marelli, Delphi, Denso, Continental são fabricantes de autopeças — NÃO são montadoras de veículo). Esses nomes pertencem apenas a "fabricante_original". "marca_veiculo"/"montadora" só podem ser marcas de veículos (ex: Toyota, Volkswagen, Fiat, Chevrolet, Hyundai, Ford).`,
-            messages: [{
-                role: 'user',
-                content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca numerados:\n`
-                    + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n')
-            }]
-        });
-        const texto = msg.content?.[0]?.text || '{}';
-        let bruto;
-        try {
-            const jsonMatch = texto.match(/\{[\s\S]*\}/);
-            bruto = JSON.parse(jsonMatch ? jsonMatch[0] : texto);
-        } catch (e) {
-            bruto = {};
-        }
-
-        const campos = {};
-        CAMPOS_DNA.forEach(c => {
-            const item = bruto[c];
-            if (!item || item.valor == null || item.valor === '') {
-                campos[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' };
-                return;
-            }
-            const idx = Number(item.fonte_idx);
-            const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
-            let valor = item.valor;
-            let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
-            let motivo = null;
-
-            if (c === 'ean') {
-                if (!validarGTIN(valor)) { valor = null; confianca = 'baixa'; motivo = 'GTIN inválido (checksum)'; }
-            }
-            if (c === 'ncm') {
-                const ncmLimpo = validarNCM(valor);
-                if (!ncmLimpo) { confianca = 'baixa'; motivo = 'requer confirmação fiscal — NCM deve ter 8 dígitos'; }
-                else valor = ncmLimpo;
-            }
-            campos[c] = { valor, fonte: fonte || null, confianca, motivo };
-        });
-
-        // Confirma o NCM contra a tabela TIPI oficial (BrasilAPI) — eleva a confiança
-        // se o código existir oficialmente, ou sinaliza confirmação fiscal se não existir
-        if (campos.ncm.valor) {
-            const descOficial = await consultarNCMOficial(campos.ncm.valor);
-            if (descOficial) {
-                campos.ncm.confianca = 'alta';
-                campos.ncm.motivo = 'confirmado na TIPI: ' + descOficial;
-            } else {
-                campos.ncm.confianca = 'baixa';
-                campos.ncm.motivo = 'NCM não encontrado na tabela TIPI oficial — requer confirmação fiscal';
-            }
-        }
-
-        const encontrado = CAMPOS_DNA.some(c => campos[c].valor != null);
-        res.json({ ok: true, encontrado, campos, fontes_consultadas: trechos.map(t => t.fonte), pendente_confirmacao: true });
-    } catch (e) {
-        console.error('[Enriquecer DNA] IA:', e.message);
-        res.json({ ok: false, erro: e.message, campos: vazio, pendente_confirmacao: true });
-    }
+    const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome });
+    res.json(resultado);
 });
 
 // Extração de texto de PDF — permite importar catálogos/notas de fornecedor em PDF
@@ -975,74 +717,297 @@ app.get('/api/imagens/proxy', (req, res) => {
 });
 
 // Busca de Imagens — Serper.dev (primário) ou Google Custom Search (fallback)
+// (lógica compartilhada com o job de auto-enriquecimento em src/services/image-search.js)
 app.get('/api/imagens/buscar', async (req, res) => {
     const { q, fonte } = req.query;
     if (!q) return res.json({ ok: false, erro: 'Parametro q obrigatorio', imagens: [] });
 
-    // 1) Serper.dev — 2.500 buscas grátis, depois $1/1.000 (só 1 chave)
-    if (process.env.SERPER_API_KEY) {
-        try {
-            const body = JSON.stringify({ q, num: 12 });
-            const data = await httpsJSON({
-                hostname: 'google.serper.dev', path: '/images', method: 'POST',
-                headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-            }, body);
-            const imagens = (data.images||[]).map(item => ({
-                url: item.imageUrl,
-                thumb: item.thumbnailUrl || item.imageUrl,
-                titulo: item.title,
-                fonte: item.source
-            }));
-            return res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider: 'serper' });
-        } catch(e) {
-            return res.json({ ok: false, erro: 'Erro Serper: ' + e.message, imagens: [] });
-        }
+    if (!process.env.SERPER_API_KEY && !(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX)) {
+        return res.json({
+            ok: false, imagens: [],
+            mensagem: 'Configure SERPER_API_KEY no Render para busca de imagens (2.500 buscas grátis em serper.dev).',
+            q, fonte
+        });
     }
 
-    // 2) Google Custom Search — 100 buscas/dia grátis (fallback)
-    if (process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX) {
-        try {
-            const url = new URL(`https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_SEARCH_KEY}&cx=${process.env.GOOGLE_SEARCH_CX}&q=${encodeURIComponent(q)}&searchType=image&num=12`);
-            const data = await httpsJSON({ hostname: url.hostname, path: url.pathname + url.search, method: 'GET' });
-            const imagens = (data.items||[]).map(item => ({
-                url: item.link,
-                thumb: item.image && item.image.thumbnailLink,
-                titulo: item.title,
-                fonte: item.displayLink
-            }));
-            return res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider: 'google' });
-        } catch(e) {
-            return res.json({ ok: false, erro: 'Erro Google Search: ' + e.message, imagens: [] });
-        }
+    try {
+        const imagens = await buscarImagensReais(q, 12);
+        const provider = process.env.SERPER_API_KEY ? 'serper' : 'google';
+        res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, imagens: [] });
     }
-
-    // Sem API configurada
-    res.json({
-        ok: false, imagens: [],
-        mensagem: 'Configure SERPER_API_KEY no Render para busca de imagens (2.500 buscas grátis em serper.dev).',
-        q, fonte
-    });
 });
 
-// Produtos (stub)
+// ─── PRODUTOS — Catálogo persistido (SQLite) ──────────────────────────
+// Cada produto guarda os dados completos do NTC (`dados`), além de
+// fornecedor/nota fiscal (rastreabilidade) e o NTC já calculado.
 app.get('/api/produtos', (req, res) => {
-    res.json({ ok: true, produtos: [], total: 0 });
+    try {
+        const limit = Math.min(parseInt(req.query.limite) || 50, 200);
+        const offset = parseInt(req.query.offset) || 0;
+        const { decisao, fonte, categoria, subcategoria, busca } = req.query;
+        let produtos = db.listarProdutos({ limit, offset, decisao, fonte, busca });
+
+        produtos = produtos.map(p => {
+            const familia = p.dados.familia_tecnica || p.dados.familia || null;
+            return {
+                ...p,
+                categoria: familia ? nomeCategoriaPrincipal(familia) : null,
+                subcategoria: familia ? classificarSubcategoria(familia, p.nome) : null,
+            };
+        });
+
+        if (categoria) produtos = produtos.filter(p => p.categoria === categoria);
+        if (subcategoria) produtos = produtos.filter(p => p.subcategoria === subcategoria);
+
+        res.json({ ok: true, produtos, total: db.contarProdutos() });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, produtos: [] });
+    }
 });
+
+app.get('/api/produtos/:id', (req, res) => {
+    const produto = db.obterProduto(req.params.id);
+    if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+    res.json({ ok: true, produto });
+});
+
+// Cria/atualiza um produto (upsert pelo SKU), calcula o NTC 4.0 e persiste.
 app.post('/api/produtos', (req, res) => {
-    const rast_hash = require('crypto').createHash('md5').update((req.body.sku||'')+(req.body.oem||'')+'MOBIS').digest('hex').substring(0,16);
-    res.json({ ok: true, id_bling: 'LOCAL-' + Date.now(), nct: 0.90, rast_hash });
+    try {
+        const body = req.body || {};
+        const dados = body.dados && typeof body.dados === 'object' ? body.dados : body;
+        const sku = body.sku || dados.codigo_fabricante || dados.sku || dados.codigo_oem;
+        if (!sku) return res.status(400).json({ ok: false, erro: 'sku (ou codigo_fabricante) obrigatório' });
+
+        const resultado = ntcEngine.processar(dados);
+        const fonte = body.fonte || (body.fornecedor_nome ? 'fornecedor' : 'avulso');
+
+        const produto = db.upsertProduto({
+            sku: String(sku),
+            nome: dados.nome || null,
+            dados,
+            fornecedor_nome: body.fornecedor_nome || null,
+            fornecedor_cnpj: body.fornecedor_cnpj || null,
+            nota_fiscal_chave: body.nota_fiscal_chave || null,
+            fonte,
+            ntc: resultado.ntc,
+            decisao: resultado.decisao,
+            rast_hash: resultado.rast_hash,
+        });
+
+        res.json({ ok: true, produto, ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
 });
-app.delete('/api/produtos/:id', (req, res) => { res.json({ ok: true }); });
-app.post('/api/produtos/:id/enriquecer', (req, res) => { res.json({ ok: true }); });
+
+app.delete('/api/produtos/:id', (req, res) => {
+    try {
+        db.excluirProduto(req.params.id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Força o reprocessamento (DNA web + imagens + NTC) de um produto específico
+app.post('/api/produtos/:id/enriquecer', async (req, res) => {
+    try {
+        const produto = db.obterProduto(req.params.id);
+        if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+        const resultado = await autoEnrich.enriquecerProdutoAuto(produto);
+        res.json({ ok: true, resultado });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Sincroniza um produto do catálogo local com Wix e Bling, levando o Selo de
+// Qualidade NTC, código de rastreamento (rast_hash), códigos cambiados,
+// medidas/pesos de fábrica e categoria/subcategoria resolvidas automaticamente.
+app.post('/api/produtos/:id/sincronizar', async (req, res) => {
+    try {
+        const produto = db.obterProduto(req.params.id);
+        if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+
+        const p = {
+            ...produto.dados,
+            sku: produto.sku,
+            codigo_fabricante: produto.dados.codigo_fabricante || produto.sku,
+            nome: produto.nome || produto.dados.nome,
+            ntc: produto.ntc,
+            decisao: produto.decisao,
+            rast_hash: produto.rast_hash,
+        };
+
+        const resultado = { ok: true, wix: null, bling: null };
+        const atualizacao = {};
+
+        if (process.env.WIX_API_KEY && process.env.WIX_SITE_ID) {
+            try {
+                const { payload, categoriaIds } = await montarPayloadProdutoWix(p);
+                const data = await wixRequest('POST', '/stores/v3/products-with-inventory', payload);
+                if (data.product && data.product.id) {
+                    await atribuirCategoriasWix(data.product.id, categoriaIds);
+                    atualizacao.wix_id = data.product.id;
+                    resultado.wix = { ok: true, id: data.product.id, categorias: categoriaIds || null };
+                } else {
+                    resultado.wix = { ok: false, erro: JSON.stringify(data) };
+                }
+            } catch (e) { resultado.wix = { ok: false, erro: e.message }; }
+        } else {
+            resultado.wix = { ok: false, erro: 'WIX_API_KEY/WIX_SITE_ID não configurados' };
+        }
+
+        if (process.env.BLING_API_KEY || process.env.BLING_CLIENT_ID) {
+            try {
+                const payload = await montarPayloadProdutoBling(p);
+                const data = await blingRequest('POST', '/produtos', payload);
+                if (data.data && data.data.id) {
+                    atualizacao.bling_id = data.data.id;
+                    resultado.bling = { ok: true, id: data.data.id, categoria: payload.categoria || null };
+                } else {
+                    resultado.bling = { ok: false, erro: JSON.stringify(data.error || data) };
+                }
+            } catch (e) { resultado.bling = { ok: false, erro: e.message }; }
+        } else {
+            resultado.bling = { ok: false, erro: 'BLING_API_KEY/BLING_CLIENT_ID não configurados' };
+        }
+
+        if (Object.keys(atualizacao).length) {
+            db.upsertProduto({ sku: produto.sku, dados: produto.dados, ...atualizacao });
+        }
+
+        res.json(resultado);
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Lista categorias/subcategorias resolvidas (mesma taxonomia usada no Wix e no
+// Bling) a partir do catálogo local — usada para filtrar produtos por
+// categoria/subcategoria dentro do app.
+app.get('/api/categorias', (req, res) => {
+    try {
+        const produtos = db.listarProdutos({ limit: 1000 });
+        const mapa = new Map();
+        for (const produto of produtos) {
+            const familia = produto.dados.familia_tecnica || produto.dados.familia;
+            if (!familia) continue;
+            const categoria = nomeCategoriaPrincipal(familia);
+            const subcategoria = classificarSubcategoria(familia, produto.nome) || null;
+            const chave = categoria + '|' + (subcategoria || '');
+            if (!mapa.has(chave)) mapa.set(chave, { categoria, subcategoria, total: 0 });
+            mapa.get(chave).total += 1;
+        }
+        res.json({ ok: true, categorias: [...mapa.values()] });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, categorias: [] });
+    }
+});
+
+// ─── AUTO-ENRIQUECIMENTO 24/7 — status e disparo manual ───────────────
+app.get('/api/auto-enrich/status', (req, res) => {
+    res.json({ ok: true, ...autoEnrich.obterStatus() });
+});
+
+app.post('/api/auto-enrich/trigger', async (req, res) => {
+    const batchSize = parseInt(req.body && req.body.batchSize) || undefined;
+    const resultado = await autoEnrich.rodarCicloAutoEnrich(batchSize);
+    res.json(resultado);
+});
+
+// ─── NOTAS FISCAIS DE ENTRADA (NF-e XML) ──────────────────────────────
+// Importa uma NF-e XML de fornecedor: cada item da nota é cadastrado/
+// atualizado preservando o fornecedor (CNPJ/nome) e a chave da nota para
+// rastreabilidade. Produtos sem nota associada continuam marcados como
+// "avulso" pelo job de auto-enriquecimento.
+app.post('/api/notas/importar-xml', upload.single('arquivo'), async (req, res) => {
+    try {
+        const xml = req.file ? req.file.buffer.toString('utf8') : (req.body && req.body.xml);
+        if (!xml || !xml.includes('<infNFe')) {
+            return res.json({ ok: false, erro: 'XML de NF-e inválido — envie o arquivo no campo "arquivo" ou o conteúdo em "xml".' });
+        }
+
+        const { chave, fornecedor, itens } = parseNFeXML(xml);
+        if (!itens.length) return res.json({ ok: false, erro: 'Nenhum item encontrado na NF-e' });
+
+        const produtos = [];
+        for (const item of itens) {
+            const sku = item.codigo || item.ean || ('NF-' + (chave || Date.now()) + '-' + (produtos.length + 1));
+            const existente = db.obterProdutoPorSku(sku);
+            const dados = existente ? { ...existente.dados } : {};
+
+            if (!dados.nome && item.nome) dados.nome = item.nome;
+            if (!dados.codigo_fabricante && item.codigo) dados.codigo_fabricante = item.codigo;
+            if (!dados.ean && item.ean && validarGTIN(item.ean)) dados.ean = item.ean;
+            if (!dados.ncm && item.ncm) dados.ncm = validarNCM(item.ncm) || dados.ncm;
+            if (!dados.cest && item.cest) dados.cest = item.cest;
+            // Rastreabilidade: fornecedor da nota entra na Linhagem Genealógica (LG),
+            // nunca substitui o fabricante/DNA do produto.
+            if (!dados.linhagem_distribuidor && fornecedor.nome) dados.linhagem_distribuidor = fornecedor.nome;
+
+            const resultado = ntcEngine.processar(dados);
+            const produto = db.upsertProduto({
+                sku: String(sku),
+                nome: dados.nome || null,
+                dados,
+                fornecedor_nome: fornecedor.nome,
+                fornecedor_cnpj: fornecedor.cnpj,
+                nota_fiscal_chave: chave,
+                fonte: 'fornecedor',
+                ntc: resultado.ntc,
+                decisao: resultado.decisao,
+                rast_hash: resultado.rast_hash,
+            });
+            produtos.push({ sku: produto.sku, nome: produto.nome, ntc: produto.ntc, decisao: produto.decisao });
+        }
+
+        res.json({ ok: true, chave, fornecedor, total: itens.length, produtos });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
 
 // Bling — token OAuth2
 let _blingToken = null;
 let _blingTokenExp = 0;
 
+// Troca um refresh_token (renovação automática) ou authorization code (primeira
+// autorização, via /api/bling/callback) por um novo par de tokens junto à API
+// OAuth2 do Bling, e persiste o resultado no banco local.
+async function trocarTokenBling(qs) {
+  const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
+  const data = await httpsJSON({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + creds, 'Content-Length': Buffer.byteLength(qs) }
+  }, qs);
+  if (!data.access_token) throw new Error('Bling token inválido: ' + JSON.stringify(data));
+  db.salvarBlingOAuth(data);
+  _blingToken = data.access_token;
+  _blingTokenExp = Date.now() + (data.expires_in || 21600) * 1000 - 60000;
+  return _blingToken;
+}
+
 async function getBlingToken() {
   if (process.env.BLING_API_KEY) return process.env.BLING_API_KEY.trim().replace(/[\r\n]/g, '');
   if (_blingToken && Date.now() < _blingTokenExp) return _blingToken;
   if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) throw new Error('Configure BLING_API_KEY ou BLING_CLIENT_ID+BLING_CLIENT_SECRET no Render');
+
+  // Se já existe autorização OAuth persistida (authorization_code via /api/bling/callback),
+  // usa o access_token salvo ou renova com o refresh_token
+  const tokens = db.obterBlingOAuth();
+  if (tokens && tokens.access_token && Date.now() < tokens.expires_em) {
+    _blingToken = tokens.access_token;
+    _blingTokenExp = tokens.expires_em;
+    return _blingToken;
+  }
+  if (tokens && tokens.refresh_token) {
+    return trocarTokenBling('grant_type=refresh_token&refresh_token=' + encodeURIComponent(tokens.refresh_token));
+  }
+
+  // Caso contrário, client_credentials direto (modo simples por app do Bling)
   const creds = Buffer.from(process.env.BLING_CLIENT_ID + ':' + process.env.BLING_CLIENT_SECRET).toString('base64');
   const qs = 'grant_type=client_credentials';
   const data = await httpsJSON({ hostname: 'www.bling.com.br', path: '/Api/v3/oauth/token', method: 'POST',
@@ -1178,12 +1143,23 @@ async function resolverCategoriaBling(familia, nomeProduto) {
   }
 }
 
+// Selo de Qualidade NTC em texto (🟢 alto / 🟡 médio / 🔴 baixo) — usado no
+// PDV (Bling) e na ficha técnica, para confirmar visualmente que o produto
+// já passou pelo enriquecimento automático e qual o nível de confiança dele.
+function seloQualidadeNTC(p) {
+  if (p.ntc == null) return null;
+  const pct = Math.round(p.ntc * 100);
+  const cor = p.ntc >= 0.95 ? '🟢' : p.ntc >= 0.60 ? '🟡' : '🔴';
+  return cor + ' Selo de Qualidade NTC: ' + pct + '% (' + (p.decisao || '—') + ')';
+}
+
 // Monta a descrição complementar (ficha técnica) usada no PDV/Bling
 // Inclui todos os campos do Motor NTC 4.0 que forem preenchidos
 function montarFichaTecnica(p) {
   const linhas = [];
 
   // ── DNA / Identificação ──
+  if (p.codigo_fabricante || p.sku) linhas.push('SKU / Código de Fábrica: ' + (p.codigo_fabricante || p.sku));
   if (p.familia_tecnica || p.familia) linhas.push('Família: ' + (p.familia_tecnica || p.familia));
   if (p.posicao)         linhas.push('Posição: ' + p.posicao);
 
@@ -1226,8 +1202,8 @@ function montarFichaTecnica(p) {
 
   // ── NTC ──
   if (p.rast_hash)       linhas.push('RAST-HASH NTC: ' + p.rast_hash);
-  if (p.ntc !== undefined && p.ntc !== null)
-    linhas.push('NTC 4.0: ' + Math.round(p.ntc * 100) + '% — ' + (p.decisao || ''));
+  const selo = seloQualidadeNTC(p);
+  if (selo)              linhas.push(selo);
 
   return linhas.join('\n');
 }
@@ -1240,6 +1216,15 @@ async function montarPayloadProdutoBling(p) {
   const fichaTecnica = montarFichaTecnica(p);
   const familia = p.familia_tecnica || p.familia;
   const idCategoria = await resolverCategoriaBling(familia, p.nome);
+  const pesoBruto = parseFloat(p.peso_bruto || p.peso_liquido) || null;
+  const dimensoes = (p.comprimento || p.largura || p.altura || pesoBruto) ? {
+    largura: parseFloat(p.largura) || 0,
+    altura: parseFloat(p.altura) || 0,
+    profundidade: parseFloat(p.comprimento) || 0,
+    unidadeMedida: 'CM',
+    ...(pesoBruto ? { pesoBruto } : {}),
+  } : null;
+
   // Nome inteligente: SKU + nome_enriquecido + fabricante + aplicação
   const nomeBase = p.nome_enriquecido || p.nome || p.codigo_fabricante || p.sku || 'Produto sem nome';
   const nomeFinal = nomeBase.length > 120
@@ -1281,7 +1266,8 @@ async function montarPayloadProdutoBling(p) {
     ...(p.fabricante ? { marca: { nome: p.fabricante } } : {}),
     ...(midia.length ? { midia } : {}),
     ...(p.preco ? { preco: parseFloat(p.preco) || 0 } : {}),
-    ...(idCategoria ? { categoria: { id: idCategoria } } : {})
+    ...(idCategoria ? { categoria: { id: idCategoria } } : {}),
+    ...(dimensoes ? { dimensoes } : {}),
   };
 }
 
@@ -1325,6 +1311,39 @@ app.get('/api/bling/status', async (req, res) => {
 });
 
 app.post('/api/bling/token/renovar', (req, res) => { _blingToken = null; _blingTokenExp = 0; res.json({ ok: true, mensagem: 'Cache de token limpo — será renovado automaticamente' }); });
+
+// ─── Bling — URL de redirecionamento do app (cadastro do aplicativo no Bling) ─
+// Recebe o "code" da autorização OAuth2, troca por access_token+refresh_token
+// e persiste no banco local para uso futuro (renovação automática).
+function paginaBlingCallback(ok, mensagem) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Bling — Genesis iRollo 360</title></head>
+<body style="font-family:Arial,sans-serif;text-align:center;padding:60px;background:#0f172a;color:#e2e8f0">
+${ok
+  ? '<h2>✅ Autorização Bling recebida</h2><p>O Genesis iRollo 360 — Motor NTC 4.0 foi autorizado com sucesso. Você já pode fechar esta janela.</p>'
+  : '<h2>❌ Autorização não concluída</h2><p>Não foi possível concluir a autorização com o Bling. Tente novamente a partir do painel do aplicativo.</p>'}
+${mensagem ? '<p style="color:#94a3b8;font-size:.85em">' + mensagem.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + '</p>' : ''}
+</body></html>`;
+}
+
+app.get('/api/bling/callback', async (req, res) => {
+  if (req.query.error) {
+    return res.status(400).send(paginaBlingCallback(false, req.query.error_description || req.query.error));
+  }
+  if (!req.query.code) {
+    return res.send(paginaBlingCallback(true, null));
+  }
+  try {
+    if (!process.env.BLING_CLIENT_ID || !process.env.BLING_CLIENT_SECRET) {
+      throw new Error('BLING_CLIENT_ID/BLING_CLIENT_SECRET não configurados no Render');
+    }
+    const redirectUri = req.protocol + '://' + req.get('host') + '/api/bling/callback';
+    const qs = 'grant_type=authorization_code&code=' + encodeURIComponent(req.query.code) + '&redirect_uri=' + encodeURIComponent(redirectUri);
+    await trocarTokenBling(qs);
+    res.send(paginaBlingCallback(true, null));
+  } catch (e) {
+    res.status(400).send(paginaBlingCallback(false, e.message));
+  }
+});
 
 app.get('/api/bling/buscar', async (req, res) => {
   try {
@@ -1379,6 +1398,71 @@ app.get('/api/bling/produtos', async (req, res) => {
     }));
     res.json({ ok: true, produtos: prods, total: prods.length, pagina, temMais: prods.length === limite });
   } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
+// ─── BLING — Importar produtos para o catálogo local (rastreabilidade) ─
+// Traz produtos do Bling para o banco local do auto-enriquecimento. Quando
+// `comFornecedor` é true, consulta o fornecedor vinculado de cada produto no
+// Bling (1 cadastro = 1 fornecedor) e preserva o vínculo (LG/rastreabilidade);
+// sem fornecedor vinculado, o produto entra como "avulso".
+app.post('/api/bling/sync-produtos', async (req, res) => {
+  try {
+    const pagina = parseInt(req.body.pagina) || 1;
+    const limite = Math.min(parseInt(req.body.limite) || 20, 100);
+    const comFornecedor = !!req.body.comFornecedor;
+
+    const data = await blingRequest('GET', `/produtos?situacao=A&pagina=${pagina}&limite=${limite}`);
+    const blingProds = data.data || [];
+
+    const resultados = [];
+    for (const bp of blingProds) {
+      const dadosBling = {
+        nome: bp.nome || null,
+        codigo_fabricante: bp.codigo || null,
+        ean: bp.gtin || null,
+        fabricante: bp.marca && bp.marca.nome || null,
+      };
+
+      let fornecedor = null;
+      if (comFornecedor) {
+        try {
+          const detalhe = await blingRequest('GET', `/produtos/${bp.id}`);
+          if (detalhe.data?.tributacao?.ncm) dadosBling.ncm = detalhe.data.tributacao.ncm;
+          const f = detalhe.data && detalhe.data.fornecedor;
+          if (f && f.id) {
+            try {
+              const fDet = await blingRequest('GET', `/fornecedores/${f.id}`);
+              fornecedor = { nome: (fDet.data && fDet.data.nome) || f.nome || null, cnpj: (fDet.data && fDet.data.numeroDocumento) || null };
+            } catch (e) {
+              fornecedor = { nome: f.nome || null, cnpj: null };
+            }
+          }
+        } catch (e) { /* segue sem detalhe — best-effort */ }
+      }
+
+      const sku = dadosBling.codigo_fabricante || String(bp.id);
+      const existente = db.obterProdutoPorSku(sku);
+      const dadosFinal = existente ? { ...existente.dados } : {};
+      for (const [k, v] of Object.entries(dadosBling)) {
+        if (v != null && v !== '' && (dadosFinal[k] == null || dadosFinal[k] === '')) dadosFinal[k] = v;
+      }
+
+      const resultado = ntcEngine.processar(dadosFinal);
+      const produto = db.upsertProduto({
+        sku: String(sku),
+        nome: dadosFinal.nome || null,
+        dados: dadosFinal,
+        fornecedor_nome: fornecedor ? fornecedor.nome : (existente ? existente.fornecedor_nome : null),
+        fornecedor_cnpj: fornecedor ? fornecedor.cnpj : (existente ? existente.fornecedor_cnpj : null),
+        fonte: (fornecedor && fornecedor.nome) ? 'fornecedor' : (existente ? existente.fonte : 'avulso'),
+        bling_id: String(bp.id),
+        ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash,
+      });
+      resultados.push({ sku: produto.sku, nome: produto.nome, ntc: produto.ntc, decisao: produto.decisao, fonte: produto.fonte });
+    }
+
+    res.json({ ok: true, total: blingProds.length, pagina, temMais: blingProds.length === limite, produtos: resultados });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
 
 // ─── WIX STORES — www.mobisautoparts.com.br ───────────────────
@@ -1472,32 +1556,17 @@ async function montarPayloadProdutoWix(p) {
   const mediaItems = (p.imagens || []).slice(0, 8).map(url => ({ mediaType: 'IMAGE', image: { url } }));
   const familia = p.familia_tecnica || p.familia;
   const categoriaIds = await resolverCategoriasWix(familia, p.nome);
+  const peso = parseFloat(p.peso_liquido || p.peso_bruto) || null;
+  const physicalProperties = peso ? { weight: peso } : {};
+  const fichaTecnica = montarFichaTecnica(p);
+  const descricao = [p.descricao || p.voz_do_lojista || '', fichaTecnica].filter(Boolean).join('\n\n');
   const payload = {
     product: {
       name: p.nome_enriquecido || p.nome || p.codigo_fabricante || 'Produto',
       visible: true,
       productType: 'PHYSICAL',
-      plainDescription: [
-        p.descricao || p.voz_do_lojista || '',
-        // Aplicação veicular
-        (() => {
-          const vei = [p.marca_veiculo||p.marca, p.modelo_veiculo||p.modelo, p.versao_veiculo||p.versao].filter(Boolean).join(' ');
-          const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join('-');
-          const motor = p.motor || p.motor_aplicacao;
-          if (!vei) return '';
-          return '\nAplicação: ' + vei + (anos?' ('+anos+')':'') + (motor?' — Motor '+motor:'');
-        })(),
-        // Cross-codes
-        (() => {
-          const cc = (p.cc_aftermarket||[]).filter(Boolean);
-          if (!cc.length && !p.cross_codes) return '';
-          return '\nEquivalentes: ' + (p.cross_codes || cc.join(' | '));
-        })(),
-        // OEM
-        p.codigo_oem ? '\nCódigo OEM: ' + p.codigo_oem : '',
-        // NTC rastreabilidade
-        p.rast_hash ? '\nRASTREABILIDADE: RAST-HASH ' + p.rast_hash + ' | NTC ' + Math.round((p.ntc||0)*100) + '%' : '',
-      ].filter(Boolean).join(''),
+      plainDescription: descricao,
+      physicalProperties,
       ...(mediaItems.length ? { media: { items: mediaItems } } : {}),
       // SEO
       seoData: {
@@ -1512,9 +1581,7 @@ async function montarPayloadProdutoWix(p) {
           visible: true,
           price: { actualPrice: { amount: preco } },
           inventoryItem: { quantity: 1, preorderInfo: { enabled: false } },
-          physicalProperties: {
-            ...(p.peso_bruto ? { weight: parseFloat(p.peso_bruto) } : {}),
-          }
+          physicalProperties
         }]
       }
     }
@@ -1575,6 +1642,63 @@ app.post('/api/wix/produtos', async (req, res) => {
     }));
     res.json({ ok: true, produtos: prods, total: prods.length });
   } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
+function _wixVariantSku(produtoWix) {
+  return (produtoWix && produtoWix.variantsInfo && produtoWix.variantsInfo.variants
+    && produtoWix.variantsInfo.variants[0] && produtoWix.variantsInfo.variants[0].sku) || null;
+}
+
+// Wix — importar produtos do site para o catálogo local, calculando o Selo de
+// Qualidade NTC (mesmo padrão do "Sincronizar do Bling"). Produtos já existentes
+// no catálogo (por SKU) são apenas enriquecidos com os dados do Wix.
+app.post('/api/wix/sync-produtos', async (req, res) => {
+  try {
+    const offset = parseInt(req.body.offset) || 0;
+    const limite = Math.min(parseInt(req.body.limite) || 20, 100);
+
+    const data = await wixRequest('POST', '/stores/v3/products/query', {
+      query: { paging: { limit: limite, offset } }
+    });
+    const wixProds = data.products || [];
+
+    const resultados = [];
+    for (const wp of wixProds) {
+      let skuWix = _wixVariantSku(wp);
+      if (!skuWix) {
+        try {
+          const detalhe = await wixRequest('GET', '/stores/v3/products/' + wp.id);
+          skuWix = _wixVariantSku(detalhe.product);
+        } catch (e) { /* segue sem variante — usa o id do Wix como SKU */ }
+      }
+
+      const sku = skuWix || wp.id;
+      const dadosWix = {
+        nome: wp.name || null,
+        codigo_fabricante: skuWix || null,
+        preco_venda: wp.priceData && wp.priceData.price != null ? Number(wp.priceData.price) : null,
+      };
+
+      const existente = db.obterProdutoPorSku(String(sku));
+      const dadosFinal = existente ? { ...existente.dados } : {};
+      for (const [k, v] of Object.entries(dadosWix)) {
+        if (v != null && v !== '' && (dadosFinal[k] == null || dadosFinal[k] === '')) dadosFinal[k] = v;
+      }
+
+      const resultado = ntcEngine.processar(dadosFinal);
+      const produto = db.upsertProduto({
+        sku: String(sku),
+        nome: dadosFinal.nome || null,
+        dados: dadosFinal,
+        fonte: existente ? existente.fonte : 'avulso',
+        wix_id: wp.id,
+        ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash,
+      });
+      resultados.push({ sku: produto.sku, nome: produto.nome, ntc: produto.ntc, decisao: produto.decisao, fonte: produto.fonte });
+    }
+
+    res.json({ ok: true, total: wixProds.length, offset, temMais: wixProds.length === limite, produtos: resultados });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
 
 // ─── BLING → WIX — Importar produtos do Bling para Wix Stores V3 ─────

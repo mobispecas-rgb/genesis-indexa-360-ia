@@ -101,6 +101,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 .badge-green{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840}
 .badge-orange{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040}
 .badge-red{background:#ff450020;color:#ff6500;border:1px solid #ff450040}
+/* Selo de Qualidade NTC — anel giratório indica que o job 24/7 monitora o item;
+   verde = alta qualidade, amarelo/vermelho piscam para chamar atenção. */
+.selo-ntc{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;font-size:11px;font-weight:900;flex-shrink:0}
+.selo-ntc::before{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid transparent;border-top-color:currentColor;animation:selo-spin 1.4s linear infinite;opacity:.65}
+.selo-verde{background:#00ff8820;color:#00ff88;border:1px solid #00ff8840}
+.selo-amarelo{background:#ffaa0020;color:#ffaa00;border:1px solid #ffaa0040;animation:selo-pisca-amarelo 1.6s infinite}
+.selo-vermelho{background:#ff450020;color:#ff4500;border:1px solid #ff450040;animation:selo-pisca-vermelho 1.2s infinite}
+@keyframes selo-spin{to{transform:rotate(360deg)}}
+@keyframes selo-pisca-amarelo{0%,100%{box-shadow:0 0 0 0 #ffaa0055}50%{box-shadow:0 0 0 6px #ffaa0000}}
+@keyframes selo-pisca-vermelho{0%,100%{box-shadow:0 0 0 0 #ff450055}50%{box-shadow:0 0 0 6px #ff450000}}
+@keyframes spin{to{transform:rotate(360deg)}}
 input,select,textarea{background:#fff;border:1px solid #d1d5db;color:#1a1a1a;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:#ff4500}
 select option{background:#fff;color:#1a1a1a}
@@ -262,6 +273,15 @@ tr:hover td{background:#f9fafb}
   <div class="sb-item" onclick="nav('importar')"><span class="icon">📥</span>Importar Catálogo</div>
 
   <div class="sb-section-label">Plataforma</div>
+  <div class="sb-item" onclick="nav('pdv')"><span class="icon">🏛️</span>PDV</div>
+  <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🤖</span>Auto-Enriquecimento 24/7</div>
+  <div class="sb-item" onclick="nav('categoria')"><span class="icon">🏷️</span>Categoria</div>
+  <div class="sb-item" onclick="nav('templates')"><span class="icon">📝</span>Templates</div>
+  <div class="sb-item" onclick="nav('pagamentos')"><span class="icon">💳</span>Pagamentos</div>
+  <div class="sb-item" onclick="nav('planos')"><span class="icon">💰</span>Planos</div>
+  <div class="sb-item" onclick="nav('usuarios')"><span class="icon">👥</span>Usuários</div>
+  <div class="sb-item" onclick="nav('empresa')"><span class="icon">🏢</span>Empresa</div>
+  <div class="sb-item" onclick="nav('preferencias')"><span class="icon">🎵</span>Preferências</div>
   <div class="sb-item" onclick="nav('relatorios')"><span class="icon">📈</span>Relatórios</div>
   <div class="sb-item" onclick="nav('config')"><span class="icon">⚙️</span>Configurações</div>
 
@@ -1488,7 +1508,116 @@ MEDIDA LARGURA  25 MM"></textarea>
       </div>
     </div>
     <div class="page" id="page-pdv"><div class="stub-page"><div class="stub-icon">&#127978;</div><h2>PDV</h2><p>Em desenvolvimento &mdash; PDV</p></div></div>
-    <div class="page" id="page-plataforma-int"><div class="stub-page"><div class="stub-icon">&#128268;</div><h2>Integra&ccedil;&otilde;es de Plataforma</h2><p>Em desenvolvimento &mdash; Integra&ccedil;&otilde;es de Plataforma</p></div></div>
+    <!-- AUTO-ENRIQUECIMENTO 24/7 -->
+    <div class="page" id="page-plataforma-int">
+      <div class="page-title">&#129302; Auto-Enriquecimento 24/7</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Job em segundo plano que melhora continuamente os produtos j&aacute; cadastrados: preserva o fornecedor da nota fiscal de entrada na Linhagem Geneal&oacute;gica (rastreabilidade) ou marca o cadastro como "avulso" quando n&atilde;o h&aacute; fornecedor, busca o DNA na Web (OEM/EAN/NCM/CEST/aplica&ccedil;&atilde;o/motor/material/dimens&otilde;es) e coloniza imagens reais para elevar o m&oacute;dulo IV — sempre recalculando o NTC 4.0.</p>
+
+      <div class="card">
+        <div class="card-title">&#128202; Status do Job</div>
+        <div class="grid4" id="ae-status" style="gap:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-primary btn-sm" onclick="aeRodarCiclo()">&#9654;&#65039; Rodar ciclo agora</button>
+          <button class="btn btn-secondary btn-sm" onclick="aeAtualizar()">&#128260; Atualizar</button>
+        </div>
+        <div id="ae-status-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128200; Estat&iacute;sticas do Cat&aacute;logo</div>
+        <div class="grid4" id="ae-stats" style="gap:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#127991;&#65039; Cat&aacute;logo &mdash; Selo de Qualidade NTC</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">O selo giratório confirma que o item está sob monitoramento do job 24/7: <strong style="color:#00ff88">verde</strong> = alta qualidade (NTC&nbsp;&ge;&nbsp;95%), <strong style="color:#ffaa00">amarelo</strong> = pendente (60&ndash;95%, pisca), <strong style="color:#ff4500">vermelho</strong> = baixa qualidade (&lt;60%, pisca). Use "Sincronizar" para enviar SKU, código OEM, códigos cambiados, medidas/pesos de fábrica, categoria/subcategoria e o código de rastreamento para o Wix (site) e o Bling (PDV/ERP).</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input type="text" id="ae-cat-busca" placeholder="Buscar por SKU ou nome..." oninput="aeBuscarCatalogoDebounce()" style="max-width:220px">
+          <select id="ae-cat-categoria" onchange="aeCarregarCatalogo()" style="max-width:200px"><option value="">Todas as categorias</option></select>
+          <select id="ae-cat-subcategoria" onchange="aeCarregarCatalogo()" style="max-width:200px"><option value="">Todas as subcategorias</option></select>
+          <select id="ae-cat-decisao" onchange="aeCarregarCatalogo()" style="max-width:160px">
+            <option value="">Todas as decis&otilde;es</option>
+            <option value="APROVADO">Aprovado</option>
+            <option value="PENDENTE">Pendente</option>
+            <option value="REPROVADO">Reprovado</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="aeCarregarCatalogo()">&#128260; Atualizar</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Selo</th><th>SKU</th><th>Nome</th><th class="col-opt">Categoria / Subcategoria</th><th class="col-opt">Fonte</th><th>A&ccedil;&otilde;es</th>
+            </tr></thead>
+            <tbody id="ae-catalogo-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="ae-catalogo-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div id="ae-edit-overlay" style="display:none;position:fixed;inset:0;background:#0009;z-index:1000;align-items:center;justify-content:center;padding:16px">
+        <div class="card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto;margin-bottom:0">
+          <div class="card-title">&#9999;&#65039; Editar Produto</div>
+          <div class="form-group"><label>SKU</label><input type="text" id="ae-edit-sku" disabled></div>
+          <div class="form-group"><label>Nome</label><input type="text" id="ae-edit-nome"></div>
+          <div class="grid2">
+            <div class="form-group"><label>C&oacute;digo OEM/Fabricante</label><input type="text" id="ae-edit-codigo_fabricante"></div>
+            <div class="form-group"><label>EAN</label><input type="text" id="ae-edit-ean"></div>
+          </div>
+          <div class="grid2">
+            <div class="form-group"><label>Fabricante</label><input type="text" id="ae-edit-fabricante"></div>
+            <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label><input type="text" id="ae-edit-familia_tecnica"></div>
+          </div>
+          <div class="grid2">
+            <div class="form-group"><label>Pre&ccedil;o de Venda (R$)</label><input type="number" step="0.01" id="ae-edit-preco_venda"></div>
+            <div class="form-group"><label>Peso L&iacute;quido (kg)</label><input type="number" step="0.001" id="ae-edit-peso_liquido"></div>
+          </div>
+          <div id="ae-edit-msg" style="font-size:12px;color:#6b7280;margin:4px 0 12px"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-secondary btn-sm" onclick="aeFecharEdicao()">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="aeSalvarEdicao()">&#128190; Salvar e recalcular NTC</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128229; Importar Nota Fiscal de Entrada (XML)</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa os itens da NF-e preservando o fornecedor (emitente) para rastreabilidade. Os produtos entram na fila do auto-enriquecimento.</div>
+        <input type="file" id="ae-nfe-file" accept=".xml" style="margin-bottom:8px;display:block">
+        <button class="btn btn-primary btn-sm" onclick="aeImportarNFe()">&#128228; Importar XML</button>
+        <div id="ae-nfe-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128279; Sincronizar do Bling</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa produtos ativos do Bling para o cat&aacute;logo local. Com "Buscar fornecedor vinculado", consulta o fornecedor de cada produto no Bling (rastreabilidade); sem fornecedor vinculado, o produto entra como "avulso".</div>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px"><input type="checkbox" id="ae-bling-fornecedor"> Buscar fornecedor vinculado (mais lento)</label>
+        <button class="btn btn-secondary btn-sm" onclick="aeSyncBling()">&#11015;&#65039; Importar do Bling</button>
+        <div id="ae-bling-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128279; Sincronizar do Wix</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa produtos do site (Wix) para o cat&aacute;logo local, calcula o Selo de Qualidade NTC e vincula o <code>wix_id</code> para sincroniza&ccedil;&otilde;es futuras. Produtos j&aacute; existentes (mesmo SKU) s&atilde;o apenas enriquecidos com os dados do Wix.</div>
+        <button class="btn btn-secondary btn-sm" onclick="aeSyncWix()">&#11015;&#65039; Importar do Wix</button>
+        <div id="ae-wix-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128193; Atividade Recente</div>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Data</th><th>SKU</th><th>A&ccedil;&atilde;o</th><th>NTC antes</th><th>NTC depois</th>
+            </tr></thead>
+            <tbody id="ae-logs-tbody">
+              <tr><td colspan="5" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
     <div class="page" id="page-templates">
       <div class="page-title">&#128221; Templates de Enriquecimento</div>
@@ -1848,6 +1977,7 @@ function nav(page, opts) {
   if (page === 'diagnostico') diagnosticoRender();
   if (page === 'imagens-aprov') imgAprovRender();
   if (page === 'wix') wixVerificarStatus();
+  if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -7661,6 +7791,298 @@ async function wixVerificarStatus() {
   }).catch(function(e) { if (elI) { elI.textContent = '✗ ' + e.message; elI.style.color = '#dc2626'; } });
 }
 
+// ===== AUTO-ENRIQUECIMENTO 24/7 =====
+function aeCard(valor, label, cor) {
+  return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;text-align:center">'
+    + '<div style="font-size:24px;font-weight:900;color:'+(cor||'#fff')+'">'+valor+'</div>'
+    + '<div style="font-size:11px;color:#888;margin-top:4px">'+label+'</div></div>';
+}
+
+async function aeAtualizar() {
+  var msgEl = document.getElementById('ae-status-msg');
+  var r = await api('GET', '/auto-enrich/status');
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">Erro ao carregar status do job.</span>';
+    return;
+  }
+
+  var statusEl = document.getElementById('ae-status');
+  if (statusEl) {
+    statusEl.innerHTML = aeCard(r.habilitado ? 'Sim' : 'Não', 'Job habilitado', r.habilitado ? '#00c853' : '#f44336')
+      + aeCard(r.rodando ? 'Rodando...' : 'Ocioso', 'Status agora', r.rodando ? '#ff9800' : '#00c853')
+      + aeCard(r.ultima_execucao ? new Date(r.ultima_execucao).toLocaleString('pt-BR') : '—', 'Última execução')
+      + aeCard(r.fila_pendente != null ? r.fila_pendente : 0, 'Pendentes (NTC < 95%)', (r.fila_pendente||0) > 0 ? '#ff9800' : '#00c853');
+  }
+
+  var statsEl = document.getElementById('ae-stats');
+  if (statsEl && r.estatisticas) {
+    var e = r.estatisticas;
+    var pd = e.por_decisao || {};
+    var pf = e.por_fonte || {};
+    statsEl.innerHTML = aeCard(e.total || 0, 'Produtos no catálogo')
+      + aeCard(Math.round((e.media_ntc || 0) * 100) + '%', 'NTC médio', (e.media_ntc||0) >= 0.95 ? '#00c853' : (e.media_ntc||0) >= 0.6 ? '#ff9800' : '#f44336')
+      + aeCard(pd.APROVADO || 0, 'Aprovados', '#00c853')
+      + aeCard(pd.PENDENTE || 0, 'Pendentes', '#ff9800')
+      + aeCard(pd.REPROVADO || 0, 'Reprovados', '#f44336')
+      + aeCard(pf.fornecedor || 0, 'Com fornecedor (rastreados)', '#00c853')
+      + aeCard(pf.avulso || 0, 'Cadastro avulso', '#ff9800')
+      + aeCard(e.pendentes_enriquecer || 0, 'Na fila do job');
+  }
+
+  var tbody = document.getElementById('ae-logs-tbody');
+  if (tbody) {
+    var logs = r.logs_recentes || [];
+    if (!logs.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#555">Nenhuma atividade registrada ainda.</td></tr>';
+    } else {
+      tbody.innerHTML = logs.map(function(l) {
+        var antes = l.ntc_antes != null ? Math.round(l.ntc_antes * 100) + '%' : '—';
+        var depois = l.ntc_depois != null ? Math.round(l.ntc_depois * 100) + '%' : '—';
+        return '<tr>'
+          + '<td style="padding:8px 6px;font-size:12px">' + esc(l.criado_em) + '</td>'
+          + '<td style="padding:8px 6px"><code style="color:#ff6b00">' + esc(l.sku) + '</code></td>'
+          + '<td style="padding:8px 6px;font-size:12px">' + esc(l.acao) + '</td>'
+          + '<td style="padding:8px 6px">' + antes + '</td>'
+          + '<td style="padding:8px 6px">' + depois + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
+
+  if (msgEl) msgEl.innerHTML = '';
+}
+
+async function aeRodarCiclo() {
+  var msgEl = document.getElementById('ae-status-msg');
+  if (msgEl) msgEl.innerHTML = '⏳ Processando lote...';
+  var r = await api('POST', '/auto-enrich/trigger', {});
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao rodar ciclo.') + '</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '✅ ' + r.processados + ' produto(s) processado(s) neste ciclo.';
+  aeAtualizar();
+}
+
+async function aeImportarNFe() {
+  var fileEl = document.getElementById('ae-nfe-file');
+  var msgEl = document.getElementById('ae-nfe-msg');
+  if (!fileEl || !fileEl.files || !fileEl.files[0]) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">Selecione o arquivo XML da NF-e.</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '⏳ Importando NF-e...';
+  try {
+    var fd = new FormData();
+    fd.append('arquivo', fileEl.files[0]);
+    var headers = {};
+    var tok = localStorage.getItem('gn_token') || '';
+    if (tok) headers['Authorization'] = 'Bearer ' + tok;
+    var resp = await fetch('/api/notas/importar-xml', { method: 'POST', headers: headers, body: fd });
+    var r = await resp.json();
+    if (!r.ok) {
+      if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc(r.erro || 'Erro ao importar XML.') + '</span>';
+      return;
+    }
+    if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' item(ns) importado(s) — fornecedor: ' + esc((r.fornecedor && r.fornecedor.nome) || '—');
+    aeAtualizar();
+  } catch (e) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc(e.message) + '</span>';
+  }
+}
+
+async function aeSyncBling() {
+  var msgEl = document.getElementById('ae-bling-msg');
+  var comFornecedorEl = document.getElementById('ae-bling-fornecedor');
+  if (msgEl) msgEl.innerHTML = '⏳ Importando do Bling...';
+  var r = await api('POST', '/bling/sync-produtos', { limite: 20, comFornecedor: !!(comFornecedorEl && comFornecedorEl.checked) });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao importar do Bling.') + '</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' produto(s) importado(s) do Bling.';
+  aeAtualizar();
+  aeCarregarCatalogo();
+}
+
+async function aeSyncWix() {
+  var msgEl = document.getElementById('ae-wix-msg');
+  if (msgEl) msgEl.innerHTML = '⏳ Importando do Wix...';
+  var r = await api('POST', '/wix/sync-produtos', { limite: 20 });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao importar do Wix.') + '</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' produto(s) importado(s) do Wix.';
+  aeAtualizar();
+  aeCarregarCatalogo();
+}
+
+// Selo de Qualidade NTC — anel giratório (sempre ativo, mostra que o item
+// está sob monitoramento do job 24/7); verde = alto, amarelo/vermelho piscam.
+function aeSeloHtml(ntc, decisao) {
+  var pct = ntc != null ? Math.round(ntc * 100) : 0;
+  var classe = ntc >= 0.95 ? 'selo-verde' : ntc >= 0.60 ? 'selo-amarelo' : 'selo-vermelho';
+  return '<div class="selo-ntc ' + classe + '" title="NTC ' + pct + '% — ' + esc(decisao || '—') + '">' + pct + '%</div>';
+}
+
+var _aeCategorias = [];
+
+async function aeCarregarCategorias() {
+  var r = await api('GET', '/categorias');
+  if (!r || !r.ok) return;
+  _aeCategorias = r.categorias || [];
+
+  var selCat = document.getElementById('ae-cat-categoria');
+  var atualCat = selCat.value;
+  var categoriasUnicas = [...new Set(_aeCategorias.map(function(c){ return c.categoria; }))];
+  selCat.innerHTML = '<option value="">Todas as categorias</option>'
+    + categoriasUnicas.map(function(c){ return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+  selCat.value = atualCat;
+
+  aeAtualizarSubcategorias();
+}
+
+function aeAtualizarSubcategorias() {
+  var selCat = document.getElementById('ae-cat-categoria');
+  var selSub = document.getElementById('ae-cat-subcategoria');
+  var atualSub = selSub.value;
+  var subs = _aeCategorias
+    .filter(function(c){ return c.subcategoria && (!selCat.value || c.categoria === selCat.value); })
+    .map(function(c){ return c.subcategoria; });
+  var subsUnicas = [...new Set(subs)];
+  selSub.innerHTML = '<option value="">Todas as subcategorias</option>'
+    + subsUnicas.map(function(s){ return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+  selSub.value = atualSub;
+}
+
+async function aeCarregarCatalogo() {
+  var tbody = document.getElementById('ae-catalogo-tbody');
+  if (!tbody) return;
+  if (!_aeCategorias.length) await aeCarregarCategorias();
+  else aeAtualizarSubcategorias();
+
+  var decisao = document.getElementById('ae-cat-decisao').value;
+  var categoria = document.getElementById('ae-cat-categoria').value;
+  var subcategoria = document.getElementById('ae-cat-subcategoria').value;
+  var buscaEl = document.getElementById('ae-cat-busca');
+  var busca = buscaEl ? buscaEl.value.trim() : '';
+
+  var params = ['limite=200'];
+  if (decisao) params.push('decisao=' + encodeURIComponent(decisao));
+  if (categoria) params.push('categoria=' + encodeURIComponent(categoria));
+  if (subcategoria) params.push('subcategoria=' + encodeURIComponent(subcategoria));
+  if (busca) params.push('busca=' + encodeURIComponent(busca));
+
+  var r = await api('GET', '/produtos?' + params.join('&'));
+  if (!r || !r.ok) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#dc2626">Erro ao carregar catálogo.</td></tr>';
+    return;
+  }
+
+  var produtos = r.produtos || [];
+  if (!produtos.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Nenhum produto encontrado para esse filtro.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = produtos.map(function(p) {
+    var catTxt = p.categoria ? esc(p.categoria) + (p.subcategoria ? ' / ' + esc(p.subcategoria) : '') : '—';
+    var fonteBadge = p.fonte === 'fornecedor'
+      ? '<span class="badge badge-green">Fornecedor</span>'
+      : '<span class="badge badge-orange">Avulso</span>';
+    return '<tr>'
+      + '<td>' + aeSeloHtml(p.ntc, p.decisao) + '</td>'
+      + '<td><code style="color:#ff6b00;font-size:11px">' + esc(p.sku) + '</code></td>'
+      + '<td>' + esc(p.nome || '—') + '</td>'
+      + '<td class="col-opt">' + catTxt + '</td>'
+      + '<td class="col-opt">' + fonteBadge + '</td>'
+      + '<td style="white-space:nowrap">'
+        + '<button class="btn btn-secondary btn-sm" onclick="aeAbrirEdicao(' + p.id + ')">&#9999;&#65039; Editar</button> '
+        + '<button class="btn btn-secondary btn-sm" onclick="aeSincronizarProduto(' + p.id + ', this)">&#128279; Sincronizar</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+var _aeBuscaTimer = null;
+function aeBuscarCatalogoDebounce() {
+  if (_aeBuscaTimer) clearTimeout(_aeBuscaTimer);
+  _aeBuscaTimer = setTimeout(aeCarregarCatalogo, 350);
+}
+
+var _aeEditId = null;
+async function aeAbrirEdicao(id) {
+  var msgEl = document.getElementById('ae-edit-msg');
+  if (msgEl) msgEl.innerHTML = '';
+  var r = await api('GET', '/produtos/' + id);
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao carregar produto.') + '</span>';
+    return;
+  }
+  var p = r.produto;
+  var dados = p.dados || {};
+  _aeEditId = p.id;
+  document.getElementById('ae-edit-sku').value = p.sku || '';
+  document.getElementById('ae-edit-nome').value = p.nome || dados.nome || '';
+  document.getElementById('ae-edit-codigo_fabricante').value = dados.codigo_fabricante || '';
+  document.getElementById('ae-edit-ean').value = dados.ean || '';
+  document.getElementById('ae-edit-fabricante').value = dados.fabricante || '';
+  document.getElementById('ae-edit-familia_tecnica').value = dados.familia_tecnica || '';
+  document.getElementById('ae-edit-preco_venda').value = dados.preco_venda != null ? dados.preco_venda : '';
+  document.getElementById('ae-edit-peso_liquido').value = dados.peso_liquido != null ? dados.peso_liquido : '';
+  document.getElementById('ae-edit-overlay').style.display = 'flex';
+}
+
+function aeFecharEdicao() {
+  document.getElementById('ae-edit-overlay').style.display = 'none';
+  _aeEditId = null;
+}
+
+async function aeSalvarEdicao() {
+  if (_aeEditId == null) return;
+  var msgEl = document.getElementById('ae-edit-msg');
+  var sku = document.getElementById('ae-edit-sku').value.trim();
+  if (!sku) { if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">SKU obrigat&oacute;rio.</span>'; return; }
+
+  var dados = {
+    nome: document.getElementById('ae-edit-nome').value.trim() || null,
+    codigo_fabricante: document.getElementById('ae-edit-codigo_fabricante').value.trim() || null,
+    ean: document.getElementById('ae-edit-ean').value.trim() || null,
+    fabricante: document.getElementById('ae-edit-fabricante').value.trim() || null,
+    familia_tecnica: document.getElementById('ae-edit-familia_tecnica').value.trim() || null,
+  };
+  var preco = document.getElementById('ae-edit-preco_venda').value;
+  if (preco !== '') dados.preco_venda = parseFloat(preco);
+  var peso = document.getElementById('ae-edit-peso_liquido').value;
+  if (peso !== '') dados.peso_liquido = parseFloat(peso);
+
+  if (msgEl) msgEl.innerHTML = '⏳ Salvando e recalculando NTC...';
+  var r = await api('POST', '/produtos', { sku: sku, dados: dados });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao salvar.') + '</span>';
+    return;
+  }
+  aeFecharEdicao();
+  aeCarregarCatalogo();
+}
+
+async function aeSincronizarProduto(id, btn) {
+  var msgEl = document.getElementById('ae-catalogo-msg');
+  var original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Sincronizando...'; }
+  var r = await api('POST', '/produtos/' + id + '/sincronizar', {});
+  if (btn) { btn.disabled = false; btn.innerHTML = original; }
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao sincronizar.') + '</span>';
+    return;
+  }
+  var partes = [];
+  if (r.wix) partes.push('Wix: ' + (r.wix.ok ? '✅ ok' : '❌ ' + esc(r.wix.erro || '')));
+  if (r.bling) partes.push('Bling: ' + (r.bling.ok ? '✅ ok' : '❌ ' + esc(r.bling.erro || '')));
+  if (msgEl) msgEl.innerHTML = partes.join(' &nbsp;|&nbsp; ');
+}
+
 async function wixImportarBling() {
   var pagina = parseInt(document.getElementById('wix-imp-pag').value) || 1;
   var limite = parseInt(document.getElementById('wix-imp-lim').value) || 50;
@@ -7887,6 +8309,15 @@ function imgFiltrarCat(cat, btn) {
       </div>
     </div>
     <div class="ntcv2-hash" id="ntcv2-hash">RAST-HASH OEM DNA: aguardando dados...</div>
+  </div>
+</div>
+
+<!-- ── BUSCAR DNA NA WEB (IA) ── -->
+<div class="ntcv2-card">
+  <div class="ntcv2-sb">
+    <button class="ntcv2-btn prim" onclick="ntcv2BuscarDnaWeb()">🌐 Buscar DNA na Web (IA)</button>
+    <div style="font-size:11px;color:#6b7280;margin-top:6px">Busca OEM, EAN/GTIN, NCM/CEST, aplicação veicular, motor, material, dimensões e cross-codes na web e recalcula o NTC. Nunca inventa — cada sugestão vem com fonte e confiança, pendente de confirmação humana.</div>
+    <div id="ntcv2-dna-status" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
   </div>
 </div>
 
@@ -8224,6 +8655,63 @@ function ntcv2SetVoz(v) {
 function ntcv2Reenriquecer() {
   var oem = (document.getElementById('oem-oem') || {}).value || document.getElementById('d-oem') && document.getElementById('d-oem').textContent || '?';
   if (typeof oemBuscar === 'function') { oemBuscar(oem); } else { alert('Use o botão 🌐 Buscar DNA na Web na Etapa 1.'); }
+}
+
+// Busca DNA na web (IA) a partir dos dados já exibidos neste produto e recalcula o NTC real
+async function ntcv2BuscarDnaWeb() {
+  var statusEl = document.getElementById('ntcv2-dna-status');
+  var get = function(id) {
+    var el = document.getElementById(id);
+    var v = el ? el.textContent.trim() : '';
+    return (!v || v === '—') ? '' : v;
+  };
+  var sku   = get('d-sku');
+  var oem   = get('d-oem');
+  var nome  = get('d-nome');
+  var marca = get('d-marca');
+
+  if (!sku && !oem && !nome) {
+    statusEl.innerHTML = '<span style="color:#d97706">⚠ Preencha o SKU, OEM ou Nome do produto antes de buscar.</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '⏳ Buscando DNA na web (IA)... isso pode levar até 1 minuto.';
+
+  var r;
+  try {
+    r = await api('POST', '/motor/enriquecer-dna', { sku: sku || oem, fabricante: marca, nome: nome });
+  } catch (e) {
+    statusEl.innerHTML = '<span style="color:#dc2626">Erro: ' + esc(e.message) + '</span>';
+    return;
+  }
+
+  if (!r.ok) {
+    statusEl.innerHTML = '<span style="color:#dc2626">⚠ ' + esc(r.erro || 'Falha ao buscar DNA na web') + '</span>';
+    return;
+  }
+  if (!r.encontrado) {
+    statusEl.innerHTML = '<span style="color:#d97706">⚠ ' + esc(r.mensagem || 'Nenhum dado novo encontrado na web.') + '</span>';
+    return;
+  }
+
+  var campos = r.campos || {};
+  var dados = {
+    sku: sku || null, codigo_fabricante: sku || null,
+    oem: oem || null, codigo_oem: oem || null,
+    nome: nome || null, fabricante: marca || null,
+  };
+  Object.keys(MAPA_CAMPOS_DNA_TODOS).forEach(function(campo) {
+    var info = campos[campo];
+    if (info && info.valor != null && info.valor !== '') dados[MAPA_CAMPOS_DNA_TODOS[campo].key] = info.valor;
+  });
+
+  try {
+    var ntcResult = await api('POST', '/motor/nct', dados);
+    if (ntcResult && ntcResult.ok) ntcv2Atualizar(dados, ntcResult);
+  } catch (e) {}
+
+  statusEl.innerHTML = _dnaWebListaHtml(campos)
+    + '<div style="margin-top:6px;font-size:11px;color:#6b7280">Fontes consultadas: ' + (r.fontes_consultadas || []).length + ' — NTC recalculado com o Motor 4.0. Confira as fontes antes de confirmar.</div>';
 }
 function ntcv2Editar() {
   var btn = document.querySelector('[onclick*="oem-step1"]') || document.querySelector('.oem-step-pill');
