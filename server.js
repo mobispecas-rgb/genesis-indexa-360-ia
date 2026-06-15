@@ -8,6 +8,7 @@ const cors = require('cors');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const os = require('os');
 const dns = require('dns').promises;
 const net = require('net');
 const zlib = require('zlib');
@@ -938,6 +939,99 @@ app.post('/api/auto-enrich/trigger', async (req, res) => {
 app.post('/api/auto-enrich/toggle', (req, res) => {
     const habilitado = autoEnrich.definirHabilitado(req.body && req.body.habilitado);
     res.json({ ok: true, habilitado });
+});
+
+// ─── PAINEL DE PERFORMANCE — CPU/RAM/internet/conectividade/qualidade ─────
+// Mede a latência de uma chamada de saída real — usado como "índice de
+// qualidade da internet" para alertar o lojista quando a conexão está
+// instável, o que pode levar o agente de IA a falhar ou "alucinar" nas
+// buscas de DNA/imagens por falta de retorno das fontes web.
+function medirLatenciaInternet() {
+    return new Promise((resolve) => {
+        const inicio = Date.now();
+        const req = https.get('https://api.anthropic.com', { timeout: 4000 }, (r) => {
+            r.resume();
+            resolve({ online: true, latencia_ms: Date.now() - inicio });
+        });
+        req.on('timeout', () => { req.destroy(); resolve({ online: false, latencia_ms: null }); });
+        req.on('error', () => resolve({ online: false, latencia_ms: null }));
+    });
+}
+
+app.get('/api/sistema/performance', async (req, res) => {
+    try {
+        const internet = await medirLatenciaInternet();
+
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const memUsoPct = Math.round(((totalMem - freeMem) / totalMem) * 100);
+        const cpus = os.cpus() || [];
+        const loadavg = os.loadavg();
+        const cpuUsoPct = cpus.length ? Math.min(100, Math.round((loadavg[0] / cpus.length) * 100)) : 0;
+
+        const conectividade = {
+            ia_anthropic: !!process.env.ANTHROPIC_API_KEY,
+            busca_serper: !!process.env.SERPER_API_KEY,
+            busca_google: !!(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX),
+            bling: !!(process.env.BLING_API_KEY || (process.env.BLING_CLIENT_ID && process.env.BLING_CLIENT_SECRET)),
+            wix: !!(process.env.WIX_API_KEY && process.env.WIX_SITE_ID),
+        };
+
+        const estatisticas = db.obterEstatisticas();
+        const logs = db.listarLogsRecentes(20);
+        const totalLogs = logs.length;
+        const erros = logs.filter(l => (l.acao || '').includes('erro')).length;
+        const taxaErroPct = totalLogs ? Math.round((erros / totalLogs) * 100) : 0;
+
+        // Índice geral de qualidade (0-100) — combina recursos do servidor,
+        // conectividade e taxa de erro do enriquecimento recente. Usado para
+        // alertar o lojista quando o agente de IA pode estar comprometido por
+        // falta de recursos ou de conexão com as fontes de dados.
+        let indiceQualidade = 100;
+        if (!internet.online) indiceQualidade -= 35;
+        else if (internet.latencia_ms > 2000) indiceQualidade -= 15;
+        else if (internet.latencia_ms > 800) indiceQualidade -= 5;
+        if (cpuUsoPct > 90) indiceQualidade -= 20;
+        else if (cpuUsoPct > 75) indiceQualidade -= 10;
+        if (memUsoPct > 90) indiceQualidade -= 20;
+        else if (memUsoPct > 75) indiceQualidade -= 10;
+        if (!conectividade.ia_anthropic) indiceQualidade -= 25;
+        indiceQualidade -= Math.round(taxaErroPct * 0.3);
+        indiceQualidade = Math.max(0, Math.min(100, indiceQualidade));
+
+        let nivel = 'ÓTIMO';
+        if (indiceQualidade < 50) nivel = 'CRÍTICO';
+        else if (indiceQualidade < 75) nivel = 'ATENÇÃO';
+        else if (indiceQualidade < 90) nivel = 'BOM';
+
+        const riscoAlucinacao = !conectividade.ia_anthropic || !internet.online || taxaErroPct > 40;
+
+        res.json({
+            ok: true,
+            indice_qualidade: indiceQualidade,
+            nivel,
+            risco_alucinacao: riscoAlucinacao,
+            sistema: {
+                cpu_uso_pct: cpuUsoPct,
+                cpu_nucleos: cpus.length,
+                loadavg,
+                mem_uso_pct: memUsoPct,
+                mem_total_mb: Math.round(totalMem / 1024 / 1024),
+                mem_livre_mb: Math.round(freeMem / 1024 / 1024),
+                processo_rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+                uptime_s: Math.round(process.uptime()),
+            },
+            internet,
+            conectividade,
+            enriquecimento: {
+                ...estatisticas,
+                taxa_erro_pct_recente: taxaErroPct,
+                logs_recentes: totalLogs,
+            },
+        });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
 });
 
 // ─── NOTAS FISCAIS DE ENTRADA (NF-e XML) ──────────────────────────────
