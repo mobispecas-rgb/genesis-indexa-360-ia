@@ -923,6 +923,47 @@ app.get('/api/categorias', (req, res) => {
     }
 });
 
+// ─── CONECTORES NTC — bancos de montadoras, fabricantes/importadores,
+// catálogos de referência (PartSouq, TecDoc...) e conectores de bancos de
+// dados/sites externos do lojista usados pelo agente para "busca cega" ───
+app.get('/api/ntc-referencias', (req, res) => {
+    try {
+        db.seedReferenciasNTC();
+        const tipo = req.query.tipo || null;
+        res.json({ ok: true, itens: db.listarReferencias(tipo) });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message, itens: [] });
+    }
+});
+
+app.post('/api/ntc-referencias', (req, res) => {
+    try {
+        const item = db.criarReferencia(req.body || {});
+        res.json({ ok: true, item });
+    } catch (e) {
+        res.status(400).json({ ok: false, erro: e.message });
+    }
+});
+
+app.put('/api/ntc-referencias/:id', (req, res) => {
+    try {
+        const item = db.atualizarReferencia(Number(req.params.id), req.body || {});
+        if (!item) return res.status(404).json({ ok: false, erro: 'Não encontrado' });
+        res.json({ ok: true, item });
+    } catch (e) {
+        res.status(400).json({ ok: false, erro: e.message });
+    }
+});
+
+app.delete('/api/ntc-referencias/:id', (req, res) => {
+    try {
+        db.excluirReferencia(Number(req.params.id));
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(400).json({ ok: false, erro: e.message });
+    }
+});
+
 // ─── AUTO-ENRIQUECIMENTO 24/7 — status e disparo manual ───────────────
 app.get('/api/auto-enrich/status', (req, res) => {
     res.json({ ok: true, ...autoEnrich.obterStatus() });
