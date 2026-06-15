@@ -278,6 +278,7 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section-label">Plataforma</div>
   <div class="sb-item" onclick="nav('pdv')"><span class="icon">🏛️</span>PDV</div>
   <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🤖</span>Auto-Enriquecimento 24/7</div>
+  <div class="sb-item" onclick="nav('performance')"><span class="icon">⚡</span>Painel de Performance</div>
   <div class="sb-item" onclick="nav('categoria')"><span class="icon">🏷️</span>Categoria</div>
   <div class="sb-item" onclick="nav('templates')"><span class="icon">📝</span>Templates</div>
   <div class="sb-item" onclick="nav('pagamentos')"><span class="icon">💳</span>Pagamentos</div>
@@ -1763,6 +1764,40 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
       </div>
     </div>
+    <div class="page" id="page-performance">
+      <div class="page-title">&#9889; Painel de Performance</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Monitoramento em tempo real da sa&uacute;de do indexador: capacidade do servidor (CPU/RAM), qualidade da conex&atilde;o com a internet e das fontes de IA/busca, e taxa de erro do enriquecimento autom&aacute;tico — para o lojista acompanhar o desempenho e garantir que o agente de IA n&atilde;o perca qualidade nem "alucine" por falta de recursos ou conex&atilde;o.</p>
+
+      <div class="card">
+        <div class="card-title">&#127919; &Iacute;ndice Geral de Qualidade</div>
+        <div id="perf-indice" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:8px 0">
+          <div style="text-align:center">
+            <div id="perf-indice-valor" style="font-size:48px;font-weight:900;color:#888">—</div>
+            <div id="perf-indice-nivel" style="font-size:13px;color:#888;font-weight:600;margin-top:2px">Carregando...</div>
+          </div>
+          <div id="perf-alerta" style="flex:1;min-width:220px;font-size:13px;color:#888"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn btn-secondary btn-sm" onclick="perfAtualizar()">&#128260; Atualizar agora</button>
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;color:#ccc;cursor:pointer"><input type="checkbox" id="perf-auto" checked onchange="perfToggleAuto()"> Atualizar automaticamente (30s)</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128421;&#65039; Servidor &mdash; CPU, RAM e Disponibilidade</div>
+        <div class="grid4" id="perf-sistema" style="gap:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#127760; Internet &amp; Conectividade das Fontes de IA/Busca</div>
+        <div class="grid4" id="perf-conectividade" style="gap:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#129516; Qualidade do Enriquecimento (DNA na Web)</div>
+        <div class="grid4" id="perf-enriquecimento" style="gap:8px"></div>
+      </div>
+    </div>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
     <div class="page" id="page-templates">
       <div class="page-title">&#128221; Templates de Enriquecimento</div>
@@ -2123,6 +2158,8 @@ function nav(page, opts) {
   if (page === 'imagens-aprov') imgAprovRender();
   if (page === 'wix') wixVerificarStatus();
   if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
+  if (page === 'performance') perfAtualizar();
+  else perfPararAuto();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -4667,8 +4704,8 @@ function imgAprovRender() {
       + '</div>'
       + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'+imgSlots+'</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
-      + '<button onclick="imgAprovAcao('+prods.indexOf(p)+',"aprovado")" style="background:#00c85320;border:1px solid #00c85340;color:#00c853;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">✅ Aprovar</button>'
-      + '<button onclick="imgAprovAcao('+prods.indexOf(p)+',"congelado")" style="background:#1a73e820;border:1px solid #1a73e840;color:#1a73e8;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">❄️ Congelar</button>'
+      + '<button onclick="imgAprovAcao('+prods.indexOf(p)+',\'aprovado\')" style="background:#00c85320;border:1px solid #00c85340;color:#00c853;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">✅ Aprovar</button>'
+      + '<button onclick="imgAprovAcao('+prods.indexOf(p)+',\'congelado\')" style="background:#1a73e820;border:1px solid #1a73e840;color:#1a73e8;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">❄️ Congelar</button>'
       + '<button onclick="imgAprovSync('+prods.indexOf(p)+')" style="background:#9c27b020;border:1px solid #9c27b040;color:#9c27b0;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">🔄 Sync</button>'
       + '</div>'
       + '</div>';
@@ -6710,151 +6747,8 @@ function _cntcAtualizarBarra(ntc, decisao) {
   else if (ganho) { ganho.textContent = '✅ APROVADO!'; }
   if (faltam && pct < 95) { faltam.textContent = 'Faltam ' + (95 - pct) + ' pontos'; }
   else if (faltam) { faltam.textContent = 'Pode publicar no marketplace'; }
-  // ══════════════════════════════════════════
-// IMAGENS — Aprovação, Congelamento, Auditoria
-// ══════════════════════════════════════════
-var _imgAprovTab = 'todos';
-var _imgAprovFiltro = '';
 
-function imgAprovSetTab(tab, el) {
-  _imgAprovTab = tab;
-  document.querySelectorAll('.img-aprov-tab').forEach(function(t) {
-    t.style.background = '#1a1a1a';
-    t.style.color = '#888';
-    t.style.borderColor = '#333';
-    t.classList.remove('active');
-  });
-  if (el) {
-    el.style.background = '#ff450020';
-    el.style.color = '#ff4500';
-    el.style.borderColor = '#ff450040';
-    el.classList.add('active');
-  }
-  imgAprovRender();
-}
-
-function imgAprovFiltrar(val) {
-  _imgAprovFiltro = (val||'').toLowerCase();
-  imgAprovRender();
-}
-
-function imgAprovRender() {
-  var grid = document.getElementById('img-aprov-grid');
-  if (!grid) return;
-  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
-
-  // Filtrar por tab
-  var lista = prods.filter(function(p) {
-    var imgs = p.imagens || [];
-    var status = p.img_status || 'pendente';
-    if (_imgAprovTab === 'pendente' && status !== 'pendente') return false;
-    if (_imgAprovTab === 'aprovado' && status !== 'aprovado') return false;
-    if (_imgAprovTab === 'congelado' && status !== 'congelado') return false;
-    if (_imgAprovFiltro) {
-      var texto = ((p.sku||'')+(p.nome||'')+(p.fabricante||'')).toLowerCase();
-      if (!texto.includes(_imgAprovFiltro)) return false;
-    }
-    return true;
-  });
-
-  if (!lista.length) {
-    grid.innerHTML = '<div style="text-align:center;padding:40px;color:#555;font-size:13px">Nenhum produto encontrado.</div>';
-    return;
-  }
-
-  grid.innerHTML = lista.map(function(p, i) {
-    var imgs = p.imagens || [];
-    var status = p.img_status || 'pendente';
-    var audit = p.img_auditoria || [];
-    var corStatus = status === 'aprovado' ? '#00c853' : status === 'congelado' ? '#1a73e8' : '#ff9800';
-    var labelStatus = status === 'aprovado' ? '✅ Aprovado' : status === 'congelado' ? '❄️ Congelado' : '⏳ Pendente';
-    var ultimaAudit = audit.length ? audit[audit.length-1] : null;
-
-    var imgSlots = '';
-    if (imgs.length) {
-      imgSlots = imgs.slice(0,5).map(function(url) {
-        return '<img src="'+url+'" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f" onerror="this.style.display=\'none\'">';
-      }).join('');
-    } else {
-      imgSlots = '<div style="display:flex;gap:6px">'
-        + '<div style="width:64px;height:64px;border-radius:6px;background:#1a1a1a;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>'
-        + '<div style="font-size:11px;color:#555;display:flex;align-items:center">Sem imagens<br>cadastradas</div>'
-        + '</div>';
-    }
-
-    var auditHtml = ultimaAudit
-      ? '<div style="font-size:10px;color:#555;margin-top:4px">'+ultimaAudit+'</div>'
-      : '';
-
-    return '<div style="background:#111;border:1px solid #1f1f1f;border-radius:10px;padding:12px">'
-      + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'
-      + '<input type="checkbox" class="img-aprov-chk" data-idx="'+prods.indexOf(p)+'" style="margin-top:4px;width:16px;height:16px;flex-shrink:0">'
-      + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(p.nome||p.sku||'Sem nome')+'</div>'
-      + '<div style="font-size:11px;color:#666">SKU: '+(p.sku||'—')+' &nbsp;·&nbsp; '+(p.fabricante||'—')+'</div>'
-      + '<div style="font-size:11px;font-weight:600;color:'+corStatus+';margin-top:2px">'+labelStatus+'</div>'
-      + auditHtml
-      + '</div>'
-      + '<div style="font-size:11px;color:#555;text-align:right;flex-shrink:0">'+(imgs.length||0)+' foto(s)</div>'
-      + '</div>'
-      + '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'+imgSlots+'</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
-      + '<button onclick="imgAprovAcao('+prods.indexOf(p)+',"aprovado")" style="background:#00c85320;border:1px solid #00c85340;color:#00c853;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">✅ Aprovar</button>'
-      + '<button onclick="imgAprovAcao('+prods.indexOf(p)+',"congelado")" style="background:#1a73e820;border:1px solid #1a73e840;color:#1a73e8;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">❄️ Congelar</button>'
-      + '<button onclick="imgAprovSync('+prods.indexOf(p)+')" style="background:#9c27b020;border:1px solid #9c27b040;color:#9c27b0;border-radius:6px;padding:8px;font-size:12px;cursor:pointer;touch-action:manipulation">🔄 Sync</button>'
-      + '</div>'
-      + '</div>';
-  }).join('');
-}
-
-function imgAprovAcao(idx, novoStatus) {
-  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
-  if (!prods[idx]) return;
-  var agora = new Date().toLocaleString('pt-BR');
-  prods[idx].img_status = novoStatus;
-  prods[idx].img_auditoria = prods[idx].img_auditoria || [];
-  var label = novoStatus === 'aprovado' ? '✅ Aprovado' : '❄️ Congelado';
-  prods[idx].img_auditoria.push(label + ' em ' + agora + ' — Administrador');
-  localStorage.setItem('genesis_produtos', JSON.stringify(prods));
-  imgAprovRender();
-}
-
-function imgAprovSync(idx) {
-  var prods = JSON.parse(localStorage.getItem('genesis_produtos') || '[]');
-  if (!prods[idx]) return;
-  var p = prods[idx];
-  var agora = new Date().toLocaleString('pt-BR');
-  prods[idx].img_auditoria = prods[idx].img_auditoria || [];
-  prods[idx].img_auditoria.push('🔄 Sync Bling+Wix em ' + agora);
-  localStorage.setItem('genesis_produtos', JSON.stringify(prods));
-  // Tentar sync real
-  if (p.imagens && p.imagens.length) {
-    fetch('/api/bling/produto', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(p)
-    }).catch(function(){});
-  }
-  imgAprovRender();
-  alert('🔄 Sincronização iniciada para ' + (p.sku||p.nome||'produto'));
-}
-
-function imgAprovAprovarSelecionados() {
-  var chks = document.querySelectorAll('.img-aprov-chk:checked');
-  chks.forEach(function(c) { imgAprovAcao(parseInt(c.dataset.idx), 'aprovado'); });
-}
-
-function imgAprovCongelarSelecionados() {
-  var chks = document.querySelectorAll('.img-aprov-chk:checked');
-  chks.forEach(function(c) { imgAprovAcao(parseInt(c.dataset.idx), 'congelado'); });
-}
-
-function imgAprovSyncSelecionados() {
-  var chks = document.querySelectorAll('.img-aprov-chk:checked');
-  chks.forEach(function(c) { imgAprovSync(parseInt(c.dataset.idx)); });
-}
-
-// Atualiza cabeçalho NTC (topo da tela)
+  // Atualiza cabeçalho NTC (topo da tela)
   if (typeof ntcAtualizarCabecalho === 'function') {
     var d = window._oemDados || {};
     ntcAtualizarCabecalho(pct, decisao, d.sku||d.codigo_fabricante, d.codigo_oem||d.oem, d.ean);
@@ -7998,6 +7892,82 @@ function aeCard(valor, label, cor) {
   return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;text-align:center">'
     + '<div style="font-size:24px;font-weight:900;color:'+(cor||'#fff')+'">'+valor+'</div>'
     + '<div style="font-size:11px;color:#888;margin-top:4px">'+label+'</div></div>';
+}
+
+// ===== PAINEL DE PERFORMANCE — CPU/RAM/internet/conectividade/qualidade =====
+var _perfAutoTimer = null;
+
+function perfPararAuto() {
+  if (_perfAutoTimer) { clearInterval(_perfAutoTimer); _perfAutoTimer = null; }
+}
+
+function perfToggleAuto() {
+  var chk = document.getElementById('perf-auto');
+  perfPararAuto();
+  if (chk && chk.checked) {
+    _perfAutoTimer = setInterval(perfAtualizar, 30000);
+  }
+}
+
+async function perfAtualizar() {
+  var r = await api('GET', '/sistema/performance');
+  if (!r || !r.ok) {
+    var valorEl = document.getElementById('perf-indice-valor');
+    var nivelEl = document.getElementById('perf-indice-nivel');
+    if (valorEl) { valorEl.textContent = '—'; valorEl.style.color = '#f44336'; }
+    if (nivelEl) nivelEl.textContent = 'Erro ao consultar: ' + ((r && r.erro) || 'falha desconhecida');
+    return;
+  }
+
+  var corNivel = r.indice_qualidade >= 90 ? '#00ff88' : r.indice_qualidade >= 75 ? '#ffaa00' : r.indice_qualidade >= 50 ? '#ff9800' : '#f44336';
+  var valorEl = document.getElementById('perf-indice-valor');
+  var nivelEl = document.getElementById('perf-indice-nivel');
+  if (valorEl) { valorEl.textContent = r.indice_qualidade + '%'; valorEl.style.color = corNivel; }
+  if (nivelEl) { nivelEl.textContent = r.nivel; nivelEl.style.color = corNivel; }
+
+  var alertaEl = document.getElementById('perf-alerta');
+  if (alertaEl) {
+    if (r.risco_alucinacao) {
+      alertaEl.innerHTML = '<span style="color:#f44336;font-weight:600">⚠️ Risco de alucinação da IA:</span> conex&atilde;o com fontes de IA/busca instável ou indispon&iacute;vel, ou taxa de erro recente alta no enriquecimento. Verifique as chaves de API e a conex&atilde;o com a internet.';
+    } else {
+      alertaEl.innerHTML = '<span style="color:#00c853;font-weight:600">✅ Tudo certo:</span> recursos do servidor, conex&atilde;o com a internet e fontes de IA/busca est&atilde;o saud&aacute;veis. O agente de IA tem condi&ccedil;&otilde;es de operar sem perder qualidade.';
+    }
+  }
+
+  var s = r.sistema || {};
+  var sistemaEl = document.getElementById('perf-sistema');
+  if (sistemaEl) {
+    sistemaEl.innerHTML = aeCard(s.cpu_uso_pct + '%', 'Uso de CPU (carga/núcleos · ' + s.cpu_nucleos + ' núcleo(s))', s.cpu_uso_pct > 90 ? '#f44336' : s.cpu_uso_pct > 75 ? '#ff9800' : '#00c853')
+      + aeCard(s.mem_uso_pct + '%', 'Uso de RAM (' + s.mem_livre_mb + ' MB livres de ' + s.mem_total_mb + ' MB)', s.mem_uso_pct > 90 ? '#f44336' : s.mem_uso_pct > 75 ? '#ff9800' : '#00c853')
+      + aeCard(s.processo_rss_mb + ' MB', 'Memória do processo (Node)')
+      + aeCard(Math.floor(s.uptime_s / 3600) + 'h ' + Math.floor((s.uptime_s % 3600) / 60) + 'm', 'Tempo ativo (uptime)');
+  }
+
+  var internet = r.internet || {};
+  var conectividadeEl = document.getElementById('perf-conectividade');
+  if (conectividadeEl) {
+    var corInternet = !internet.online ? '#f44336' : internet.latencia_ms > 2000 ? '#ff9800' : internet.latencia_ms > 800 ? '#ffaa00' : '#00c853';
+    var c = r.conectividade || {};
+    conectividadeEl.innerHTML = aeCard(internet.online ? (internet.latencia_ms + ' ms') : 'Offline', 'Latência da internet (saída)', corInternet)
+      + aeCard(c.ia_anthropic ? 'Conectado' : 'Não configurado', 'IA — Anthropic (Claude)', c.ia_anthropic ? '#00c853' : '#f44336')
+      + aeCard((c.busca_serper || c.busca_google) ? 'Conectado' : 'Não configurado', 'Busca Web (DNA/Imagens)', (c.busca_serper || c.busca_google) ? '#00c853' : '#ff9800')
+      + aeCard(c.bling ? 'Conectado' : 'Não configurado', 'Bling (ERP/PDV)', c.bling ? '#00c853' : '#888')
+      + aeCard(c.wix ? 'Conectado' : 'Não configurado', 'Wix Stores', c.wix ? '#00c853' : '#888');
+  }
+
+  var enr = r.enriquecimento || {};
+  var enriquecimentoEl = document.getElementById('perf-enriquecimento');
+  if (enriquecimentoEl) {
+    enriquecimentoEl.innerHTML = aeCard(Math.round((enr.media_ntc || 0) * 100) + '%', 'NTC médio do catálogo', (enr.media_ntc||0) >= 0.95 ? '#00c853' : (enr.media_ntc||0) >= 0.6 ? '#ff9800' : '#f44336')
+      + aeCard(enr.taxa_erro_pct_recente + '%', 'Taxa de erro recente (DNA na Web)', enr.taxa_erro_pct_recente > 40 ? '#f44336' : enr.taxa_erro_pct_recente > 15 ? '#ff9800' : '#00c853')
+      + aeCard(enr.pendentes_enriquecer != null ? enr.pendentes_enriquecer : 0, 'Pendentes na fila do job 24/7', (enr.pendentes_enriquecer||0) > 0 ? '#ff9800' : '#00c853')
+      + aeCard(enr.logs_recentes != null ? enr.logs_recentes : 0, 'Eventos analisados (últimos)');
+  }
+
+  if (!_perfAutoTimer) {
+    var chk = document.getElementById('perf-auto');
+    if (chk && chk.checked) _perfAutoTimer = setInterval(perfAtualizar, 30000);
+  }
 }
 
 async function aeAtualizar() {
