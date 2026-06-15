@@ -54,6 +54,30 @@ CREATE TABLE IF NOT EXISTS bling_oauth (
   expires_em INTEGER,
   atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Aba "Conectores NTC": bancos de referência usados pelo agente de
+-- enriquecimento para "busca cega" (montadoras, fabricantes/importadores,
+-- catálogos de aplicação original como PartSouq/TecDoc) e conectores de
+-- bancos de dados/sites externos do lojista (login/senha) usados para
+-- importar produtos, imagens e atualizações.
+CREATE TABLE IF NOT EXISTS ntc_referencias (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tipo TEXT NOT NULL,             -- 'montadora' | 'fabricante' | 'catalogo' | 'conector'
+  nome TEXT NOT NULL,
+  logo_url TEXT,
+  site TEXT,
+  subtipo TEXT,                   -- fabricante: 'oem' | 'aftermarket' | 'importador'
+  nota_ntc_referencia REAL,       -- catalogo: confiabilidade da fonte (0-1)
+  usuario TEXT,                   -- conector: login do banco/site externo
+  senha TEXT,                     -- conector: senha do banco/site externo
+  url TEXT,                       -- conector/catalogo: endereço de acesso
+  espelho_nuvem TEXT,             -- conector: 'wix' | 'drive' | ''
+  ativo INTEGER NOT NULL DEFAULT 1,
+  observacoes TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ntc_referencias_tipo ON ntc_referencias(tipo);
 `);
 
 // Migração: coluna `pausado` — permite excluir um produto específico do job
@@ -216,6 +240,111 @@ function obterBlingOAuth() {
   return db.prepare('SELECT * FROM bling_oauth WHERE id = 1').get() || null;
 }
 
+// ===== Conectores NTC (montadoras, fabricantes/importadores, catálogos de
+// referência e conectores de bancos de dados/sites externos do lojista) =====
+const NTC_REF_TIPOS = ['montadora', 'fabricante', 'catalogo', 'conector'];
+
+function listarReferencias(tipo) {
+  if (tipo) return db.prepare('SELECT * FROM ntc_referencias WHERE tipo = ? ORDER BY nome COLLATE NOCASE').all(tipo);
+  return db.prepare('SELECT * FROM ntc_referencias ORDER BY tipo, nome COLLATE NOCASE').all();
+}
+
+function criarReferencia(r) {
+  if (!r.tipo || NTC_REF_TIPOS.indexOf(r.tipo) === -1) throw new Error('tipo inválido');
+  if (!r.nome) throw new Error('nome é obrigatório');
+  const info = db.prepare(`INSERT INTO ntc_referencias
+    (tipo, nome, logo_url, site, subtipo, nota_ntc_referencia, usuario, senha, url, espelho_nuvem, ativo, observacoes)
+    VALUES (@tipo, @nome, @logo_url, @site, @subtipo, @nota_ntc_referencia, @usuario, @senha, @url, @espelho_nuvem, @ativo, @observacoes)`)
+    .run({
+      tipo: r.tipo, nome: r.nome,
+      logo_url: r.logo_url || null, site: r.site || null, subtipo: r.subtipo || null,
+      nota_ntc_referencia: r.nota_ntc_referencia != null ? r.nota_ntc_referencia : null,
+      usuario: r.usuario || null, senha: r.senha || null, url: r.url || null,
+      espelho_nuvem: r.espelho_nuvem || null,
+      ativo: r.ativo === false ? 0 : 1,
+      observacoes: r.observacoes || null,
+    });
+  return db.prepare('SELECT * FROM ntc_referencias WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function atualizarReferencia(id, r) {
+  const existente = db.prepare('SELECT * FROM ntc_referencias WHERE id = ?').get(id);
+  if (!existente) return null;
+  const campos = {
+    nome: r.nome !== undefined ? r.nome : existente.nome,
+    logo_url: r.logo_url !== undefined ? r.logo_url : existente.logo_url,
+    site: r.site !== undefined ? r.site : existente.site,
+    subtipo: r.subtipo !== undefined ? r.subtipo : existente.subtipo,
+    nota_ntc_referencia: r.nota_ntc_referencia !== undefined ? r.nota_ntc_referencia : existente.nota_ntc_referencia,
+    usuario: r.usuario !== undefined ? r.usuario : existente.usuario,
+    senha: r.senha !== undefined ? r.senha : existente.senha,
+    url: r.url !== undefined ? r.url : existente.url,
+    espelho_nuvem: r.espelho_nuvem !== undefined ? r.espelho_nuvem : existente.espelho_nuvem,
+    ativo: r.ativo !== undefined ? (r.ativo ? 1 : 0) : existente.ativo,
+    observacoes: r.observacoes !== undefined ? r.observacoes : existente.observacoes,
+    id: id,
+  };
+  db.prepare(`UPDATE ntc_referencias SET nome=@nome, logo_url=@logo_url, site=@site, subtipo=@subtipo,
+    nota_ntc_referencia=@nota_ntc_referencia, usuario=@usuario, senha=@senha, url=@url,
+    espelho_nuvem=@espelho_nuvem, ativo=@ativo, observacoes=@observacoes, atualizado_em=datetime('now')
+    WHERE id=@id`).run(campos);
+  return db.prepare('SELECT * FROM ntc_referencias WHERE id = ?').get(id);
+}
+
+function excluirReferencia(id) {
+  return db.prepare('DELETE FROM ntc_referencias WHERE id = ?').run(id);
+}
+
+// Popula os bancos de montadoras/fabricantes/catálogos de referência na
+// primeira execução, para o agente já ter uma base de "busca cega". O
+// lojista pode editar, completar (logos/sites) ou remover qualquer item.
+function seedReferenciasNTC() {
+  const total = db.prepare('SELECT COUNT(*) AS total FROM ntc_referencias').get().total;
+  if (total > 0) return;
+
+  const montadoras = [
+    'Toyota', 'Honda', 'Hyundai', 'Kia', 'Ford', 'Chevrolet', 'Volkswagen',
+    'Fiat', 'Renault', 'Nissan', 'Peugeot', 'Citroën', 'Mitsubishi', 'Jeep',
+    'Mercedes-Benz', 'Iveco',
+  ];
+
+  const fabricantes = [
+    { nome: 'Bosch', site: 'https://www.bosch.com.br', subtipo: 'oem' },
+    { nome: 'Mahle', site: 'https://www.mahle.com', subtipo: 'oem' },
+    { nome: 'ZF', site: 'https://www.zf.com', subtipo: 'oem' },
+    { nome: 'Continental', site: 'https://www.continental.com', subtipo: 'oem' },
+    { nome: 'Denso', site: 'https://www.denso.com.br', subtipo: 'oem' },
+    { nome: 'Valeo', site: 'https://www.valeo.com', subtipo: 'oem' },
+    { nome: 'Schaeffler / INA', site: 'https://www.schaeffler.com.br', subtipo: 'oem' },
+    { nome: 'SKF', site: 'https://www.skf.com', subtipo: 'oem' },
+    { nome: 'NGK', site: 'https://www.ngk.com.br', subtipo: 'oem' },
+    { nome: 'Nakata', site: 'https://www.nakata.com.br', subtipo: 'aftermarket' },
+    { nome: 'Cofap', site: 'https://www.cofap.com.br', subtipo: 'aftermarket' },
+    { nome: 'Fras-le', site: 'https://www.frasle.com.br', subtipo: 'aftermarket' },
+    { nome: 'Tecfil', site: 'https://www.tecfil.com.br', subtipo: 'aftermarket' },
+    { nome: 'Fremax', site: 'https://www.fremax.com.br', subtipo: 'aftermarket' },
+  ];
+
+  const catalogos = [
+    { nome: 'PartSouq', url: 'https://www.partsouq.com', nota_ntc_referencia: 0.9, observacoes: 'Catálogo de aplicação original (peça × chassi/VIN) — referência para CC/AV/LG.' },
+    { nome: 'TecDoc', url: 'https://www.tecdoc.net', nota_ntc_referencia: 0.9, observacoes: 'Catálogo mundial de aplicações e cross-codes aftermarket — referência para CC/AV.' },
+    { nome: 'Fras-le Catálogo', url: 'https://www.frasle.com.br', nota_ntc_referencia: 0.8, observacoes: 'Catálogo nacional de aplicações (freios/embreagem) — referência para AV/CC.' },
+    { nome: 'Schaeffler REPXPERT', url: 'https://www.repxpert.com.br', nota_ntc_referencia: 0.85, observacoes: 'Catálogo técnico INA/FAG/LuK — referência para EC/MC/CC.' },
+    { nome: 'RockAuto', url: 'https://www.rockauto.com', nota_ntc_referencia: 0.7, observacoes: 'Referência de mercado/preço e cross-codes aftermarket americano.' },
+    { nome: 'Mercado Livre', url: 'https://www.mercadolivre.com.br', nota_ntc_referencia: 0.6, observacoes: 'Referência de demanda/preço regional — não usar como fonte de aplicação original.' },
+  ];
+
+  const insert = db.prepare(`INSERT INTO ntc_referencias (tipo, nome, logo_url, site, subtipo, nota_ntc_referencia, url, observacoes)
+    VALUES (@tipo, @nome, @logo_url, @site, @subtipo, @nota_ntc_referencia, @url, @observacoes)`);
+
+  const tx = db.transaction(() => {
+    montadoras.forEach(nome => insert.run({ tipo: 'montadora', nome, logo_url: null, site: null, subtipo: null, nota_ntc_referencia: null, url: null, observacoes: null }));
+    fabricantes.forEach(f => insert.run({ tipo: 'fabricante', nome: f.nome, logo_url: null, site: f.site, subtipo: f.subtipo, nota_ntc_referencia: null, url: null, observacoes: null }));
+    catalogos.forEach(c => insert.run({ tipo: 'catalogo', nome: c.nome, logo_url: null, site: null, subtipo: null, nota_ntc_referencia: c.nota_ntc_referencia, url: c.url, observacoes: c.observacoes }));
+  });
+  tx();
+}
+
 module.exports = {
   db,
   upsertProduto,
@@ -232,4 +361,9 @@ module.exports = {
   obterEstatisticas,
   salvarBlingOAuth,
   obterBlingOAuth,
+  listarReferencias,
+  criarReferencia,
+  atualizarReferencia,
+  excluirReferencia,
+  seedReferenciasNTC,
 };

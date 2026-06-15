@@ -282,6 +282,7 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section-label">Plataforma</div>
   <div class="sb-item" onclick="nav('pdv')"><span class="icon">🏛️</span>PDV</div>
   <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🤖</span>Auto-Enriquecimento 24/7</div>
+  <div class="sb-item" onclick="nav('conectores-ntc')"><span class="icon">🔌</span>Conectores NTC</div>
   <div class="sb-item" onclick="nav('performance')"><span class="icon">⚡</span>Painel de Performance</div>
   <div class="sb-item" onclick="nav('categoria')"><span class="icon">🏷️</span>Categoria</div>
   <div class="sb-item" onclick="nav('templates')"><span class="icon">📝</span>Templates</div>
@@ -1802,6 +1803,116 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div class="grid4" id="perf-enriquecimento" style="gap:8px"></div>
       </div>
     </div>
+    <div class="page" id="page-conectores-ntc">
+      <div class="page-title">&#128268; Conectores NTC</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Bancos de refer&ecirc;ncia usados pelo agente de IA na "busca cega" por dados de engenharia, aplica&ccedil;&otilde;es, imagens e atualiza&ccedil;&otilde;es que enriquecem o NTC: conectores de bancos de dados/sites do lojista, c&oacute;pia espelhada em nuvem, montadoras, fabricantes/importadores e cat&aacute;logos mundiais/nacionais de aplica&ccedil;&atilde;o original (PartSouq, TecDoc etc.).</p>
+
+      <!-- A: Conectores de bancos de dados / sites do lojista -->
+      <div class="card">
+        <div class="card-title">&#128273; Conectores de Bancos de Dados / Sites do Lojista</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Cadastre o acesso (URL + login/senha) aos sistemas e sites de fornecedores do lojista para que o agente possa consultar produtos, imagens e atualiza&ccedil;&otilde;es e usar isso para enriquecer o NTC.</p>
+        <div style="overflow-x:auto"><table style="width:100%;font-size:13px;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Nome</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">URL</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Usu&aacute;rio</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Espelho</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Status</th>
+            <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">A&ccedil;&otilde;es</th>
+          </tr></thead>
+          <tbody id="cref-conectores-tbody"></tbody>
+        </table></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="_btnFlash(this);crefAbrirForm('conector')">&#43; Adicionar Conector</button>
+      </div>
+
+      <!-- B: Espelho em nuvem -->
+      <div class="card">
+        <div class="card-title">&#9729;&#65039; C&oacute;pia Espelhada em Nuvem (Wix)</div>
+        <p style="font-size:12px;color:#888;margin-bottom:8px">Tudo que for raspado pelos conectores acima pode ser copiado tamb&eacute;m para uma cole&ccedil;&atilde;o no Wix, servindo de backup e refer&ecirc;ncia cruzada com espa&ccedil;o sobrando.</p>
+        <div id="cref-espelho-info" style="font-size:12px"></div>
+      </div>
+
+      <!-- C: Banco de montadoras -->
+      <div class="card">
+        <div class="card-title">&#127981; Banco de Montadoras</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Lista de montadoras usada como refer&ecirc;ncia no m&oacute;dulo AV/LG. Clique em &#128269; para o agente buscar o logo automaticamente.</p>
+        <div id="cref-montadoras-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
+      </div>
+
+      <!-- D: Banco de fabricantes / importadores -->
+      <div class="card">
+        <div class="card-title">&#127991;&#65039; Banco de Fabricantes / Importadores</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Fabricantes OEM, aftermarket certificados e importadores independentes &mdash; refer&ecirc;ncia para os m&oacute;dulos CC/LG. Edite ou complete com os importadores conhecidos pelo lojista.</p>
+        <div id="cref-fabricantes-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
+      </div>
+
+      <!-- E: Catálogos de referência -->
+      <div class="card">
+        <div class="card-title">&#127760; Cat&aacute;logos de Refer&ecirc;ncia (Scraping)</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Cat&aacute;logos mundiais/nacionais de aplica&ccedil;&atilde;o original (PartSouq, TecDoc etc.) consultados pelo agente como refer&ecirc;ncia cruzada, com uma nota de confiabilidade (0 a 1) usada como NTC de refer&ecirc;ncia da fonte.</p>
+        <div style="overflow-x:auto"><table style="width:100%;font-size:13px;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Nome</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">URL</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">NTC Ref.</th>
+            <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Observa&ccedil;&otilde;es</th>
+            <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">A&ccedil;&otilde;es</th>
+          </tr></thead>
+          <tbody id="cref-catalogos-tbody"></tbody>
+        </table></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="_btnFlash(this);crefAbrirForm('catalogo')">&#43; Adicionar Cat&aacute;logo</button>
+      </div>
+
+      <!-- F: Índice de volume mínimo de dados -->
+      <div class="card">
+        <div class="card-title">&#128202; &Iacute;ndice de Volume M&iacute;nimo de Dados</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Estimativa de quantos pontos de dados (campos, imagens e refer&ecirc;ncias) o agente precisa coletar/validar por produto e no total do cat&aacute;logo para manter o NTC m&eacute;dio &ge; 95%.</p>
+        <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:8px;margin-bottom:10px">Quantidade de cadastros:
+          <input id="cref-vol-qtd" type="number" value="1000" min="1" style="width:100px" onchange="crefRenderVolume()">
+        </label>
+        <div style="overflow-x:auto"><table style="width:100%;font-size:13px;border-collapse:collapse">
+          <thead><tr>
+            <th style="text-align:left;padding:6px 10px;color:#555;border-bottom:1px solid #e5e7eb">Item</th>
+            <th style="text-align:right;padding:6px 10px;color:#555;border-bottom:1px solid #e5e7eb">Por produto</th>
+            <th style="text-align:right;padding:6px 10px;color:#555;border-bottom:1px solid #e5e7eb">Total</th>
+          </tr></thead>
+          <tbody id="cref-vol-tbody"></tbody>
+        </table></div>
+        <p id="cref-vol-resumo" style="font-size:12px;color:#666;margin-top:10px"></p>
+      </div>
+
+      <!-- Formulário de adicionar/editar (compartilhado entre as seções acima) -->
+      <div class="card" id="cref-form-card" style="display:none;border-color:#ff4500">
+        <div class="card-title" id="cref-form-title">Adicionar</div>
+        <div class="grid2">
+          <div class="form-group"><label>Nome</label><input id="cref-f-nome" type="text"></div>
+          <div class="form-group" data-tipo="fabricante"><label>Tipo</label>
+            <select id="cref-f-subtipo">
+              <option value="oem">OEM / Tier 1</option>
+              <option value="aftermarket">Aftermarket certificado</option>
+              <option value="importador">Importador independente</option>
+            </select>
+          </div>
+          <div class="form-group" data-tipo="montadora,fabricante"><label>Logo (URL da imagem)</label><input id="cref-f-logo" type="text" placeholder="https://..."></div>
+          <div class="form-group" data-tipo="montadora,fabricante"><label>Site</label><input id="cref-f-site" type="text" placeholder="https://..."></div>
+          <div class="form-group" data-tipo="catalogo,conector"><label>URL</label><input id="cref-f-url" type="text" placeholder="https://..."></div>
+          <div class="form-group" data-tipo="catalogo"><label>NTC de Refer&ecirc;ncia (0 a 1)</label><input id="cref-f-nota" type="number" step="0.01" min="0" max="1" placeholder="0.9"></div>
+          <div class="form-group" data-tipo="conector"><label>Usu&aacute;rio</label><input id="cref-f-usuario" type="text"></div>
+          <div class="form-group" data-tipo="conector"><label>Senha</label><input id="cref-f-senha" type="password"></div>
+          <div class="form-group" data-tipo="conector"><label>Espelho em nuvem</label>
+            <select id="cref-f-espelho">
+              <option value="">Nenhum</option>
+              <option value="wix">Wix</option>
+            </select>
+          </div>
+          <div class="form-group" data-tipo="catalogo,conector" style="grid-column:1/-1"><label>Observa&ccedil;&otilde;es</label><textarea id="cref-f-obs" rows="2"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="_btnFlash(this);crefSalvar()">&#128190; Salvar</button>
+          <button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefFecharForm()">Cancelar</button>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
     <div class="page" id="page-templates">
       <div class="page-title">&#128221; Templates de Enriquecimento</div>
@@ -2174,6 +2285,7 @@ function nav(page, opts) {
   if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
   if (page === 'performance') perfAtualizar();
   else perfPararAuto();
+  if (page === 'conectores-ntc') crefCarregar();
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -8603,6 +8715,288 @@ function imgFiltrarCat(cat, btn) {
     var itemCat = item.getAttribute('data-cat') || '';
     item.style.display = (!cat || itemCat === cat) ? '' : 'none';
   });
+}
+
+// ===== CONECTORES NTC =====
+// Bancos de referência usados pelo agente na "busca cega": conectores de
+// bancos/sites do lojista (com credenciais), espelho em nuvem (Wix),
+// montadoras, fabricantes/importadores e catálogos de aplicação original
+// (PartSouq, TecDoc etc.), além do índice de volume mínimo de dados.
+var CREF_TIPO_LABELS = { montadora: 'Montadora', fabricante: 'Fabricante/Importador', catalogo: 'Catálogo de Referência', conector: 'Conector' };
+var _crefDados = { montadora: [], fabricante: [], catalogo: [], conector: [] };
+var _crefEditando = null; // {tipo, id|null}
+
+async function crefCarregar() {
+  try {
+    var r = await api('GET', '/ntc-referencias');
+    var itens = (r && r.itens) || [];
+    var novo = { montadora: [], fabricante: [], catalogo: [], conector: [] };
+    itens.forEach(function(it) { if (novo[it.tipo]) novo[it.tipo].push(it); });
+    _crefDados = novo;
+  } catch (e) {
+    _crefDados = { montadora: [], fabricante: [], catalogo: [], conector: [] };
+  }
+  crefRenderConectores();
+  crefRenderEspelho();
+  crefRenderMontadoras();
+  crefRenderFabricantes();
+  crefRenderCatalogos();
+  crefRenderVolume();
+}
+
+function crefRenderConectores() {
+  var tbody = document.getElementById('cref-conectores-tbody');
+  if (!tbody) return;
+  var lista = _crefDados.conector || [];
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:10px;color:#999;text-align:center">Nenhum conector cadastrado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function(c) {
+    return '<tr>'
+      + '<td style="padding:6px 12px">' + esc(c.nome) + '</td>'
+      + '<td style="padding:6px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.url || '—') + '</td>'
+      + '<td style="padding:6px 12px">' + esc(c.usuario || '—') + '</td>'
+      + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '☁️ Wix' : '—') + '</td>'
+      + '<td style="padding:6px 12px">' + (c.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>') + '</td>'
+      + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefEditar(\'conector\',' + c.id + ')">✏️</button> '
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefExcluir(\'conector\',' + c.id + ')">🗑️</button>'
+      + '</td></tr>';
+  }).join('');
+}
+
+function crefRenderEspelho() {
+  var el = document.getElementById('cref-espelho-info');
+  if (!el) return;
+  var ativos = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'wix'; });
+  if (!ativos.length) {
+    el.innerHTML = '<span style="color:#999">Nenhum conector está com espelho em Wix habilitado ainda. Edite um conector acima e selecione "Wix" no campo Espelho em nuvem para ativar a cópia espelhada.</span>';
+    return;
+  }
+  el.innerHTML = '<span style="color:#16a34a">☁️ ' + ativos.length + ' conector(es) com cópia espelhada ativa em Wix:</span> '
+    + ativos.map(function(c) { return esc(c.nome); }).join(', ');
+}
+
+function crefRenderMontadoras() {
+  var grid = document.getElementById('cref-montadoras-grid');
+  if (!grid) return;
+  var lista = _crefDados.montadora || [];
+  grid.innerHTML = lista.map(function(m) {
+    return '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;text-align:center;font-size:12px">'
+      + (m.logo_url
+          ? '<img src="' + esc(m.logo_url) + '" style="max-width:100%;max-height:40px;object-fit:contain;margin-bottom:6px" onerror="this.style.display=\'none\'">'
+          : '<div style="height:40px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:24px">🏭</div>')
+      + '<div style="font-weight:600;margin-bottom:4px;word-break:break-word">' + esc(m.nome) + '</div>'
+      + (m.site ? '<div><a href="' + esc(m.site) + '" target="_blank" style="font-size:11px;color:#888">site</a></div>' : '')
+      + '<div style="margin-top:6px;display:flex;gap:4px;justify-content:center">'
+      + '<button class="btn btn-secondary btn-sm" title="Buscar logo" onclick="_btnFlash(this);crefBuscarLogo(\'montadora\',' + m.id + ')">🔍</button>'
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefEditar(\'montadora\',' + m.id + ')">✏️</button>'
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefExcluir(\'montadora\',' + m.id + ')">🗑️</button>'
+      + '</div></div>';
+  }).join('')
+  + '<div style="border:2px dashed #ccc;border-radius:8px;padding:8px;text-align:center;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#888;min-height:80px" onclick="_btnFlash(this);crefAbrirForm(\'montadora\')">&#43; Adicionar</div>';
+}
+
+function crefRenderFabricantes() {
+  var grid = document.getElementById('cref-fabricantes-grid');
+  if (!grid) return;
+  var lista = _crefDados.fabricante || [];
+  var subLabel = { oem: 'OEM/Tier 1', aftermarket: 'Aftermarket', importador: 'Importador' };
+  var subCor = { oem: '#1976d2', aftermarket: '#ff9800', importador: '#9c27b0' };
+  grid.innerHTML = lista.map(function(f) {
+    var cor = subCor[f.subtipo] || '#999';
+    return '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:8px;text-align:center;font-size:12px">'
+      + (f.logo_url
+          ? '<img src="' + esc(f.logo_url) + '" style="max-width:100%;max-height:40px;object-fit:contain;margin-bottom:6px" onerror="this.style.display=\'none\'">'
+          : '<div style="height:40px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:24px">🏷️</div>')
+      + '<div style="font-weight:600;margin-bottom:2px;word-break:break-word">' + esc(f.nome) + '</div>'
+      + (f.subtipo ? '<span class="badge" style="background:' + cor + '20;color:' + cor + ';font-size:10px">' + (subLabel[f.subtipo] || f.subtipo) + '</span>' : '')
+      + (f.site ? '<div><a href="' + esc(f.site) + '" target="_blank" style="font-size:11px;color:#888">site</a></div>' : '')
+      + '<div style="margin-top:6px;display:flex;gap:4px;justify-content:center">'
+      + '<button class="btn btn-secondary btn-sm" title="Buscar logo" onclick="_btnFlash(this);crefBuscarLogo(\'fabricante\',' + f.id + ')">🔍</button>'
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefEditar(\'fabricante\',' + f.id + ')">✏️</button>'
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefExcluir(\'fabricante\',' + f.id + ')">🗑️</button>'
+      + '</div></div>';
+  }).join('')
+  + '<div style="border:2px dashed #ccc;border-radius:8px;padding:8px;text-align:center;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#888;min-height:80px" onclick="_btnFlash(this);crefAbrirForm(\'fabricante\')">&#43; Adicionar</div>';
+}
+
+function crefRenderCatalogos() {
+  var tbody = document.getElementById('cref-catalogos-tbody');
+  if (!tbody) return;
+  var lista = _crefDados.catalogo || [];
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:10px;color:#999;text-align:center">Nenhum catálogo cadastrado ainda.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function(c) {
+    var nota = c.nota_ntc_referencia != null ? Math.round(c.nota_ntc_referencia * 100) + '%' : '—';
+    return '<tr>'
+      + '<td style="padding:6px 12px">' + esc(c.nome) + '</td>'
+      + '<td style="padding:6px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (c.url ? '<a href="' + esc(c.url) + '" target="_blank">' + esc(c.url) + '</a>' : '—') + '</td>'
+      + '<td style="padding:6px 12px">' + nota + '</td>'
+      + '<td style="padding:6px 12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.observacoes || '—') + '</td>'
+      + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefEditar(\'catalogo\',' + c.id + ')">✏️</button> '
+      + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefExcluir(\'catalogo\',' + c.id + ')">🗑️</button>'
+      + '</td></tr>';
+  }).join('');
+}
+
+// Estima quantos pontos de dados (campos NTC + fotos + códigos cruzados +
+// aplicações + boletins) o agente precisa coletar/validar por produto e no
+// total do catálogo, com base nos módulos CNTC já definidos nesta página.
+function crefRenderVolume() {
+  var tbody = document.getElementById('cref-vol-tbody');
+  var resumo = document.getElementById('cref-vol-resumo');
+  if (!tbody) return;
+  var qtdEl = document.getElementById('cref-vol-qtd');
+  var qtd = Math.max(1, parseInt(qtdEl && qtdEl.value, 10) || 1000);
+
+  var camposTecnicos = 0;
+  Object.keys(CNTC_CAMPOS).forEach(function(mod) {
+    var meta = CNTC_CAMPOS[mod];
+    var dup = CNTC_CAMPOS_DUPLICADOS[mod] || [];
+    (meta.campos || []).forEach(function(c) {
+      if (dup.indexOf(c.key) === -1) camposTecnicos++;
+    });
+  });
+
+  var itens = [
+    { label: 'Campos técnicos (módulos CNTC)', porProduto: camposTecnicos },
+    { label: 'Fotos do produto (IV — mínimo recomendado)', porProduto: 4 },
+    { label: 'Códigos cruzados (CC — OEM + aftermarket + importador)', porProduto: 3 },
+    { label: 'Aplicações veiculares (AV — mínimo)', porProduto: 1 },
+    { label: 'Boletins técnicos (BTA — mínimo)', porProduto: 1 },
+  ];
+  var totalPorProduto = itens.reduce(function(s, i) { return s + i.porProduto; }, 0);
+
+  tbody.innerHTML = itens.map(function(i) {
+    return '<tr><td style="padding:6px 10px">' + esc(i.label) + '</td>'
+      + '<td style="padding:6px 10px;text-align:right">' + i.porProduto + '</td>'
+      + '<td style="padding:6px 10px;text-align:right">' + (i.porProduto * qtd).toLocaleString('pt-BR') + '</td></tr>';
+  }).join('')
+  + '<tr style="font-weight:700;border-top:2px solid #e5e7eb">'
+  + '<td style="padding:6px 10px">Total por produto / catálogo</td>'
+  + '<td style="padding:6px 10px;text-align:right">' + totalPorProduto + '</td>'
+  + '<td style="padding:6px 10px;text-align:right">' + (totalPorProduto * qtd).toLocaleString('pt-BR') + '</td></tr>';
+
+  if (resumo) {
+    var nMont = (_crefDados.montadora || []).length;
+    var nFab = (_crefDados.fabricante || []).length;
+    var nCat = (_crefDados.catalogo || []).length;
+    resumo.innerHTML = 'Para um cadastro de <b>' + qtd.toLocaleString('pt-BR') + '</b> itens, o agente precisa coletar/validar aproximadamente <b>'
+      + (totalPorProduto * qtd).toLocaleString('pt-BR') + '</b> pontos de dados (campos técnicos + fotos + códigos cruzados + aplicações + boletins) '
+      + 'para manter o NTC médio &ge; 95%. Bancos de referência ativos: <b>' + nMont + '</b> montadoras, <b>' + nFab + '</b> fabricantes/importadores e <b>' + nCat + '</b> catálogos de aplicação cadastrados como fonte de "busca cega".';
+  }
+}
+
+function crefAbrirForm(tipo, id) {
+  _crefEditando = { tipo: tipo, id: id || null };
+  var card = document.getElementById('cref-form-card');
+  var title = document.getElementById('cref-form-title');
+  if (!card || !title) return;
+  card.style.display = 'block';
+  title.textContent = (id ? 'Editar ' : 'Adicionar ') + (CREF_TIPO_LABELS[tipo] || tipo);
+
+  card.querySelectorAll('[data-tipo]').forEach(function(el) {
+    var tipos = el.getAttribute('data-tipo').split(',');
+    el.style.display = tipos.indexOf(tipo) !== -1 ? '' : 'none';
+  });
+
+  var item = id ? (_crefDados[tipo] || []).find(function(x) { return x.id === id; }) : null;
+  document.getElementById('cref-f-nome').value = item ? (item.nome || '') : '';
+  document.getElementById('cref-f-subtipo').value = item ? (item.subtipo || 'oem') : 'oem';
+  document.getElementById('cref-f-logo').value = item ? (item.logo_url || '') : '';
+  document.getElementById('cref-f-site').value = item ? (item.site || '') : '';
+  document.getElementById('cref-f-url').value = item ? (item.url || '') : '';
+  document.getElementById('cref-f-nota').value = (item && item.nota_ntc_referencia != null) ? item.nota_ntc_referencia : '';
+  document.getElementById('cref-f-usuario').value = item ? (item.usuario || '') : '';
+  document.getElementById('cref-f-senha').value = item ? (item.senha || '') : '';
+  document.getElementById('cref-f-espelho').value = item ? (item.espelho_nuvem || '') : '';
+  document.getElementById('cref-f-obs').value = item ? (item.observacoes || '') : '';
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function crefFecharForm() {
+  _crefEditando = null;
+  var card = document.getElementById('cref-form-card');
+  if (card) card.style.display = 'none';
+}
+
+async function crefSalvar() {
+  if (!_crefEditando) return;
+  var tipo = _crefEditando.tipo;
+  var nome = document.getElementById('cref-f-nome').value.trim();
+  if (!nome) { alert('Informe o nome.'); return; }
+
+  var payload = { tipo: tipo, nome: nome };
+  if (tipo === 'fabricante') {
+    payload.subtipo = document.getElementById('cref-f-subtipo').value;
+  }
+  if (tipo === 'montadora' || tipo === 'fabricante') {
+    payload.logo_url = document.getElementById('cref-f-logo').value.trim();
+    payload.site = document.getElementById('cref-f-site').value.trim();
+  }
+  if (tipo === 'catalogo' || tipo === 'conector') {
+    payload.url = document.getElementById('cref-f-url').value.trim();
+    payload.observacoes = document.getElementById('cref-f-obs').value.trim();
+  }
+  if (tipo === 'catalogo') {
+    var nota = document.getElementById('cref-f-nota').value;
+    payload.nota_ntc_referencia = nota !== '' ? Number(nota) : null;
+  }
+  if (tipo === 'conector') {
+    payload.usuario = document.getElementById('cref-f-usuario').value.trim();
+    payload.senha = document.getElementById('cref-f-senha').value;
+    payload.espelho_nuvem = document.getElementById('cref-f-espelho').value;
+  }
+
+  var r;
+  if (_crefEditando.id) {
+    r = await api('PUT', '/ntc-referencias/' + _crefEditando.id, payload);
+  } else {
+    r = await api('POST', '/ntc-referencias', payload);
+  }
+  if (!r || !r.ok) { alert('Erro ao salvar: ' + ((r && r.erro) || 'falha')); return; }
+  crefFecharForm();
+  crefCarregar();
+}
+
+function crefEditar(tipo, id) {
+  crefAbrirForm(tipo, id);
+}
+
+async function crefExcluir(tipo, id) {
+  if (!confirm('Excluir este item?')) return;
+  var r = await api('DELETE', '/ntc-referencias/' + id);
+  if (!r || !r.ok) { alert('Erro ao excluir: ' + ((r && r.erro) || 'falha')); return; }
+  crefCarregar();
+}
+
+// Usa o buscador de imagens já existente (mesmo do módulo IV) para tentar
+// localizar automaticamente o logo de uma montadora ou fabricante.
+async function crefBuscarLogo(tipo, id) {
+  var item = (_crefDados[tipo] || []).find(function(x) { return x.id === id; });
+  if (!item) return;
+
+  var data;
+  try {
+    data = await api('GET', '/imagens/buscar?q=' + encodeURIComponent(item.nome + ' logo') + '&fonte=ntcref');
+  } catch (e) {
+    alert('Erro ao buscar logo: ' + e.message);
+    return;
+  }
+  if (!data || !data.ok || !data.imagens || !data.imagens.length) {
+    alert((data && data.mensagem) || 'Nenhuma imagem encontrada para "' + item.nome + '".');
+    return;
+  }
+
+  var r = await api('PUT', '/ntc-referencias/' + id, { logo_url: data.imagens[0].url });
+  if (!r || !r.ok) { alert('Erro ao salvar logo: ' + ((r && r.erro) || 'falha')); return; }
+  crefCarregar();
 }
 
 </script>
