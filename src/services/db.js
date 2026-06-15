@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS bling_oauth (
 );
 `);
 
+// Migração: coluna `pausado` — permite excluir um produto específico do job
+// de auto-enriquecimento 24/7 (pausa independente por produto), preservando
+// a possibilidade de enriquecê-lo manualmente via "Minerar selecionados".
+const _colunasProdutos = db.prepare("PRAGMA table_info(produtos)").all().map(c => c.name);
+if (!_colunasProdutos.includes('pausado')) {
+  db.exec("ALTER TABLE produtos ADD COLUMN pausado INTEGER NOT NULL DEFAULT 0");
+}
+
 function linhaParaProduto(row) {
   if (!row) return null;
   let dados = {};
@@ -138,15 +146,24 @@ function contarProdutos() {
 }
 
 // Produtos candidatos ao job de auto-enriquecimento: NTC ainda não aprovado
-// (< 0.95), priorizando os mais antigos/menos atualizados primeiro.
+// (< 0.95), priorizando os mais antigos/menos atualizados primeiro. Produtos
+// pausados (pausado=1) ficam fora do lote automático, mas continuam podendo
+// ser enriquecidos manualmente via "Minerar selecionados".
 function listarParaEnriquecer(limit = 5) {
-  const rows = db.prepare(`SELECT * FROM produtos WHERE ntc IS NULL OR ntc < 0.95
+  const rows = db.prepare(`SELECT * FROM produtos WHERE (ntc IS NULL OR ntc < 0.95) AND pausado = 0
     ORDER BY atualizado_em ASC LIMIT ?`).all(limit);
   return rows.map(linhaParaProduto);
 }
 
 function contarParaEnriquecer() {
-  return db.prepare(`SELECT COUNT(*) AS total FROM produtos WHERE ntc IS NULL OR ntc < 0.95`).get().total;
+  return db.prepare(`SELECT COUNT(*) AS total FROM produtos WHERE (ntc IS NULL OR ntc < 0.95) AND pausado = 0`).get().total;
+}
+
+// Pausa/retoma o auto-enriquecimento 24/7 para um produto específico.
+function definirPausado(id, pausado) {
+  const info = db.prepare('UPDATE produtos SET pausado = ? WHERE id = ?').run(pausado ? 1 : 0, id);
+  if (info.changes === 0) return null;
+  return obterProduto(id);
 }
 
 function excluirProduto(id) {
@@ -208,6 +225,7 @@ module.exports = {
   contarProdutos,
   listarParaEnriquecer,
   contarParaEnriquecer,
+  definirPausado,
   excluirProduto,
   registrarLog,
   listarLogsRecentes,

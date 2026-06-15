@@ -1518,8 +1518,10 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div class="grid4" id="ae-status" style="gap:8px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
           <button class="btn btn-primary btn-sm" onclick="aeRodarCiclo()">&#9654;&#65039; Rodar ciclo agora</button>
+          <button class="btn btn-secondary btn-sm" id="ae-toggle-btn" onclick="aeToggleHabilitado()">&#9208; Pausar Job 24/7</button>
           <button class="btn btn-secondary btn-sm" onclick="aeAtualizar()">&#128260; Atualizar</button>
         </div>
+        <div style="font-size:12px;color:#6b7280;margin-top:8px">Pausando o job 24/7, o ciclo automático em lote deixa de consumir cr&eacute;ditos da API. Use "Minerar selecionados" no cat&aacute;logo abaixo para testar 1, 2 ou alguns produtos espec&iacute;ficos por vez.</div>
         <div id="ae-status-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
       </div>
 
@@ -1543,13 +1545,19 @@ MEDIDA LARGURA  25 MM"></textarea>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="aeCarregarCatalogo()">&#128260; Atualizar</button>
         </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;color:#ccc;cursor:pointer"><input type="checkbox" id="ae-sel-all" onchange="aeToggleSelAll(this)"> Selecionar todos (da p&aacute;gina)</label>
+          <button class="btn btn-primary btn-sm" onclick="aeMinerarSelecionados()">&#129516; Minerar selecionados agora</button>
+          <span style="font-size:11px;color:#6b7280">Roda DNA na Web + imagens apenas nos itens marcados — n&atilde;o depende do job 24/7 estar ativo.</span>
+          <span id="ae-minerar-status" style="font-size:12px;color:#6b7280"></span>
+        </div>
         <div style="overflow-x:auto">
           <table class="aprov-table" style="width:100%">
             <thead><tr>
-              <th>Selo</th><th>SKU</th><th>Nome</th><th class="col-opt">Categoria / Subcategoria</th><th class="col-opt">Fonte</th><th>A&ccedil;&otilde;es</th>
+              <th></th><th>Selo</th><th>SKU</th><th>Nome</th><th class="col-opt">Categoria / Subcategoria</th><th class="col-opt">Fonte</th><th>A&ccedil;&otilde;es</th>
             </tr></thead>
             <tbody id="ae-catalogo-tbody">
-              <tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:30px;color:#555">Carregando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1557,24 +1565,138 @@ MEDIDA LARGURA  25 MM"></textarea>
       </div>
 
       <div id="ae-edit-overlay" style="display:none;position:fixed;inset:0;background:#0009;z-index:1000;align-items:center;justify-content:center;padding:16px">
-        <div class="card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto;margin-bottom:0">
-          <div class="card-title">&#9999;&#65039; Editar Produto</div>
-          <div class="form-group"><label>SKU</label><input type="text" id="ae-edit-sku" disabled></div>
-          <div class="form-group"><label>Nome</label><input type="text" id="ae-edit-nome"></div>
-          <div class="grid2">
-            <div class="form-group"><label>C&oacute;digo OEM/Fabricante</label><input type="text" id="ae-edit-codigo_fabricante"></div>
-            <div class="form-group"><label>EAN</label><input type="text" id="ae-edit-ean"></div>
+        <div class="card" style="max-width:920px;width:100%;max-height:92vh;overflow-y:auto;margin:16px 0">
+          <div class="card-title">&#129516; Perfil Completo do Produto &mdash; <span id="ae-edit-titulo-sku" style="color:#ff6b00"></span></div>
+          <input type="hidden" id="ae-edit-sku">
+
+          <div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:12px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <strong style="font-size:22px" id="ae-edit-ntc-pct">&mdash;</strong>
+              <span id="ae-edit-ntc-badge"></span>
+            </div>
+            <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
+              <div id="ae-edit-ntc-fill" style="height:100%;width:0%;background:#ff6500;transition:width .3s"></div>
+            </div>
           </div>
-          <div class="grid2">
-            <div class="form-group"><label>Fabricante</label><input type="text" id="ae-edit-fabricante"></div>
-            <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label><input type="text" id="ae-edit-familia_tecnica"></div>
+          <div id="ae-edit-modulos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-bottom:14px"></div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+            <button class="btn btn-secondary btn-sm" onclick="aePreviewNtc()">&#128260; Recalcular NTC (pr&eacute;via)</button>
+            <button class="btn btn-secondary btn-sm" onclick="aeEnriquecerAgora()">&#129516; Enriquecer agora (DNA + Imagens)</button>
           </div>
-          <div class="grid2">
-            <div class="form-group"><label>Pre&ccedil;o de Venda (R$)</label><input type="number" step="0.01" id="ae-edit-preco_venda"></div>
-            <div class="form-group"><label>Peso L&iacute;quido (kg)</label><input type="number" step="0.001" id="ae-edit-peso_liquido"></div>
-          </div>
+          <div id="ae-edit-enriquecer-msg" style="font-size:12px;color:#6b7280;margin-bottom:14px"></div>
+
+          <details open style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128203; Identifica&ccedil;&atilde;o / DNA</summary>
+            <div class="form-group"><label>Nome</label><input type="text" id="ae-edit-nome"></div>
+            <div class="grid2">
+              <div class="form-group"><label>C&oacute;digo OEM/Fabricante (DNA)</label><input type="text" id="ae-edit-codigo_fabricante"></div>
+              <div class="form-group"><label>Fabricante</label><input type="text" id="ae-edit-fabricante"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label><input type="text" id="ae-edit-familia_tecnica"></div>
+              <div class="form-group"><label>C&oacute;digo OEM (Triangula&ccedil;&atilde;o)</label><input type="text" id="ae-edit-codigo_oem"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>EAN / GTIN</label><input type="text" id="ae-edit-ean"></div>
+              <div class="form-group"><label>Pre&ccedil;o de Venda (R$)</label><input type="number" step="0.01" id="ae-edit-preco_venda"></div>
+            </div>
+          </details>
+
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128663; Aplica&ccedil;&atilde;o por Motor (AV)</summary>
+            <div class="grid2">
+              <div class="form-group"><label>Marca do Ve&iacute;culo</label><input type="text" id="ae-edit-marca"></div>
+              <div class="form-group"><label>Modelo</label><input type="text" id="ae-edit-modelo"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>Vers&atilde;o</label><input type="text" id="ae-edit-versao"></div>
+              <div class="form-group"><label>Motor</label><input type="text" id="ae-edit-motor"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>C&oacute;digo do Motor</label><input type="text" id="ae-edit-codigo_motor"></div>
+              <div class="form-group"><label>Cilindrada</label><input type="text" id="ae-edit-cilindrada"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>Ano Inicial</label><input type="number" id="ae-edit-ano_inicial"></div>
+              <div class="form-group"><label>Ano Final</label><input type="number" id="ae-edit-ano_final"></div>
+            </div>
+          </details>
+
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#129534; Dados Fiscais (CO)</summary>
+            <div class="grid2">
+              <div class="form-group"><label>NCM (8 d&iacute;gitos)</label><input type="text" id="ae-edit-ncm" maxlength="12"></div>
+              <div class="form-group"><label>CEST</label><input type="text" id="ae-edit-cest" maxlength="10"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>CST</label><input type="text" id="ae-edit-cst"></div>
+              <div class="form-group"><label>Origem ICMS</label>
+                <select id="ae-edit-origem">
+                  <option value="">Selecione...</option>
+                  <option value="0">0-Nacional</option><option value="1">1-Importado direto</option>
+                  <option value="2">2-Adquirido merc.int.</option><option value="3">3-Nacional&gt;40%</option>
+                  <option value="4">4-Processos b&aacute;sicos</option><option value="5">5-Nacional&le;40%</option>
+                  <option value="6">6-Importado c/similar</option><option value="7">7-Sem similar</option>
+                  <option value="8">8-Nacional&gt;70%</option>
+                </select>
+              </div>
+            </div>
+          </details>
+
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#129521; Material &amp; Engenharia (MC/EC)</summary>
+            <div class="form-group"><label>Material / Composi&ccedil;&atilde;o</label><input type="text" id="ae-edit-material"></div>
+            <div class="form-group"><label>Fun&ccedil;&atilde;o T&eacute;cnica</label><input type="text" id="ae-edit-funcao"></div>
+            <div class="grid2">
+              <div class="form-group"><label>Press&atilde;o</label><input type="text" id="ae-edit-pressao"></div>
+              <div class="form-group"><label>Temperatura</label><input type="text" id="ae-edit-temperatura"></div>
+            </div>
+            <div class="form-group"><label>Torque</label><input type="text" id="ae-edit-torque"></div>
+          </details>
+
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128221; Boletins &amp; C&oacute;digos Cambiados (BTA/CC)</summary>
+            <div class="form-group"><label>Boletins T&eacute;cnicos (um por linha)</label><textarea id="ae-edit-boletins" rows="2"></textarea></div>
+            <div class="form-group"><label>Substitui&ccedil;&otilde;es (uma por linha)</label><textarea id="ae-edit-substituicoes" rows="2"></textarea></div>
+            <div class="form-group"><label>C&oacute;digos OEM Cambiados (um por linha)</label><textarea id="ae-edit-cc_oem" rows="2"></textarea></div>
+            <div class="form-group"><label>C&oacute;digos Aftermarket (um por linha)</label><textarea id="ae-edit-cc_aftermarket" rows="2"></textarea></div>
+          </details>
+
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#127793; Linhagem Geneal&oacute;gica (LG)</summary>
+            <div class="grid2">
+              <div class="form-group"><label>Fabricante Original</label><input type="text" id="ae-edit-linhagem_fabricante"></div>
+              <div class="form-group"><label>Montadora</label><input type="text" id="ae-edit-linhagem_montadora"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>Distribuidor</label><input type="text" id="ae-edit-linhagem_distribuidor"></div>
+              <div class="form-group"><label>Importador</label><input type="text" id="ae-edit-linhagem_importador"></div>
+            </div>
+            <div class="form-group"><label>Marketplace</label><input type="text" id="ae-edit-linhagem_marketplace"></div>
+          </details>
+
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128208; Ficha F&iacute;sica / Dimens&otilde;es (FI/FP)</summary>
+            <div class="grid2">
+              <div class="form-group"><label>Peso L&iacute;quido (kg)</label><input type="number" step="0.001" id="ae-edit-peso_liquido"></div>
+              <div class="form-group"><label>Peso Bruto (kg)</label><input type="number" step="0.001" id="ae-edit-peso_bruto"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label>Comprimento (cm)</label><input type="number" step="0.1" id="ae-edit-comprimento"></div>
+              <div class="form-group"><label>Largura (cm)</label><input type="number" step="0.1" id="ae-edit-largura"></div>
+            </div>
+            <div class="form-group"><label>Altura (cm)</label><input type="number" step="0.1" id="ae-edit-altura"></div>
+          </details>
+
+          <details style="margin-bottom:14px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128247; Imagens (IV)</summary>
+            <div style="font-size:11px;color:#888;margin-bottom:6px">Imagens vinculadas: <strong id="ae-edit-img-count" style="color:#00ff88">0</strong> &mdash; selecione/adicione imagens na aba "Cadastro Completo" (m&oacute;dulo DNA na Web).</div>
+            <div id="ae-edit-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px"></div>
+          </details>
+
           <div id="ae-edit-msg" style="font-size:12px;color:#6b7280;margin:4px 0 12px"></div>
-          <div style="display:flex;gap:8px;justify-content:flex-end">
+          <div style="display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:#111;padding-top:8px">
             <button class="btn btn-secondary btn-sm" onclick="aeFecharEdicao()">Cancelar</button>
             <button class="btn btn-primary btn-sm" onclick="aeSalvarEdicao()">&#128190; Salvar e recalcular NTC</button>
           </div>
@@ -7781,6 +7903,14 @@ async function aeAtualizar() {
       + aeCard(r.fila_pendente != null ? r.fila_pendente : 0, 'Pendentes (NTC < 95%)', (r.fila_pendente||0) > 0 ? '#ff9800' : '#00c853');
   }
 
+  _aeHabilitado = !!r.habilitado;
+  var toggleBtn = document.getElementById('ae-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.innerHTML = _aeHabilitado ? '&#9208; Pausar Job 24/7' : '&#9654;&#65039; Retomar Job 24/7';
+    toggleBtn.style.borderColor = _aeHabilitado ? '' : '#00c853';
+    toggleBtn.style.color = _aeHabilitado ? '' : '#00c853';
+  }
+
   var statsEl = document.getElementById('ae-stats');
   if (statsEl && r.estatisticas) {
     var e = r.estatisticas;
@@ -7828,6 +7958,21 @@ async function aeRodarCiclo() {
     return;
   }
   if (msgEl) msgEl.innerHTML = '✅ ' + r.processados + ' produto(s) processado(s) neste ciclo.';
+  aeAtualizar();
+}
+
+// Pausa/retoma o job 24/7 em tempo real — útil para conter o consumo de
+// créditos da API durante testes (o ciclo automático em lote para de rodar,
+// mas "Minerar selecionados" continua disponível para 1, 2 ou N produtos).
+var _aeHabilitado = true;
+async function aeToggleHabilitado() {
+  var msgEl = document.getElementById('ae-status-msg');
+  var r = await api('POST', '/auto-enrich/toggle', { habilitado: !_aeHabilitado });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">Erro ao alternar o job 24/7.</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = r.habilitado ? '▶️ Job 24/7 retomado.' : '⏸️ Job 24/7 pausado — o ciclo automático não vai mais consumir créditos da API.';
   aeAtualizar();
 }
 
@@ -7943,13 +8088,13 @@ async function aeCarregarCatalogo() {
 
   var r = await api('GET', '/produtos?' + params.join('&'));
   if (!r || !r.ok) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#dc2626">Erro ao carregar catálogo.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#dc2626">Erro ao carregar catálogo.</td></tr>';
     return;
   }
 
   var produtos = r.produtos || [];
   if (!produtos.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#555">Nenhum produto encontrado para esse filtro.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#555">Nenhum produto encontrado para esse filtro.</td></tr>';
     return;
   }
 
@@ -7958,18 +8103,69 @@ async function aeCarregarCatalogo() {
     var fonteBadge = p.fonte === 'fornecedor'
       ? '<span class="badge badge-green">Fornecedor</span>'
       : '<span class="badge badge-orange">Avulso</span>';
+    var pausado = !!p.pausado;
     return '<tr>'
+      + '<td><input type="checkbox" class="ae-sel" value="' + p.id + '"></td>'
       + '<td>' + aeSeloHtml(p.ntc, p.decisao) + '</td>'
       + '<td><code style="color:#ff6b00;font-size:11px">' + esc(p.sku) + '</code></td>'
-      + '<td>' + esc(p.nome || '—') + '</td>'
+      + '<td>' + esc(p.nome || '—') + (pausado ? ' <span class="badge badge-orange" title="Fora do job 24/7 automático">pausado</span>' : '') + '</td>'
       + '<td class="col-opt">' + catTxt + '</td>'
       + '<td class="col-opt">' + fonteBadge + '</td>'
       + '<td style="white-space:nowrap">'
-        + '<button class="btn btn-secondary btn-sm" onclick="aeAbrirEdicao(' + p.id + ')">&#9999;&#65039; Editar</button> '
-        + '<button class="btn btn-secondary btn-sm" onclick="aeSincronizarProduto(' + p.id + ', this)">&#128279; Sincronizar</button>'
+        + '<button class="btn btn-secondary btn-sm" onclick="aeAbrirEdicao(' + p.id + ')">&#9999;&#65039; Perfil/NTC</button> '
+        + '<button class="btn btn-secondary btn-sm" onclick="aeSincronizarProduto(' + p.id + ', this)">&#128279; Sincronizar</button> '
+        + '<button class="btn btn-secondary btn-sm" onclick="aeTogglePausa(' + p.id + ', ' + (pausado ? 1 : 0) + ', this)">' + (pausado ? '&#9654;&#65039; Retomar' : '&#9208; Pausar') + '</button>'
       + '</td>'
       + '</tr>';
   }).join('');
+}
+
+function aeToggleSelAll(el) {
+  var checks = document.querySelectorAll('#ae-catalogo-tbody .ae-sel');
+  checks.forEach(function(cb) { cb.checked = el.checked; });
+}
+
+// Pausa/retoma um produto específico no job 24/7 — produtos pausados ficam
+// fora do lote automático, mas continuam podendo ser minerados manualmente.
+async function aeTogglePausa(id, pausadoAtual, btn) {
+  var novo = !pausadoAtual;
+  if (btn) { btn.disabled = true; }
+  var r = await api('POST', '/produtos/' + id + '/pausar', { pausado: novo });
+  if (btn) { btn.disabled = false; }
+  if (!r || !r.ok) return;
+  aeCarregarCatalogo();
+  aeAtualizar();
+}
+
+// Roda o enriquecimento (DNA na Web + imagens + NTC) apenas para os produtos
+// selecionados, um por vez — não depende do job 24/7 estar ativo, ideal para
+// testar 1, 2 ou alguns itens por vez sem consumir créditos em lote.
+async function aeMinerarSelecionados() {
+  var statusEl = document.getElementById('ae-minerar-status');
+  var ids = Array.from(document.querySelectorAll('#ae-catalogo-tbody .ae-sel:checked')).map(function(cb) { return cb.value; });
+  if (!ids.length) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#ff6500">Selecione ao menos um produto.</span>';
+    return;
+  }
+  for (var i = 0; i < ids.length; i++) {
+    if (statusEl) statusEl.innerHTML = '⏳ Minerando ' + (i + 1) + '/' + ids.length + '...';
+    try {
+      var r = await api('POST', '/produtos/' + ids[i] + '/enriquecer', {});
+      if (r && r.ok && r.resultado) {
+        var res = r.resultado;
+        var antes = Math.round((res.ntc_antes || 0) * 100);
+        var depois = Math.round((res.ntc_depois || 0) * 100);
+        if (statusEl) statusEl.innerHTML = '✅ ' + (i + 1) + '/' + ids.length + ' — ' + esc(res.sku || '') + ': NTC ' + antes + '% → ' + depois + '%';
+      } else if (statusEl) {
+        statusEl.innerHTML = '⚠️ ' + (i + 1) + '/' + ids.length + ' — ' + esc((r && r.erro) || 'erro ao enriquecer');
+      }
+    } catch (e) {
+      if (statusEl) statusEl.innerHTML = '⚠️ ' + (i + 1) + '/' + ids.length + ' — ' + esc(e.message);
+    }
+  }
+  if (statusEl) statusEl.innerHTML += ' — concluído.';
+  aeCarregarCatalogo();
+  aeAtualizar();
 }
 
 var _aeBuscaTimer = null;
@@ -7978,10 +8174,39 @@ function aeBuscarCatalogoDebounce() {
   _aeBuscaTimer = setTimeout(aeCarregarCatalogo, 350);
 }
 
+// Mapa do "Perfil Completo do Produto" (REQUEST B): campos simples editáveis,
+// agrupados pelos mesmos módulos do NTC 4.0 (DNA/AV/CO/MC/EC/LG/FI/FP).
+var AE_CAMPOS_TEXTO = [
+  'nome', 'codigo_fabricante', 'fabricante', 'familia_tecnica', 'codigo_oem', 'ean',
+  'marca', 'modelo', 'versao', 'motor', 'codigo_motor', 'cilindrada', 'ano_inicial', 'ano_final',
+  'ncm', 'cest', 'cst', 'origem',
+  'material', 'funcao', 'pressao', 'temperatura', 'torque',
+  'linhagem_fabricante', 'linhagem_montadora', 'linhagem_distribuidor', 'linhagem_importador', 'linhagem_marketplace',
+  'peso_liquido', 'peso_bruto', 'comprimento', 'largura', 'altura', 'preco_venda'
+];
+// Campos numéricos — vão para `dados` como número (ou null se vazio).
+var AE_CAMPOS_NUM = ['ano_inicial', 'ano_final', 'peso_liquido', 'peso_bruto', 'comprimento', 'largura', 'altura', 'preco_venda'];
+// Campos de lista (uma linha por item) — textareas.
+var AE_CAMPOS_LISTA = ['boletins', 'substituicoes', 'cc_oem', 'cc_aftermarket'];
+
+// Labels dos 13 módulos do NTC 4.0 (espelha src/services/ntc-engine.js LABELS,
+// sem o peso — o peso vem de PESOS_NTC, já definido nesta página).
+var AE_MODULO_LABELS = {
+  DNA: 'Fabricante Original', TF: 'Triangulação OEM', FM: 'Nome Técnico Completo',
+  CO: 'Fiscal NCM/CEST/CST', AV: 'Aplicação por Motor', MC: 'Material Construtivo',
+  EC: 'Engenharia', BTA: 'Boletim Técnico Aplicado', CC: 'Códigos Cambiados Certificados',
+  LG: 'Linhagem Genealógica', IV: 'Integridade Visual', FI: 'Ficha Física / Pesos', FP: 'Dimensões Físicas'
+};
+
 var _aeEditId = null;
+var _aeEditDados = null;
+
 async function aeAbrirEdicao(id) {
   var msgEl = document.getElementById('ae-edit-msg');
   if (msgEl) msgEl.innerHTML = '';
+  var enrMsgEl = document.getElementById('ae-edit-enriquecer-msg');
+  if (enrMsgEl) enrMsgEl.innerHTML = '';
+
   var r = await api('GET', '/produtos/' + id);
   if (!r || !r.ok) {
     if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao carregar produto.') + '</span>';
@@ -7990,20 +8215,119 @@ async function aeAbrirEdicao(id) {
   var p = r.produto;
   var dados = p.dados || {};
   _aeEditId = p.id;
+  _aeEditDados = JSON.parse(JSON.stringify(dados));
+
   document.getElementById('ae-edit-sku').value = p.sku || '';
-  document.getElementById('ae-edit-nome').value = p.nome || dados.nome || '';
-  document.getElementById('ae-edit-codigo_fabricante').value = dados.codigo_fabricante || '';
-  document.getElementById('ae-edit-ean').value = dados.ean || '';
-  document.getElementById('ae-edit-fabricante').value = dados.fabricante || '';
-  document.getElementById('ae-edit-familia_tecnica').value = dados.familia_tecnica || '';
-  document.getElementById('ae-edit-preco_venda').value = dados.preco_venda != null ? dados.preco_venda : '';
-  document.getElementById('ae-edit-peso_liquido').value = dados.peso_liquido != null ? dados.peso_liquido : '';
+  document.getElementById('ae-edit-titulo-sku').textContent = p.sku || '';
+
+  AE_CAMPOS_TEXTO.forEach(function(k) {
+    var el = document.getElementById('ae-edit-' + k);
+    if (el) el.value = dados[k] != null ? dados[k] : '';
+  });
+  AE_CAMPOS_LISTA.forEach(function(k) {
+    var el = document.getElementById('ae-edit-' + k);
+    if (el) el.value = Array.isArray(dados[k]) ? dados[k].join('\n') : '';
+  });
+
+  var imgs = Array.isArray(dados.imagens) ? dados.imagens : [];
+  document.getElementById('ae-edit-img-count').textContent = imgs.length;
+  document.getElementById('ae-edit-img-grid').innerHTML = imgs.length
+    ? imgs.map(function(url) {
+        var proxy = '/api/imagens/proxy?url=' + encodeURIComponent(url);
+        return '<img src="' + proxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f">';
+      }).join('')
+    : '<div style="font-size:12px;color:#888;grid-column:1/-1">Nenhuma imagem vinculada ainda.</div>';
+
+  // NTC já salvo (rápido) — depois recalcula com os módulos detalhados
+  aeRenderNtc(p.ntc, p.decisao, null);
   document.getElementById('ae-edit-overlay').style.display = 'flex';
+  await aePreviewNtc();
 }
 
 function aeFecharEdicao() {
   document.getElementById('ae-edit-overlay').style.display = 'none';
   _aeEditId = null;
+  _aeEditDados = null;
+}
+
+// Lê os campos do formulário e devolve o objeto `dados` completo (mescla com
+// os dados originais para preservar campos não editáveis aqui, ex.: imagens,
+// boletins quando não alterados, etc.).
+function aeColetarDados() {
+  var dados = Object.assign({}, _aeEditDados || {});
+  AE_CAMPOS_TEXTO.forEach(function(k) {
+    var el = document.getElementById('ae-edit-' + k);
+    if (!el) return;
+    var v = el.value.trim();
+    if (AE_CAMPOS_NUM.indexOf(k) !== -1) {
+      dados[k] = v !== '' ? parseFloat(v) : null;
+    } else {
+      dados[k] = v || null;
+    }
+  });
+  AE_CAMPOS_LISTA.forEach(function(k) {
+    var el = document.getElementById('ae-edit-' + k);
+    if (!el) return;
+    var v = el.value.trim();
+    dados[k] = v ? v.split('\n').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+  });
+  return dados;
+}
+
+// Atualiza a barra/badge do NTC e, se `scores` for informado, o grid dos 13
+// módulos (DNA→TF→FM→CO→AV→MC→EC→BTA→CC→LG→IV→FI→FP).
+function aeRenderNtc(ntc, decisao, scores) {
+  var pct = Math.round((ntc || 0) * 100);
+  var cor = pct >= 95 ? '#00ff88' : pct >= 60 ? '#ffaa00' : '#ff4500';
+  var pctEl = document.getElementById('ae-edit-ntc-pct');
+  var fillEl = document.getElementById('ae-edit-ntc-fill');
+  if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = cor; }
+  if (fillEl) { fillEl.style.width = pct + '%'; fillEl.style.background = cor; }
+  var badgeEl = document.getElementById('ae-edit-ntc-badge');
+  if (badgeEl) badgeEl.innerHTML = badgeHtml(decisao);
+
+  if (!scores) return;
+  var modEl = document.getElementById('ae-edit-modulos');
+  if (!modEl) return;
+  modEl.innerHTML = Object.keys(PESOS_NTC).map(function(k) {
+    var sc = scores[k] || 0;
+    var w = PESOS_NTC[k];
+    var bc = sc >= 0.8 ? '#00ff88' : sc >= 0.4 ? '#ffaa00' : '#ff4500';
+    return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:6px 8px">'
+      + '<div style="display:flex;justify-content:space-between;font-size:11px;color:#888"><span>' + k + ' (' + Math.round(w * 100) + '%)</span><span style="color:' + bc + '">' + Math.round(sc * 100) + '%</span></div>'
+      + '<div style="background:#1f1f1f;border-radius:4px;height:5px;margin-top:4px;overflow:hidden"><div style="height:100%;width:' + (sc * 100) + '%;background:' + bc + '"></div></div>'
+      + '<div style="font-size:10px;color:#555;margin-top:3px">' + esc(AE_MODULO_LABELS[k] || k) + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// Recalcula o NTC com os valores atuais do formulário (pré-visualização, sem
+// salvar) — mostra como cada um dos 13 módulos contribui para a nota.
+async function aePreviewNtc() {
+  var dados = aeColetarDados();
+  var r;
+  try { r = await api('POST', '/motor/nct', dados); } catch (e) { return; }
+  if (!r || !r.ok) return;
+  aeRenderNtc(r.ntc, r.decisao, r.scores || {});
+}
+
+// Roda o enriquecimento (DNA na Web + imagens + NTC) para este produto —
+// mesma rotina do job 24/7, mas disparada sob demanda para 1 item.
+async function aeEnriquecerAgora() {
+  if (_aeEditId == null) return;
+  var msgEl = document.getElementById('ae-edit-enriquecer-msg');
+  if (msgEl) msgEl.innerHTML = '⏳ Enriquecendo via DNA na Web + busca de imagens... isso pode levar até 1 minuto.';
+  var r = await api('POST', '/produtos/' + _aeEditId + '/enriquecer', {});
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao enriquecer.') + '</span>';
+    return;
+  }
+  var res = r.resultado || {};
+  var antes = Math.round((res.ntc_antes || 0) * 100);
+  var depois = Math.round((res.ntc_depois || 0) * 100);
+  var acoes = (res.acoes && res.acoes.length) ? res.acoes.join(', ') : 'sem mudanças';
+  if (msgEl) msgEl.innerHTML = '✅ NTC: ' + antes + '% → ' + depois + '% — ações: ' + esc(acoes);
+  await aeAbrirEdicao(_aeEditId);
 }
 
 async function aeSalvarEdicao() {
@@ -8012,17 +8336,7 @@ async function aeSalvarEdicao() {
   var sku = document.getElementById('ae-edit-sku').value.trim();
   if (!sku) { if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">SKU obrigat&oacute;rio.</span>'; return; }
 
-  var dados = {
-    nome: document.getElementById('ae-edit-nome').value.trim() || null,
-    codigo_fabricante: document.getElementById('ae-edit-codigo_fabricante').value.trim() || null,
-    ean: document.getElementById('ae-edit-ean').value.trim() || null,
-    fabricante: document.getElementById('ae-edit-fabricante').value.trim() || null,
-    familia_tecnica: document.getElementById('ae-edit-familia_tecnica').value.trim() || null,
-  };
-  var preco = document.getElementById('ae-edit-preco_venda').value;
-  if (preco !== '') dados.preco_venda = parseFloat(preco);
-  var peso = document.getElementById('ae-edit-peso_liquido').value;
-  if (peso !== '') dados.peso_liquido = parseFloat(peso);
+  var dados = aeColetarDados();
 
   if (msgEl) msgEl.innerHTML = '⏳ Salvando e recalculando NTC...';
   var r = await api('POST', '/produtos', { sku: sku, dados: dados });
@@ -8030,8 +8344,10 @@ async function aeSalvarEdicao() {
     if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao salvar.') + '</span>';
     return;
   }
-  aeFecharEdicao();
+  aeRenderNtc(r.ntc, r.decisao, r.scores || {});
+  if (msgEl) msgEl.innerHTML = '✅ Salvo — NTC ' + Math.round((r.ntc || 0) * 100) + '% (' + esc(r.decisao || '') + ').';
   aeCarregarCatalogo();
+  aeAtualizar();
 }
 
 async function aeSincronizarProduto(id, btn) {

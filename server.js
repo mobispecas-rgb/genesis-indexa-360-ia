@@ -812,6 +812,20 @@ app.delete('/api/produtos/:id', (req, res) => {
     }
 });
 
+// Pausa/retoma o auto-enriquecimento 24/7 para um produto específico — permite
+// selecionar exatamente quais produtos o job processa automaticamente,
+// mantendo os demais "congelados" para não consumir créditos da API durante testes.
+app.post('/api/produtos/:id/pausar', (req, res) => {
+    try {
+        const pausado = !!(req.body && req.body.pausado);
+        const produto = db.definirPausado(req.params.id, pausado);
+        if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+        res.json({ ok: true, produto });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
 // Força o reprocessamento (DNA web + imagens + NTC) de um produto específico
 app.post('/api/produtos/:id/enriquecer', async (req, res) => {
     try {
@@ -917,6 +931,13 @@ app.post('/api/auto-enrich/trigger', async (req, res) => {
     const batchSize = parseInt(req.body && req.body.batchSize) || undefined;
     const resultado = await autoEnrich.rodarCicloAutoEnrich(batchSize);
     res.json(resultado);
+});
+
+// Pausa/retoma o job 24/7 em tempo de execução — não consome créditos da API
+// enquanto pausado, permitindo testes controlados via "Minerar selecionados".
+app.post('/api/auto-enrich/toggle', (req, res) => {
+    const habilitado = autoEnrich.definirHabilitado(req.body && req.body.habilitado);
+    res.json({ ok: true, habilitado });
 });
 
 // ─── NOTAS FISCAIS DE ENTRADA (NF-e XML) ──────────────────────────────
