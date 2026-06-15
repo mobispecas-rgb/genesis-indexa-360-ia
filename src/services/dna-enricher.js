@@ -17,7 +17,7 @@ const CAMPOS_DNA = [
     // NTC completo — módulos EC, BTA, LG, FI, CC-OEM
     'funcao_tecnica', 'boletins', 'substituicoes',
     'fabricante_original', 'montadora',
-    'cc_oem', 'peso_bruto', 'peso_liquido'
+    'cc_oem', 'cc_importadores', 'peso_bruto', 'peso_liquido'
 ];
 
 function camposVazios() {
@@ -124,6 +124,7 @@ Campos:
 - fabricante_original: nome do fabricante original da peça (ex: "COFAP", "INA", "Mann Filter", "Bosch", "Gates", "Mahle"). Extraia do SKU, nome ou resultados de busca.
 - montadora: nome do fabricante do veículo (montadora) para o qual esta peça foi originalmente projetada (ex: "Toyota Motor Corporation", "Volkswagen AG", "Hyundai Motor Company"). Se atende múltiplas, coloque a principal.
 - cc_oem: código(s) OEM de catálogo oficial da montadora para esta peça. PRESTE ATENÇÃO ao padrão "CÓDIGO - OE" nos resultados (ex: "543104F000 - OE" ou "KYB 543104F000 - OE"), que indica o código OEM original da montadora. Também verifique URLs de produtos que contenham o código no slug (ex: ".../b50994m-ac31146-543104f000"). Um código por linha separado por "\n". Ex: "58101-2BA70\n543104F000". Null se não encontrado.
+- cc_importadores: código(s) usados por IMPORTADORES/DISTRIBUIDORES PARALELOS para anunciar esta MESMA peça (caso (d) do CONTEXTO — DNA GENEALÓGICO abaixo: "IMPORTADOS COM CÓDIGO ADULTERADO") — ex: códigos próprios de importadoras de peças chinesas/genéricas, ou códigos de catálogo de distribuidoras paralelas (não fabricantes certificados) que revendem essa peça. Esta é uma GAVETA SEPARADA de cc_oem (código oficial da montadora) e de cross_codes (fabricantes aftermarket reconhecidos como Nakata, Gates, INA etc.) — NÃO repita aqui códigos já listados em cc_oem ou cross_codes. Um código por linha separado por "\n". Ex: "NYTRON-BR-KIT9063\nIMP-58101-CN". Null se não encontrado.
 - peso_bruto: peso bruto do produto com embalagem em kg, número decimal (ex: 0.380). Null se não encontrado.
 - peso_liquido: peso líquido do produto sem embalagem em kg, número decimal (ex: 0.280). Null se não encontrado.
 
