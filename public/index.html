@@ -115,6 +115,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 /* Indicador piscante — mostra que o agente está buscando o DNA do produto na web */
 .dna-blink-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff4500;margin-right:6px;vertical-align:middle;animation:dna-blink 1s infinite}
 @keyframes dna-blink{0%,100%{opacity:1;box-shadow:0 0 0 0 #ff450066}50%{opacity:.25;box-shadow:0 0 0 6px #ff450000}}
+/* Pisca de confirmação ao clicar em botões de ação — dá certeza visual ao
+   lojista de que o clique foi registrado e a função está executando. */
+.btn-flash-active{animation:btn-flash .45s ease-out}
+@keyframes btn-flash{0%{filter:brightness(1);transform:scale(1)}25%{filter:brightness(1.9);transform:scale(.96)}100%{filter:brightness(1);transform:scale(1)}}
 input,select,textarea{background:#fff;border:1px solid #d1d5db;color:#1a1a1a;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:#ff4500}
 select option{background:#fff;color:#1a1a1a}
@@ -820,29 +824,29 @@ tr:hover td{background:#f9fafb}
           <!-- Botões principais -->
           <div class="card" style="border-color:#00c85330;margin-bottom:12px">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <button onclick="oemBuscarDnaWeb()" style="background:#ff4500;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+              <button onclick="_btnFlash(this);oemBuscarDnaWeb()" style="background:#ff4500;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
                 🌐 Reenriquecer
               </button>
-              <button onclick="oemPublicar()" id="oem-btn-publicar" style="background:#00c853;color:#000;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+              <button onclick="_btnFlash(this);oemPublicar()" id="oem-btn-publicar" style="background:#00c853;color:#000;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
                 📦 Publicar
               </button>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
-              <button onclick="oemEnviarBling()" style="background:#1a73e8;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
+              <button onclick="_btnFlash(this);oemEnviarBling()" style="background:#1a73e8;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
                 🔵 Bling
               </button>
-              <button onclick="oemEnviarWix()" style="background:#9c27b0;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
+              <button onclick="_btnFlash(this);oemEnviarWix()" style="background:#9c27b0;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
                 🟣 Wix
               </button>
-              <button onclick="oemCongelar()" style="background:#0d47a1;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
+              <button onclick="_btnFlash(this);oemCongelar()" style="background:#0d47a1;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
                 ❄️ Congelar
               </button>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <button onclick="oemSalvarCadastroDB()" style="background:#00897b;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+              <button onclick="_btnFlash(this);oemSalvarCadastroDB()" style="background:#00897b;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
                 💾 Salvar Cadastro
               </button>
-              <button onclick="oemExcluirCadastroDB()" style="background:#b71c1c;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+              <button onclick="_btnFlash(this);oemExcluirCadastroDB()" style="background:#b71c1c;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
                 🗑️ Excluir Cadastro
               </button>
             </div>
@@ -2071,6 +2075,16 @@ async function api(method, path, body) {
 function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Pisca o botão clicado (brilho + leve "encolhida") para confirmar ao lojista
+// que o clique foi registrado e a função está em execução.
+function _btnFlash(el) {
+  if (!el) return;
+  el.classList.remove('btn-flash-active');
+  void el.offsetWidth; // reinicia a animação se o usuário clicar de novo rápido
+  el.classList.add('btn-flash-active');
+  setTimeout(function() { el.classList.remove('btn-flash-active'); }, 450);
 }
 
 // ===== FUNÇÕES UTILITÁRIAS NTC / PRODUTOS =====
@@ -4146,6 +4160,27 @@ function oemDefinirModoEdicao(idx) {
   }
 }
 
+// Registra o índice do rascunho salvo (para próximos "Salvar"/"Atualizar"
+// apontarem para o mesmo produto) SEM limpar a tela — usado por
+// oemSalvarRascunho(), chamado automaticamente após cada busca de DNA.
+// Diferente de oemDefinirModoEdicao(), NÃO chama _oemLimparFormulario() (que
+// apaga os campos "Dados Confirmados", os módulos NTC e esconde a barra de
+// NTC) e NÃO substitui _cntcDados — preserva tudo o que acabou de ser
+// preenchido na tela.
+function _oemRegistrarRascunho(idx) {
+  _oemEditIdx = idx;
+  var banner = document.getElementById('oem-edit-banner');
+  var btnPublicar = document.getElementById('oem-btn-publicar');
+  if (idx != null) {
+    var p = getProds()[idx];
+    if (banner) {
+      banner.style.display = 'flex';
+      document.getElementById('oem-edit-nome').textContent = (p && (p.nome || p.codigo_fabricante)) || ('#' + idx);
+    }
+    if (btnPublicar) btnPublicar.innerHTML = '&#128190; Atualizar Produto';
+  }
+}
+
 // Limpa COMPLETAMENTE a tela "Cadastro Completo" (campos, módulos NTC, imagens
 // e seleção) para iniciar um novo produto do zero — chamado após "Salvar
 // Cadastro" e "Excluir Cadastro", para que nenhum código/dado do produto
@@ -4259,17 +4294,16 @@ async function oemBuscar() {
       var card = document.getElementById('oem-google-card');
       card.style.display = 'block';
       document.getElementById('oem-google-results').innerHTML =
-        '<p style="font-size:11px;color:#00cc66;margin-bottom:8px">&#9989; ' + Math.min(3, r.imagens.length) + ' imagem(ns) adicionada(s) automaticamente ao IV. Clique para adicionar mais.</p>'
-        + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
-        + r.imagens.slice(0,9).map(function(img) {
+        '<p style="font-size:11px;color:#00cc66;margin-bottom:8px">&#9989; ' + Math.min(3, r.imagens.length) + ' imagem(ns) adicionada(s) automaticamente ao IV. Toque para adicionar mais.</p>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px">'
+        + r.imagens.slice(0,6).map(function(img) {
           var thumb = img.thumb || img.url;
           var thumbProxy = '/api/imagens/proxy?url=' + encodeURIComponent(thumb);
           var titulo = (img.titulo||qBusca).replace(/'/g,'\\'+'\'');
-          return '<div onclick="imgSlotPreencher(\'' + esc(img.url) + '\',\'' + esc(thumb) + '\',\'' + esc(titulo) + '\')" '
-            + 'style="cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:border-color .15s" '
+          return '<div onclick="_btnFlash(this);imgSlotPreencher(\'' + esc(img.url) + '\',\'' + esc(thumb) + '\',\'' + esc(titulo) + '\')" '
+            + 'style="cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid transparent;transition:border-color .15s" '
             + 'onmouseover="this.style.borderColor=\'#ff4500\'" onmouseout="this.style.borderColor=\'transparent\'">'
-            + '<img src="' + thumbProxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:6px" onerror="this.src=\'' + esc(thumb) + '\';this.onerror=null">'
-            + '<div style="font-size:9px;color:#777;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(img.fonte||'') + '</div>'
+            + '<img src="' + thumbProxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:5px" onerror="this.src=\'' + esc(thumb) + '\';this.onerror=null">'
             + '</div>';
         }).join('')
         + '</div>';
@@ -4487,7 +4521,7 @@ async function oemSalvarRascunho() {
   }
   saveProds(prods);
   atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
-  oemDefinirModoEdicao(idx);
+  _oemRegistrarRascunho(idx);
   return r;
 }
 
