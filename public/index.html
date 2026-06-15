@@ -1692,10 +1692,19 @@ MEDIDA LARGURA  25 MM"></textarea>
             <div class="form-group"><label>Altura (cm)</label><input type="number" step="0.1" id="ae-edit-altura"></div>
           </details>
 
-          <details style="margin-bottom:14px">
-            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128247; Imagens (IV)</summary>
-            <div style="font-size:11px;color:#888;margin-bottom:6px">Imagens vinculadas: <strong id="ae-edit-img-count" style="color:#00ff88">0</strong> &mdash; selecione/adicione imagens na aba "Cadastro Completo" (m&oacute;dulo DNA na Web).</div>
-            <div id="ae-edit-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px"></div>
+          <details style="margin-bottom:10px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128194; Categoria, Subcategoria &amp; Descri&ccedil;&atilde;o (Loja)</summary>
+            <div class="grid2">
+              <div class="form-group"><label>Categoria</label><input type="text" id="ae-edit-categoria" placeholder="ex: Suspens&atilde;o"></div>
+              <div class="form-group"><label>Subcategoria</label><input type="text" id="ae-edit-subcategoria" placeholder="ex: Amortecedores"></div>
+            </div>
+            <div class="form-group"><label>Descri&ccedil;&atilde;o do Produto (voz da loja)</label><textarea id="ae-edit-descricao" rows="3" placeholder="Descri&ccedil;&atilde;o comercial, no tom da loja, para o site e an&uacute;ncios"></textarea></div>
+          </details>
+
+          <details open style="margin-bottom:14px">
+            <summary style="cursor:pointer;font-size:12px;color:#999;padding:6px 0">&#128247; Imagens (IV) &mdash; auditoria e sele&ccedil;&atilde;o</summary>
+            <div style="font-size:11px;color:#888;margin-bottom:6px">Imagens encontradas: <strong id="ae-edit-img-count" style="color:#00ff88">0</strong> &mdash; marque <strong>Manter</strong> para as que devem ficar no cadastro/sincroniza&ccedil;&atilde;o e escolha a <strong>Principal</strong> (aparece primeiro no site/ERP).</div>
+            <div id="ae-edit-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px"></div>
           </details>
 
           <div id="ae-edit-msg" style="font-size:12px;color:#6b7280;margin:4px 0 12px"></div>
@@ -8185,7 +8194,8 @@ var AE_CAMPOS_TEXTO = [
   'ncm', 'cest', 'cst', 'origem',
   'material', 'funcao', 'pressao', 'temperatura', 'torque',
   'linhagem_fabricante', 'linhagem_montadora', 'linhagem_distribuidor', 'linhagem_importador', 'linhagem_marketplace',
-  'peso_liquido', 'peso_bruto', 'comprimento', 'largura', 'altura', 'preco_venda'
+  'peso_liquido', 'peso_bruto', 'comprimento', 'largura', 'altura', 'preco_venda',
+  'categoria', 'subcategoria', 'descricao'
 ];
 // Campos numéricos — vão para `dados` como número (ou null se vazio).
 var AE_CAMPOS_NUM = ['ano_inicial', 'ano_final', 'peso_liquido', 'peso_bruto', 'comprimento', 'largura', 'altura', 'preco_venda'];
@@ -8233,11 +8243,21 @@ async function aeAbrirEdicao(id) {
   });
 
   var imgs = Array.isArray(dados.imagens) ? dados.imagens : [];
+  var imgsMeta = (dados.imagens_meta && typeof dados.imagens_meta === 'object') ? dados.imagens_meta : {};
+  var principal = (dados.imagem_principal && imgs.indexOf(dados.imagem_principal) !== -1) ? dados.imagem_principal : (imgs[0] || null);
   document.getElementById('ae-edit-img-count').textContent = imgs.length;
   document.getElementById('ae-edit-img-grid').innerHTML = imgs.length
     ? imgs.map(function(url) {
         var proxy = '/api/imagens/proxy?url=' + encodeURIComponent(url);
-        return '<img src="' + proxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid #1f1f1f">';
+        var meta = imgsMeta[url] || {};
+        var fonte = meta.fonte ? esc(meta.fonte) : 'fonte desconhecida';
+        var isPrincipal = url === principal ? ' checked' : '';
+        return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:4px">'
+          + '<img src="' + proxy + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;border:1px solid #1f1f1f">'
+          + '<div style="font-size:10px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Fonte: ' + fonte + '">&#128269; ' + fonte + '</div>'
+          + '<label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" class="ae-edit-img-keep" data-url="' + esc(url) + '" checked> Manter</label>'
+          + '<label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="radio" name="ae-edit-img-principal" class="ae-edit-img-principal" value="' + esc(url) + '"' + isPrincipal + '> Principal</label>'
+          + '</div>';
       }).join('')
     : '<div style="font-size:12px;color:#888;grid-column:1/-1">Nenhuma imagem vinculada ainda.</div>';
 
@@ -8274,6 +8294,25 @@ function aeColetarDados() {
     var v = el.value.trim();
     dados[k] = v ? v.split('\n').map(function(s) { return s.trim(); }).filter(Boolean) : [];
   });
+
+  // Auditoria de imagens: mantém só as marcadas como "Manter", com a
+  // "Principal" sempre em primeiro lugar (é a que vai para o site/ERP na
+  // sincronização).
+  var imgGrid = document.getElementById('ae-edit-img-grid');
+  if (imgGrid && imgGrid.querySelector('input.ae-edit-img-keep')) {
+    var principalEl = imgGrid.querySelector('input.ae-edit-img-principal:checked');
+    var principalUrl = principalEl ? principalEl.value : null;
+    var keptUrls = Array.prototype.map.call(imgGrid.querySelectorAll('input.ae-edit-img-keep:checked'), function(el) {
+      return el.getAttribute('data-url');
+    });
+    var ordenadas = [];
+    if (principalUrl && keptUrls.indexOf(principalUrl) !== -1) ordenadas.push(principalUrl);
+    keptUrls.forEach(function(u) { if (u !== principalUrl) ordenadas.push(u); });
+    dados.imagens = ordenadas;
+    dados.imagem_principal = ordenadas[0] || null;
+    dados.iv_foto_principal = ordenadas.length > 0;
+  }
+
   return dados;
 }
 
