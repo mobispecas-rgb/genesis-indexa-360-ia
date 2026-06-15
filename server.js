@@ -1091,23 +1091,24 @@ function _parseConectorCorpo(corpo, contentType) {
 }
 
 // Testa se um conector consegue se conectar ao URL cadastrado.
-// Se o servidor retornar 401, tenta autenticação Magento 2 automaticamente.
+// Em caso de 401: obtém token Magento 2 e retorna sucesso imediatamente
+// (obter o token já prova que as credenciais são válidas).
 app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
         if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
         if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
 
+        const t0 = Date.now();
         let r = await _fetchConector(item.url, item.usuario, item.senha);
         let auth_tipo = (item.usuario || item.senha) ? 'basic' : 'none';
 
-        if (r.status === 401) {
+        if (r.status === 401 || r.status === 403) {
             const mg = await _tentarMagentoAuth(item.url, item.usuario, item.senha);
             if (mg) {
-                // Confirmação via endpoint de informações do cliente
-                const meUrl = mg.base + '/rest/V1/customers/me';
-                r = await _fetchConector(meUrl, null, null, 10000, 'Bearer ' + mg.token);
-                auth_tipo = 'magento2-' + mg.tipo;
+                // Token obtido = credenciais válidas. Não fazemos segunda chamada
+                // (diferentes stores Magento têm prefixos de URL distintos para /me).
+                return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, content_type: 'application/json', auth_tipo: 'magento2-' + mg.tipo, preview: `Token Magento 2 (${mg.tipo}) obtido — credenciais válidas. Clique em 📥 Importar para buscar os produtos.` });
             }
         }
 
@@ -1117,8 +1118,12 @@ app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
     }
 });
 
+// Prefixos de URL REST que lojas Magento 2 costumam usar (varia por configuração).
+const _MAGENTO_REST_PREFIXES = ['/rest/V1', '/rest/default/V1', '/rest/all/V1', '/rest/pt_BR/V1'];
+
 // Importa até `limite` produtos do conector, com fallback automático para
-// Magento 2 REST API quando a primeira tentativa retorna 401.
+// Magento 2 REST API quando a primeira tentativa retorna 401/403.
+// Tenta múltiplos prefixos de URL REST caso o padrão /rest/V1 retorne 404/405.
 app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
@@ -1129,20 +1134,24 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
 
         let r = await _fetchConector(item.url, item.usuario, item.senha);
 
-        // Fallback Magento 2: tenta token + API de produtos
+        // Fallback Magento 2: tenta token e depois GET /products nos prefixos conhecidos
         if (r.status === 401 || r.status === 403) {
             const mg = await _tentarMagentoAuth(item.url, item.usuario, item.senha);
             if (mg) {
-                const prodUrl = `${mg.base}/rest/V1/products?searchCriteria[pageSize]=${limite}&searchCriteria[currentPage]=1`;
-                r = await _fetchConector(prodUrl, null, null, 20000, 'Bearer ' + mg.token);
-                if (r.status === 200) {
-                    const parsed = _parseMagentoProducts(r.corpo);
-                    if (parsed) {
-                        return res.json({ ok: true, ...parsed, preview_itens: parsed.itens.slice(0, limite), latencia_ms: r.latencia_ms, auth_tipo: 'magento2-' + mg.tipo });
-                    }
+                const bearerHeader = 'Bearer ' + mg.token;
+                const qs = `?searchCriteria[pageSize]=${limite}&searchCriteria[currentPage]=1`;
+                for (const prefix of _MAGENTO_REST_PREFIXES) {
+                    const prodUrl = mg.base + prefix + '/products' + qs;
+                    try {
+                        r = await _fetchConector(prodUrl, null, null, 20000, bearerHeader);
+                        if (r.status === 200) {
+                            const parsed = _parseMagentoProducts(r.corpo);
+                            if (parsed) return res.json({ ok: true, ...parsed, preview_itens: parsed.itens.slice(0, limite), latencia_ms: r.latencia_ms, auth_tipo: 'magento2-' + mg.tipo });
+                        }
+                    } catch (_) {}
                 }
-                // Token funcionou mas /products falhou — cliente sem permissão de listar
-                return res.json({ ok: false, erro: `Autenticação Magento 2 (${mg.tipo}) OK, mas /rest/V1/products retornou HTTP ${r.status}. Conta precisa de permissão de catálogo ou use uma conta admin.`, status: r.status, auth_tipo: 'magento2-' + mg.tipo });
+                // Autenticou mas não encontrou /products — conta sem permissão de catálogo
+                return res.json({ ok: false, erro: `Token Magento 2 (${mg.tipo}) obtido, mas nenhum prefixo REST retornou produtos (HTTP ${r.status}). Use uma conta com permissão de catálogo/admin.`, status: r.status, auth_tipo: 'magento2-' + mg.tipo });
             }
         }
 
