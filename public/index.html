@@ -1818,10 +1818,12 @@ MEDIDA LARGURA  25 MM"></textarea>
             <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Usu&aacute;rio</th>
             <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Espelho</th>
             <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Status</th>
-            <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">A&ccedil;&otilde;es</th>
+            <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">Testar / Importar</th>
+            <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">Editar</th>
           </tr></thead>
           <tbody id="cref-conectores-tbody"></tbody>
         </table></div>
+        <div id="cref-conector-resultado" style="display:none;margin-top:10px;font-size:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px"></div>
         <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="_btnFlash(this);crefAbrirForm('conector')">&#43; Adicionar Conector</button>
       </div>
 
@@ -8749,16 +8751,20 @@ function crefRenderConectores() {
   if (!tbody) return;
   var lista = _crefDados.conector || [];
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="padding:10px;color:#999;text-align:center">Nenhum conector cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:10px;color:#999;text-align:center">Nenhum conector cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = lista.map(function(c) {
     return '<tr>'
       + '<td style="padding:6px 12px">' + esc(c.nome) + '</td>'
-      + '<td style="padding:6px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.url || '—') + '</td>'
+      + '<td style="padding:6px 12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.url || '—') + '</td>'
       + '<td style="padding:6px 12px">' + esc(c.usuario || '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '☁️ Wix' : '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>') + '</td>'
+      + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
+      + '<button class="btn btn-secondary btn-sm" title="Testar conexão" onclick="_btnFlash(this);crefTestarConector(' + c.id + ')">🔗 Testar</button> '
+      + '<button class="btn btn-primary btn-sm" title="Importar produtos" onclick="_btnFlash(this);crefImportarConector(' + c.id + ')">📥 Importar</button>'
+      + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefEditar(\'conector\',' + c.id + ')">✏️</button> '
       + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefExcluir(\'conector\',' + c.id + ')">🗑️</button>'
@@ -8997,6 +9003,83 @@ async function crefBuscarLogo(tipo, id) {
   var r = await api('PUT', '/ntc-referencias/' + id, { logo_url: data.imagens[0].url });
   if (!r || !r.ok) { alert('Erro ao salvar logo: ' + ((r && r.erro) || 'falha')); return; }
   crefCarregar();
+}
+
+// Mostra o resultado de testar/importar no painel abaixo da tabela de conectores.
+function _crefMostrarResultado(html) {
+  var el = document.getElementById('cref-conector-resultado');
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = html;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function crefTestarConector(id) {
+  _crefMostrarResultado('<span style="color:#888">⏳ Testando conexão...</span>');
+  var item = (_crefDados.conector || []).find(function(x) { return x.id === id; });
+  var nome = item ? item.nome : 'Conector #' + id;
+  var r;
+  try {
+    r = await api('POST', '/ntc-referencias/' + id + '/testar');
+  } catch (e) {
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Erro: ' + esc(e.message) + '</span>');
+    return;
+  }
+  if (!r || !r.ok) {
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Falha na conexão com <b>' + esc(nome) + '</b>: '
+      + esc(r && r.erro || ('HTTP ' + (r && r.status || '?'))) + '</span>');
+    return;
+  }
+  var cor = r.status < 300 ? '#16a34a' : r.status < 400 ? '#d97706' : '#dc2626';
+  _crefMostrarResultado(
+    '<b>🔗 ' + esc(nome) + '</b> — '
+    + '<span style="color:' + cor + '">HTTP ' + r.status + '</span>'
+    + ' &nbsp;|&nbsp; ⚡ ' + r.latencia_ms + ' ms'
+    + ' &nbsp;|&nbsp; ' + esc(r.content_type || '(sem tipo)')
+    + (r.preview ? '<br><details style="margin-top:6px"><summary style="cursor:pointer;color:#555">Prévia da resposta</summary><pre style="font-size:11px;overflow:auto;max-height:200px;white-space:pre-wrap;margin-top:4px">' + esc(r.preview) + '</pre></details>' : '')
+  );
+}
+
+async function crefImportarConector(id) {
+  _crefMostrarResultado('<span style="color:#888">⏳ Buscando produtos no conector...</span>');
+  var item = (_crefDados.conector || []).find(function(x) { return x.id === id; });
+  var nome = item ? item.nome : 'Conector #' + id;
+  var r;
+  try {
+    r = await api('POST', '/ntc-referencias/' + id + '/importar', { limite: 20 });
+  } catch (e) {
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Erro: ' + esc(e.message) + '</span>');
+    return;
+  }
+  if (!r || !r.ok) {
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Falha na importação de <b>' + esc(nome) + '</b>: '
+      + esc(r && r.erro || 'Sem resposta') + '</span>');
+    return;
+  }
+  if (r.formato === 'html' || !r.preview_itens || !r.preview_itens.length) {
+    _crefMostrarResultado(
+      '<b>📥 ' + esc(nome) + '</b> — Formato detectado: <b>' + esc(r.formato || '?') + '</b><br>'
+      + '<span style="color:#d97706">⚠️ Não foi possível extrair produtos automaticamente neste formato. '
+      + 'Verifique se o conector retorna JSON ou CSV.</span>'
+      + (r.preview_html ? '<br><details style="margin-top:6px"><summary style="cursor:pointer;color:#555">Prévia da resposta</summary><pre style="font-size:11px;overflow:auto;max-height:200px;white-space:pre-wrap;margin-top:4px">' + esc(r.preview_html) + '</pre></details>' : '')
+    );
+    return;
+  }
+  var itens = r.preview_itens;
+  var keys = Object.keys(itens[0] || {});
+  var thead = '<tr>' + keys.map(function(k) { return '<th style="padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#555;white-space:nowrap">' + esc(k) + '</th>'; }).join('') + '</tr>';
+  var tbody = itens.map(function(it) {
+    return '<tr>' + keys.map(function(k) {
+      return '<td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(String(it[k] || '')) + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  _crefMostrarResultado(
+    '<b>📥 ' + esc(nome) + '</b> — Formato: <b>' + esc(r.formato) + '</b> &nbsp;|&nbsp; '
+    + 'Total encontrado: <b>' + r.total + '</b> &nbsp;|&nbsp; ⚡ ' + r.latencia_ms + ' ms'
+    + '<br><div style="overflow-x:auto;margin-top:8px"><table style="font-size:11px;border-collapse:collapse;width:100%">'
+    + '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table></div>'
+    + (r.total > itens.length ? '<div style="color:#888;margin-top:4px">Mostrando ' + itens.length + ' de ' + r.total + ' itens.</div>' : '')
+  );
 }
 
 </script>

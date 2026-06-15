@@ -964,6 +964,109 @@ app.delete('/api/ntc-referencias/:id', (req, res) => {
     }
 });
 
+// Faz uma requisição HTTP/HTTPS autenticada para a URL do conector (Basic Auth
+// se usuario/senha fornecidos). Retorna status, latência e corpo (até 64 KB).
+function _fetchConector(url, usuario, senha, timeout = 14000) {
+    return new Promise((resolve, reject) => {
+        let parsed;
+        try { parsed = new URL(url); } catch (e) { return reject(new Error('URL inválida: ' + url)); }
+        const proto = parsed.protocol === 'https:' ? https : http;
+        const headers = { 'User-Agent': 'Genesis-NTC-Conector/4.0', 'Accept': 'application/json, text/csv, application/xml, text/html, */*', 'Accept-Encoding': 'identity' };
+        if (usuario || senha) {
+            headers['Authorization'] = 'Basic ' + Buffer.from(`${usuario || ''}:${senha || ''}`).toString('base64');
+        }
+        const opts = {
+            hostname: parsed.hostname,
+            port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+            path: (parsed.pathname || '/') + (parsed.search || ''),
+            headers,
+        };
+        const t0 = Date.now();
+        const req = proto.get(opts, (r) => {
+            const latencia = Date.now() - t0;
+            let corpo = '';
+            r.setEncoding('utf8');
+            r.on('data', chunk => { if (corpo.length < 65536) corpo += chunk; });
+            r.on('end', () => resolve({ status: r.statusCode, content_type: r.headers['content-type'] || '', location: r.headers['location'] || '', latencia_ms: latencia, corpo }));
+        });
+        req.setTimeout(timeout, () => { req.destroy(); reject(new Error('Timeout após ' + timeout + 'ms')); });
+        req.on('error', reject);
+    });
+}
+
+// Tenta detectar e parsear os dados recebidos do conector em um array de
+// produtos/objetos. Suporta JSON (array ou {data/itens/produtos:[]}) e CSV.
+function _parseConectorCorpo(corpo, contentType) {
+    const ct = (contentType || '').toLowerCase();
+
+    // JSON
+    if (ct.includes('json') || corpo.trimStart().startsWith('{') || corpo.trimStart().startsWith('[')) {
+        try {
+            const parsed = JSON.parse(corpo);
+            if (Array.isArray(parsed)) return { formato: 'json', itens: parsed };
+            // Tenta encontrar array dentro de chaves comuns
+            for (const k of ['data', 'items', 'itens', 'produtos', 'products', 'result', 'results', 'rows', 'records']) {
+                if (parsed[k] && Array.isArray(parsed[k])) return { formato: 'json', itens: parsed[k], total: parsed.total || parsed.count || null };
+            }
+            return { formato: 'json', itens: [parsed] };
+        } catch (_) {}
+    }
+
+    // CSV (ponto-e-vírgula ou vírgula como separador)
+    if (ct.includes('csv') || ct.includes('text/plain') || corpo.includes(';') || corpo.includes(',')) {
+        try {
+            const linhas = corpo.trim().split(/\r?\n/).filter(Boolean);
+            if (linhas.length < 2) return { formato: 'csv', itens: [] };
+            const sep = linhas[0].includes(';') ? ';' : ',';
+            const cabecalho = linhas[0].split(sep).map(s => s.trim().replace(/^["']|["']$/g, ''));
+            const itens = linhas.slice(1).map(l => {
+                const vals = l.split(sep).map(s => s.trim().replace(/^["']|["']$/g, ''));
+                const obj = {};
+                cabecalho.forEach((k, i) => { obj[k] = vals[i] || ''; });
+                return obj;
+            });
+            return { formato: 'csv', itens };
+        } catch (_) {}
+    }
+
+    // HTML / outro — retorna preview do corpo
+    return { formato: 'html', itens: [], preview: corpo.substring(0, 800) };
+}
+
+// Testa se um conector consegue se conectar ao URL cadastrado (com credenciais).
+app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+        if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
+
+        const r = await _fetchConector(item.url, item.usuario, item.senha);
+        const preview = r.corpo.substring(0, 500);
+        res.json({ ok: r.status < 400, status: r.status, latencia_ms: r.latencia_ms, content_type: r.content_type, preview, location: r.location || undefined });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Importa até `limite` produtos/registros do conector, detectando o formato
+// (JSON array, {data:[]}, CSV com cabeçalho) automaticamente.
+app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+        if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
+
+        const limite = Math.min(parseInt((req.body && req.body.limite) || 20), 200);
+        const r = await _fetchConector(item.url, item.usuario, item.senha);
+        if (r.status >= 400) return res.json({ ok: false, erro: `Servidor respondeu com HTTP ${r.status}.`, status: r.status });
+
+        const { formato, itens, total, preview } = _parseConectorCorpo(r.corpo, r.content_type);
+        res.json({ ok: true, formato, total: total || itens.length, preview_itens: itens.slice(0, limite), latencia_ms: r.latencia_ms, preview_html: preview });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
 // ─── AUTO-ENRIQUECIMENTO 24/7 — status e disparo manual ───────────────
 app.get('/api/auto-enrich/status', (req, res) => {
     res.json({ ok: true, ...autoEnrich.obterStatus() });
