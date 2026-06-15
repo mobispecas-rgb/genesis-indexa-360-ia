@@ -722,8 +722,8 @@ app.get('/api/produtos', (req, res) => {
     try {
         const limit = Math.min(parseInt(req.query.limite) || 50, 200);
         const offset = parseInt(req.query.offset) || 0;
-        const { decisao, fonte, categoria, subcategoria } = req.query;
-        let produtos = db.listarProdutos({ limit, offset, decisao, fonte });
+        const { decisao, fonte, categoria, subcategoria, busca } = req.query;
+        let produtos = db.listarProdutos({ limit, offset, decisao, fonte, busca });
 
         produtos = produtos.map(p => {
             const familia = p.dados.familia_tecnica || p.dados.familia || null;
@@ -1510,6 +1510,63 @@ app.post('/api/wix/produtos', async (req, res) => {
     }));
     res.json({ ok: true, produtos: prods, total: prods.length });
   } catch(e) { res.json({ ok: false, erro: e.message, produtos: [] }); }
+});
+
+function _wixVariantSku(produtoWix) {
+  return (produtoWix && produtoWix.variantsInfo && produtoWix.variantsInfo.variants
+    && produtoWix.variantsInfo.variants[0] && produtoWix.variantsInfo.variants[0].sku) || null;
+}
+
+// Wix — importar produtos do site para o catálogo local, calculando o Selo de
+// Qualidade NTC (mesmo padrão do "Sincronizar do Bling"). Produtos já existentes
+// no catálogo (por SKU) são apenas enriquecidos com os dados do Wix.
+app.post('/api/wix/sync-produtos', async (req, res) => {
+  try {
+    const offset = parseInt(req.body.offset) || 0;
+    const limite = Math.min(parseInt(req.body.limite) || 20, 100);
+
+    const data = await wixRequest('POST', '/stores/v3/products/query', {
+      query: { paging: { limit: limite, offset } }
+    });
+    const wixProds = data.products || [];
+
+    const resultados = [];
+    for (const wp of wixProds) {
+      let skuWix = _wixVariantSku(wp);
+      if (!skuWix) {
+        try {
+          const detalhe = await wixRequest('GET', '/stores/v3/products/' + wp.id);
+          skuWix = _wixVariantSku(detalhe.product);
+        } catch (e) { /* segue sem variante — usa o id do Wix como SKU */ }
+      }
+
+      const sku = skuWix || wp.id;
+      const dadosWix = {
+        nome: wp.name || null,
+        codigo_fabricante: skuWix || null,
+        preco_venda: wp.priceData && wp.priceData.price != null ? Number(wp.priceData.price) : null,
+      };
+
+      const existente = db.obterProdutoPorSku(String(sku));
+      const dadosFinal = existente ? { ...existente.dados } : {};
+      for (const [k, v] of Object.entries(dadosWix)) {
+        if (v != null && v !== '' && (dadosFinal[k] == null || dadosFinal[k] === '')) dadosFinal[k] = v;
+      }
+
+      const resultado = ntcEngine.processar(dadosFinal);
+      const produto = db.upsertProduto({
+        sku: String(sku),
+        nome: dadosFinal.nome || null,
+        dados: dadosFinal,
+        fonte: existente ? existente.fonte : 'avulso',
+        wix_id: wp.id,
+        ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash,
+      });
+      resultados.push({ sku: produto.sku, nome: produto.nome, ntc: produto.ntc, decisao: produto.decisao, fonte: produto.fonte });
+    }
+
+    res.json({ ok: true, total: wixProds.length, offset, temMais: wixProds.length === limite, produtos: resultados });
+  } catch (e) { res.json({ ok: false, erro: e.message }); }
 });
 
 // ─── BLING → WIX — Importar produtos do Bling para Wix Stores V3 ─────

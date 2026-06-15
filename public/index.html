@@ -1495,6 +1495,7 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div class="card-title">&#127991;&#65039; Cat&aacute;logo &mdash; Selo de Qualidade NTC</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:8px">O selo giratório confirma que o item está sob monitoramento do job 24/7: <strong style="color:#00ff88">verde</strong> = alta qualidade (NTC&nbsp;&ge;&nbsp;95%), <strong style="color:#ffaa00">amarelo</strong> = pendente (60&ndash;95%, pisca), <strong style="color:#ff4500">vermelho</strong> = baixa qualidade (&lt;60%, pisca). Use "Sincronizar" para enviar SKU, código OEM, códigos cambiados, medidas/pesos de fábrica, categoria/subcategoria e o código de rastreamento para o Wix (site) e o Bling (PDV/ERP).</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input type="text" id="ae-cat-busca" placeholder="Buscar por SKU ou nome..." oninput="aeBuscarCatalogoDebounce()" style="max-width:220px">
           <select id="ae-cat-categoria" onchange="aeCarregarCatalogo()" style="max-width:200px"><option value="">Todas as categorias</option></select>
           <select id="ae-cat-subcategoria" onchange="aeCarregarCatalogo()" style="max-width:200px"><option value="">Todas as subcategorias</option></select>
           <select id="ae-cat-decisao" onchange="aeCarregarCatalogo()" style="max-width:160px">
@@ -1518,6 +1519,31 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div id="ae-catalogo-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
       </div>
 
+      <div id="ae-edit-overlay" style="display:none;position:fixed;inset:0;background:#0009;z-index:1000;align-items:center;justify-content:center;padding:16px">
+        <div class="card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto;margin-bottom:0">
+          <div class="card-title">&#9999;&#65039; Editar Produto</div>
+          <div class="form-group"><label>SKU</label><input type="text" id="ae-edit-sku" disabled></div>
+          <div class="form-group"><label>Nome</label><input type="text" id="ae-edit-nome"></div>
+          <div class="grid2">
+            <div class="form-group"><label>C&oacute;digo OEM/Fabricante</label><input type="text" id="ae-edit-codigo_fabricante"></div>
+            <div class="form-group"><label>EAN</label><input type="text" id="ae-edit-ean"></div>
+          </div>
+          <div class="grid2">
+            <div class="form-group"><label>Fabricante</label><input type="text" id="ae-edit-fabricante"></div>
+            <div class="form-group"><label>Fam&iacute;lia T&eacute;cnica</label><input type="text" id="ae-edit-familia_tecnica"></div>
+          </div>
+          <div class="grid2">
+            <div class="form-group"><label>Pre&ccedil;o de Venda (R$)</label><input type="number" step="0.01" id="ae-edit-preco_venda"></div>
+            <div class="form-group"><label>Peso L&iacute;quido (kg)</label><input type="number" step="0.001" id="ae-edit-peso_liquido"></div>
+          </div>
+          <div id="ae-edit-msg" style="font-size:12px;color:#6b7280;margin:4px 0 12px"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-secondary btn-sm" onclick="aeFecharEdicao()">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="aeSalvarEdicao()">&#128190; Salvar e recalcular NTC</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">&#128229; Importar Nota Fiscal de Entrada (XML)</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa os itens da NF-e preservando o fornecedor (emitente) para rastreabilidade. Os produtos entram na fila do auto-enriquecimento.</div>
@@ -1532,6 +1558,13 @@ MEDIDA LARGURA  25 MM"></textarea>
         <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px"><input type="checkbox" id="ae-bling-fornecedor"> Buscar fornecedor vinculado (mais lento)</label>
         <button class="btn btn-secondary btn-sm" onclick="aeSyncBling()">&#11015;&#65039; Importar do Bling</button>
         <div id="ae-bling-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128279; Sincronizar do Wix</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Importa produtos do site (Wix) para o cat&aacute;logo local, calcula o Selo de Qualidade NTC e vincula o <code>wix_id</code> para sincroniza&ccedil;&otilde;es futuras. Produtos j&aacute; existentes (mesmo SKU) s&atilde;o apenas enriquecidos com os dados do Wix.</div>
+        <button class="btn btn-secondary btn-sm" onclick="aeSyncWix()">&#11015;&#65039; Importar do Wix</button>
+        <div id="ae-wix-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
       </div>
 
       <div class="card">
@@ -7139,6 +7172,19 @@ async function aeSyncBling() {
   aeCarregarCatalogo();
 }
 
+async function aeSyncWix() {
+  var msgEl = document.getElementById('ae-wix-msg');
+  if (msgEl) msgEl.innerHTML = '⏳ Importando do Wix...';
+  var r = await api('POST', '/wix/sync-produtos', { limite: 20 });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao importar do Wix.') + '</span>';
+    return;
+  }
+  if (msgEl) msgEl.innerHTML = '✅ ' + r.total + ' produto(s) importado(s) do Wix.';
+  aeAtualizar();
+  aeCarregarCatalogo();
+}
+
 // Selo de Qualidade NTC — anel giratório (sempre ativo, mostra que o item
 // está sob monitoramento do job 24/7); verde = alto, amarelo/vermelho piscam.
 function aeSeloHtml(ntc, decisao) {
@@ -7186,11 +7232,14 @@ async function aeCarregarCatalogo() {
   var decisao = document.getElementById('ae-cat-decisao').value;
   var categoria = document.getElementById('ae-cat-categoria').value;
   var subcategoria = document.getElementById('ae-cat-subcategoria').value;
+  var buscaEl = document.getElementById('ae-cat-busca');
+  var busca = buscaEl ? buscaEl.value.trim() : '';
 
   var params = ['limite=200'];
   if (decisao) params.push('decisao=' + encodeURIComponent(decisao));
   if (categoria) params.push('categoria=' + encodeURIComponent(categoria));
   if (subcategoria) params.push('subcategoria=' + encodeURIComponent(subcategoria));
+  if (busca) params.push('busca=' + encodeURIComponent(busca));
 
   var r = await api('GET', '/produtos?' + params.join('&'));
   if (!r || !r.ok) {
@@ -7215,9 +7264,74 @@ async function aeCarregarCatalogo() {
       + '<td>' + esc(p.nome || '—') + '</td>'
       + '<td class="col-opt">' + catTxt + '</td>'
       + '<td class="col-opt">' + fonteBadge + '</td>'
-      + '<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="aeSincronizarProduto(' + p.id + ', this)">&#128279; Sincronizar</button></td>'
+      + '<td style="white-space:nowrap">'
+        + '<button class="btn btn-secondary btn-sm" onclick="aeAbrirEdicao(' + p.id + ')">&#9999;&#65039; Editar</button> '
+        + '<button class="btn btn-secondary btn-sm" onclick="aeSincronizarProduto(' + p.id + ', this)">&#128279; Sincronizar</button>'
+      + '</td>'
       + '</tr>';
   }).join('');
+}
+
+var _aeBuscaTimer = null;
+function aeBuscarCatalogoDebounce() {
+  if (_aeBuscaTimer) clearTimeout(_aeBuscaTimer);
+  _aeBuscaTimer = setTimeout(aeCarregarCatalogo, 350);
+}
+
+var _aeEditId = null;
+async function aeAbrirEdicao(id) {
+  var msgEl = document.getElementById('ae-edit-msg');
+  if (msgEl) msgEl.innerHTML = '';
+  var r = await api('GET', '/produtos/' + id);
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao carregar produto.') + '</span>';
+    return;
+  }
+  var p = r.produto;
+  var dados = p.dados || {};
+  _aeEditId = p.id;
+  document.getElementById('ae-edit-sku').value = p.sku || '';
+  document.getElementById('ae-edit-nome').value = p.nome || dados.nome || '';
+  document.getElementById('ae-edit-codigo_fabricante').value = dados.codigo_fabricante || '';
+  document.getElementById('ae-edit-ean').value = dados.ean || '';
+  document.getElementById('ae-edit-fabricante').value = dados.fabricante || '';
+  document.getElementById('ae-edit-familia_tecnica').value = dados.familia_tecnica || '';
+  document.getElementById('ae-edit-preco_venda').value = dados.preco_venda != null ? dados.preco_venda : '';
+  document.getElementById('ae-edit-peso_liquido').value = dados.peso_liquido != null ? dados.peso_liquido : '';
+  document.getElementById('ae-edit-overlay').style.display = 'flex';
+}
+
+function aeFecharEdicao() {
+  document.getElementById('ae-edit-overlay').style.display = 'none';
+  _aeEditId = null;
+}
+
+async function aeSalvarEdicao() {
+  if (_aeEditId == null) return;
+  var msgEl = document.getElementById('ae-edit-msg');
+  var sku = document.getElementById('ae-edit-sku').value.trim();
+  if (!sku) { if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">SKU obrigat&oacute;rio.</span>'; return; }
+
+  var dados = {
+    nome: document.getElementById('ae-edit-nome').value.trim() || null,
+    codigo_fabricante: document.getElementById('ae-edit-codigo_fabricante').value.trim() || null,
+    ean: document.getElementById('ae-edit-ean').value.trim() || null,
+    fabricante: document.getElementById('ae-edit-fabricante').value.trim() || null,
+    familia_tecnica: document.getElementById('ae-edit-familia_tecnica').value.trim() || null,
+  };
+  var preco = document.getElementById('ae-edit-preco_venda').value;
+  if (preco !== '') dados.preco_venda = parseFloat(preco);
+  var peso = document.getElementById('ae-edit-peso_liquido').value;
+  if (peso !== '') dados.peso_liquido = parseFloat(peso);
+
+  if (msgEl) msgEl.innerHTML = '⏳ Salvando e recalculando NTC...';
+  var r = await api('POST', '/produtos', { sku: sku, dados: dados });
+  if (!r || !r.ok) {
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626">' + esc((r && r.erro) || 'Erro ao salvar.') + '</span>';
+    return;
+  }
+  aeFecharEdicao();
+  aeCarregarCatalogo();
 }
 
 async function aeSincronizarProduto(id, btn) {

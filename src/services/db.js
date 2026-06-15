@@ -118,12 +118,13 @@ function obterProdutoPorSku(sku) {
   return linhaParaProduto(db.prepare('SELECT * FROM produtos WHERE sku = ?').get(sku));
 }
 
-function listarProdutos({ limit = 50, offset = 0, decisao, fonte } = {}) {
+function listarProdutos({ limit = 50, offset = 0, decisao, fonte, busca } = {}) {
   let sql = 'SELECT * FROM produtos';
   const where = [];
   const params = {};
   if (decisao) { where.push('decisao = @decisao'); params.decisao = decisao; }
   if (fonte) { where.push('fonte = @fonte'); params.fonte = fonte; }
+  if (busca) { where.push('(sku LIKE @busca OR nome LIKE @busca)'); params.busca = '%' + busca + '%'; }
   if (where.length) sql += ' WHERE ' + where.join(' AND ');
   sql += ' ORDER BY atualizado_em DESC LIMIT @limit OFFSET @offset';
   params.limit = limit;
