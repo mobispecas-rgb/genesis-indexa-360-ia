@@ -183,6 +183,7 @@ const _status = {
 // Processa um lote de produtos pendentes (NTC < 0.95), começando pelos
 // menos atualizados — ou seja, produtos já cadastrados primeiro.
 async function rodarCicloAutoEnrich(batchSize) {
+  if (!_status.habilitado) return { ok: false, erro: 'Job 24/7 está pausado' };
   if (_status.rodando) return { ok: false, erro: 'Ciclo já em execução' };
   const tamanho = batchSize || Number(process.env.AUTO_ENRICH_BATCH_SIZE) || 5;
 
@@ -219,10 +220,19 @@ function obterStatus() {
   };
 }
 
+// Liga/desliga o job 24/7 em tempo de execução (pausa global, independente do
+// AUTO_ENRICH_ENABLED de inicialização) — usado para conter o consumo de
+// créditos da API durante testes controlados.
+function definirHabilitado(habilitado) {
+  _status.habilitado = !!habilitado;
+  return _status.habilitado;
+}
+
 module.exports = {
   enriquecerProdutoAuto,
   rodarCicloAutoEnrich,
   obterStatus,
+  definirHabilitado,
   aplicarFornecedorOuAvulso,
   aplicarCamposDna,
 };
