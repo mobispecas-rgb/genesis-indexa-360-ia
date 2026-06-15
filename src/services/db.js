@@ -300,29 +300,44 @@ function excluirReferencia(id) {
 // lojista pode editar, completar (logos/sites) ou remover qualquer item.
 function seedReferenciasNTC() {
   const total = db.prepare('SELECT COUNT(*) AS total FROM ntc_referencias').get().total;
-  if (total > 0) return;
 
+  // Logos servidos via Wikimedia Commons (Special:FilePath — link estável que
+  // redireciona para o arquivo). Em caso de link quebrado, o card mostra o
+  // ícone padrão e o lojista pode usar "🔍 Buscar logo" para substituir.
   const montadoras = [
-    'Toyota', 'Honda', 'Hyundai', 'Kia', 'Ford', 'Chevrolet', 'Volkswagen',
-    'Fiat', 'Renault', 'Nissan', 'Peugeot', 'Citroën', 'Mitsubishi', 'Jeep',
-    'Mercedes-Benz', 'Iveco',
+    { nome: 'Toyota', site: 'https://www.toyota.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Toyota_carlogo.svg' },
+    { nome: 'Honda', site: 'https://www.honda.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Honda_logo.svg' },
+    { nome: 'Hyundai', site: 'https://www.hyundai.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Hyundai_Motor_Company_logo.svg' },
+    { nome: 'Kia', site: 'https://www.kia.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/KIA_logo3.svg' },
+    { nome: 'Ford', site: 'https://www.ford.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ford_logo_flat.svg' },
+    { nome: 'Chevrolet', site: 'https://www.chevrolet.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Chevrolet-logo.svg' },
+    { nome: 'Volkswagen', site: 'https://www.vw.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Volkswagen_logo_2019.svg' },
+    { nome: 'Fiat', site: 'https://www.fiat.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/FIAT_logo_%282020%29.svg' },
+    { nome: 'Renault', site: 'https://www.renault.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Renault_2021_Text.svg' },
+    { nome: 'Nissan', site: 'https://www.nissan.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Nissan_2020_logo.svg' },
+    { nome: 'Peugeot', site: 'https://www.peugeot.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Peugeot_Logo.svg' },
+    { nome: 'Citroën', site: 'https://www.citroen.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Citroen_2022.svg' },
+    { nome: 'Mitsubishi', site: 'https://www.mitsubishimotors.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Mitsubishi_Motors_SVG_logo.svg' },
+    { nome: 'Jeep', site: 'https://www.jeep.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Jeep_logo.svg' },
+    { nome: 'Mercedes-Benz', site: 'https://www2.mercedes-benz.com.br', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Mercedes-Benz_logo_2.svg' },
+    { nome: 'Iveco', site: 'https://www.iveco.com/brasil', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Iveco_Logo_2023.svg' },
   ];
 
   const fabricantes = [
-    { nome: 'Bosch', site: 'https://www.bosch.com.br', subtipo: 'oem' },
-    { nome: 'Mahle', site: 'https://www.mahle.com', subtipo: 'oem' },
-    { nome: 'ZF', site: 'https://www.zf.com', subtipo: 'oem' },
-    { nome: 'Continental', site: 'https://www.continental.com', subtipo: 'oem' },
-    { nome: 'Denso', site: 'https://www.denso.com.br', subtipo: 'oem' },
-    { nome: 'Valeo', site: 'https://www.valeo.com', subtipo: 'oem' },
-    { nome: 'Schaeffler / INA', site: 'https://www.schaeffler.com.br', subtipo: 'oem' },
-    { nome: 'SKF', site: 'https://www.skf.com', subtipo: 'oem' },
-    { nome: 'NGK', site: 'https://www.ngk.com.br', subtipo: 'oem' },
-    { nome: 'Nakata', site: 'https://www.nakata.com.br', subtipo: 'aftermarket' },
-    { nome: 'Cofap', site: 'https://www.cofap.com.br', subtipo: 'aftermarket' },
-    { nome: 'Fras-le', site: 'https://www.frasle.com.br', subtipo: 'aftermarket' },
-    { nome: 'Tecfil', site: 'https://www.tecfil.com.br', subtipo: 'aftermarket' },
-    { nome: 'Fremax', site: 'https://www.fremax.com.br', subtipo: 'aftermarket' },
+    { nome: 'Bosch', site: 'https://www.bosch.com.br', subtipo: 'oem', logo_url: null },
+    { nome: 'Mahle', site: 'https://www.br.mahle.com', subtipo: 'oem', logo_url: null },
+    { nome: 'ZF', site: 'https://www.zf.com/brazil/pt/home/home.html', subtipo: 'oem', logo_url: null },
+    { nome: 'Continental', site: 'https://www.continental.com', subtipo: 'oem', logo_url: null },
+    { nome: 'Denso', site: 'https://www.denso.com/br/pt/', subtipo: 'oem', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Denso_logo.svg' },
+    { nome: 'Valeo', site: 'https://www.valeo.com/en/brazil/', subtipo: 'oem', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Valeo_Logo.svg' },
+    { nome: 'Schaeffler / INA', site: 'https://www.schaeffler.com.br', subtipo: 'oem', logo_url: null },
+    { nome: 'SKF', site: 'https://www.skf.com/br', subtipo: 'oem', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/SKF_logo.svg' },
+    { nome: 'NGK', site: 'https://www.ngkntk.com.br', subtipo: 'oem', logo_url: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ngk_logo.svg' },
+    { nome: 'Nakata', site: 'https://www.nakata.com.br', subtipo: 'aftermarket', logo_url: null },
+    { nome: 'Cofap', site: 'https://loja.cofap.com.br', subtipo: 'aftermarket', logo_url: null },
+    { nome: 'Fras-le', site: 'https://www.fras-le.com', subtipo: 'aftermarket', logo_url: null },
+    { nome: 'Tecfil', site: 'https://www.tecfil.com.br', subtipo: 'aftermarket', logo_url: null },
+    { nome: 'Fremax', site: 'https://www.fremax.com.br', subtipo: 'aftermarket', logo_url: null },
   ];
 
   const catalogos = [
@@ -334,13 +349,52 @@ function seedReferenciasNTC() {
     { nome: 'Mercado Livre', url: 'https://www.mercadolivre.com.br', nota_ntc_referencia: 0.6, observacoes: 'Referência de demanda/preço regional — não usar como fonte de aplicação original.' },
   ];
 
+  // Importadores independentes consagrados no mercado nacional (subtipo
+  // "importador") e catálogos de referência adicionais — inseridos de forma
+  // idempotente (não duplicam em bancos que já rodaram o seed original).
+  const importadores = [
+    { nome: 'Sabó', site: 'https://www.sabo.com.br' },
+    { nome: 'Fortbras', site: 'https://www.fortbras.com.br' },
+    { nome: 'Hipper Freios', site: 'https://www.hipperfreios.com.br' },
+    { nome: 'DPK Distribuidora Automotiva', site: 'https://www.dpk.com.br' },
+    { nome: 'JP Group', site: 'https://jpgroup.dk/en/' },
+  ];
+
+  const catalogosExtra = [
+    { nome: '7Zap', url: 'https://7zap.com/', nota_ntc_referencia: 0.75, observacoes: 'Diagramas explodidos e peças originais por marca/VIN, com cross-reference internacional — referência para AV/CC/LG.' },
+    { nome: 'AutoDoc', url: 'https://www.autodoc.pt', nota_ntc_referencia: 0.6, observacoes: 'Loja/catálogo europeu de autopeças de reposição com busca por veículo — referência cruzada de aplicações.' },
+    { nome: 'Mopar / Stellantis Parts Catalog', url: 'https://www.moparoficial.com.br', nota_ntc_referencia: 0.7, observacoes: 'Catálogo oficial de peças originais Mopar para Fiat/Jeep/Peugeot/Citroën no Brasil — referência para CC/AV/LG.' },
+  ];
+
   const insert = db.prepare(`INSERT INTO ntc_referencias (tipo, nome, logo_url, site, subtipo, nota_ntc_referencia, url, observacoes)
     VALUES (@tipo, @nome, @logo_url, @site, @subtipo, @nota_ntc_referencia, @url, @observacoes)`);
+  const existe = db.prepare('SELECT id FROM ntc_referencias WHERE tipo = ? AND nome = ?');
+  const preencherFaltantes = db.prepare(`UPDATE ntc_referencias SET
+      site = COALESCE(site, @site), logo_url = COALESCE(logo_url, @logo_url)
+    WHERE tipo = @tipo AND nome = @nome`);
 
   const tx = db.transaction(() => {
-    montadoras.forEach(nome => insert.run({ tipo: 'montadora', nome, logo_url: null, site: null, subtipo: null, nota_ntc_referencia: null, url: null, observacoes: null }));
-    fabricantes.forEach(f => insert.run({ tipo: 'fabricante', nome: f.nome, logo_url: null, site: f.site, subtipo: f.subtipo, nota_ntc_referencia: null, url: null, observacoes: null }));
-    catalogos.forEach(c => insert.run({ tipo: 'catalogo', nome: c.nome, logo_url: null, site: null, subtipo: null, nota_ntc_referencia: c.nota_ntc_referencia, url: c.url, observacoes: c.observacoes }));
+    if (total === 0) {
+      montadoras.forEach(m => insert.run({ tipo: 'montadora', nome: m.nome, logo_url: m.logo_url, site: m.site, subtipo: null, nota_ntc_referencia: null, url: null, observacoes: null }));
+      fabricantes.forEach(f => insert.run({ tipo: 'fabricante', nome: f.nome, logo_url: f.logo_url, site: f.site, subtipo: f.subtipo, nota_ntc_referencia: null, url: null, observacoes: null }));
+      catalogos.forEach(c => insert.run({ tipo: 'catalogo', nome: c.nome, logo_url: null, site: null, subtipo: null, nota_ntc_referencia: c.nota_ntc_referencia, url: c.url, observacoes: c.observacoes }));
+    } else {
+      // Banco já existente: completa site/logo das montadoras e fabricantes
+      // que ainda estiverem em branco, sem sobrescrever edições do lojista.
+      montadoras.forEach(m => preencherFaltantes.run({ tipo: 'montadora', nome: m.nome, site: m.site, logo_url: m.logo_url }));
+      fabricantes.forEach(f => preencherFaltantes.run({ tipo: 'fabricante', nome: f.nome, site: f.site, logo_url: f.logo_url }));
+    }
+
+    importadores.forEach(i => {
+      if (!existe.get('fabricante', i.nome)) {
+        insert.run({ tipo: 'fabricante', nome: i.nome, logo_url: null, site: i.site, subtipo: 'importador', nota_ntc_referencia: null, url: null, observacoes: null });
+      }
+    });
+    catalogosExtra.forEach(c => {
+      if (!existe.get('catalogo', c.nome)) {
+        insert.run({ tipo: 'catalogo', nome: c.nome, logo_url: null, site: null, subtipo: null, nota_ntc_referencia: c.nota_ntc_referencia, url: c.url, observacoes: c.observacoes });
+      }
+    });
   });
   tx();
 }
