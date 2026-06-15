@@ -5123,10 +5123,14 @@ async function oemBuscarDnaWeb() {
     var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
     if (linhas.length === 0) return;
     var el = document.getElementById('cntc-bta-boletins');
-    if (el && !el.value.trim()) {
-      el.value = linhas.join('\n');
-      el.style.borderColor = '#ff9800';
-      el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    if (el) {
+      if (!el.value.trim()) {
+        el.value = linhas.join('\n');
+        el.style.borderColor = '#ff9800';
+        el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+      }
+    } else if (!Array.isArray(_cntcDados.boletins) || !_cntcDados.boletins.length) {
+      _cntcDados.boletins = linhas;
     }
     preenchidos.push({campo: 'Boletins Técnicos', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
   })();
@@ -5138,15 +5142,19 @@ async function oemBuscarDnaWeb() {
     var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
     if (linhas.length === 0) return;
     var el = document.getElementById('cntc-bta-subst');
-    if (el && !el.value.trim()) {
-      el.value = linhas.join('\n');
-      el.style.borderColor = '#ff9800';
-      el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    if (el) {
+      if (!el.value.trim()) {
+        el.value = linhas.join('\n');
+        el.style.borderColor = '#ff9800';
+        el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+      }
+    } else if (!Array.isArray(_cntcDados.substituicoes) || !_cntcDados.substituicoes.length) {
+      _cntcDados.substituicoes = linhas;
     }
     preenchidos.push({campo: 'Substituições', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
   })();
 
-  // CC — Códigos OEM de montadora
+  // CC — Códigos OEM de montadora (peça original — aplicação por montadora)
   (function() {
     var info = campos.cc_oem;
     if (!info || info.valor == null || info.valor === '') return;
@@ -5159,8 +5167,36 @@ async function oemBuscarDnaWeb() {
       });
       el.style.borderColor = '#ff9800';
       el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    } else {
+      if (!Array.isArray(_cntcDados.cc_oem)) _cntcDados.cc_oem = [];
+      linhas.forEach(function(it) {
+        if (_cntcDados.cc_oem.indexOf(it) === -1) _cntcDados.cc_oem.push(it);
+      });
     }
     preenchidos.push({campo: 'Códigos OEM montadora', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
+  })();
+
+  // CC — Códigos de importadores/distribuidores paralelos (clones nacionais e
+  // importados desse componente — gaveta separada de cc_oem e cc_aftermarket)
+  (function() {
+    var info = campos.cc_importadores;
+    if (!info || info.valor == null || info.valor === '') return;
+    var linhas = String(info.valor).split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (linhas.length === 0) return;
+    var el = document.getElementById('cntc-cc-import');
+    if (el) {
+      linhas.forEach(function(it) {
+        if (el.value.indexOf(it) === -1) el.value = el.value ? (el.value + '\n' + it) : it;
+      });
+      el.style.borderColor = '#ff9800';
+      el.title = 'Sugestão IA (' + info.confianca + ') — ' + (info.fonte || '');
+    } else {
+      if (!Array.isArray(_cntcDados.cc_importadores)) _cntcDados.cc_importadores = [];
+      linhas.forEach(function(it) {
+        if (_cntcDados.cc_importadores.indexOf(it) === -1) _cntcDados.cc_importadores.push(it);
+      });
+    }
+    preenchidos.push({campo: 'Códigos de importadores', valor: linhas.join('; '), confianca: info.confianca, fonte: info.fonte});
   })();
 
   // LG — Auto-setar distribuidor como MOBIS Autoparts
