@@ -112,6 +112,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a1
 @keyframes selo-pisca-amarelo{0%,100%{box-shadow:0 0 0 0 #ffaa0055}50%{box-shadow:0 0 0 6px #ffaa0000}}
 @keyframes selo-pisca-vermelho{0%,100%{box-shadow:0 0 0 0 #ff450055}50%{box-shadow:0 0 0 6px #ff450000}}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* Indicador piscante — mostra que o agente está buscando o DNA do produto na web */
+.dna-blink-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff4500;margin-right:6px;vertical-align:middle;animation:dna-blink 1s infinite}
+@keyframes dna-blink{0%,100%{opacity:1;box-shadow:0 0 0 0 #ff450066}50%{opacity:.25;box-shadow:0 0 0 6px #ff450000}}
 input,select,textarea{background:#fff;border:1px solid #d1d5db;color:#1a1a1a;border-radius:7px;padding:9px 12px;font-size:13px;width:100%;outline:none;transition:border .15s;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:#ff4500}
 select option{background:#fff;color:#1a1a1a}
@@ -823,7 +826,7 @@ tr:hover td{background:#f9fafb}
                 📦 Publicar
               </button>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
               <button onclick="oemEnviarBling()" style="background:#1a73e8;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
                 🔵 Bling
               </button>
@@ -832,6 +835,14 @@ tr:hover td{background:#f9fafb}
               </button>
               <button onclick="oemCongelar()" style="background:#0d47a1;color:#fff;border:none;border-radius:8px;padding:12px 6px;font-size:13px;font-weight:500;cursor:pointer;touch-action:manipulation;min-height:48px">
                 ❄️ Congelar
+              </button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button onclick="oemSalvarCadastroDB()" style="background:#00897b;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+                💾 Salvar Cadastro
+              </button>
+              <button onclick="oemExcluirCadastroDB()" style="background:#b71c1c;color:#fff;border:none;border-radius:8px;padding:14px 8px;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;min-height:52px">
+                🗑️ Excluir Cadastro
               </button>
             </div>
           </div>
@@ -4035,6 +4046,7 @@ async function diagRecalcularTodosNTC() {
 // ===== CADASTRO COMPLETO (OEM + NTC 4.0) =====
 var _oemDados = {};
 var _oemEditIdx = null;
+var _oemDbId = null; // id do produto no banco SQLite (após "Salvar Cadastro")
 
 // Limpa o formulário "Cadastro Completo" (campos confirmados, status, módulos
 // CNTC) — chamado sempre ao entrar/trocar de modo, para que dados de OUTRO
@@ -4095,6 +4107,35 @@ function oemDefinirModoEdicao(idx) {
     // NÃO chamar oemIrEtapa aqui — deixar o oem-resultado escondido
     // O campo de busca (oem-s1) deve aparecer limpo
   }
+}
+
+// Limpa COMPLETAMENTE a tela "Cadastro Completo" (campos, módulos NTC, imagens
+// e seleção) para iniciar um novo produto do zero — chamado após "Salvar
+// Cadastro" e "Excluir Cadastro", para que nenhum código/dado do produto
+// anterior "vaze" para o próximo cadastro.
+function _oemNovoCadastro() {
+  oemDefinirModoEdicao(null);
+  _oemDbId = null;
+
+  // Reseta seleção de imagens (slots padrão: Principal + Embalagem marcados)
+  _ivSelecionadas = [true, true, true, false, false];
+  var grid = document.getElementById('oem-iv-grid');
+  if (grid) {
+    grid.querySelectorAll('.iv-slot').forEach(function(slot) {
+      var idx = parseInt((slot.id || '').replace('iv-slot-', ''), 10);
+      if (idx >= 5) {
+        slot.remove();
+      } else {
+        var ck = slot.querySelector('.iv-check');
+        if (ck) ck.remove();
+        slot.style.borderColor = '#333';
+        slot.style.boxShadow = '';
+      }
+    });
+  }
+  if (typeof ivInicializar === 'function') ivInicializar();
+  var ivStatus = document.getElementById('oem-iv-status');
+  if (ivStatus) ivStatus.textContent = '';
 }
 
 // Alterna entre as 2 etapas do Cadastro Completo:
@@ -4319,6 +4360,66 @@ async function oemPublicar() {
   saveProds(prods);
   atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
   document.getElementById('oem-pub-status').textContent = '✅ Publicado no catálogo! NTC ' + Math.round((r.ntc||0)*100) + '% — ' + r.decisao;
+}
+
+// Salva o cadastro no banco de dados (SQLite) — o mesmo catálogo usado pelo
+// job de Auto-Enriquecimento 24/7, que continuará completando os módulos do
+// NTC em segundo plano. Ao concluir, limpa TODA a tela para o próximo cadastro.
+async function oemSalvarCadastroDB() {
+  var dados = oemDadosCompletos();
+  if (!dados.codigo_fabricante && !dados.nome) {
+    alert('Informe ao menos o Part Number (SKU) ou o Nome do produto antes de salvar.');
+    return;
+  }
+  var st = document.getElementById('oem-pub-status');
+  if (st) st.textContent = '⏳ Salvando cadastro no banco de dados...';
+  var r;
+  try {
+    r = await api('POST', '/produtos', { sku: dados.codigo_fabricante || dados.codigo_oem, dados: dados });
+  } catch (e) {
+    if (st) st.textContent = '✖ ' + e.message;
+    return;
+  }
+  if (!r || !r.ok) {
+    if (st) st.textContent = '✖ ' + ((r && r.erro) || 'Falha ao salvar o cadastro.');
+    return;
+  }
+  var ntcPct = Math.round((r.ntc || 0) * 100);
+  var decisao = r.decisao || '';
+  _oemNovoCadastro();
+  var st2 = document.getElementById('oem-pub-status');
+  if (st2) st2.innerHTML = '<span style="color:#00c853">✅ Cadastro salvo no banco de dados — NTC ' + ntcPct + '% (' + esc(decisao) + ').</span> O agente 24/7 continuará enriquecendo este produto. Pronto para o próximo cadastro.';
+}
+
+// Exclui o cadastro atual (banco de dados e/ou catálogo local) e limpa TODA a
+// tela — usado quando o lojista quer descartar o produto em edição e começar
+// um novo, sem deixar nenhum resíduo de código/dados para o próximo cadastro.
+async function oemExcluirCadastroDB() {
+  var dados = oemColetar();
+  if (!_oemDbId && !dados.codigo_fabricante && !dados.nome && _oemEditIdx == null) {
+    alert('Não há cadastro para excluir.');
+    return;
+  }
+  if (!confirm('Excluir este cadastro? Essa ação não pode ser desfeita.')) return;
+
+  if (_oemDbId) {
+    try { await api('DELETE', '/produtos/' + _oemDbId); } catch (e) { /* segue removendo do catálogo local */ }
+  }
+
+  var prods = getProds();
+  var idx = _oemEditIdx;
+  if (idx == null && dados.codigo_fabricante) {
+    idx = prods.findIndex(function(p) { return p.codigo_fabricante === dados.codigo_fabricante && p.fabricante === dados.fabricante; });
+  }
+  if (idx != null && idx >= 0 && prods[idx]) {
+    prods.splice(idx, 1);
+    saveProds(prods);
+    atualizarStats(); loadProdutos(); atualizarBadgeAprovacao();
+  }
+
+  _oemNovoCadastro();
+  var st = document.getElementById('oem-pub-status');
+  if (st) st.innerHTML = '<span style="color:#ff6500">🗑️ Cadastro excluído. Pronto para o próximo cadastro.</span>';
 }
 
 // Salva o que está na tela como rascunho na fila de cadastro (sem o bloqueio
@@ -4860,7 +4961,7 @@ async function oemBuscarDnaWeb() {
   }
 
   _oemDnaEmAndamento = true;
-  statusEl.innerHTML = '&#8987; Buscando DNA na web (IA)... isso pode levar at&eacute; 1 minuto.';
+  statusEl.innerHTML = '<span class="dna-blink-dot"></span>&#8987; Buscando DNA na web (IA)... isso pode levar at&eacute; 1 minuto.';
 
   var r;
   try {
