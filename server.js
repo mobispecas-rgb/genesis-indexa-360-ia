@@ -1975,6 +1975,167 @@ app.post('/api/auto-enrich/toggle', (req, res) => {
     res.json({ ok: true, habilitado });
 });
 
+// ─── CADASTRO EM MASSA — importar lote de produtos ────────────────────────────
+// Recebe { itens: [...], fornecedor_nome, fonte } e faz upsert em lote.
+// Campos dos itens seguem o padrão Algolia/CSV do Pellegrino B2B.
+// Campos vazios NÃO sobrescrevem dados já confirmados (merge seletivo).
+app.post('/api/produtos/importar-lote', (req, res) => {
+    try {
+        const { itens, fornecedor_nome, fonte } = req.body || {};
+        if (!Array.isArray(itens) || itens.length === 0) {
+            return res.status(400).json({ ok: false, erro: 'Campo "itens" é obrigatório e deve ser array não vazio' });
+        }
+        let inseridos = 0, atualizados = 0, erros = 0;
+        const erros_lista = [];
+        for (const item of itens) {
+            try {
+                const sku = String(item.sku || item.objectID || item.codigo || '').trim();
+                if (!sku) { erros++; continue; }
+                const existente = db.obterProdutoPorSku(sku);
+                // Monta dados filtrando vazios → não apaga campos já confirmados
+                const mapeados = {
+                    ean:          item.ean || item.codigo_ean,
+                    ncm:          item.ncm,
+                    fabricante:   item.marca || item.fabricante,
+                    codigo_oem:   item.codigo_fabricante || item.codigo_fabricante_br || item.codigo_oem,
+                    aplicacao:    item.aplicacao || item.descricao_aplicacao,
+                    preco_custo:  item.preco || item.preco_custo || item.price,
+                    categoria:    item.categoria_1 || item.categoria,
+                    subcategoria: item.categoria_2 || item.subcategoria,
+                    linha:        item.linha || item.familia,
+                    url_fornecedor: item.url_produto || item.url,
+                    imagem:       item.imagem || item.thumbnail,
+                };
+                const dadosNovos = {};
+                for (const [k, v] of Object.entries(mapeados)) {
+                    if (v != null && v !== '') dadosNovos[k] = String(v);
+                }
+                if (item.imagens) {
+                    dadosNovos.imagens = Array.isArray(item.imagens) ? item.imagens : [item.imagens];
+                }
+                const dadosFinais = existente ? { ...(existente.dados || {}), ...dadosNovos } : dadosNovos;
+                const cat1 = item.categoria_1 || item.categoria || '';
+                const cat2 = item.categoria_2 || item.subcategoria || '';
+                const cat3 = item.categoria_3 || '';
+                const nome = item.nome || item.descricao ||
+                    [cat1, cat2, cat3].filter(Boolean).join(' › ') || sku;
+                db.upsertProduto({
+                    sku, nome, dados: dadosFinais,
+                    fornecedor_nome: fornecedor_nome || item.fornecedor_nome || '',
+                    fonte: fonte || item.fonte || 'fornecedor',
+                });
+                if (existente) { atualizados++; } else { inseridos++; }
+            } catch (e) {
+                erros++;
+                if (erros_lista.length < 5) erros_lista.push({ sku: item.sku || item.objectID, erro: e.message });
+            }
+        }
+        res.json({ ok: true, inseridos, atualizados, erros, total: itens.length, erros_lista });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// Busca uma página do índice Algolia e salva os produtos no banco local.
+// O cliente chama em loop (página 0, 1, 2 ...) até cobrir total_paginas.
+app.post('/api/ntc-referencias/:id/importar-algolia-pagina', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado' });
+        if (!item.algolia_app_id || !item.algolia_api_key || !item.algolia_index) {
+            return res.status(400).json({ ok: false, erro: 'Conector sem configuração Algolia' });
+        }
+        const appId  = item.algolia_app_id.trim();
+        let apiKey   = item.algolia_api_key.trim();
+        const index  = item.algolia_index.trim();
+        const pagina = parseInt((req.body && req.body.pagina) || 0);
+        const hitsPerPage = Math.min(parseInt((req.body && req.body.hitsPerPage) || 200), 1000);
+
+        // Renova chave se necessário
+        const expiry = _algoliaKeyExpiry(apiKey);
+        if (expiry && expiry < Math.floor(Date.now() / 1000) + 7200 && item.usuario && item.senha) {
+            const nova = await _renovarChaveAlgolia(item).catch(() => null);
+            if (nova) apiKey = nova;
+        }
+
+        const data = await new Promise((resolve, reject) => {
+            const body = Buffer.from(JSON.stringify({ query: '', hitsPerPage, page: pagina }));
+            const opts = {
+                hostname: `${appId}-dsn.algolia.net`,
+                path: `/1/indexes/${encodeURIComponent(index)}/query`,
+                method: 'POST',
+                headers: {
+                    'X-Algolia-Application-Id': appId,
+                    'X-Algolia-API-Key': apiKey,
+                    'Content-Type': 'application/json',
+                    'Content-Length': body.length,
+                },
+            };
+            const r = https.request(opts, resp => {
+                const chunks = [];
+                resp.on('data', d => chunks.push(d));
+                resp.on('end', () => {
+                    try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); }
+                    catch (e) { reject(new Error('JSON inválido da Algolia')); }
+                });
+            });
+            r.on('error', reject);
+            r.setTimeout(20000, () => { r.destroy(); reject(new Error('Timeout Algolia 20s')); });
+            r.write(body);
+            r.end();
+        });
+
+        if (!data.hits) {
+            return res.json({ ok: false, erro: `Algolia erro: ${JSON.stringify(data).substring(0, 200)}` });
+        }
+
+        const _v = f => f == null ? '' : (typeof f === 'object' && !Array.isArray(f) ? String(f.v ?? f.value ?? '') : String(f));
+        const urlBase = item.url ? new URL(item.url).origin : `https://compreonline.pellegrino.com.br`;
+        let inseridos = 0, atualizados = 0;
+        for (const h of data.hits) {
+            try {
+                const sku = String(h.objectID || h.sku || '').trim();
+                if (!sku) continue;
+                const existente = db.obterProdutoPorSku(sku);
+                const cat1 = _v(h.categoria_1_b2b || h.categoria_1);
+                const cat2 = _v(h.categoria_2_b2b || h.categoria_2);
+                const cat3 = _v(h.categoria_3_b2b || h.categoria_3);
+                const nome = [cat1, cat2, cat3].filter(Boolean).join(' › ') || h.name || h.nome || sku;
+                const dadosNovos = {};
+                const mapeados = {
+                    ean:          _v(h.ean) || _v(h.ean_code),
+                    ncm:          _v(h.ncm),
+                    fabricante:   _v(h.marca) || _v(h.fabricante) || h.brand,
+                    codigo_oem:   _v(h.codigo_fabricante_br) || _v(h.codigo_fabricante),
+                    aplicacao:    _v(h.aplicacao) || h.application,
+                    preco_custo:  h.price != null ? String(h.price) : (h.preco != null ? String(h.preco) : ''),
+                    categoria:    cat1,
+                    subcategoria: cat2,
+                    linha:        h.linha || h.line,
+                    url_fornecedor: `${urlBase}/catalogo?pdpwsid=${encodeURIComponent(sku)}&pdpobjectid=${encodeURIComponent(sku)}`,
+                    imagem:       h.image || h.imagem || h.thumbnail,
+                };
+                for (const [k, v] of Object.entries(mapeados)) {
+                    if (v != null && v !== '') dadosNovos[k] = v;
+                }
+                const dadosFinais = existente ? { ...(existente.dados || {}), ...dadosNovos } : dadosNovos;
+                db.upsertProduto({ sku, nome, dados: dadosFinais, fornecedor_nome: item.nome || 'Pellegrino', fonte: 'fornecedor' });
+                if (existente) { atualizados++; } else { inseridos++; }
+            } catch (_) {}
+        }
+
+        res.json({
+            ok: true, pagina,
+            total_paginas: data.nbPages || Math.ceil((data.nbHits || 0) / hitsPerPage),
+            total_algolia: data.nbHits || 0,
+            salvos: data.hits.length,
+            inseridos, atualizados,
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // ─── PAINEL DE PERFORMANCE — CPU/RAM/internet/conectividade/qualidade ─────
 // Mede a latência de uma chamada de saída real — usado como "índice de
 // qualidade da internet" para alertar o lojista quando a conexão está

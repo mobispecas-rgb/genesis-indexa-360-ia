@@ -282,6 +282,7 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section-label">Plataforma</div>
   <div class="sb-item" onclick="nav('pdv')"><span class="icon">🏛️</span>PDV</div>
   <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🤖</span>Auto-Enriquecimento 24/7</div>
+  <div class="sb-item" onclick="nav('cadastro-massa')"><span class="icon">📦</span>Cadastro em Massa OEM</div>
   <div class="sb-item" onclick="nav('conectores-ntc')"><span class="icon">🔌</span>Conectores NTC</div>
   <div class="sb-item" onclick="nav('performance')"><span class="icon">⚡</span>Painel de Performance</div>
   <div class="sb-item" onclick="nav('categoria')"><span class="icon">🏷️</span>Categoria</div>
@@ -1769,6 +1770,79 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
       </div>
     </div>
+    <!-- CADASTRO EM MASSA E ENRIQUECIMENTO OEM DNA -->
+    <div class="page" id="page-cadastro-massa">
+      <div class="page-title">&#128230; Cadastro em Massa &amp; Enriquecimento OEM DNA</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Importa em lote o cat&aacute;logo completo do fornecedor (via Conector Algolia ou CSV baixado) e coloca todos os produtos na fila do Auto-Enriquecimento 24/7: o agente preenche OEM/EAN/NCM/aplica&ccedil;&atilde;o/motor/imagens e preserva a Linhagem Geneal&oacute;gica do fornecedor.</p>
+
+      <!-- Importar via Conector Algolia -->
+      <div class="card">
+        <div class="card-title">&#128269; Importar via Conector Algolia</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Baixa diretamente do &iacute;ndice Algolia configurado no conector, sem precisar do CSV. Cada p&aacute;gina de 200 produtos &eacute; salva automaticamente.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="cm-conector-sel" style="max-width:280px">
+            <option value="">Selecione um conector Algolia...</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="cmIniciarAlgolia()" id="cm-algolia-btn">&#9654;&#65039; Iniciar importa&ccedil;&atilde;o</button>
+          <button class="btn btn-secondary btn-sm" onclick="cmPararAlgolia()" id="cm-algolia-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
+        </div>
+        <div id="cm-algolia-prog-wrap" style="display:none;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+            <span id="cm-algolia-prog-txt">Aguardando...</span>
+            <span id="cm-algolia-prog-pct">0%</span>
+          </div>
+          <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
+            <div id="cm-algolia-prog-bar" style="height:100%;width:0%;background:#ff6500;transition:width .3s"></div>
+          </div>
+        </div>
+        <div id="cm-algolia-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+        <div id="cm-algolia-stats" style="margin-top:8px;display:none">
+          <div class="grid4" id="cm-algolia-stats-grid" style="gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- Importar CSV do Pellegrino -->
+      <div class="card">
+        <div class="card-title">&#128196; Importar CSV do Pellegrino</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Carregue o CSV baixado pelo bot&atilde;o &#11015;&#65039; CSV no conector. O sistema detecta automaticamente o formato Pellegrino e importa em lotes de 200 produtos.</div>
+        <div style="margin-bottom:10px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            &#128196; Selecionar arquivo CSV
+            <input type="file" id="cm-csv-file" accept=".csv,.txt" style="display:none" onchange="cmCarregarCsv(this)">
+          </label>
+          <span id="cm-csv-nome" style="font-size:12px;color:#aaa;margin-left:8px"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;color:#ccc">
+            Fornecedor: <input type="text" id="cm-csv-fornecedor" placeholder="ex: Pellegrino" value="Pellegrino" style="max-width:160px">
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="cmIniciarCsv()" id="cm-csv-btn" disabled>&#9654;&#65039; Importar CSV</button>
+          <button class="btn btn-secondary btn-sm" onclick="cmPararCsv()" id="cm-csv-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
+        </div>
+        <div id="cm-csv-prog-wrap" style="display:none;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+            <span id="cm-csv-prog-txt">Aguardando...</span>
+            <span id="cm-csv-prog-pct">0%</span>
+          </div>
+          <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
+            <div id="cm-csv-prog-bar" style="height:100%;width:0%;background:#00b4d8;transition:width .3s"></div>
+          </div>
+        </div>
+        <div id="cm-csv-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+      </div>
+
+      <!-- Enriquecimento OEM DNA -->
+      <div class="card">
+        <div class="card-title">&#129516; Enriquecimento OEM DNA ap&oacute;s importa&ccedil;&atilde;o</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">O Auto-Enriquecimento 24/7 j&aacute; processa os produtos importados automaticamente. Para acelerar, rode um ciclo extra agora ou ative o job cont&iacute;nuo.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="cmRodarEnriquecimento()">&#9654;&#65039; Rodar ciclo de enriquecimento agora</button>
+          <button class="btn btn-secondary btn-sm" onclick="nav('plataforma-int')">&#129302; Ir para Auto-Enriquecimento 24/7</button>
+        </div>
+        <div id="cm-enrich-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+    </div>
+
     <div class="page" id="page-performance">
       <div class="page-title">&#9889; Painel de Performance</div>
       <p style="color:#666;font-size:13px;margin-bottom:16px">Monitoramento em tempo real da sa&uacute;de do indexador: capacidade do servidor (CPU/RAM), qualidade da conex&atilde;o com a internet e das fontes de IA/busca, e taxa de erro do enriquecimento autom&aacute;tico — para o lojista acompanhar o desempenho e garantir que o agente de IA n&atilde;o perca qualidade nem "alucine" por falta de recursos ou conex&atilde;o.</p>
@@ -2295,6 +2369,7 @@ function nav(page, opts) {
   if (page === 'imagens-aprov') imgAprovRender();
   if (page === 'wix') wixVerificarStatus();
   if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
+  if (page === 'cadastro-massa') cmCarregarConectores();
   if (page === 'performance') perfAtualizar();
   else perfPararAuto();
   if (page === 'conectores-ntc') crefCarregar();
@@ -8737,6 +8812,221 @@ function imgFiltrarCat(cat, btn) {
 var CREF_TIPO_LABELS = { montadora: 'Montadora', fabricante: 'Fabricante/Importador', catalogo: 'Catálogo de Referência', conector: 'Conector' };
 var _crefDados = { montadora: [], fabricante: [], catalogo: [], conector: [] };
 var _crefEditando = null; // {tipo, id|null}
+
+// ─── CADASTRO EM MASSA OEM DNA ────────────────────────────────────────────────
+var _cmAlgoliaParado = false;
+var _cmCsvParado    = false;
+var _cmCsvLinhas    = []; // linhas parsed do CSV
+var _cmCsvCabecalho = []; // nomes das colunas
+
+async function cmCarregarConectores() {
+  var sel = document.getElementById('cm-conector-sel');
+  if (!sel) return;
+  try {
+    var r = await api('GET', '/ntc-referencias');
+    var conectores = ((r && r.itens) || []).filter(function(it) {
+      return it.tipo === 'conector' && it.algolia_app_id && it.algolia_api_key && it.algolia_index;
+    });
+    sel.innerHTML = '<option value="">Selecione um conector Algolia...</option>'
+      + conectores.map(function(c) {
+          return '<option value="' + c.id + '">' + esc(c.nome) + '</option>';
+        }).join('');
+  } catch (e) {
+    var msgEl = document.getElementById('cm-algolia-msg');
+    if (msgEl) msgEl.innerHTML = '&#10060; Erro ao carregar conectores: ' + esc(e.message);
+  }
+}
+
+async function cmIniciarAlgolia() {
+  var sel = document.getElementById('cm-conector-sel');
+  var id = sel && sel.value;
+  if (!id) { alert('Selecione um conector Algolia.'); return; }
+  _cmAlgoliaParado = false;
+  var btnIni  = document.getElementById('cm-algolia-btn');
+  var btnStop = document.getElementById('cm-algolia-parar-btn');
+  var progWrap = document.getElementById('cm-algolia-prog-wrap');
+  var progBar  = document.getElementById('cm-algolia-prog-bar');
+  var progTxt  = document.getElementById('cm-algolia-prog-txt');
+  var progPct  = document.getElementById('cm-algolia-prog-pct');
+  var msgEl    = document.getElementById('cm-algolia-msg');
+  var statsDiv = document.getElementById('cm-algolia-stats');
+  var statsGrid= document.getElementById('cm-algolia-stats-grid');
+
+  btnIni.disabled = true;
+  if (btnStop) { btnStop.style.display = ''; }
+  if (progWrap) progWrap.style.display = '';
+  if (statsDiv) statsDiv.style.display = 'none';
+
+  var pagina = 0, totalPag = null, totalAlgolia = 0;
+  var totalInseridos = 0, totalAtualizados = 0, totalSalvos = 0;
+
+  while (!_cmAlgoliaParado) {
+    if (progTxt) progTxt.textContent = 'Buscando página ' + (pagina + 1) + (totalPag ? ' de ' + totalPag : '') + '…';
+    try {
+      var r = await api('POST', '/ntc-referencias/' + id + '/importar-algolia-pagina', { pagina: pagina, hitsPerPage: 200 });
+      if (!r.ok) {
+        if (msgEl) msgEl.innerHTML = '&#10060; Erro: ' + esc(r.erro || 'Falha desconhecida');
+        break;
+      }
+      totalPag     = r.total_paginas;
+      totalAlgolia = r.total_algolia;
+      totalSalvos += r.salvos || 0;
+      totalInseridos  += r.inseridos || 0;
+      totalAtualizados += r.atualizados || 0;
+
+      var pct = totalPag ? Math.round(((pagina + 1) / totalPag) * 100) : 0;
+      if (progBar) progBar.style.width = pct + '%';
+      if (progPct) progPct.textContent = pct + '%';
+      if (progTxt) progTxt.textContent = 'Pág. ' + (pagina + 1) + '/' + totalPag + ' — ' + totalSalvos.toLocaleString('pt-BR') + ' de ' + totalAlgolia.toLocaleString('pt-BR') + ' produtos';
+
+      pagina++;
+      if (pagina >= totalPag) break;
+    } catch (e) {
+      if (msgEl) msgEl.innerHTML = '&#10060; Erro de rede: ' + esc(e.message);
+      break;
+    }
+  }
+
+  btnIni.disabled = false;
+  if (btnStop) btnStop.style.display = 'none';
+  if (progBar) progBar.style.width = (_cmAlgoliaParado ? progBar.style.width : '100%');
+
+  if (statsDiv) statsDiv.style.display = '';
+  if (statsGrid) statsGrid.innerHTML = [
+    { l: 'Total Algolia', v: totalAlgolia.toLocaleString('pt-BR') },
+    { l: 'Salvos', v: totalSalvos.toLocaleString('pt-BR') },
+    { l: 'Novos', v: totalInseridos.toLocaleString('pt-BR') },
+    { l: 'Atualizados', v: totalAtualizados.toLocaleString('pt-BR') },
+  ].map(function(s) {
+    return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:20px;font-weight:700;color:#ff6500">' + s.v + '</div>'
+      + '<div style="font-size:11px;color:#6b7280;margin-top:2px">' + s.l + '</div></div>';
+  }).join('');
+
+  if (msgEl) {
+    if (_cmAlgoliaParado) {
+      msgEl.innerHTML = '&#9646;&#9646; Importação pausada na página ' + pagina + '. ' + totalSalvos.toLocaleString('pt-BR') + ' produtos salvos.';
+    } else {
+      msgEl.innerHTML = '&#10003; Importação concluída! ' + totalSalvos.toLocaleString('pt-BR') + ' produtos importados do catálogo Algolia.';
+    }
+  }
+}
+
+function cmPararAlgolia() {
+  _cmAlgoliaParado = true;
+  var btnStop = document.getElementById('cm-algolia-parar-btn');
+  if (btnStop) btnStop.disabled = true;
+}
+
+function cmCarregarCsv(input) {
+  var nomeEl = document.getElementById('cm-csv-nome');
+  var btnIni = document.getElementById('cm-csv-btn');
+  var msgEl  = document.getElementById('cm-csv-msg');
+  if (!input.files || !input.files[0]) return;
+  var arquivo = input.files[0];
+  if (nomeEl) nomeEl.textContent = arquivo.name;
+  if (msgEl) msgEl.textContent = 'Lendo arquivo…';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var texto = e.target.result;
+      // Detecta e remove BOM UTF-8
+      if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+      var linhas = texto.split(/\r?\n/).filter(function(l) { return l.trim() !== ''; });
+      if (linhas.length < 2) { if (msgEl) msgEl.textContent = '&#10060; CSV sem dados.'; return; }
+      // Detecta separador: , ou ;
+      var sep = linhas[0].indexOf(';') > linhas[0].indexOf(',') ? ';' : ',';
+      var cabecalho = linhas[0].split(sep).map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+      var dados = [];
+      for (var i = 1; i < linhas.length; i++) {
+        var cols = linhas[i].split(sep).map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+        var obj = {};
+        cabecalho.forEach(function(k, idx) { obj[k] = cols[idx] || ''; });
+        dados.push(obj);
+      }
+      _cmCsvCabecalho = cabecalho;
+      _cmCsvLinhas = dados;
+      if (btnIni) { btnIni.disabled = false; }
+      if (msgEl) msgEl.textContent = '✓ ' + dados.length.toLocaleString('pt-BR') + ' produtos encontrados. Colunas: ' + cabecalho.join(', ');
+    } catch (ex) {
+      if (msgEl) msgEl.textContent = '&#10060; Erro ao ler CSV: ' + ex.message;
+    }
+  };
+  reader.readAsText(arquivo, 'UTF-8');
+}
+
+async function cmIniciarCsv() {
+  if (!_cmCsvLinhas.length) { alert('Carregue um arquivo CSV primeiro.'); return; }
+  _cmCsvParado = false;
+  var fornecedor = (document.getElementById('cm-csv-fornecedor') || {}).value || 'Pellegrino';
+  var btnIni  = document.getElementById('cm-csv-btn');
+  var btnStop = document.getElementById('cm-csv-parar-btn');
+  var progWrap = document.getElementById('cm-csv-prog-wrap');
+  var progBar  = document.getElementById('cm-csv-prog-bar');
+  var progTxt  = document.getElementById('cm-csv-prog-txt');
+  var progPct  = document.getElementById('cm-csv-prog-pct');
+  var msgEl    = document.getElementById('cm-csv-msg');
+
+  btnIni.disabled = true;
+  if (btnStop) btnStop.style.display = '';
+  if (progWrap) progWrap.style.display = '';
+
+  var LOTE = 200;
+  var total = _cmCsvLinhas.length;
+  var totalInseridos = 0, totalAtualizados = 0, totalErros = 0;
+
+  for (var i = 0; i < total && !_cmCsvParado; i += LOTE) {
+    var lote = _cmCsvLinhas.slice(i, i + LOTE);
+    var pct = Math.round((i / total) * 100);
+    if (progBar) progBar.style.width = pct + '%';
+    if (progPct) progPct.textContent = pct + '%';
+    if (progTxt) progTxt.textContent = 'Lote ' + Math.ceil((i + 1) / LOTE) + '/' + Math.ceil(total / LOTE) + ' (' + i.toLocaleString('pt-BR') + ' de ' + total.toLocaleString('pt-BR') + ')';
+    try {
+      var r = await api('POST', '/produtos/importar-lote', { itens: lote, fornecedor_nome: fornecedor, fonte: 'fornecedor' });
+      if (r.ok) {
+        totalInseridos  += r.inseridos  || 0;
+        totalAtualizados += r.atualizados || 0;
+        totalErros       += r.erros       || 0;
+      }
+    } catch (_) { totalErros += lote.length; }
+  }
+
+  if (progBar) progBar.style.width = '100%';
+  if (progPct) progPct.textContent = '100%';
+  btnIni.disabled = false;
+  if (btnStop) btnStop.style.display = 'none';
+  if (msgEl) {
+    if (_cmCsvParado) {
+      msgEl.innerHTML = '&#9646;&#9646; Importação pausada. ' + (totalInseridos + totalAtualizados).toLocaleString('pt-BR') + ' produtos processados.';
+    } else {
+      msgEl.innerHTML = '&#10003; Concluído! Novos: <strong>' + totalInseridos.toLocaleString('pt-BR')
+        + '</strong> | Atualizados: <strong>' + totalAtualizados.toLocaleString('pt-BR')
+        + '</strong> | Erros: ' + totalErros.toLocaleString('pt-BR');
+    }
+  }
+}
+
+function cmPararCsv() {
+  _cmCsvParado = true;
+  var btnStop = document.getElementById('cm-csv-parar-btn');
+  if (btnStop) btnStop.disabled = true;
+}
+
+async function cmRodarEnriquecimento() {
+  var msgEl = document.getElementById('cm-enrich-msg');
+  if (msgEl) msgEl.textContent = '⏳ Disparando ciclo de enriquecimento…';
+  try {
+    var r = await api('POST', '/auto-enrich/trigger', { batchSize: 50 });
+    if (r.ok !== false) {
+      if (msgEl) msgEl.innerHTML = '&#10003; Ciclo disparado! Produtos processados: <strong>' + (r.processados || 0) + '</strong>. O job 24/7 continua em segundo plano.';
+    } else {
+      if (msgEl) msgEl.textContent = '&#10060; Erro: ' + (r.erro || 'Falha desconhecida');
+    }
+  } catch (e) {
+    if (msgEl) msgEl.textContent = '&#10060; ' + e.message;
+  }
+}
+// ─── FIM CADASTRO EM MASSA ────────────────────────────────────────────────────
 
 async function crefCarregar() {
   try {
