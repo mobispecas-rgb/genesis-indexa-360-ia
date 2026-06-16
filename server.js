@@ -1147,7 +1147,64 @@ function _parseConectorCorpo(corpo, contentType) {
         } catch (_) {}
     }
 
+    // MercadoLivre — extrai produtos das listas de categoria/busca
+    if (corpo.includes('ui-search-item__title') || corpo.includes('andes-money-amount')) {
+        try {
+            const nomeRe = /class="[^"]*ui-search-item__title[^"]*"[^>]*>([\s\S]*?)<\/(?:h2|span|a)>/g;
+            const precoRe = /class="[^"]*andes-money-amount__fraction[^"]*">([^<]+)<\/span>/g;
+            const urlRe = /class="[^"]*ui-search-link[^"]*"[^>]+href="([^"]+)"/g;
+            const nomes = [], precos = [], urls = [];
+            let m;
+            while ((m = nomeRe.exec(corpo)) !== null) nomes.push(m[1].replace(/<[^>]+>/g, '').trim());
+            while ((m = precoRe.exec(corpo)) !== null) precos.push(m[1].trim());
+            while ((m = urlRe.exec(corpo)) !== null) urls.push(m[1]);
+            if (nomes.length > 0) {
+                const itensML = nomes.map((n, i) => ({ sku: '', nome: n, preco: precos[i] || '', url: urls[i] || '' }));
+                return { formato: 'mercadolivre', itens: itensML, total: itensML.length };
+            }
+        } catch (_) {}
+    }
+
+    // Sites React/Next.js — extrai dados de produto do __NEXT_DATA__ ou window.__STATE__
+    const nextRe = /<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i;
+    const stateRe = /window\.__(?:INITIAL_STATE|STATE|PRELOADED_STATE|REDUX_STATE|APP_STATE)__\s*=\s*(\{[\s\S]*?\});/;
+    for (const re of [nextRe, stateRe]) {
+        const nm = re.exec(corpo);
+        if (!nm) continue;
+        try {
+            const obj = JSON.parse(nm[1]);
+            const encontrados = _extrairProdutosDeObj(obj, 0);
+            if (encontrados.length > 0) return { formato: 'json-embutido', itens: encontrados, total: encontrados.length };
+        } catch (_) {}
+    }
+
     return { formato: 'html', itens: [], preview: corpo.substring(0, 800) };
+}
+
+// Percorre recursivamente um objeto JSON procurando arrays de produtos.
+function _extrairProdutosDeObj(obj, profundidade) {
+    if (profundidade > 6 || !obj || typeof obj !== 'object') return [];
+    if (Array.isArray(obj)) {
+        if (obj.length > 0 && obj[0] && typeof obj[0] === 'object' && (obj[0].name || obj[0].title || obj[0].nome || obj[0].sku || obj[0].id)) {
+            return obj.map(p => ({
+                sku: p.sku || p.id || p.codigo || '',
+                nome: p.name || p.title || p.nome || p.titulo || p.description || '',
+                preco: p.price || p.valor || p.preco || (p.offers && p.offers.price) || '',
+                url: p.url || p.permalink || p.link || '',
+                imagem: p.thumbnail || p.image || p.foto || '',
+            })).filter(p => p.nome);
+        }
+        for (const item of obj.slice(0, 10)) {
+            const r = _extrairProdutosDeObj(item, profundidade + 1);
+            if (r.length > 0) return r;
+        }
+        return [];
+    }
+    for (const key of Object.keys(obj)) {
+        const r = _extrairProdutosDeObj(obj[key], profundidade + 1);
+        if (r.length > 0) return r;
+    }
+    return [];
 }
 
 // Raspa produtos de uma página HTML de catálogo Magento 2.
