@@ -1858,6 +1858,7 @@ MEDIDA LARGURA  25 MM"></textarea>
             <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">URL</th>
             <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">NTC Ref.</th>
             <th style="text-align:left;padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb">Observa&ccedil;&otilde;es</th>
+            <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">Raspar</th>
             <th style="padding:8px 12px;color:#555;border-bottom:1px solid #e5e7eb;text-align:center">A&ccedil;&otilde;es</th>
           </tr></thead>
           <tbody id="cref-catalogos-tbody"></tbody>
@@ -8833,7 +8834,7 @@ function crefRenderCatalogos() {
   if (!tbody) return;
   var lista = _crefDados.catalogo || [];
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="padding:10px;color:#999;text-align:center">Nenhum catálogo cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:10px;color:#999;text-align:center">Nenhum catálogo cadastrado ainda.</td></tr>';
     return;
   }
   tbody.innerHTML = lista.map(function(c) {
@@ -8843,6 +8844,9 @@ function crefRenderCatalogos() {
       + '<td style="padding:6px 12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (c.url ? '<a href="' + esc(c.url) + '" target="_blank">' + esc(c.url) + '</a>' : '—') + '</td>'
       + '<td style="padding:6px 12px">' + nota + '</td>'
       + '<td style="padding:6px 12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.observacoes || '—') + '</td>'
+      + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
+      + (c.url ? '<button class="btn btn-primary btn-sm" title="Raspar dados públicos deste catálogo" onclick="_btnFlash(this);crefImportarConector(' + c.id + ')">📥 Raspar</button>' : '—')
+      + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefEditar(\'catalogo\',' + c.id + ')">✏️</button> '
       + '<button class="btn btn-secondary btn-sm" onclick="_btnFlash(this);crefExcluir(\'catalogo\',' + c.id + ')">🗑️</button>'

@@ -1095,6 +1095,40 @@ function _parseConectorCorpo(corpo, contentType) {
         } catch (_) {}
     }
 
+    // Tenta raspar tabelas HTML genéricas (catálogos com <table>)
+    if (corpo.includes('<table') && corpo.includes('<tr')) {
+        try {
+            const tableRe = /<table[\s\S]*?<\/table>/gi;
+            let bestItens = [];
+            let tm;
+            while ((tm = tableRe.exec(corpo)) !== null) {
+                const tbl = tm[0];
+                const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+                const rows = [];
+                let rm;
+                while ((rm = rowRe.exec(tbl)) !== null) rows.push(rm[1]);
+                if (rows.length < 2) continue;
+                const cellRe = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+                const header = [];
+                let cm;
+                while ((cm = cellRe.exec(rows[0])) !== null) header.push(cm[1].replace(/<[^>]+>/g, '').trim());
+                if (header.length < 2) continue;
+                const itensTabela = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const vals = [];
+                    cellRe.lastIndex = 0;
+                    while ((cm = cellRe.exec(rows[i])) !== null) vals.push(cm[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim());
+                    if (vals.filter(Boolean).length < 1) continue;
+                    const obj = {};
+                    header.forEach((h, idx) => { obj[h || ('col' + idx)] = vals[idx] || ''; });
+                    itensTabela.push(obj);
+                }
+                if (itensTabela.length > bestItens.length) bestItens = itensTabela;
+            }
+            if (bestItens.length > 0) return { formato: 'tabela-html', itens: bestItens, total: bestItens.length };
+        } catch (_) {}
+    }
+
     return { formato: 'html', itens: [], preview: corpo.substring(0, 800) };
 }
 
