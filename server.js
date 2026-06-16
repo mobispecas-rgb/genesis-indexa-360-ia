@@ -1770,13 +1770,20 @@ app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
         // Campos a excluir (internos do Algolia, sem valor para o usuário)
         const EXCLUIR = new Set(['_highlightResult', '_snippetResult', '_rankingInfo', '_distinctSeqID']);
 
-        const _browse = (cursorParam) => new Promise((resolve) => {
-            const qs = cursorParam ? `cursor=${encodeURIComponent(cursorParam)}` : 'query=&hitsPerPage=1000';
+        // Consulta Algolia via POST /query com paginação (page=0,1,2...)
+        // A chave secured não tem ACL browse, então usamos a search API normal.
+        const _pagina = (page) => new Promise((resolve) => {
+            const body = Buffer.from(JSON.stringify({ query: '', hitsPerPage: 1000, page }));
             const opts = {
                 hostname: `${appId}-dsn.algolia.net`,
-                path: `/1/indexes/${encodeURIComponent(index)}/browse?${qs}`,
-                method: 'GET',
-                headers: { 'X-Algolia-Application-Id': appId, 'X-Algolia-API-Key': apiKey },
+                path: `/1/indexes/${encodeURIComponent(index)}/query`,
+                method: 'POST',
+                headers: {
+                    'X-Algolia-Application-Id': appId,
+                    'X-Algolia-API-Key': apiKey,
+                    'Content-Type': 'application/json',
+                    'Content-Length': body.length,
+                },
             };
             const r2 = https.request(opts, resp => {
                 const chunks = [];
@@ -1788,13 +1795,14 @@ app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
             });
             r2.on('error', e => resolve({ error: e.message }));
             r2.setTimeout(30000, () => { r2.destroy(); resolve({ error: 'timeout' }); });
+            r2.write(body);
             r2.end();
         });
 
-        // Primeira página para descobrir todos os campos disponíveis
-        const primeira = await _browse(null);
-        if (primeira.error || !primeira.hits || !primeira.hits.length) {
-            return res.status(502).json({ ok: false, erro: primeira.error || 'Sem resultados no índice.' });
+        // Primeira página para descobrir campos e total de páginas
+        const primeira = await _pagina(0);
+        if (primeira.error || !primeira.hits) {
+            return res.status(502).json({ ok: false, erro: primeira.error || JSON.stringify(primeira) });
         }
         // Coleta todas as chaves únicas da primeira página (descobre esquema)
         const colunasSet = new Set(['objectID']);
@@ -1823,12 +1831,11 @@ app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
         };
 
         escreverPagina(primeira.hits);
-        let cursor = primeira.cursor || null;
-        while (cursor) {
-            const pg = await _browse(cursor);
-            if (pg.error || !pg.hits) break;
+        const nbPages = primeira.nbPages || 1;
+        for (let p = 1; p < nbPages; p++) {
+            const pg = await _pagina(p);
+            if (pg.error || !pg.hits || !pg.hits.length) break;
             escreverPagina(pg.hits);
-            cursor = pg.cursor || null;
         }
 
         res.end();
