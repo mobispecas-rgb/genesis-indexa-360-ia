@@ -9102,6 +9102,7 @@ function crefRenderConectores() {
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" title="Testar conexão" onclick="_btnFlash(this);crefTestarConector(' + c.id + ')">🔗 Testar</button> '
       + (c.algolia_app_id && c.usuario ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff" title="Renovar chave Algolia automaticamente via login" onclick="_btnFlash(this);crefRenovarChave(' + c.id + ')">🔄 Renovar</button> ' : '')
+      + (c.algolia_app_id ? '<button class="btn btn-sm" style="background:#6366f1;color:#fff" title="Bookmarklet: renova a chave direto do site do fornecedor" onclick="crefBookmarklet(' + c.id + ')">🔖 Bookmarklet</button> ' : '')
       + (c.algolia_app_id ? '<a class="btn btn-sm" style="background:#0ea5e9;color:#fff;text-decoration:none" title="Baixar todos os produtos como CSV" href="/api/ntc-referencias/' + c.id + '/exportar-algolia" target="_blank">⬇️ CSV</a> ' : '')
       + (c.usuario && !c.algolia_app_id ? '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" title="Autenticar via formulário HTML" onclick="_btnFlash(this);crefLoginConector(' + c.id + ')">🔐 Login</button> ' : '')
       + '<button class="btn btn-primary btn-sm" title="Importar produtos" onclick="_btnFlash(this);crefImportarConector(' + c.id + ')">📥 Importar</button>'
@@ -9145,6 +9146,59 @@ function crefRenderEspelho() {
       folderLinkDiv.style.display = 'none';
     }
   }
+}
+
+function crefBookmarklet(connectorId) {
+  var genesisUrl = window.location.origin;
+  // Código do bookmarklet: extrai a chave Algolia da página do fornecedor e envia para o Genesis
+  var code = '(function(){'
+    + 'var k=window._aisApiKey||window._aisKey||window.algoliaApiKey||null;'
+    + 'if(!k){'
+    +   'var ss=document.querySelectorAll("script"),i,m;'
+    +   'for(i=0;i<ss.length;i++){'
+    +     'm=/(?:apiKey|_aisApiKey|searchApiKey|algolia[_-]?api[_-]?key)[\'\":\\s=]+[\'\"]((?:[A-Za-z0-9+\\/]){60,}(?:={0,2}))[\'\"]/i.exec(ss[i].textContent);'
+    +     'if(m){k=m[1];break;}'
+    +   '}'
+    + '}'
+    + 'if(!k){'
+    +   'var metas=document.querySelectorAll("meta[name]");'
+    +   'for(i=0;i<metas.length;i++){if(/algolia/i.test(metas[i].name)&&metas[i].content&&metas[i].content.length>20){k=metas[i].content;break;}}'
+    + '}'
+    + 'if(!k){alert("⚠️ Chave Algolia não encontrada nesta página.\\nNavegue até uma página de BUSCA de produtos do fornecedor e tente novamente.");return;}'
+    + 'if(!confirm("✅ Chave encontrada:\\n"+k.substring(0,30)+"...\\n\\nEnviar para o Genesis agora?")){return;}'
+    + 'fetch("' + genesisUrl + '/api/ntc-referencias/' + connectorId + '/renovar-chave-browser",{'
+    +   'method:"POST",'
+    +   'headers:{"Content-Type":"application/json"},'
+    +   'body:JSON.stringify({algolia_api_key:k})'
+    + '}).then(function(r){return r.json();}).then(function(d){'
+    +   'if(d.ok){alert("✅ Chave renovada no Genesis!\\n"+(d.expiry_info||""));}'
+    +   'else{alert("❌ Erro: "+(d.erro||"Falha desconhecida"));}'
+    + '}).catch(function(e){alert("❌ Erro de rede: "+e.message);});'
+    + '})();';
+  var link = 'javascript:' + encodeURIComponent(code);
+
+  // Mostra modal com o bookmarklet
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:#0009;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = '<div style="background:#111;border:1px solid #333;border-radius:12px;padding:24px;max-width:540px;width:100%">'
+    + '<div style="font-size:16px;font-weight:700;margin-bottom:12px">🔖 Bookmarklet — Renovar Chave Algolia</div>'
+    + '<p style="font-size:13px;color:#aaa;margin-bottom:16px">Arraste o botão abaixo para a barra de favoritos do Chrome. Depois, abra o site do Pellegrino logado e clique no favorito — a chave vai direto para o Genesis.</p>'
+    + '<div style="text-align:center;margin-bottom:16px">'
+    + '<a href="' + link + '" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 20px;border-radius:8px;font-weight:700;text-decoration:none;cursor:move;font-size:14px" '
+    + 'onclick="event.preventDefault();alert(\'Arraste este botão para a barra de favoritos do Chrome, não clique aqui.\')">🔖 Renovar Chave Genesis</a>'
+    + '</div>'
+    + '<div style="font-size:12px;color:#6b7280;margin-bottom:16px">'
+    + '<strong style="color:#ccc">Como usar:</strong><br>'
+    + '1. Arraste o botão roxo acima para a barra de favoritos<br>'
+    + '2. Abra <strong>compreonline.pellegrino.com.br</strong> e faça login<br>'
+    + '3. Navegue em qualquer página de produtos ou busca<br>'
+    + '4. Clique no favorito "🔖 Renovar Chave Genesis"<br>'
+    + '5. Confirme — a chave é enviada automaticamente!'
+    + '</div>'
+    + '<button onclick="this.closest(\'div[style]\').remove()" style="background:#333;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;width:100%">Fechar</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
 }
 
 function crefToggleDriveField() {

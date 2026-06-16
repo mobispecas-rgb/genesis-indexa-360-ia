@@ -1741,6 +1741,34 @@ app.post('/api/ntc-referencias/:id/renovar-chave', async (req, res) => {
     }
 });
 
+// Recebe a chave Algolia capturada pelo bookmarklet no browser do usuário e salva.
+// Precisa de CORS aberto pois o bookmarklet roda no domínio do fornecedor.
+app.options('/api/ntc-referencias/:id/renovar-chave-browser', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(204);
+});
+app.post('/api/ntc-referencias/:id/renovar-chave-browser', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    try {
+        const { algolia_api_key } = req.body || {};
+        if (!algolia_api_key || algolia_api_key.length < 20) {
+            return res.status(400).json({ ok: false, erro: 'algolia_api_key inválida ou ausente' });
+        }
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado' });
+        const expiry = _algoliaKeyExpiry(algolia_api_key);
+        const agoraS = Math.floor(Date.now() / 1000);
+        const horasRestantes = expiry ? Math.round((expiry - agoraS) / 3600) : null;
+        db.atualizarReferencia(Number(req.params.id), { algolia_api_key });
+        console.log(`[Bookmarklet] Chave renovada para conector #${req.params.id} (${item.nome})${horasRestantes ? ` — válida por ${horasRestantes}h` : ''}`);
+        res.json({ ok: true, expiry_info: horasRestantes ? `Válida por mais ${horasRestantes}h` : 'Chave permanente' });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // Exporta TODOS os produtos do índice Algolia como CSV para download no PC.
 // Usa a Browse API (cursor-based) e inclui TODOS os campos brutos do índice.
 app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
