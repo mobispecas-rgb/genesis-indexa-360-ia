@@ -1332,11 +1332,8 @@ async function _buscarAlgolia(item, termo) {
         if (nova) apiKey = nova;
     }
     return new Promise((resolve) => {
-        const body = Buffer.from(JSON.stringify({ query: termo, hitsPerPage: 40 }));
-        const options = {
-            hostname: `${appId}-dsn.algolia.net`,
-            path: `/1/indexes/${encodeURIComponent(index)}/query`,
-        const body = Buffer.from(JSON.stringify({ query: termo, hitsPerPage: 40 }));
+        const hitsPerPage = item._hitsPerPage !== undefined ? item._hitsPerPage : 40;
+        const body = Buffer.from(JSON.stringify({ query: termo, hitsPerPage }));
         const options = {
             hostname: `${appId}-dsn.algolia.net`,
             path: `/1/indexes/${encodeURIComponent(index)}/query`,
@@ -1677,9 +1674,13 @@ app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
             const expiryInfo = expiry
                 ? (expiry < agoraS ? '⚠️ Chave EXPIRADA' : `Chave válida por mais ${Math.round((expiry - agoraS) / 3600)}h`)
                 : 'Chave permanente (sem validUntil)';
+            // Busca com query vazia para obter total de produtos do catálogo
+            const rTotal = await _buscarAlgolia({ ...item, _hitsPerPage: 0 }, '');
+            const totalCatalogo = !rTotal.falha ? rTotal.total : null;
             const r = await _buscarAlgolia(item, 'filtro');
             if (r.falha) return res.json({ ok: false, erro: r.motivo, latencia_ms: Date.now() - t0, expiry_info: expiryInfo });
-            return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, auth_tipo: 'algolia', content_type: 'application/json', expiry_info: expiryInfo, preview: `Algolia OK — ${r.total} resultados no índice ${item.algolia_index}. ${expiryInfo}.` });
+            const totalInfo = totalCatalogo != null ? `Catálogo total: ${totalCatalogo.toLocaleString('pt-BR')} produtos.` : '';
+            return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, auth_tipo: 'algolia', content_type: 'application/json', expiry_info: expiryInfo, total_catalogo: totalCatalogo, preview: `Algolia OK — ${totalInfo} ${expiryInfo}.` });
         }
 
         if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
