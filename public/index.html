@@ -8764,6 +8764,7 @@ function crefRenderConectores() {
       + '<td style="padding:6px 12px">' + (c.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>') + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" title="Testar conexão" onclick="_btnFlash(this);crefTestarConector(' + c.id + ')">🔗 Testar</button> '
+      + (c.usuario ? '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" title="Autenticar via formulário HTML" onclick="_btnFlash(this);crefLoginConector(' + c.id + ')">🔐 Login</button> ' : '')
       + '<button class="btn btn-primary btn-sm" title="Importar produtos" onclick="_btnFlash(this);crefImportarConector(' + c.id + ')">📥 Importar</button>'
       + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
@@ -9045,6 +9046,28 @@ async function crefTestarConector(id) {
     + ' &nbsp;|&nbsp; ⚡ ' + r.latencia_ms + ' ms'
     + ' &nbsp;|&nbsp; ' + esc(r.content_type || '(sem tipo)')
     + (r.preview ? '<br><details style="margin-top:6px"><summary style="cursor:pointer;color:#555">Prévia da resposta</summary><pre style="font-size:11px;overflow:auto;max-height:200px;white-space:pre-wrap;margin-top:4px">' + esc(r.preview) + '</pre></details>' : '')
+  );
+}
+
+async function crefLoginConector(id) {
+  _crefMostrarResultado('<span style="color:#888">⏳ Realizando login via formulário...</span>');
+  var item = (_crefDados.conector || []).find(function(x) { return x.id === id; });
+  var nome = item ? item.nome : 'Conector #' + id;
+  var r;
+  try {
+    r = await api('POST', '/ntc-referencias/' + id + '/login');
+  } catch (e) {
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Erro: ' + esc(e.message) + '</span>');
+    return;
+  }
+  if (!r || !r.ok) {
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Login falhou em <b>' + esc(nome) + '</b>: ' + esc(r && r.erro || 'Sem resposta') + '</span>');
+    return;
+  }
+  _crefMostrarResultado(
+    '<span style="color:#16a34a">🔐 Login realizado com sucesso em <b>' + esc(nome) + '</b></span><br>'
+    + '<span style="color:#555;font-size:12px">' + esc(r.preview || '') + '</span><br>'
+    + '<span style="color:#555;font-size:12px">Agora clique em 📥 Importar para buscar produtos autenticados.</span>'
   );
 }
 

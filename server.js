@@ -1031,6 +1031,248 @@ function _httpPostJson(url, payload, authHeader = null, timeout = 12000) {
     });
 }
 
+// ─── AUTENTICAÇÃO POR FORMULÁRIO HTML ────────────────────────────────────────
+
+// Cache de sessões autenticadas (id conector → { cookies, url_base, expira })
+const _sessoeConnectores = new Map();
+const _SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutos
+
+// Converte headers Set-Cookie em string para reenvio no próximo request
+function _parseCookies(setCookieHeaders) {
+    if (!setCookieHeaders) return '';
+    const arr = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+    return arr.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
+}
+
+// Mescla dois strings de cookies; o segundo sobrepõe chaves do primeiro
+function _mesclaCookies(base, novo) {
+    if (!base) return novo || '';
+    if (!novo) return base || '';
+    const mapa = {};
+    for (const parte of (base + '; ' + novo).split(';')) {
+        const p = parte.trim();
+        const eq = p.indexOf('=');
+        if (eq > 0) mapa[p.substring(0, eq).trim()] = p.substring(eq + 1);
+    }
+    return Object.entries(mapa).map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
+// GET com cookies de sessão + decompressão — retorna também os Set-Cookie da resposta
+function _fetchComCookies(url, cookies, timeout = 14000) {
+    return new Promise((resolve, reject) => {
+        let parsed;
+        try { parsed = new URL(url); } catch (e) { return reject(new Error('URL inválida: ' + url)); }
+        const proto = parsed.protocol === 'https:' ? https : http;
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Cache-Control': 'no-cache',
+        };
+        if (cookies) headers['Cookie'] = cookies;
+        const opts = { hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: (parsed.pathname || '/') + (parsed.search || ''), headers };
+        const t0 = Date.now();
+        const req = proto.get(opts, (r) => {
+            const latencia = Date.now() - t0;
+            const partes = [];
+            let tamanho = 0;
+            r.on('data', chunk => { tamanho += chunk.length; if (tamanho < 262144) partes.push(chunk); });
+            r.on('end', () => {
+                const buf = Buffer.concat(partes);
+                const enc = (r.headers['content-encoding'] || '').toLowerCase();
+                let corpo;
+                try {
+                    corpo = enc === 'br' ? zlib.brotliDecompressSync(buf).toString('utf8')
+                          : enc === 'gzip' ? zlib.gunzipSync(buf).toString('utf8')
+                          : enc === 'deflate' ? zlib.inflateSync(buf).toString('utf8')
+                          : buf.toString('utf8');
+                } catch (_) { corpo = buf.toString('utf8'); }
+                resolve({ status: r.statusCode, corpo, setCookies: r.headers['set-cookie'], location: r.headers['location'] || '', latencia_ms: latencia, content_type: r.headers['content-type'] || '' });
+            });
+        });
+        req.setTimeout(timeout, () => { req.destroy(); reject(new Error('Timeout após ' + timeout + 'ms')); });
+        req.on('error', reject);
+    });
+}
+
+// POST application/x-www-form-urlencoded com cookies + decompressão
+function _httpPostForm(url, formBody, cookies, timeout = 14000) {
+    return new Promise((resolve, reject) => {
+        let parsed;
+        try { parsed = new URL(url); } catch (e) { return reject(new Error('URL inválida: ' + url)); }
+        const proto = parsed.protocol === 'https:' ? https : http;
+        const body = Object.entries(formBody).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v || '')}`).join('&');
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(body),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Cache-Control': 'no-cache',
+            'Origin': parsed.origin,
+            'Referer': url,
+        };
+        if (cookies) headers['Cookie'] = cookies;
+        const opts = { hostname: parsed.hostname, port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80), path: (parsed.pathname || '/') + (parsed.search || ''), method: 'POST', headers };
+        const req = proto.request(opts, (r) => {
+            const partes = [];
+            let tamanho = 0;
+            r.on('data', chunk => { tamanho += chunk.length; if (tamanho < 262144) partes.push(chunk); });
+            r.on('end', () => {
+                const buf = Buffer.concat(partes);
+                const enc = (r.headers['content-encoding'] || '').toLowerCase();
+                let corpo;
+                try {
+                    corpo = enc === 'br' ? zlib.brotliDecompressSync(buf).toString('utf8')
+                          : enc === 'gzip' ? zlib.gunzipSync(buf).toString('utf8')
+                          : enc === 'deflate' ? zlib.inflateSync(buf).toString('utf8')
+                          : buf.toString('utf8');
+                } catch (_) { corpo = buf.toString('utf8'); }
+                resolve({ status: r.statusCode, corpo, setCookies: r.headers['set-cookie'], location: r.headers['location'] || '' });
+            });
+        });
+        req.setTimeout(timeout, () => { req.destroy(); reject(new Error('Timeout POST Form ' + timeout + 'ms')); });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+}
+
+// Detecta se uma string HTML contém um formulário de login
+function _ehPaginaLogin(html) {
+    return html && (
+        html.includes('type="password"') || html.includes("type='password'") ||
+        html.includes('name="password"') || html.includes('name="senha"') ||
+        html.includes('name="Password"') || html.includes('name="Senha"')
+    );
+}
+
+// Realiza login via formulário HTML; usa cache por 30 minutos.
+// Sucesso: { cookies, url_base, tipo }
+// Falha:   { falha: true, motivo: string }
+async function _loginFormulario(item) {
+    if (!item.usuario || !item.senha) return { falha: true, motivo: 'Sem credenciais cadastradas' };
+
+    // Retorna sessão em cache se ainda válida
+    const cached = _sessoeConnectores.get(item.id);
+    if (cached && cached.expira > Date.now()) return { cookies: cached.cookies, url_base: cached.url_base, tipo: 'cache' };
+
+    let urlBase;
+    try { urlBase = new URL(item.url).origin; } catch (_) { return { falha: true, motivo: 'URL inválida' }; }
+
+    // Caminhos de login comuns — tenta cada um até encontrar formulário com campo senha
+    const loginCandidatos = [
+        urlBase + '/login',
+        urlBase + '/account/login',
+        urlBase + '/customer/account/login',
+        urlBase + '/usuarios/login',
+        urlBase + '/acesso',
+        urlBase + '/entrar',
+        item.url,
+    ];
+
+    let loginHtml = '', loginCookies = '', loginUrl = '';
+    for (const lu of loginCandidatos) {
+        try {
+            const rGet = await _fetchComCookies(lu, '');
+            if (rGet.status === 200 && _ehPaginaLogin(rGet.corpo)) {
+                loginHtml = rGet.corpo;
+                loginCookies = _parseCookies(rGet.setCookies);
+                loginUrl = lu;
+                break;
+            }
+        } catch (_) {}
+    }
+    if (!loginHtml) return { falha: true, motivo: 'Página de login não encontrada (tentei: ' + loginCandidatos.map(u => u.replace(urlBase, '')).join(', ') + ')' };
+
+    // Extrai todos os inputs hidden (ViewState, CSRF token, etc.)
+    const camposOcultos = {};
+    const inputRe = /<input[^>]+type=["']?hidden["']?[^>]*>/gi;
+    let im;
+    while ((im = inputRe.exec(loginHtml)) !== null) {
+        const tag = im[0];
+        const nameM = /name=["']([^"']+)["']/i.exec(tag);
+        const valueM = /value=["']([^"']*)["']/i.exec(tag);
+        if (nameM) camposOcultos[nameM[1]] = valueM ? valueM[1] : '';
+    }
+
+    // Detecta nome do campo de usuário
+    const userFields = ['email', 'username', 'login', 'usuario', 'user', 'Email', 'UserName', 'txtEmail', 'txtLogin'];
+    const passFields = ['password', 'senha', 'pass', 'Password', 'Senha', 'txtSenha', 'txtPassword'];
+    let userField = 'email', passField = 'password';
+    for (const f of userFields) { if (loginHtml.includes(`name="${f}"`) || loginHtml.includes(`name='${f}'`)) { userField = f; break; } }
+    for (const f of passFields) { if (loginHtml.includes(`name="${f}"`) || loginHtml.includes(`name='${f}'`)) { passField = f; break; } }
+
+    // Detecta action do formulário de login
+    let formAction = loginUrl;
+    const formRe = /<form[^>]+(?:action|ACTION)=["']([^"']+)["'][^>]*>/i;
+    const fm = formRe.exec(loginHtml);
+    if (fm && fm[1] && !fm[1].startsWith('#')) {
+        try { formAction = new URL(fm[1], urlBase).toString(); } catch (_) {}
+    }
+
+    // Submete formulário
+    const formBody = { ...camposOcultos, [userField]: item.usuario, [passField]: item.senha };
+    const rPost = await _httpPostForm(formAction, formBody, loginCookies);
+    let cookiesFinal = _mesclaCookies(loginCookies, _parseCookies(rPost.setCookies));
+
+    // Segue redirect se necessário (login bem-sucedido costuma redirecionar)
+    if ((rPost.status === 301 || rPost.status === 302) && rPost.location) {
+        try {
+            const destino = new URL(rPost.location, urlBase).toString();
+            const rRedir = await _fetchComCookies(destino, cookiesFinal);
+            cookiesFinal = _mesclaCookies(cookiesFinal, _parseCookies(rRedir.setCookies));
+            if (_ehPaginaLogin(rRedir.corpo)) return { falha: true, motivo: 'Login falhou — redirecionou de volta para login (credenciais incorretas?)' };
+        } catch (e) { /* ignora erro de redirect */ }
+    } else if (rPost.status === 200 && _ehPaginaLogin(rPost.corpo)) {
+        // Ainda na página de login = credenciais rejeitadas
+        const erroRe = /class="[^"]*(?:error|alert|danger|invalid)[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|p|li)>/i;
+        const erroM = erroRe.exec(rPost.corpo);
+        const msgErro = erroM ? erroM[1].replace(/<[^>]+>/g, '').trim().substring(0, 200) : 'Credenciais inválidas ou captcha bloqueando';
+        return { falha: true, motivo: `Login rejeitado: ${msgErro}` };
+    }
+
+    // Armazena sessão no cache
+    _sessoeConnectores.set(item.id, { cookies: cookiesFinal, url_base: urlBase, expira: Date.now() + _SESSION_TTL_MS });
+    return { cookies: cookiesFinal, url_base: urlBase, tipo: 'form-login' };
+}
+
+// Busca produtos em um conector autenticado pesquisando por termo.
+// Usado pelo agente de auto-enriquecimento para consultar fornecedores.
+// Retorna { itens, formato } ou { falha, motivo }
+async function _buscarNoConector(item, termo) {
+    let sessao;
+    if (item.usuario && item.senha) {
+        sessao = await _loginFormulario(item);
+        if (sessao.falha) return { falha: true, motivo: sessao.motivo };
+    }
+    const cookies = sessao ? sessao.cookies : '';
+    const urlBase = sessao ? sessao.url_base : new URL(item.url).origin;
+
+    // Constrói URL de busca — tenta padrões comuns
+    const termoCodificado = encodeURIComponent(termo);
+    const buscaUrls = [
+        urlBase + '/catalogsearch/result/index/?q=' + termoCodificado,
+        urlBase + '/busca?q=' + termoCodificado,
+        urlBase + '/search?q=' + termoCodificado,
+        urlBase + '/produtos?busca=' + termoCodificado,
+    ];
+
+    for (const bu of buscaUrls) {
+        try {
+            const r = await _fetchComCookies(bu, cookies, 15000);
+            if (r.status !== 200) continue;
+            const magento = _scrapeMagentoHtml(r.corpo);
+            if (magento && magento.itens.length > 0) return { itens: magento.itens, formato: magento.formato, url_usada: bu };
+            const gen = _parseConectorCorpo(r.corpo, r.content_type);
+            if (gen && gen.itens.length > 0) return { itens: gen.itens, formato: gen.formato, url_usada: bu };
+        } catch (_) {}
+    }
+    return { falha: true, motivo: `Nenhum resultado encontrado para "${termo}" nos caminhos de busca testados` };
+}
+
 // Tenta autenticar em uma loja Magento 2 via REST API.
 // Sucesso: { base, token, tipo }
 // Falha:   { falha: true, erros: string[] }  — inclui diagnóstico por endpoint
@@ -1290,6 +1532,38 @@ app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
     }
 });
 
+// Busca produtos por termo em um conector (com login automático se necessário).
+// Usado pelo agente de auto-enriquecimento para consultar fornecedores autenticados.
+app.post('/api/ntc-referencias/:id/buscar', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+        if (!item.url) return res.status(400).json({ ok: false, erro: 'Conector sem URL.' });
+        const termo = (req.body && req.body.termo) || '';
+        if (!termo.trim()) return res.status(400).json({ ok: false, erro: 'Parâmetro "termo" obrigatório.' });
+        const resultado = await _buscarNoConector(item, termo.trim());
+        if (resultado.falha) return res.json({ ok: false, erro: resultado.motivo });
+        res.json({ ok: true, ...resultado, total: resultado.itens ? resultado.itens.length : 0 });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Testa login via formulário HTML para um conector (invalida cache forçando novo login).
+app.post('/api/ntc-referencias/:id/login', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+        if (!item.usuario || !item.senha) return res.status(400).json({ ok: false, erro: 'Conector sem usuário/senha cadastrados.' });
+        _sessoeConnectores.delete(item.id); // força novo login
+        const resultado = await _loginFormulario(item);
+        if (resultado.falha) return res.json({ ok: false, erro: resultado.motivo });
+        res.json({ ok: true, tipo: resultado.tipo, url_base: resultado.url_base, preview: `Login realizado com sucesso (${resultado.tipo}). Sessão válida por 30 minutos.` });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
 // Prefixos de URL REST que lojas Magento 2 costumam usar (varia por configuração).
 const _MAGENTO_REST_PREFIXES = ['/rest/V1', '/rest/default/V1', '/rest/all/V1', '/rest/pt_BR/V1'];
 
@@ -1330,6 +1604,21 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
         }
 
         if (r.status >= 400) return res.json({ ok: false, erro: `Servidor respondeu com HTTP ${r.status}.`, status: r.status });
+
+        // Se retornou uma página de login em vez do catálogo, tenta logar por formulário
+        if (r.status === 200 && _ehPaginaLogin(r.corpo) && (item.usuario || item.senha)) {
+            const sessao = await _loginFormulario(item);
+            if (!sessao.falha) {
+                const rAuth = await _fetchComCookies(item.url, sessao.cookies, 18000);
+                if (rAuth.status === 200 && !_ehPaginaLogin(rAuth.corpo)) {
+                    r = rAuth; // usa a resposta autenticada para continuar o parse abaixo
+                } else {
+                    return res.json({ ok: false, erro: 'Login por formulário realizado mas catálogo ainda não acessível.', status: rAuth.status });
+                }
+            } else {
+                return res.json({ ok: false, erro: `Site retornou página de login. Tentei logar automaticamente mas falhou: ${sessao.motivo}` });
+            }
+        }
 
         // Tenta raspar HTML de catálogo Magento (URL pública de listagem/busca)
         const ct = (r.content_type || '').toLowerCase();
