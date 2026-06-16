@@ -1909,24 +1909,29 @@ MEDIDA LARGURA  25 MM"></textarea>
 
         <!-- Google Drive / Sheets -->
         <div id="cref-drive-info" style="margin-top:12px;display:none">
-          <div style="font-size:13px;font-weight:600;margin-bottom:6px">&#128194; Google Drive / Sheets</div>
-          <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Cole o link abaixo em uma c&eacute;lula do Google Sheets: <code>=IMPORTDATA("URL")</code> para importar automaticamente os produtos aprovados (NTC&nbsp;&ge;&nbsp;95%).</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">&#128194; Google Drive / Sheets — Pasta Exclusiva</div>
+          <div id="cref-drive-folder-link" style="margin-bottom:8px;display:none">
+            <a id="cref-drive-folder-anchor" href="#" target="_blank" class="btn btn-secondary btn-sm">&#128194; Abrir Pasta Exclusiva no Drive</a>
+            <span style="font-size:11px;color:#6b7280;margin-left:8px">Pasta vinculada ao conector</span>
+          </div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Gere o link de importa&ccedil;&atilde;o e adicione um Google Sheets na pasta com a f&oacute;rmula abaixo — a planilha se atualiza automaticamente.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
             <label style="font-size:12px;color:#ccc">NTC m&iacute;nimo:
               <input type="number" id="drive-ntc-min" value="0.95" min="0" max="1" step="0.01" style="max-width:70px;margin-left:4px">
             </label>
-            <label style="font-size:12px;color:#ccc">Dec&nbsp;is&atilde;o:
+            <label style="font-size:12px;color:#ccc">Dec&iacute;s&atilde;o:
               <select id="drive-decisao" style="max-width:130px;margin-left:4px">
                 <option value="">Qualquer</option>
                 <option value="APROVADO">Aprovado</option>
               </select>
             </label>
-            <button class="btn btn-secondary btn-sm" onclick="driveGerarLink()">&#128279; Gerar link</button>
+            <button class="btn btn-secondary btn-sm" onclick="driveGerarLink()">&#128279; Gerar link &amp; copiar</button>
             <a id="drive-csv-link" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:none">&#11015;&#65039; Baixar CSV</a>
           </div>
           <div id="drive-link-box" style="display:none;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;word-break:break-all;color:#00b4d8"></div>
-          <div style="font-size:11px;color:#6b7280;margin-top:6px">
-            &#128221; No Google Sheets: <strong>Arquivo &rarr; Importar &rarr; URL</strong> ou em qualquer c&eacute;lula: <code>=IMPORTDATA("link acima")</code>
+          <div id="drive-formula-box" style="display:none;margin-top:6px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;color:#00ff88"></div>
+          <div style="font-size:11px;color:#6b7280;margin-top:8px">
+            &#128203; <strong>Como usar:</strong> Crie um arquivo Google Sheets na pasta &rarr; em qualquer c&eacute;lula cole a f&oacute;rmula acima &rarr; a planilha importa e atualiza automaticamente os produtos aprovados.
           </div>
         </div>
       </div>
@@ -2000,11 +2005,20 @@ MEDIDA LARGURA  25 MM"></textarea>
           <div class="form-group" data-tipo="conector"><label>Usu&aacute;rio</label><input id="cref-f-usuario" type="text"></div>
           <div class="form-group" data-tipo="conector"><label>Senha</label><input id="cref-f-senha" type="password"></div>
           <div class="form-group" data-tipo="conector"><label>Espelho em nuvem</label>
-            <select id="cref-f-espelho">
+            <select id="cref-f-espelho" onchange="crefToggleDriveField()">
               <option value="">Nenhum</option>
               <option value="wix">&#128995; Wix Stores</option>
               <option value="drive">&#128194; Google Drive / Sheets</option>
             </select>
+          </div>
+          <div class="form-group" data-tipo="conector" id="cref-drive-folder-group" style="grid-column:1/-1;display:none">
+            <label>&#128194; Pasta Google Drive <span style="font-weight:400;color:#888;font-size:0.85em">(ID da pasta — cole a URL ou só o ID)</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="cref-f-drive-folder" type="text" placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" style="flex:1">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="crefAbrirDriveFolder()">&#128194; Abrir pasta</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="crefCriarPastaDrive()">&#10133; Criar nova pasta</button>
+            </div>
+            <small style="color:#888">Cole a URL completa ou só o ID da pasta (parte ap&oacute;s <code>/folders/</code>). Ap&oacute;s salvar, o Genesis gera o link de importa&ccedil;&atilde;o para o Google Sheets.</small>
           </div>
           <div class="form-group" data-tipo="conector" style="grid-column:1/-1">
             <label>&#128269; Algolia <span style="font-weight:400;color:#888;font-size:0.85em">(opcional &mdash; contorna WAF, sem precisa de login)</span></label>
@@ -9119,6 +9133,40 @@ function crefRenderEspelho() {
   // Mostra painel Google Drive se houver conectores com drive
   var driveDiv = document.getElementById('cref-drive-info');
   if (driveDiv) driveDiv.style.display = ativosDrive.length ? '' : 'none';
+  // Mostra link da pasta se o primeiro conector drive tiver drive_folder_id
+  var folderLinkDiv = document.getElementById('cref-drive-folder-link');
+  var folderAnchor  = document.getElementById('cref-drive-folder-anchor');
+  if (folderLinkDiv && folderAnchor) {
+    var comPasta = ativosDrive.find(function(c) { return c.drive_folder_id; });
+    if (comPasta) {
+      folderAnchor.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(comPasta.drive_folder_id);
+      folderLinkDiv.style.display = '';
+    } else {
+      folderLinkDiv.style.display = 'none';
+    }
+  }
+}
+
+function crefToggleDriveField() {
+  var sel = document.getElementById('cref-f-espelho');
+  var grp = document.getElementById('cref-drive-folder-group');
+  if (grp) grp.style.display = (sel && sel.value === 'drive') ? '' : 'none';
+}
+
+function crefAbrirDriveFolder() {
+  var id = (document.getElementById('cref-f-drive-folder') || {}).value || '';
+  var match = id.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  var folderId = match ? match[1] : id.trim();
+  if (!folderId) { alert('Cole o ID ou URL da pasta primeiro.'); return; }
+  window.open('https://drive.google.com/drive/folders/' + encodeURIComponent(folderId), '_blank');
+}
+
+function crefCriarPastaDrive() {
+  // Abre o Google Drive para que o usuário crie a pasta manualmente e cole o ID
+  window.open('https://drive.google.com/drive/my-drive', '_blank');
+  setTimeout(function() {
+    alert('No Google Drive:\n1. Clique em "+ Novo" → "Pasta"\n2. Nomeie como "Genesis Indexa 360 - Catálogo"\n3. Abra a pasta criada\n4. Copie o ID da URL (após /folders/)\n5. Cole aqui no campo "Pasta Google Drive"');
+  }, 500);
 }
 
 function driveGerarLink() {
@@ -9126,11 +9174,17 @@ function driveGerarLink() {
   var decisao = (document.getElementById('drive-decisao') || {}).value || '';
   var base = window.location.origin + '/api/produtos/export-csv?ntc_min=' + encodeURIComponent(ntcMin);
   if (decisao) base += '&decisao=' + encodeURIComponent(decisao);
-  var box  = document.getElementById('drive-link-box');
-  var link = document.getElementById('drive-csv-link');
-  if (box)  { box.style.display = ''; box.textContent = base; }
+  var formula = '=IMPORTDATA("' + base + '")';
+  var box     = document.getElementById('drive-link-box');
+  var fBox    = document.getElementById('drive-formula-box');
+  var link    = document.getElementById('drive-csv-link');
+  if (box)  { box.style.display  = ''; box.textContent = base; }
+  if (fBox) { fBox.style.display = ''; fBox.textContent = formula; }
   if (link) { link.href = base; link.style.display = ''; }
-  try { navigator.clipboard.writeText(base); } catch (_) {}
+  // Copia a fórmula para o clipboard (mais útil para colar no Sheets)
+  try { navigator.clipboard.writeText(formula); } catch (_) {
+    try { navigator.clipboard.writeText(base); } catch (_2) {}
+  }
 }
 
 function crefRenderMontadoras() {
@@ -9276,7 +9330,9 @@ function crefAbrirForm(tipo, id) {
   document.getElementById('cref-f-algolia-app').value = item ? (item.algolia_app_id || '') : '';
   document.getElementById('cref-f-algolia-key').value = item ? (item.algolia_api_key || '') : '';
   document.getElementById('cref-f-algolia-idx').value = item ? (item.algolia_index || '') : '';
+  document.getElementById('cref-f-drive-folder').value = item ? (item.drive_folder_id || '') : '';
   document.getElementById('cref-f-obs').value = item ? (item.observacoes || '') : '';
+  crefToggleDriveField();
 
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -9316,6 +9372,10 @@ async function crefSalvar() {
     payload.algolia_app_id = document.getElementById('cref-f-algolia-app').value.trim();
     payload.algolia_api_key = document.getElementById('cref-f-algolia-key').value.trim();
     payload.algolia_index = document.getElementById('cref-f-algolia-idx').value.trim();
+    // Extrai ID da pasta a partir de URL completa ou ID direto
+    var driveRaw = document.getElementById('cref-f-drive-folder').value.trim();
+    var driveMatch = driveRaw.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    payload.drive_folder_id = driveMatch ? driveMatch[1] : driveRaw;
   }
 
   var r;
