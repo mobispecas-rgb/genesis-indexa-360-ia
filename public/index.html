@@ -1995,31 +1995,41 @@ MEDIDA LARGURA  25 MM"></textarea>
         <p style="font-size:12px;color:#888;margin-bottom:8px">Produtos aprovados (NTC&nbsp;&ge;&nbsp;95%) s&atilde;o exportados automaticamente para o Wix e/ou Google Drive conforme configurado em cada conector.</p>
         <div id="cref-espelho-info" style="font-size:12px"></div>
 
-        <!-- Google Drive / Sheets -->
+        <!-- Google Drive — Memória de Catálogos OEM -->
         <div id="cref-drive-info" style="margin-top:12px;display:none">
-          <div style="font-size:13px;font-weight:600;margin-bottom:6px">&#128194; Google Drive / Sheets — Pasta Exclusiva</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#f0f0f4">&#128194; Google Drive — Mem&oacute;ria de Cat&aacute;logos OEM</div>
+          <div id="drive-status-bar" style="font-size:12px;padding:8px 12px;border-radius:6px;margin-bottom:10px;background:#13131a;border:1px solid #2a2a38">
+            <span id="drive-status-txt">Verificando...</span>
+            <button class="btn btn-sm btn-secondary" style="float:right;margin-top:-2px" onclick="driveVerificarStatus()">&#8635;</button>
+          </div>
+
           <div id="cref-drive-folder-link" style="margin-bottom:8px;display:none">
-            <a id="cref-drive-folder-anchor" href="#" target="_blank" class="btn btn-secondary btn-sm">&#128194; Abrir Pasta Exclusiva no Drive</a>
-            <span style="font-size:11px;color:#6b7280;margin-left:8px">Pasta vinculada ao conector</span>
+            <a id="cref-drive-folder-anchor" href="#" target="_blank" class="btn btn-secondary btn-sm">&#128194; Abrir Pasta no Drive</a>
+            <button class="btn btn-sm btn-secondary" style="margin-left:6px" onclick="driveCriarPasta()">&#43; Criar pasta Genesis</button>
           </div>
-          <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Gere o link de importa&ccedil;&atilde;o e adicione um Google Sheets na pasta com a f&oacute;rmula abaixo — a planilha se atualiza automaticamente.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-            <label style="font-size:12px;color:#ccc">NTC m&iacute;nimo:
-              <input type="number" id="drive-ntc-min" value="0.95" min="0" max="1" step="0.01" style="max-width:70px;margin-left:4px">
-            </label>
-            <label style="font-size:12px;color:#ccc">Dec&iacute;s&atilde;o:
-              <select id="drive-decisao" style="max-width:130px;margin-left:4px">
-                <option value="">Qualquer</option>
-                <option value="APROVADO">Aprovado</option>
-              </select>
-            </label>
-            <button class="btn btn-secondary btn-sm" onclick="driveGerarLink()">&#128279; Gerar link &amp; copiar</button>
-            <a id="drive-csv-link" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:none">&#11015;&#65039; Baixar CSV</a>
+
+          <!-- Exportar produtos aprovados para Drive -->
+          <div style="background:#13131a;border:1px solid #2a2a38;border-radius:8px;padding:12px;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:600;color:#bbb;margin-bottom:8px">&#11015;&#65039; Exportar Produtos Aprovados (NTC &ge; 95%) para Drive</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+              <label style="font-size:11px;color:#666">NTC m&iacute;n: <input type="number" id="drive-ntc-min" value="0.95" min="0" max="1" step="0.01" style="max-width:65px;margin-left:4px"></label>
+              <label style="font-size:11px;color:#666">Dec&iacute;s&atilde;o: <select id="drive-decisao" style="max-width:120px;margin-left:4px"><option value="APROVADO">Aprovado</option><option value="">Qualquer</option></select></label>
+              <button class="btn btn-primary btn-sm" onclick="driveExportarProdutos()">&#128194; Salvar no Drive</button>
+              <button class="btn btn-secondary btn-sm" onclick="driveGerarLink()">&#128279; S&oacute; link CSV</button>
+              <a id="drive-csv-link" class="btn btn-secondary btn-sm" href="#" target="_blank" style="display:none">&#11015; Baixar</a>
+            </div>
+            <div id="drive-export-msg" style="font-size:11px;color:#888"></div>
+            <div id="drive-formula-box" style="display:none;margin-top:6px;background:#0d0d0d;border:1px solid #2a2a38;border-radius:6px;padding:8px;font-size:11px;color:#00e87a;word-break:break-all"></div>
           </div>
-          <div id="drive-link-box" style="display:none;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;word-break:break-all;color:#00b4d8"></div>
-          <div id="drive-formula-box" style="display:none;margin-top:6px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;color:#00ff88"></div>
-          <div style="font-size:11px;color:#6b7280;margin-top:8px">
-            &#128203; <strong>Como usar:</strong> Crie um arquivo Google Sheets na pasta &rarr; em qualquer c&eacute;lula cole a f&oacute;rmula acima &rarr; a planilha importa e atualiza automaticamente os produtos aprovados.
+
+          <!-- Catálogos OEM no Drive -->
+          <div style="background:#13131a;border:1px solid #2a2a38;border-radius:8px;padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:600;color:#bbb">&#128196; Cat&aacute;logos OEM no Drive (CSV/PDF)</span>
+              <button class="btn btn-sm btn-secondary" onclick="driveListarCatalogos()">&#8635; Listar</button>
+            </div>
+            <div style="font-size:11px;color:#555;margin-bottom:8px">Coloque arquivos CSV ou PDF de cat&aacute;logos OEM na pasta do Drive &rarr; o Genesis importa direto.</div>
+            <div id="drive-catalogos-lista" style="font-size:12px;color:#666">Clique em Listar para ver os arquivos.</div>
           </div>
         </div>
       </div>
@@ -2492,7 +2502,7 @@ function nav(page, opts) {
   if (page === 'google-shopping') gsCarregar();
   if (page === 'performance') perfAtualizar();
   else perfPararAuto();
-  if (page === 'conectores-ntc') crefCarregar();
+  if (page === 'conectores-ntc') { crefCarregar(); setTimeout(driveVerificarStatus, 500); }
   if (window.innerWidth <= 768) {
     document.getElementById('sidebar').classList.remove('open');
   }
@@ -9452,22 +9462,129 @@ function crefCriarPastaDrive() {
   }, 500);
 }
 
+async function driveVerificarStatus() {
+  var txt = document.getElementById('drive-status-txt');
+  if (txt) txt.textContent = 'Verificando...';
+  try {
+    var r = await fetch('/api/drive/status');
+    var d = await r.json();
+    if (txt) {
+      if (d.configurado) {
+        txt.innerHTML = '<span style="color:#00e87a">&#10003; ' + escHtml(d.mensagem) + '</span>';
+      } else {
+        txt.innerHTML = '<span style="color:#ff9060">&#9888; Drive n&atilde;o configurado &mdash; adicione <code>GOOGLE_SERVICE_ACCOUNT_JSON</code> nas vari&aacute;veis do Render.</span>';
+      }
+    }
+  } catch(e) {
+    if (txt) txt.textContent = 'Erro: ' + e.message;
+  }
+}
+
+async function driveExportarProdutos() {
+  var ntcMin = (document.getElementById('drive-ntc-min') || {}).value || '0.95';
+  var decisao = (document.getElementById('drive-decisao') || {}).value || 'APROVADO';
+  var msg = document.getElementById('drive-export-msg');
+  if (msg) msg.textContent = 'Exportando para o Drive...';
+  // Pega folder_id do conector Drive ativo
+  var folderId = '';
+  if (_crefDados && _crefDados.conector) {
+    var driveConn = (_crefDados.conector || []).find(function(c){ return c.espelho_nuvem === 'drive' && c.drive_folder_id; });
+    if (driveConn) folderId = driveConn.drive_folder_id;
+  }
+  try {
+    var r = await fetch('/api/drive/exportar-produtos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder_id: folderId || null, ntc_min: parseFloat(ntcMin), decisao })
+    });
+    var d = await r.json();
+    if (d.ok) {
+      if (msg) msg.innerHTML = '<span style="color:#00e87a">&#10003; ' + d.total + ' produtos salvos no Drive: <a href="' + escHtml(d.webViewLink) + '" target="_blank" style="color:#00e87a">' + escHtml(d.nome) + '</a></span>';
+      var fBox = document.getElementById('drive-formula-box');
+      if (fBox && d.importdata_formula) { fBox.style.display=''; fBox.textContent = d.importdata_formula; }
+    } else {
+      if (msg) msg.innerHTML = '<span style="color:#ff9060">&#10006; ' + escHtml(d.erro) + '</span>';
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = '<span style="color:#ff9060">Erro: ' + escHtml(e.message) + '</span>';
+  }
+}
+
 function driveGerarLink() {
   var ntcMin  = (document.getElementById('drive-ntc-min') || {}).value || '0.95';
   var decisao = (document.getElementById('drive-decisao') || {}).value || '';
   var base = window.location.origin + '/api/produtos/export-csv?ntc_min=' + encodeURIComponent(ntcMin);
   if (decisao) base += '&decisao=' + encodeURIComponent(decisao);
   var formula = '=IMPORTDATA("' + base + '")';
-  var box     = document.getElementById('drive-link-box');
-  var fBox    = document.getElementById('drive-formula-box');
-  var link    = document.getElementById('drive-csv-link');
-  if (box)  { box.style.display  = ''; box.textContent = base; }
-  if (fBox) { fBox.style.display = ''; fBox.textContent = formula; }
+  var fBox = document.getElementById('drive-formula-box');
+  var link = document.getElementById('drive-csv-link');
+  if (fBox) { fBox.style.display=''; fBox.textContent = formula; }
   if (link) { link.href = base; link.style.display = ''; }
-  // Copia a fórmula para o clipboard (mais útil para colar no Sheets)
-  try { navigator.clipboard.writeText(formula); } catch (_) {
-    try { navigator.clipboard.writeText(base); } catch (_2) {}
+  try { navigator.clipboard.writeText(formula); } catch (_) {}
+  var msg = document.getElementById('drive-export-msg');
+  if (msg) msg.innerHTML = '<span style="color:#00e87a">&#128203; F&oacute;rmula copiada! Cole no Google Sheets.</span>';
+}
+
+async function driveListarCatalogos() {
+  var lista = document.getElementById('drive-catalogos-lista');
+  if (lista) lista.textContent = 'Buscando no Drive...';
+  var folderId = '';
+  if (_crefDados && _crefDados.conector) {
+    var driveConn = (_crefDados.conector || []).find(function(c){ return c.espelho_nuvem === 'drive' && c.drive_folder_id; });
+    if (driveConn) folderId = driveConn.drive_folder_id;
   }
+  try {
+    var r = await fetch('/api/drive/listar-catalogos' + (folderId ? '?folder_id=' + encodeURIComponent(folderId) : ''));
+    var d = await r.json();
+    if (lista) {
+      if (!d.arquivos || !d.arquivos.length) {
+        lista.innerHTML = '<span style="color:#555">Nenhum cat&aacute;logo encontrado na pasta. Fa&ccedil;a upload de CSV ou PDF de cat&aacute;logos OEM.</span>';
+      } else {
+        lista.innerHTML = d.arquivos.map(function(f) {
+          var kb = f.size ? Math.round(f.size/1024) + ' KB' : '';
+          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #1e1e26">'
+            + '<span style="font-size:16px">' + (f.mimeType==='application/pdf'?'&#128196;':'&#128202;') + '</span>'
+            + '<span style="flex:1;font-size:12px;color:#ccc">' + escHtml(f.name) + (kb?' <span style="color:#555">('+kb+')</span>':'') + '</span>'
+            + '<button class="btn btn-primary btn-sm" onclick="driveImportarArquivo(\'' + escHtml(f.id) + '\',\'' + escHtml(f.name) + '\')">&#128229; Importar</button>'
+            + '<a href="' + escHtml(f.webViewLink||'#') + '" target="_blank" class="btn btn-secondary btn-sm">&#128065;</a>'
+            + '</div>';
+        }).join('');
+      }
+    }
+  } catch(e) {
+    if (lista) lista.textContent = 'Erro: ' + e.message;
+  }
+}
+
+async function driveImportarArquivo(fileId, nome) {
+  if (!confirm('Importar produtos do arquivo "' + nome + '" para o Genesis?')) return;
+  var lista = document.getElementById('drive-catalogos-lista');
+  var msgEl = lista ? lista.insertAdjacentHTML('afterbegin', '<div id="drive-import-msg" style="color:#f59e0b;font-size:12px;padding:6px 0">Importando...</div>') : null;
+  try {
+    var r = await fetch('/api/drive/importar-catalogo', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ file_id: fileId, fornecedor_nome: 'Drive: ' + nome, fonte: 'drive' })
+    });
+    var d = await r.json();
+    var el = document.getElementById('drive-import-msg');
+    if (el) el.innerHTML = d.ok
+      ? '<span style="color:#00e87a">&#10003; Inseridos: '+d.inseridos+' | Atualizados: '+d.atualizados+' | Erros: '+d.erros+'</span>'
+      : '<span style="color:#ff9060">&#10006; '+escHtml(d.erro)+'</span>';
+  } catch(e) {
+    var el = document.getElementById('drive-import-msg');
+    if (el) el.textContent = 'Erro: ' + e.message;
+  }
+}
+
+async function driveCriarPasta() {
+  try {
+    var r = await fetch('/api/drive/criar-pasta', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome:'Genesis 360 — Catálogos OEM'}) });
+    var d = await r.json();
+    if (d.ok) {
+      alert('Pasta criada!\nID: ' + d.folder_id + '\nCole este ID no campo "ID da pasta Drive" do conector.');
+      window.open(d.url, '_blank');
+    } else { alert('Erro: ' + d.erro); }
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 function crefRenderMontadoras() {
