@@ -1250,17 +1250,92 @@ async function _loginFormulario(item) {
     return { cookies: cookiesFinal, url_base: urlBase, tipo: 'form-login' };
 }
 
+// Decodifica o validUntil embutido numa Algolia Secured API Key (base64).
+// Retorna o timestamp Unix de expiração ou null se não encontrar.
+function _algoliaKeyExpiry(apiKey) {
+    try {
+        const decoded = Buffer.from(apiKey, 'base64').toString('utf-8');
+        // Algolia secured key: 64 chars de hash HMAC-SHA256 hex + query string de restrições
+        const qs = decoded.substring(64);
+        const params = new URLSearchParams(qs);
+        const v = params.get('validUntil');
+        return v ? Number(v) : null;
+    } catch (_) { return null; }
+}
+
+// Tenta extrair uma nova Algolia Search API Key do site autenticado do Pellegrino.
+// Faz login via formulário, busca o JS de configuração do Algolia e extrai a chave.
+// Retorna a nova chave como string, ou null se não conseguir.
+async function _renovarChaveAlgolia(item) {
+    try {
+        const sessao = await _loginFormulario(item);
+        if (sessao.falha) return null;
+        const urlBase = sessao.url_base;
+        // Tenta extrair a chave dos arquivos JS que a contêm
+        const candidatos = [
+            urlBase + '/js/catalogo/algoliaSearchInterop.js',
+            urlBase + '/catalogo/ais',
+            urlBase + '/',
+        ];
+        const reChave = /(?:apiKey|_aisApiKey|algolia[_-]?api[_-]?key|searchApiKey)['":\s=]+['"]([A-Za-z0-9+/=]{60,})['"]/i;
+        for (const url of candidatos) {
+            try {
+                const r = await _fetchComCookies(url, sessao.cookies, 14000);
+                if (r.status !== 200) continue;
+                const m = reChave.exec(r.corpo);
+                if (m && m[1]) {
+                    const novaChave = m[1];
+                    // Verifica que a chave extraída tem validade maior que a atual
+                    const expiry = _algoliaKeyExpiry(novaChave);
+                    if (!expiry || expiry > Date.now() / 1000) {
+                        db.atualizarReferencia(item.id, { algolia_api_key: novaChave });
+                        console.log(`[Algolia] Chave renovada para conector #${item.id} via ${url} (validUntil=${expiry})`);
+                        return novaChave;
+                    }
+                }
+            } catch (_) {}
+        }
+        return null;
+    } catch (_) { return null; }
+}
+
+// Job de renovação proativa: a cada 6h verifica todos os conectores Algolia
+// e renova chaves que expiram nas próximas 26h (garante 24h de folga).
+setInterval(async () => {
+    const agora = Math.floor(Date.now() / 1000);
+    const limite = agora + 26 * 3600; // 26h à frente
+    for (const item of db.listarReferencias('conector')) {
+        if (!item.algolia_app_id || !item.algolia_api_key || !item.usuario || !item.senha) continue;
+        const expiry = _algoliaKeyExpiry(item.algolia_api_key);
+        if (expiry && expiry < limite) {
+            console.log(`[Algolia] Renovando chave de #${item.id} (${item.nome}) — expira em ${Math.round((expiry - agora) / 3600)}h`);
+            await _renovarChaveAlgolia(item).catch(() => {});
+        }
+    }
+}, 6 * 3600 * 1000);
+
 // Busca produtos via API Algolia InstantSearch — contorna WAF pois chama
 // diretamente os servidores Algolia (*.algolia.net) sem passar pelo site.
+// Renova a chave automaticamente se estiver a menos de 2h do vencimento.
 // Retorna { itens, formato, total } ou { falha, motivo }
-function _buscarAlgolia(item, termo) {
-    return new Promise((resolve, reject) => {
-        const appId = (item.algolia_app_id || '').trim();
-        const apiKey = (item.algolia_api_key || '').trim();
-        const index  = (item.algolia_index  || '').trim();
-        if (!appId || !apiKey || !index) {
-            return resolve({ falha: true, motivo: 'Configuração Algolia incompleta (App ID, API Key ou Índice ausente)' });
-        }
+async function _buscarAlgolia(item, termo) {
+    const appId = (item.algolia_app_id || '').trim();
+    let apiKey  = (item.algolia_api_key || '').trim();
+    const index = (item.algolia_index  || '').trim();
+    if (!appId || !apiKey || !index) {
+        return { falha: true, motivo: 'Configuração Algolia incompleta (App ID, API Key ou Índice ausente)' };
+    }
+    // Renova proativamente se a chave vence em menos de 2h
+    const expiry = _algoliaKeyExpiry(apiKey);
+    if (expiry && expiry < Math.floor(Date.now() / 1000) + 7200 && item.usuario && item.senha) {
+        const nova = await _renovarChaveAlgolia(item).catch(() => null);
+        if (nova) apiKey = nova;
+    }
+    return new Promise((resolve) => {
+        const body = Buffer.from(JSON.stringify({ query: termo, hitsPerPage: 40 }));
+        const options = {
+            hostname: `${appId}-dsn.algolia.net`,
+            path: `/1/indexes/${encodeURIComponent(index)}/query`,
         const body = Buffer.from(JSON.stringify({ query: termo, hitsPerPage: 40 }));
         const options = {
             hostname: `${appId}-dsn.algolia.net`,
@@ -1597,9 +1672,14 @@ app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
         // Teste de conectividade Algolia
         if (item.algolia_app_id && item.algolia_api_key && item.algolia_index) {
             const t0 = Date.now();
+            const expiry = _algoliaKeyExpiry(item.algolia_api_key);
+            const agoraS = Math.floor(Date.now() / 1000);
+            const expiryInfo = expiry
+                ? (expiry < agoraS ? '⚠️ Chave EXPIRADA' : `Chave válida por mais ${Math.round((expiry - agoraS) / 3600)}h`)
+                : 'Chave permanente (sem validUntil)';
             const r = await _buscarAlgolia(item, 'filtro');
-            if (r.falha) return res.json({ ok: false, erro: r.motivo, latencia_ms: Date.now() - t0 });
-            return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, auth_tipo: 'algolia', content_type: 'application/json', preview: `Algolia OK — ${r.total} resultados para "filtro" no índice ${item.algolia_index}. Busca direta via API (sem login).` });
+            if (r.falha) return res.json({ ok: false, erro: r.motivo, latencia_ms: Date.now() - t0, expiry_info: expiryInfo });
+            return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, auth_tipo: 'algolia', content_type: 'application/json', expiry_info: expiryInfo, preview: `Algolia OK — ${r.total} resultados no índice ${item.algolia_index}. ${expiryInfo}.` });
         }
 
         if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
@@ -1636,6 +1716,25 @@ app.post('/api/ntc-referencias/:id/buscar', async (req, res) => {
         const resultado = await _buscarNoConector(item, termo.trim());
         if (resultado.falha) return res.json({ ok: false, erro: resultado.motivo });
         res.json({ ok: true, ...resultado, total: resultado.itens ? resultado.itens.length : 0 });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
+// Renova a Algolia Search API Key do conector fazendo login e extraindo nova chave.
+app.post('/api/ntc-referencias/:id/renovar-chave', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+        if (!item.algolia_app_id) return res.status(400).json({ ok: false, erro: 'Conector não usa Algolia.' });
+        if (!item.usuario || !item.senha) return res.status(400).json({ ok: false, erro: 'Conector sem usuário/senha — necessário para renovar a chave.' });
+        _sessoeConnectores.delete(item.id); // força novo login
+        const novaChave = await _renovarChaveAlgolia(item);
+        if (!novaChave) return res.json({ ok: false, erro: 'Não foi possível extrair nova chave Algolia do site. Cole a chave manualmente via DevTools.' });
+        const expiry = _algoliaKeyExpiry(novaChave);
+        const agoraS = Math.floor(Date.now() / 1000);
+        const horasRestantes = expiry ? Math.round((expiry - agoraS) / 3600) : null;
+        res.json({ ok: true, preview: `Chave renovada com sucesso!${horasRestantes ? ` Válida por mais ${horasRestantes}h.` : ''}` });
     } catch (e) {
         res.json({ ok: false, erro: e.message });
     }
