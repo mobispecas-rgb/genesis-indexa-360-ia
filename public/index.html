@@ -1908,6 +1908,15 @@ MEDIDA LARGURA  25 MM"></textarea>
               <option value="wix">Wix</option>
             </select>
           </div>
+          <div class="form-group" data-tipo="conector" style="grid-column:1/-1">
+            <label>&#128269; Algolia <span style="font-weight:400;color:#888;font-size:0.85em">(opcional &mdash; contorna WAF, sem precisa de login)</span></label>
+            <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:8px;margin-bottom:4px">
+              <input id="cref-f-algolia-app" type="text" placeholder="App ID (ex: CGPOD1SARS)">
+              <input id="cref-f-algolia-key" type="text" placeholder="Search-Only API Key">
+              <input id="cref-f-algolia-idx" type="text" placeholder="&Iacute;ndice (ex: b2b_prod)">
+            </div>
+            <small style="color:#888">Para obter a chave: abra o site logado &rarr; DevTools &rarr; Rede &rarr; filtre por <code>algolia.net</code> &rarr; copie o header <code>X-Algolia-API-Key</code></small>
+          </div>
           <div class="form-group" data-tipo="catalogo,conector" style="grid-column:1/-1"><label>Observa&ccedil;&otilde;es</label><textarea id="cref-f-obs" rows="2"></textarea></div>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
@@ -8759,7 +8768,7 @@ function crefRenderConectores() {
     return '<tr>'
       + '<td style="padding:6px 12px">' + esc(c.nome) + '</td>'
       + '<td style="padding:6px 12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.url || '—') + '</td>'
-      + '<td style="padding:6px 12px">' + esc(c.usuario || '—') + '</td>'
+      + '<td style="padding:6px 12px">' + (c.algolia_app_id ? '<span style="background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.8em">🔍 Algolia</span>' : esc(c.usuario || '—')) + '</td>'
       + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '☁️ Wix' : '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>') + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
@@ -8926,6 +8935,9 @@ function crefAbrirForm(tipo, id) {
   document.getElementById('cref-f-usuario').value = item ? (item.usuario || '') : '';
   document.getElementById('cref-f-senha').value = item ? (item.senha || '') : '';
   document.getElementById('cref-f-espelho').value = item ? (item.espelho_nuvem || '') : '';
+  document.getElementById('cref-f-algolia-app').value = item ? (item.algolia_app_id || '') : '';
+  document.getElementById('cref-f-algolia-key').value = item ? (item.algolia_api_key || '') : '';
+  document.getElementById('cref-f-algolia-idx').value = item ? (item.algolia_index || '') : '';
   document.getElementById('cref-f-obs').value = item ? (item.observacoes || '') : '';
 
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -8963,6 +8975,9 @@ async function crefSalvar() {
     payload.usuario = document.getElementById('cref-f-usuario').value.trim();
     payload.senha = document.getElementById('cref-f-senha').value;
     payload.espelho_nuvem = document.getElementById('cref-f-espelho').value;
+    payload.algolia_app_id = document.getElementById('cref-f-algolia-app').value.trim();
+    payload.algolia_api_key = document.getElementById('cref-f-algolia-key').value.trim();
+    payload.algolia_index = document.getElementById('cref-f-algolia-idx').value.trim();
   }
 
   var r;

@@ -1250,10 +1250,66 @@ async function _loginFormulario(item) {
     return { cookies: cookiesFinal, url_base: urlBase, tipo: 'form-login' };
 }
 
+// Busca produtos via API Algolia InstantSearch — contorna WAF pois chama
+// diretamente os servidores Algolia (*.algolia.net) sem passar pelo site.
+// Retorna { itens, formato, total } ou { falha, motivo }
+function _buscarAlgolia(item, termo) {
+    return new Promise((resolve, reject) => {
+        const appId = (item.algolia_app_id || '').trim();
+        const apiKey = (item.algolia_api_key || '').trim();
+        const index  = (item.algolia_index  || '').trim();
+        if (!appId || !apiKey || !index) {
+            return resolve({ falha: true, motivo: 'Configuração Algolia incompleta (App ID, API Key ou Índice ausente)' });
+        }
+        const body = Buffer.from(JSON.stringify({ query: termo, hitsPerPage: 40 }));
+        const options = {
+            hostname: `${appId}-dsn.algolia.net`,
+            path: `/1/indexes/${encodeURIComponent(index)}/query`,
+            method: 'POST',
+            headers: {
+                'X-Algolia-Application-Id': appId,
+                'X-Algolia-API-Key': apiKey,
+                'Content-Type': 'application/json',
+                'Content-Length': body.length,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+        };
+        const req = https.request(options, res => {
+            const chunks = [];
+            res.on('data', d => chunks.push(d));
+            res.on('end', () => {
+                try {
+                    const data = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
+                    if (!data.hits) return resolve({ falha: true, motivo: `Algolia HTTP ${res.statusCode}: ${Buffer.concat(chunks).toString('utf-8').substring(0, 200)}` });
+                    const itens = data.hits.map(h => ({
+                        sku: h.sku || h.objectID || '',
+                        nome: h.name || h.nome || h.title || h.titulo || '',
+                        preco: h.price != null ? h.price : (h.preco != null ? h.preco : ''),
+                        marca: h.brand || h.marca || h.fabricante || '',
+                        categoria: h.category || h.categoria || '',
+                        imagem: h.image || h.imagem || h.thumbnail || '',
+                        url: h.url || h.link || '',
+                    }));
+                    resolve({ itens, formato: 'algolia', total: data.nbHits || itens.length, url_usada: `algolia://${appId}/${index}` });
+                } catch (e) { resolve({ falha: true, motivo: 'Erro ao parsear resposta Algolia: ' + e.message }); }
+            });
+        });
+        req.on('error', e => resolve({ falha: true, motivo: 'Erro de rede Algolia: ' + e.message }));
+        req.setTimeout(12000, () => { req.destroy(); resolve({ falha: true, motivo: 'Timeout Algolia (12s)' }); });
+        req.write(body);
+        req.end();
+    });
+}
+
 // Busca produtos em um conector autenticado pesquisando por termo.
 // Usado pelo agente de auto-enriquecimento para consultar fornecedores.
 // Retorna { itens, formato } ou { falha, motivo }
 async function _buscarNoConector(item, termo) {
+    // Algolia tem prioridade: sem scraping, sem WAF, sem login
+    if (item.algolia_app_id && item.algolia_api_key && item.algolia_index) {
+        return _buscarAlgolia(item, termo);
+    }
+
     let sessao;
     if (item.usuario && item.senha) {
         sessao = await _loginFormulario(item);
@@ -1517,10 +1573,20 @@ function _scrapeMagentoHtml(html) {
 // Testa se um conector consegue se conectar ao URL cadastrado.
 // Em caso de 401: obtém token Magento 2 e retorna sucesso imediatamente
 // (obter o token já prova que as credenciais são válidas).
+// Se configurado com Algolia, testa conectividade diretamente na API Algolia.
 app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
         if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+
+        // Teste de conectividade Algolia
+        if (item.algolia_app_id && item.algolia_api_key && item.algolia_index) {
+            const t0 = Date.now();
+            const r = await _buscarAlgolia(item, 'filtro');
+            if (r.falha) return res.json({ ok: false, erro: r.motivo, latencia_ms: Date.now() - t0 });
+            return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, auth_tipo: 'algolia', content_type: 'application/json', preview: `Algolia OK — ${r.total} resultados para "filtro" no índice ${item.algolia_index}. Busca direta via API (sem login).` });
+        }
+
         if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
 
         const t0 = Date.now();
@@ -1549,7 +1615,7 @@ app.post('/api/ntc-referencias/:id/buscar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
         if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
-        if (!item.url) return res.status(400).json({ ok: false, erro: 'Conector sem URL.' });
+        if (!item.url && !(item.algolia_app_id && item.algolia_api_key && item.algolia_index)) return res.status(400).json({ ok: false, erro: 'Conector sem URL nem configuração Algolia.' });
         const termo = (req.body && req.body.termo) || '';
         if (!termo.trim()) return res.status(400).json({ ok: false, erro: 'Parâmetro "termo" obrigatório.' });
         const resultado = await _buscarNoConector(item, termo.trim());
