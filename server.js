@@ -1742,7 +1742,7 @@ app.post('/api/ntc-referencias/:id/renovar-chave', async (req, res) => {
 });
 
 // Exporta TODOS os produtos do índice Algolia como CSV para download no PC.
-// Usa a Browse API do Algolia (cursor-based) sem limite de registros.
+// Usa a Browse API (cursor-based) e inclui TODOS os campos brutos do índice.
 app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
@@ -1753,63 +1753,77 @@ app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
         const appId  = item.algolia_app_id.trim();
         const apiKey = item.algolia_api_key.trim();
         const index  = item.algolia_index.trim();
-        const _v = f => f == null ? '' : (typeof f === 'object' && !Array.isArray(f) ? String(f.v ?? f.value ?? '') : String(f));
-        const csvEsc = s => `"${String(s || '').replace(/"/g, '""')}"`;
+        const csvEsc = s => `"${String(s == null ? '' : s).replace(/"/g, '""')}"`;
+
+        // Planifica um campo: { v: valor } → valor, array → pipe-separated, objeto → JSON
+        const flat = (v) => {
+            if (v == null) return '';
+            if (typeof v === 'object' && !Array.isArray(v)) {
+                if ('v' in v) return String(v.v ?? '');
+                if ('value' in v) return String(v.value ?? '');
+                return JSON.stringify(v);
+            }
+            if (Array.isArray(v)) return v.map(flat).join('|');
+            return String(v);
+        };
+
+        // Campos a excluir (internos do Algolia, sem valor para o usuário)
+        const EXCLUIR = new Set(['_highlightResult', '_snippetResult', '_rankingInfo', '_distinctSeqID']);
+
+        const _browse = (cursorParam) => new Promise((resolve) => {
+            const qs = cursorParam ? `cursor=${encodeURIComponent(cursorParam)}` : 'query=&hitsPerPage=1000';
+            const opts = {
+                hostname: `${appId}-dsn.algolia.net`,
+                path: `/1/indexes/${encodeURIComponent(index)}/browse?${qs}`,
+                method: 'GET',
+                headers: { 'X-Algolia-Application-Id': appId, 'X-Algolia-API-Key': apiKey },
+            };
+            const r2 = https.request(opts, resp => {
+                const chunks = [];
+                resp.on('data', d => chunks.push(d));
+                resp.on('end', () => {
+                    try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); }
+                    catch (e) { resolve({ error: e.message }); }
+                });
+            });
+            r2.on('error', e => resolve({ error: e.message }));
+            r2.setTimeout(30000, () => { r2.destroy(); resolve({ error: 'timeout' }); });
+            r2.end();
+        });
+
+        // Primeira página para descobrir todos os campos disponíveis
+        const primeira = await _browse(null);
+        if (primeira.error || !primeira.hits || !primeira.hits.length) {
+            return res.status(502).json({ ok: false, erro: primeira.error || 'Sem resultados no índice.' });
+        }
+        // Coleta todas as chaves únicas da primeira página (descobre esquema)
+        const colunasSet = new Set(['objectID']);
+        for (const h of primeira.hits) {
+            for (const k of Object.keys(h)) {
+                if (!EXCLUIR.has(k)) colunasSet.add(k);
+            }
+        }
+        const colunas = [...colunasSet];
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="pellegrino-${index}-${new Date().toISOString().slice(0,10)}.csv"`);
-        res.write('﻿'); // BOM para Excel reconhecer UTF-8
-        res.write('sku;nome;ean;ncm;codigo_fabricante;marca;aplicacao;linha;preco;categoria;url\r\n');
+        res.setHeader('Content-Disposition', `attachment; filename="${index}-${new Date().toISOString().slice(0,10)}.csv"`);
+        res.write('﻿'); // BOM UTF-8 para Excel
+        res.write(colunas.map(csvEsc).join(';') + '\r\n');
 
-        let cursor = null;
-        let total = 0;
-        do {
-            const result = await new Promise((resolve) => {
-                const qs = cursor ? `cursor=${encodeURIComponent(cursor)}` : 'query=&hitsPerPage=1000';
-                const options = {
-                    hostname: `${appId}-dsn.algolia.net`,
-                    path: `/1/indexes/${encodeURIComponent(index)}/browse?${qs}`,
-                    method: 'GET',
-                    headers: {
-                        'X-Algolia-Application-Id': appId,
-                        'X-Algolia-API-Key': apiKey,
-                    },
-                };
-                const req2 = https.request(options, r2 => {
-                    const chunks = [];
-                    r2.on('data', d => chunks.push(d));
-                    r2.on('end', () => {
-                        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); }
-                        catch (e) { resolve({ error: e.message }); }
-                    });
-                });
-                req2.on('error', e => resolve({ error: e.message }));
-                req2.setTimeout(30000, () => { req2.destroy(); resolve({ error: 'timeout' }); });
-                req2.end();
-            });
-            if (result.error || !result.hits) break;
-            for (const h of result.hits) {
-                const cat1 = _v(h.categoria_1_b2b || h.categoria_1);
-                const cat2 = _v(h.categoria_2_b2b || h.categoria_2);
-                const cat3 = _v(h.categoria_3_b2b || h.categoria_3);
-                const nome = [cat1, cat2, cat3].filter(Boolean).join(' › ') || h.name || h.nome || '';
-                res.write([
-                    csvEsc(h.objectID || h.sku || ''),
-                    csvEsc(nome),
-                    csvEsc(_v(h.ean) || _v(h.ean_code) || ''),
-                    csvEsc(_v(h.ncm) || ''),
-                    csvEsc(_v(h.codigo_fabricante_br) || _v(h.codigo_fabricante) || ''),
-                    csvEsc(_v(h.marca) || _v(h.fabricante) || h.brand || ''),
-                    csvEsc(_v(h.aplicacao) || ''),
-                    csvEsc(h.linha || ''),
-                    csvEsc(h.price != null ? h.price : (h.preco != null ? h.preco : '')),
-                    csvEsc([cat1, cat2, cat3].filter(Boolean).join(' › ') || h.category || ''),
-                    csvEsc(h.url || h.link || ''),
-                ].join(';') + '\r\n');
-                total++;
+        const escreverPagina = (hits) => {
+            for (const h of hits) {
+                res.write(colunas.map(k => csvEsc(flat(h[k]))).join(';') + '\r\n');
             }
-            cursor = result.cursor || null;
-        } while (cursor);
+        };
+
+        escreverPagina(primeira.hits);
+        let cursor = primeira.cursor || null;
+        while (cursor) {
+            const pg = await _browse(cursor);
+            if (pg.error || !pg.hits) break;
+            escreverPagina(pg.hits);
+            cursor = pg.cursor || null;
+        }
 
         res.end();
     } catch (e) {
