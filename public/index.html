@@ -282,6 +282,7 @@ tr:hover td{background:#f9fafb}
   <div class="sb-section-label">Plataforma</div>
   <div class="sb-item" onclick="nav('pdv')"><span class="icon">🏛️</span>PDV</div>
   <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🤖</span>Auto-Enriquecimento 24/7</div>
+  <div class="sb-item" onclick="nav('cadastro-massa')"><span class="icon">📦</span>Cadastro em Massa OEM</div>
   <div class="sb-item" onclick="nav('conectores-ntc')"><span class="icon">🔌</span>Conectores NTC</div>
   <div class="sb-item" onclick="nav('performance')"><span class="icon">⚡</span>Painel de Performance</div>
   <div class="sb-item" onclick="nav('categoria')"><span class="icon">🏷️</span>Categoria</div>
@@ -1769,6 +1770,79 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
       </div>
     </div>
+    <!-- CADASTRO EM MASSA E ENRIQUECIMENTO OEM DNA -->
+    <div class="page" id="page-cadastro-massa">
+      <div class="page-title">&#128230; Cadastro em Massa &amp; Enriquecimento OEM DNA</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Importa em lote o cat&aacute;logo completo do fornecedor (via Conector Algolia ou CSV baixado) e coloca todos os produtos na fila do Auto-Enriquecimento 24/7: o agente preenche OEM/EAN/NCM/aplica&ccedil;&atilde;o/motor/imagens e preserva a Linhagem Geneal&oacute;gica do fornecedor.</p>
+
+      <!-- Importar via Conector Algolia -->
+      <div class="card">
+        <div class="card-title">&#128269; Importar via Conector Algolia</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Baixa diretamente do &iacute;ndice Algolia configurado no conector, sem precisar do CSV. Cada p&aacute;gina de 200 produtos &eacute; salva automaticamente.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="cm-conector-sel" style="max-width:280px">
+            <option value="">Selecione um conector Algolia...</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="cmIniciarAlgolia()" id="cm-algolia-btn">&#9654;&#65039; Iniciar importa&ccedil;&atilde;o</button>
+          <button class="btn btn-secondary btn-sm" onclick="cmPararAlgolia()" id="cm-algolia-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
+        </div>
+        <div id="cm-algolia-prog-wrap" style="display:none;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+            <span id="cm-algolia-prog-txt">Aguardando...</span>
+            <span id="cm-algolia-prog-pct">0%</span>
+          </div>
+          <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
+            <div id="cm-algolia-prog-bar" style="height:100%;width:0%;background:#ff6500;transition:width .3s"></div>
+          </div>
+        </div>
+        <div id="cm-algolia-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+        <div id="cm-algolia-stats" style="margin-top:8px;display:none">
+          <div class="grid4" id="cm-algolia-stats-grid" style="gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- Importar CSV do Pellegrino -->
+      <div class="card">
+        <div class="card-title">&#128196; Importar CSV do Pellegrino</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Carregue o CSV baixado pelo bot&atilde;o &#11015;&#65039; CSV no conector. O sistema detecta automaticamente o formato Pellegrino e importa em lotes de 200 produtos.</div>
+        <div style="margin-bottom:10px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            &#128196; Selecionar arquivo CSV
+            <input type="file" id="cm-csv-file" accept=".csv,.txt" style="display:none" onchange="cmCarregarCsv(this)">
+          </label>
+          <span id="cm-csv-nome" style="font-size:12px;color:#aaa;margin-left:8px"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;color:#ccc">
+            Fornecedor: <input type="text" id="cm-csv-fornecedor" placeholder="ex: Pellegrino" value="Pellegrino" style="max-width:160px">
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="cmIniciarCsv()" id="cm-csv-btn" disabled>&#9654;&#65039; Importar CSV</button>
+          <button class="btn btn-secondary btn-sm" onclick="cmPararCsv()" id="cm-csv-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
+        </div>
+        <div id="cm-csv-prog-wrap" style="display:none;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+            <span id="cm-csv-prog-txt">Aguardando...</span>
+            <span id="cm-csv-prog-pct">0%</span>
+          </div>
+          <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
+            <div id="cm-csv-prog-bar" style="height:100%;width:0%;background:#00b4d8;transition:width .3s"></div>
+          </div>
+        </div>
+        <div id="cm-csv-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+      </div>
+
+      <!-- Enriquecimento OEM DNA -->
+      <div class="card">
+        <div class="card-title">&#129516; Enriquecimento OEM DNA ap&oacute;s importa&ccedil;&atilde;o</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">O Auto-Enriquecimento 24/7 j&aacute; processa os produtos importados automaticamente. Para acelerar, rode um ciclo extra agora ou ative o job cont&iacute;nuo.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="cmRodarEnriquecimento()">&#9654;&#65039; Rodar ciclo de enriquecimento agora</button>
+          <button class="btn btn-secondary btn-sm" onclick="nav('plataforma-int')">&#129302; Ir para Auto-Enriquecimento 24/7</button>
+        </div>
+        <div id="cm-enrich-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
+    </div>
+
     <div class="page" id="page-performance">
       <div class="page-title">&#9889; Painel de Performance</div>
       <p style="color:#666;font-size:13px;margin-bottom:16px">Monitoramento em tempo real da sa&uacute;de do indexador: capacidade do servidor (CPU/RAM), qualidade da conex&atilde;o com a internet e das fontes de IA/busca, e taxa de erro do enriquecimento autom&aacute;tico — para o lojista acompanhar o desempenho e garantir que o agente de IA n&atilde;o perca qualidade nem "alucine" por falta de recursos ou conex&atilde;o.</p>
@@ -1829,9 +1903,37 @@ MEDIDA LARGURA  25 MM"></textarea>
 
       <!-- B: Espelho em nuvem -->
       <div class="card">
-        <div class="card-title">&#9729;&#65039; C&oacute;pia Espelhada em Nuvem (Wix)</div>
-        <p style="font-size:12px;color:#888;margin-bottom:8px">Tudo que for raspado pelos conectores acima pode ser copiado tamb&eacute;m para uma cole&ccedil;&atilde;o no Wix, servindo de backup e refer&ecirc;ncia cruzada com espa&ccedil;o sobrando.</p>
+        <div class="card-title">&#9729;&#65039; Espelho em Nuvem &mdash; Wix &amp; Google Drive</div>
+        <p style="font-size:12px;color:#888;margin-bottom:8px">Produtos aprovados (NTC&nbsp;&ge;&nbsp;95%) s&atilde;o exportados automaticamente para o Wix e/ou Google Drive conforme configurado em cada conector.</p>
         <div id="cref-espelho-info" style="font-size:12px"></div>
+
+        <!-- Google Drive / Sheets -->
+        <div id="cref-drive-info" style="margin-top:12px;display:none">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">&#128194; Google Drive / Sheets — Pasta Exclusiva</div>
+          <div id="cref-drive-folder-link" style="margin-bottom:8px;display:none">
+            <a id="cref-drive-folder-anchor" href="#" target="_blank" class="btn btn-secondary btn-sm">&#128194; Abrir Pasta Exclusiva no Drive</a>
+            <span style="font-size:11px;color:#6b7280;margin-left:8px">Pasta vinculada ao conector</span>
+          </div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Gere o link de importa&ccedil;&atilde;o e adicione um Google Sheets na pasta com a f&oacute;rmula abaixo — a planilha se atualiza automaticamente.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <label style="font-size:12px;color:#ccc">NTC m&iacute;nimo:
+              <input type="number" id="drive-ntc-min" value="0.95" min="0" max="1" step="0.01" style="max-width:70px;margin-left:4px">
+            </label>
+            <label style="font-size:12px;color:#ccc">Dec&iacute;s&atilde;o:
+              <select id="drive-decisao" style="max-width:130px;margin-left:4px">
+                <option value="">Qualquer</option>
+                <option value="APROVADO">Aprovado</option>
+              </select>
+            </label>
+            <button class="btn btn-secondary btn-sm" onclick="driveGerarLink()">&#128279; Gerar link &amp; copiar</button>
+            <a id="drive-csv-link" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:none">&#11015;&#65039; Baixar CSV</a>
+          </div>
+          <div id="drive-link-box" style="display:none;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;word-break:break-all;color:#00b4d8"></div>
+          <div id="drive-formula-box" style="display:none;margin-top:6px;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;color:#00ff88"></div>
+          <div style="font-size:11px;color:#6b7280;margin-top:8px">
+            &#128203; <strong>Como usar:</strong> Crie um arquivo Google Sheets na pasta &rarr; em qualquer c&eacute;lula cole a f&oacute;rmula acima &rarr; a planilha importa e atualiza automaticamente os produtos aprovados.
+          </div>
+        </div>
       </div>
 
       <!-- C: Banco de montadoras -->
@@ -1903,10 +2005,20 @@ MEDIDA LARGURA  25 MM"></textarea>
           <div class="form-group" data-tipo="conector"><label>Usu&aacute;rio</label><input id="cref-f-usuario" type="text"></div>
           <div class="form-group" data-tipo="conector"><label>Senha</label><input id="cref-f-senha" type="password"></div>
           <div class="form-group" data-tipo="conector"><label>Espelho em nuvem</label>
-            <select id="cref-f-espelho">
+            <select id="cref-f-espelho" onchange="crefToggleDriveField()">
               <option value="">Nenhum</option>
-              <option value="wix">Wix</option>
+              <option value="wix">&#128995; Wix Stores</option>
+              <option value="drive">&#128194; Google Drive / Sheets</option>
             </select>
+          </div>
+          <div class="form-group" data-tipo="conector" id="cref-drive-folder-group" style="grid-column:1/-1;display:none">
+            <label>&#128194; Pasta Google Drive <span style="font-weight:400;color:#888;font-size:0.85em">(ID da pasta — cole a URL ou só o ID)</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="cref-f-drive-folder" type="text" placeholder="Ex: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" style="flex:1">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="crefAbrirDriveFolder()">&#128194; Abrir pasta</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="crefCriarPastaDrive()">&#10133; Criar nova pasta</button>
+            </div>
+            <small style="color:#888">Cole a URL completa ou só o ID da pasta (parte ap&oacute;s <code>/folders/</code>). Ap&oacute;s salvar, o Genesis gera o link de importa&ccedil;&atilde;o para o Google Sheets.</small>
           </div>
           <div class="form-group" data-tipo="conector" style="grid-column:1/-1">
             <label>&#128269; Algolia <span style="font-weight:400;color:#888;font-size:0.85em">(opcional &mdash; contorna WAF, sem precisa de login)</span></label>
@@ -2295,6 +2407,7 @@ function nav(page, opts) {
   if (page === 'imagens-aprov') imgAprovRender();
   if (page === 'wix') wixVerificarStatus();
   if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
+  if (page === 'cadastro-massa') cmCarregarConectores();
   if (page === 'performance') perfAtualizar();
   else perfPararAuto();
   if (page === 'conectores-ntc') crefCarregar();
@@ -8738,6 +8851,221 @@ var CREF_TIPO_LABELS = { montadora: 'Montadora', fabricante: 'Fabricante/Importa
 var _crefDados = { montadora: [], fabricante: [], catalogo: [], conector: [] };
 var _crefEditando = null; // {tipo, id|null}
 
+// ─── CADASTRO EM MASSA OEM DNA ────────────────────────────────────────────────
+var _cmAlgoliaParado = false;
+var _cmCsvParado    = false;
+var _cmCsvLinhas    = []; // linhas parsed do CSV
+var _cmCsvCabecalho = []; // nomes das colunas
+
+async function cmCarregarConectores() {
+  var sel = document.getElementById('cm-conector-sel');
+  if (!sel) return;
+  try {
+    var r = await api('GET', '/ntc-referencias');
+    var conectores = ((r && r.itens) || []).filter(function(it) {
+      return it.tipo === 'conector' && it.algolia_app_id && it.algolia_api_key && it.algolia_index;
+    });
+    sel.innerHTML = '<option value="">Selecione um conector Algolia...</option>'
+      + conectores.map(function(c) {
+          return '<option value="' + c.id + '">' + esc(c.nome) + '</option>';
+        }).join('');
+  } catch (e) {
+    var msgEl = document.getElementById('cm-algolia-msg');
+    if (msgEl) msgEl.innerHTML = '&#10060; Erro ao carregar conectores: ' + esc(e.message);
+  }
+}
+
+async function cmIniciarAlgolia() {
+  var sel = document.getElementById('cm-conector-sel');
+  var id = sel && sel.value;
+  if (!id) { alert('Selecione um conector Algolia.'); return; }
+  _cmAlgoliaParado = false;
+  var btnIni  = document.getElementById('cm-algolia-btn');
+  var btnStop = document.getElementById('cm-algolia-parar-btn');
+  var progWrap = document.getElementById('cm-algolia-prog-wrap');
+  var progBar  = document.getElementById('cm-algolia-prog-bar');
+  var progTxt  = document.getElementById('cm-algolia-prog-txt');
+  var progPct  = document.getElementById('cm-algolia-prog-pct');
+  var msgEl    = document.getElementById('cm-algolia-msg');
+  var statsDiv = document.getElementById('cm-algolia-stats');
+  var statsGrid= document.getElementById('cm-algolia-stats-grid');
+
+  btnIni.disabled = true;
+  if (btnStop) { btnStop.style.display = ''; }
+  if (progWrap) progWrap.style.display = '';
+  if (statsDiv) statsDiv.style.display = 'none';
+
+  var pagina = 0, totalPag = null, totalAlgolia = 0;
+  var totalInseridos = 0, totalAtualizados = 0, totalSalvos = 0;
+
+  while (!_cmAlgoliaParado) {
+    if (progTxt) progTxt.textContent = 'Buscando página ' + (pagina + 1) + (totalPag ? ' de ' + totalPag : '') + '…';
+    try {
+      var r = await api('POST', '/ntc-referencias/' + id + '/importar-algolia-pagina', { pagina: pagina, hitsPerPage: 200 });
+      if (!r.ok) {
+        if (msgEl) msgEl.innerHTML = '&#10060; Erro: ' + esc(r.erro || 'Falha desconhecida');
+        break;
+      }
+      totalPag     = r.total_paginas;
+      totalAlgolia = r.total_algolia;
+      totalSalvos += r.salvos || 0;
+      totalInseridos  += r.inseridos || 0;
+      totalAtualizados += r.atualizados || 0;
+
+      var pct = totalPag ? Math.round(((pagina + 1) / totalPag) * 100) : 0;
+      if (progBar) progBar.style.width = pct + '%';
+      if (progPct) progPct.textContent = pct + '%';
+      if (progTxt) progTxt.textContent = 'Pág. ' + (pagina + 1) + '/' + totalPag + ' — ' + totalSalvos.toLocaleString('pt-BR') + ' de ' + totalAlgolia.toLocaleString('pt-BR') + ' produtos';
+
+      pagina++;
+      if (pagina >= totalPag) break;
+    } catch (e) {
+      if (msgEl) msgEl.innerHTML = '&#10060; Erro de rede: ' + esc(e.message);
+      break;
+    }
+  }
+
+  btnIni.disabled = false;
+  if (btnStop) btnStop.style.display = 'none';
+  if (progBar) progBar.style.width = (_cmAlgoliaParado ? progBar.style.width : '100%');
+
+  if (statsDiv) statsDiv.style.display = '';
+  if (statsGrid) statsGrid.innerHTML = [
+    { l: 'Total Algolia', v: totalAlgolia.toLocaleString('pt-BR') },
+    { l: 'Salvos', v: totalSalvos.toLocaleString('pt-BR') },
+    { l: 'Novos', v: totalInseridos.toLocaleString('pt-BR') },
+    { l: 'Atualizados', v: totalAtualizados.toLocaleString('pt-BR') },
+  ].map(function(s) {
+    return '<div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:8px;padding:10px;text-align:center">'
+      + '<div style="font-size:20px;font-weight:700;color:#ff6500">' + s.v + '</div>'
+      + '<div style="font-size:11px;color:#6b7280;margin-top:2px">' + s.l + '</div></div>';
+  }).join('');
+
+  if (msgEl) {
+    if (_cmAlgoliaParado) {
+      msgEl.innerHTML = '&#9646;&#9646; Importação pausada na página ' + pagina + '. ' + totalSalvos.toLocaleString('pt-BR') + ' produtos salvos.';
+    } else {
+      msgEl.innerHTML = '&#10003; Importação concluída! ' + totalSalvos.toLocaleString('pt-BR') + ' produtos importados do catálogo Algolia.';
+    }
+  }
+}
+
+function cmPararAlgolia() {
+  _cmAlgoliaParado = true;
+  var btnStop = document.getElementById('cm-algolia-parar-btn');
+  if (btnStop) btnStop.disabled = true;
+}
+
+function cmCarregarCsv(input) {
+  var nomeEl = document.getElementById('cm-csv-nome');
+  var btnIni = document.getElementById('cm-csv-btn');
+  var msgEl  = document.getElementById('cm-csv-msg');
+  if (!input.files || !input.files[0]) return;
+  var arquivo = input.files[0];
+  if (nomeEl) nomeEl.textContent = arquivo.name;
+  if (msgEl) msgEl.textContent = 'Lendo arquivo…';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var texto = e.target.result;
+      // Detecta e remove BOM UTF-8
+      if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+      var linhas = texto.split(/\r?\n/).filter(function(l) { return l.trim() !== ''; });
+      if (linhas.length < 2) { if (msgEl) msgEl.textContent = '&#10060; CSV sem dados.'; return; }
+      // Detecta separador: , ou ;
+      var sep = linhas[0].indexOf(';') > linhas[0].indexOf(',') ? ';' : ',';
+      var cabecalho = linhas[0].split(sep).map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+      var dados = [];
+      for (var i = 1; i < linhas.length; i++) {
+        var cols = linhas[i].split(sep).map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+        var obj = {};
+        cabecalho.forEach(function(k, idx) { obj[k] = cols[idx] || ''; });
+        dados.push(obj);
+      }
+      _cmCsvCabecalho = cabecalho;
+      _cmCsvLinhas = dados;
+      if (btnIni) { btnIni.disabled = false; }
+      if (msgEl) msgEl.textContent = '✓ ' + dados.length.toLocaleString('pt-BR') + ' produtos encontrados. Colunas: ' + cabecalho.join(', ');
+    } catch (ex) {
+      if (msgEl) msgEl.textContent = '&#10060; Erro ao ler CSV: ' + ex.message;
+    }
+  };
+  reader.readAsText(arquivo, 'UTF-8');
+}
+
+async function cmIniciarCsv() {
+  if (!_cmCsvLinhas.length) { alert('Carregue um arquivo CSV primeiro.'); return; }
+  _cmCsvParado = false;
+  var fornecedor = (document.getElementById('cm-csv-fornecedor') || {}).value || 'Pellegrino';
+  var btnIni  = document.getElementById('cm-csv-btn');
+  var btnStop = document.getElementById('cm-csv-parar-btn');
+  var progWrap = document.getElementById('cm-csv-prog-wrap');
+  var progBar  = document.getElementById('cm-csv-prog-bar');
+  var progTxt  = document.getElementById('cm-csv-prog-txt');
+  var progPct  = document.getElementById('cm-csv-prog-pct');
+  var msgEl    = document.getElementById('cm-csv-msg');
+
+  btnIni.disabled = true;
+  if (btnStop) btnStop.style.display = '';
+  if (progWrap) progWrap.style.display = '';
+
+  var LOTE = 200;
+  var total = _cmCsvLinhas.length;
+  var totalInseridos = 0, totalAtualizados = 0, totalErros = 0;
+
+  for (var i = 0; i < total && !_cmCsvParado; i += LOTE) {
+    var lote = _cmCsvLinhas.slice(i, i + LOTE);
+    var pct = Math.round((i / total) * 100);
+    if (progBar) progBar.style.width = pct + '%';
+    if (progPct) progPct.textContent = pct + '%';
+    if (progTxt) progTxt.textContent = 'Lote ' + Math.ceil((i + 1) / LOTE) + '/' + Math.ceil(total / LOTE) + ' (' + i.toLocaleString('pt-BR') + ' de ' + total.toLocaleString('pt-BR') + ')';
+    try {
+      var r = await api('POST', '/produtos/importar-lote', { itens: lote, fornecedor_nome: fornecedor, fonte: 'fornecedor' });
+      if (r.ok) {
+        totalInseridos  += r.inseridos  || 0;
+        totalAtualizados += r.atualizados || 0;
+        totalErros       += r.erros       || 0;
+      }
+    } catch (_) { totalErros += lote.length; }
+  }
+
+  if (progBar) progBar.style.width = '100%';
+  if (progPct) progPct.textContent = '100%';
+  btnIni.disabled = false;
+  if (btnStop) btnStop.style.display = 'none';
+  if (msgEl) {
+    if (_cmCsvParado) {
+      msgEl.innerHTML = '&#9646;&#9646; Importação pausada. ' + (totalInseridos + totalAtualizados).toLocaleString('pt-BR') + ' produtos processados.';
+    } else {
+      msgEl.innerHTML = '&#10003; Concluído! Novos: <strong>' + totalInseridos.toLocaleString('pt-BR')
+        + '</strong> | Atualizados: <strong>' + totalAtualizados.toLocaleString('pt-BR')
+        + '</strong> | Erros: ' + totalErros.toLocaleString('pt-BR');
+    }
+  }
+}
+
+function cmPararCsv() {
+  _cmCsvParado = true;
+  var btnStop = document.getElementById('cm-csv-parar-btn');
+  if (btnStop) btnStop.disabled = true;
+}
+
+async function cmRodarEnriquecimento() {
+  var msgEl = document.getElementById('cm-enrich-msg');
+  if (msgEl) msgEl.textContent = '⏳ Disparando ciclo de enriquecimento…';
+  try {
+    var r = await api('POST', '/auto-enrich/trigger', { batchSize: 50 });
+    if (r.ok !== false) {
+      if (msgEl) msgEl.innerHTML = '&#10003; Ciclo disparado! Produtos processados: <strong>' + (r.processados || 0) + '</strong>. O job 24/7 continua em segundo plano.';
+    } else {
+      if (msgEl) msgEl.textContent = '&#10060; Erro: ' + (r.erro || 'Falha desconhecida');
+    }
+  } catch (e) {
+    if (msgEl) msgEl.textContent = '&#10060; ' + e.message;
+  }
+}
+// ─── FIM CADASTRO EM MASSA ────────────────────────────────────────────────────
+
 async function crefCarregar() {
   try {
     var r = await api('GET', '/ntc-referencias');
@@ -8769,11 +9097,12 @@ function crefRenderConectores() {
       + '<td style="padding:6px 12px">' + esc(c.nome) + '</td>'
       + '<td style="padding:6px 12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.url || '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.algolia_app_id ? '<span style="background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.8em">🔍 Algolia</span>' : esc(c.usuario || '—')) + '</td>'
-      + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '☁️ Wix' : '—') + '</td>'
+      + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '🟣 Wix' : c.espelho_nuvem === 'drive' ? '📁 Drive' : '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>') + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" title="Testar conexão" onclick="_btnFlash(this);crefTestarConector(' + c.id + ')">🔗 Testar</button> '
       + (c.algolia_app_id && c.usuario ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff" title="Renovar chave Algolia automaticamente via login" onclick="_btnFlash(this);crefRenovarChave(' + c.id + ')">🔄 Renovar</button> ' : '')
+      + (c.algolia_app_id ? '<button class="btn btn-sm" style="background:#6366f1;color:#fff" title="Bookmarklet: renova a chave direto do site do fornecedor" onclick="crefBookmarklet(' + c.id + ')">🔖 Bookmarklet</button> ' : '')
       + (c.algolia_app_id ? '<a class="btn btn-sm" style="background:#0ea5e9;color:#fff;text-decoration:none" title="Baixar todos os produtos como CSV" href="/api/ntc-referencias/' + c.id + '/exportar-algolia" target="_blank">⬇️ CSV</a> ' : '')
       + (c.usuario && !c.algolia_app_id ? '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" title="Autenticar via formulário HTML" onclick="_btnFlash(this);crefLoginConector(' + c.id + ')">🔐 Login</button> ' : '')
       + '<button class="btn btn-primary btn-sm" title="Importar produtos" onclick="_btnFlash(this);crefImportarConector(' + c.id + ')">📥 Importar</button>'
@@ -8788,13 +9117,128 @@ function crefRenderConectores() {
 function crefRenderEspelho() {
   var el = document.getElementById('cref-espelho-info');
   if (!el) return;
-  var ativos = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'wix'; });
-  if (!ativos.length) {
-    el.innerHTML = '<span style="color:#999">Nenhum conector está com espelho em Wix habilitado ainda. Edite um conector acima e selecione "Wix" no campo Espelho em nuvem para ativar a cópia espelhada.</span>';
-    return;
+  var ativosWix   = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'wix'; });
+  var ativosDrive = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'drive'; });
+  var linhas = [];
+  if (ativosWix.length) {
+    linhas.push('<span style="color:#a855f7">🟣 ' + ativosWix.length + ' conector(es) espelhando em Wix:</span> ' + ativosWix.map(function(c) { return esc(c.nome); }).join(', '));
   }
-  el.innerHTML = '<span style="color:#16a34a">☁️ ' + ativos.length + ' conector(es) com cópia espelhada ativa em Wix:</span> '
-    + ativos.map(function(c) { return esc(c.nome); }).join(', ');
+  if (ativosDrive.length) {
+    linhas.push('<span style="color:#16a34a">📁 ' + ativosDrive.length + ' conector(es) espelhando em Google Drive:</span> ' + ativosDrive.map(function(c) { return esc(c.nome); }).join(', '));
+  }
+  if (!linhas.length) {
+    el.innerHTML = '<span style="color:#999">Nenhum espelho ativo ainda. Edite um conector e selecione "Wix Stores" ou "Google Drive / Sheets".</span>';
+  } else {
+    el.innerHTML = linhas.join('<br>');
+  }
+  // Mostra painel Google Drive se houver conectores com drive
+  var driveDiv = document.getElementById('cref-drive-info');
+  if (driveDiv) driveDiv.style.display = ativosDrive.length ? '' : 'none';
+  // Mostra link da pasta se o primeiro conector drive tiver drive_folder_id
+  var folderLinkDiv = document.getElementById('cref-drive-folder-link');
+  var folderAnchor  = document.getElementById('cref-drive-folder-anchor');
+  if (folderLinkDiv && folderAnchor) {
+    var comPasta = ativosDrive.find(function(c) { return c.drive_folder_id; });
+    if (comPasta) {
+      folderAnchor.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(comPasta.drive_folder_id);
+      folderLinkDiv.style.display = '';
+    } else {
+      folderLinkDiv.style.display = 'none';
+    }
+  }
+}
+
+function crefBookmarklet(connectorId) {
+  var genesisUrl = window.location.origin;
+  // Código do bookmarklet: extrai a chave Algolia da página do fornecedor e envia para o Genesis
+  var code = '(function(){'
+    + 'var k=window._aisApiKey||window._aisKey||window.algoliaApiKey||null;'
+    + 'if(!k){'
+    +   'var ss=document.querySelectorAll("script"),i,m;'
+    +   'for(i=0;i<ss.length;i++){'
+    +     'm=/(?:apiKey|_aisApiKey|searchApiKey|algolia[_-]?api[_-]?key)[\'\":\\s=]+[\'\"]((?:[A-Za-z0-9+\\/]){60,}(?:={0,2}))[\'\"]/i.exec(ss[i].textContent);'
+    +     'if(m){k=m[1];break;}'
+    +   '}'
+    + '}'
+    + 'if(!k){'
+    +   'var metas=document.querySelectorAll("meta[name]");'
+    +   'for(i=0;i<metas.length;i++){if(/algolia/i.test(metas[i].name)&&metas[i].content&&metas[i].content.length>20){k=metas[i].content;break;}}'
+    + '}'
+    + 'if(!k){alert("⚠️ Chave Algolia não encontrada nesta página.\\nNavegue até uma página de BUSCA de produtos do fornecedor e tente novamente.");return;}'
+    + 'if(!confirm("✅ Chave encontrada:\\n"+k.substring(0,30)+"...\\n\\nEnviar para o Genesis agora?")){return;}'
+    + 'fetch("' + genesisUrl + '/api/ntc-referencias/' + connectorId + '/renovar-chave-browser",{'
+    +   'method:"POST",'
+    +   'headers:{"Content-Type":"application/json"},'
+    +   'body:JSON.stringify({algolia_api_key:k})'
+    + '}).then(function(r){return r.json();}).then(function(d){'
+    +   'if(d.ok){alert("✅ Chave renovada no Genesis!\\n"+(d.expiry_info||""));}'
+    +   'else{alert("❌ Erro: "+(d.erro||"Falha desconhecida"));}'
+    + '}).catch(function(e){alert("❌ Erro de rede: "+e.message);});'
+    + '})();';
+  var link = 'javascript:' + encodeURIComponent(code);
+
+  // Mostra modal com o bookmarklet
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:#0009;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = '<div style="background:#111;border:1px solid #333;border-radius:12px;padding:24px;max-width:540px;width:100%">'
+    + '<div style="font-size:16px;font-weight:700;margin-bottom:12px">🔖 Bookmarklet — Renovar Chave Algolia</div>'
+    + '<p style="font-size:13px;color:#aaa;margin-bottom:16px">Arraste o botão abaixo para a barra de favoritos do Chrome. Depois, abra o site do Pellegrino logado e clique no favorito — a chave vai direto para o Genesis.</p>'
+    + '<div style="text-align:center;margin-bottom:16px">'
+    + '<a href="' + link + '" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 20px;border-radius:8px;font-weight:700;text-decoration:none;cursor:move;font-size:14px" '
+    + 'onclick="event.preventDefault();alert(\'Arraste este botão para a barra de favoritos do Chrome, não clique aqui.\')">🔖 Renovar Chave Genesis</a>'
+    + '</div>'
+    + '<div style="font-size:12px;color:#6b7280;margin-bottom:16px">'
+    + '<strong style="color:#ccc">Como usar:</strong><br>'
+    + '1. Arraste o botão roxo acima para a barra de favoritos<br>'
+    + '2. Abra <strong>compreonline.pellegrino.com.br</strong> e faça login<br>'
+    + '3. Navegue em qualquer página de produtos ou busca<br>'
+    + '4. Clique no favorito "🔖 Renovar Chave Genesis"<br>'
+    + '5. Confirme — a chave é enviada automaticamente!'
+    + '</div>'
+    + '<button onclick="this.closest(\'div[style]\').remove()" style="background:#333;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;width:100%">Fechar</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
+function crefToggleDriveField() {
+  var sel = document.getElementById('cref-f-espelho');
+  var grp = document.getElementById('cref-drive-folder-group');
+  if (grp) grp.style.display = (sel && sel.value === 'drive') ? '' : 'none';
+}
+
+function crefAbrirDriveFolder() {
+  var id = (document.getElementById('cref-f-drive-folder') || {}).value || '';
+  var match = id.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  var folderId = match ? match[1] : id.trim();
+  if (!folderId) { alert('Cole o ID ou URL da pasta primeiro.'); return; }
+  window.open('https://drive.google.com/drive/folders/' + encodeURIComponent(folderId), '_blank');
+}
+
+function crefCriarPastaDrive() {
+  // Abre o Google Drive para que o usuário crie a pasta manualmente e cole o ID
+  window.open('https://drive.google.com/drive/my-drive', '_blank');
+  setTimeout(function() {
+    alert('No Google Drive:\n1. Clique em "+ Novo" → "Pasta"\n2. Nomeie como "Genesis Indexa 360 - Catálogo"\n3. Abra a pasta criada\n4. Copie o ID da URL (após /folders/)\n5. Cole aqui no campo "Pasta Google Drive"');
+  }, 500);
+}
+
+function driveGerarLink() {
+  var ntcMin  = (document.getElementById('drive-ntc-min') || {}).value || '0.95';
+  var decisao = (document.getElementById('drive-decisao') || {}).value || '';
+  var base = window.location.origin + '/api/produtos/export-csv?ntc_min=' + encodeURIComponent(ntcMin);
+  if (decisao) base += '&decisao=' + encodeURIComponent(decisao);
+  var formula = '=IMPORTDATA("' + base + '")';
+  var box     = document.getElementById('drive-link-box');
+  var fBox    = document.getElementById('drive-formula-box');
+  var link    = document.getElementById('drive-csv-link');
+  if (box)  { box.style.display  = ''; box.textContent = base; }
+  if (fBox) { fBox.style.display = ''; fBox.textContent = formula; }
+  if (link) { link.href = base; link.style.display = ''; }
+  // Copia a fórmula para o clipboard (mais útil para colar no Sheets)
+  try { navigator.clipboard.writeText(formula); } catch (_) {
+    try { navigator.clipboard.writeText(base); } catch (_2) {}
+  }
 }
 
 function crefRenderMontadoras() {
@@ -8940,7 +9384,9 @@ function crefAbrirForm(tipo, id) {
   document.getElementById('cref-f-algolia-app').value = item ? (item.algolia_app_id || '') : '';
   document.getElementById('cref-f-algolia-key').value = item ? (item.algolia_api_key || '') : '';
   document.getElementById('cref-f-algolia-idx').value = item ? (item.algolia_index || '') : '';
+  document.getElementById('cref-f-drive-folder').value = item ? (item.drive_folder_id || '') : '';
   document.getElementById('cref-f-obs').value = item ? (item.observacoes || '') : '';
+  crefToggleDriveField();
 
   card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -8980,6 +9426,10 @@ async function crefSalvar() {
     payload.algolia_app_id = document.getElementById('cref-f-algolia-app').value.trim();
     payload.algolia_api_key = document.getElementById('cref-f-algolia-key').value.trim();
     payload.algolia_index = document.getElementById('cref-f-algolia-idx').value.trim();
+    // Extrai ID da pasta a partir de URL completa ou ID direto
+    var driveRaw = document.getElementById('cref-f-drive-folder').value.trim();
+    var driveMatch = driveRaw.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    payload.drive_folder_id = driveMatch ? driveMatch[1] : driveRaw;
   }
 
   var r;
