@@ -1098,6 +1098,60 @@ function _parseConectorCorpo(corpo, contentType) {
     return { formato: 'html', itens: [], preview: corpo.substring(0, 800) };
 }
 
+// Raspa produtos de uma página HTML de catálogo Magento 2.
+// Tenta JSON-LD estruturado primeiro; cai para regex de classes Magento se não encontrar.
+// Retorna { formato, itens, total } ou null se não parece catálogo Magento.
+function _scrapeMagentoHtml(html) {
+    let itens = [], m;
+
+    // 1) JSON-LD — dados estruturados (Product ou ItemList)
+    const ldRe = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    while ((m = ldRe.exec(html)) !== null) {
+        try {
+            const d = JSON.parse(m[1]);
+            const lista = d['@graph'] ? d['@graph'].filter(x => x && x['@type'] === 'Product')
+                        : d['@type'] === 'ItemList' ? (d.itemListElement || []).map(x => (x.item || x)).filter(x => x && x.name)
+                        : d['@type'] === 'Product' ? [d] : [];
+            lista.forEach(p => {
+                if (!p.name) return;
+                const of = p.offers ? (Array.isArray(p.offers) ? p.offers[0] : p.offers) : {};
+                itens.push({ sku: p.sku || p.productID || '', nome: p.name, preco: of.price || of.priceCurrency ? of.price || '' : '', url: p.url || '', imagem: Array.isArray(p.image) ? p.image[0] : (p.image || '') });
+            });
+        } catch (_) {}
+    }
+    if (itens.length > 0) return { formato: 'magento-html', itens, total: itens.length };
+
+    // 2) HTML regex — classes padrão do Magento 2 frontend
+    if (!html.includes('product-item-link') && !html.includes('product-item-name')) return null;
+
+    const _esc = s => s.replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]+>/g, '').trim();
+
+    // Extrai nomes e URLs dos produtos
+    const linkRe = /class="product-item-link"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+    while ((m = linkRe.exec(html)) !== null) {
+        const nome = _esc(m[2]);
+        if (nome) itens.push({ sku: '', nome, preco: '', url: m[1], imagem: '' });
+    }
+    if (!itens.length) return null;
+
+    // Extrai preços numéricos via data-price-amount (mais confiável que texto formatado)
+    const precoRe = /data-price-amount="([0-9.]+)"/g;
+    let pi = 0;
+    while ((m = precoRe.exec(html)) !== null && pi < itens.length) itens[pi++].preco = m[1];
+
+    // Extrai SKUs via data-product-sku ou data-item-id
+    const skuRe = /data-product-sku="([^"]+)"/g;
+    let si = 0;
+    while ((m = skuRe.exec(html)) !== null && si < itens.length) itens[si++].sku = m[1];
+
+    // Extrai imagem principal
+    const imgRe = /class="product-image-photo"[^>]+src="([^"]+)"/g;
+    let ii = 0;
+    while ((m = imgRe.exec(html)) !== null && ii < itens.length) itens[ii++].imagem = m[1];
+
+    return { formato: 'magento-html', itens, total: itens.length };
+}
+
 // Testa se um conector consegue se conectar ao URL cadastrado.
 // Em caso de 401: obtém token Magento 2 e retorna sucesso imediatamente
 // (obter o token já prova que as credenciais são válidas).
@@ -1167,6 +1221,31 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
         }
 
         if (r.status >= 400) return res.json({ ok: false, erro: `Servidor respondeu com HTTP ${r.status}.`, status: r.status });
+
+        // Tenta raspar HTML de catálogo Magento (URL pública de listagem/busca)
+        const ct = (r.content_type || '').toLowerCase();
+        if (ct.includes('text/html') || (r.corpo.includes('product-item') || r.corpo.includes('application/ld+json'))) {
+            const primPag = _scrapeMagentoHtml(r.corpo);
+            if (primPag && primPag.itens.length > 0) {
+                let todosItens = primPag.itens.slice();
+                // Paginação automática — tenta até 9 páginas extras para atingir `limite`
+                try {
+                    const urlBase = new URL(item.url);
+                    const paginaInicial = parseInt(urlBase.searchParams.get('p') || '1');
+                    for (let p = paginaInicial + 1; todosItens.length < limite && p <= paginaInicial + 9; p++) {
+                        urlBase.searchParams.set('p', String(p));
+                        const rp = await _fetchConector(urlBase.toString(), item.usuario, item.senha);
+                        if (rp.status !== 200) break;
+                        const pag = _scrapeMagentoHtml(rp.corpo);
+                        if (!pag || !pag.itens.length) break;
+                        // Detecta última página (mesmos produtos da anterior)
+                        if (pag.itens[0].nome === todosItens[todosItens.length - pag.itens.length]?.nome) break;
+                        todosItens = todosItens.concat(pag.itens);
+                    }
+                } catch (_) {}
+                return res.json({ ok: true, formato: 'magento-html', total: todosItens.length, preview_itens: todosItens.slice(0, limite), latencia_ms: r.latencia_ms });
+            }
+        }
 
         const { formato, itens, total, preview } = _parseConectorCorpo(r.corpo, r.content_type);
         res.json({ ok: true, formato, total: total || itens.length, preview_itens: itens.slice(0, limite), latencia_ms: r.latencia_ms, preview_html: preview });
