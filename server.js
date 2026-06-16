@@ -1975,6 +1975,43 @@ app.post('/api/auto-enrich/toggle', (req, res) => {
     res.json({ ok: true, habilitado });
 });
 
+// ─── EXPORT APROVADOS — CSV para Google Sheets / Drive / Bling / Wix ─────────
+// Retorna produtos com NTC ≥ ntc_min (padrão 0.95) como CSV BOM-UTF-8.
+// Google Sheets pode importar via =IMPORTDATA("URL") sem credenciais.
+app.get('/api/produtos/export-csv', (req, res) => {
+    const ntcMin  = Math.max(0, Math.min(1, parseFloat(req.query.ntc_min  || '0.95')));
+    const decisao = (req.query.decisao || '').trim();
+    const limite  = Math.min(parseInt(req.query.limite || '50000') || 50000, 50000);
+    try {
+        let sql = 'SELECT * FROM produtos WHERE ntc >= @ntcMin';
+        const params = { ntcMin };
+        if (decisao) { sql += ' AND decisao = @decisao'; params.decisao = decisao; }
+        sql += ' ORDER BY ntc DESC LIMIT @limite';
+        params.limite = limite;
+        const rows = db.db.prepare(sql).all(params);
+
+        const campos = ['sku','nome','ean','ncm','fabricante','codigo_oem','aplicacao',
+            'preco_custo','categoria','subcategoria','linha','url_fornecedor','imagem',
+            'ntc','decisao','fornecedor_nome','fonte'];
+        const esc = v => {
+            const s = v == null ? '' : String(v);
+            return /[,"\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+        };
+        const linhas = ['﻿' + campos.join(',')];
+        for (const row of rows) {
+            let d = {};
+            try { d = JSON.parse(row.dados_json || '{}'); } catch (_) {}
+            linhas.push(campos.map(c => esc(row[c] != null ? row[c] : d[c])).join(','));
+        }
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition',
+            `attachment; filename="genesis-aprovados-ntc${Math.round(ntcMin*100)}.csv"`);
+        res.send(linhas.join('\r\n'));
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // ─── CADASTRO EM MASSA — importar lote de produtos ────────────────────────────
 // Recebe { itens: [...], fornecedor_nome, fonte } e faz upsert em lote.
 // Campos dos itens seguem o padrão Algolia/CSV do Pellegrino B2B.

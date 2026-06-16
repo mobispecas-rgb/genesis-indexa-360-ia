@@ -1903,9 +1903,32 @@ MEDIDA LARGURA  25 MM"></textarea>
 
       <!-- B: Espelho em nuvem -->
       <div class="card">
-        <div class="card-title">&#9729;&#65039; C&oacute;pia Espelhada em Nuvem (Wix)</div>
-        <p style="font-size:12px;color:#888;margin-bottom:8px">Tudo que for raspado pelos conectores acima pode ser copiado tamb&eacute;m para uma cole&ccedil;&atilde;o no Wix, servindo de backup e refer&ecirc;ncia cruzada com espa&ccedil;o sobrando.</p>
+        <div class="card-title">&#9729;&#65039; Espelho em Nuvem &mdash; Wix &amp; Google Drive</div>
+        <p style="font-size:12px;color:#888;margin-bottom:8px">Produtos aprovados (NTC&nbsp;&ge;&nbsp;95%) s&atilde;o exportados automaticamente para o Wix e/ou Google Drive conforme configurado em cada conector.</p>
         <div id="cref-espelho-info" style="font-size:12px"></div>
+
+        <!-- Google Drive / Sheets -->
+        <div id="cref-drive-info" style="margin-top:12px;display:none">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">&#128194; Google Drive / Sheets</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Cole o link abaixo em uma c&eacute;lula do Google Sheets: <code>=IMPORTDATA("URL")</code> para importar automaticamente os produtos aprovados (NTC&nbsp;&ge;&nbsp;95%).</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <label style="font-size:12px;color:#ccc">NTC m&iacute;nimo:
+              <input type="number" id="drive-ntc-min" value="0.95" min="0" max="1" step="0.01" style="max-width:70px;margin-left:4px">
+            </label>
+            <label style="font-size:12px;color:#ccc">Dec&nbsp;is&atilde;o:
+              <select id="drive-decisao" style="max-width:130px;margin-left:4px">
+                <option value="">Qualquer</option>
+                <option value="APROVADO">Aprovado</option>
+              </select>
+            </label>
+            <button class="btn btn-secondary btn-sm" onclick="driveGerarLink()">&#128279; Gerar link</button>
+            <a id="drive-csv-link" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:none">&#11015;&#65039; Baixar CSV</a>
+          </div>
+          <div id="drive-link-box" style="display:none;background:#0d0d0d;border:1px solid #1f1f1f;border-radius:6px;padding:8px;font-size:11px;word-break:break-all;color:#00b4d8"></div>
+          <div style="font-size:11px;color:#6b7280;margin-top:6px">
+            &#128221; No Google Sheets: <strong>Arquivo &rarr; Importar &rarr; URL</strong> ou em qualquer c&eacute;lula: <code>=IMPORTDATA("link acima")</code>
+          </div>
+        </div>
       </div>
 
       <!-- C: Banco de montadoras -->
@@ -1979,7 +2002,8 @@ MEDIDA LARGURA  25 MM"></textarea>
           <div class="form-group" data-tipo="conector"><label>Espelho em nuvem</label>
             <select id="cref-f-espelho">
               <option value="">Nenhum</option>
-              <option value="wix">Wix</option>
+              <option value="wix">&#128995; Wix Stores</option>
+              <option value="drive">&#128194; Google Drive / Sheets</option>
             </select>
           </div>
           <div class="form-group" data-tipo="conector" style="grid-column:1/-1">
@@ -9059,7 +9083,7 @@ function crefRenderConectores() {
       + '<td style="padding:6px 12px">' + esc(c.nome) + '</td>'
       + '<td style="padding:6px 12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.url || '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.algolia_app_id ? '<span style="background:#f59e0b;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.8em">🔍 Algolia</span>' : esc(c.usuario || '—')) + '</td>'
-      + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '☁️ Wix' : '—') + '</td>'
+      + '<td style="padding:6px 12px">' + (c.espelho_nuvem === 'wix' ? '🟣 Wix' : c.espelho_nuvem === 'drive' ? '📁 Drive' : '—') + '</td>'
       + '<td style="padding:6px 12px">' + (c.ativo ? '<span class="badge badge-green">Ativo</span>' : '<span class="badge badge-red">Inativo</span>') + '</td>'
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" title="Testar conexão" onclick="_btnFlash(this);crefTestarConector(' + c.id + ')">🔗 Testar</button> '
@@ -9078,13 +9102,35 @@ function crefRenderConectores() {
 function crefRenderEspelho() {
   var el = document.getElementById('cref-espelho-info');
   if (!el) return;
-  var ativos = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'wix'; });
-  if (!ativos.length) {
-    el.innerHTML = '<span style="color:#999">Nenhum conector está com espelho em Wix habilitado ainda. Edite um conector acima e selecione "Wix" no campo Espelho em nuvem para ativar a cópia espelhada.</span>';
-    return;
+  var ativosWix   = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'wix'; });
+  var ativosDrive = (_crefDados.conector || []).filter(function(c) { return c.espelho_nuvem === 'drive'; });
+  var linhas = [];
+  if (ativosWix.length) {
+    linhas.push('<span style="color:#a855f7">🟣 ' + ativosWix.length + ' conector(es) espelhando em Wix:</span> ' + ativosWix.map(function(c) { return esc(c.nome); }).join(', '));
   }
-  el.innerHTML = '<span style="color:#16a34a">☁️ ' + ativos.length + ' conector(es) com cópia espelhada ativa em Wix:</span> '
-    + ativos.map(function(c) { return esc(c.nome); }).join(', ');
+  if (ativosDrive.length) {
+    linhas.push('<span style="color:#16a34a">📁 ' + ativosDrive.length + ' conector(es) espelhando em Google Drive:</span> ' + ativosDrive.map(function(c) { return esc(c.nome); }).join(', '));
+  }
+  if (!linhas.length) {
+    el.innerHTML = '<span style="color:#999">Nenhum espelho ativo ainda. Edite um conector e selecione "Wix Stores" ou "Google Drive / Sheets".</span>';
+  } else {
+    el.innerHTML = linhas.join('<br>');
+  }
+  // Mostra painel Google Drive se houver conectores com drive
+  var driveDiv = document.getElementById('cref-drive-info');
+  if (driveDiv) driveDiv.style.display = ativosDrive.length ? '' : 'none';
+}
+
+function driveGerarLink() {
+  var ntcMin  = (document.getElementById('drive-ntc-min') || {}).value || '0.95';
+  var decisao = (document.getElementById('drive-decisao') || {}).value || '';
+  var base = window.location.origin + '/api/produtos/export-csv?ntc_min=' + encodeURIComponent(ntcMin);
+  if (decisao) base += '&decisao=' + encodeURIComponent(decisao);
+  var box  = document.getElementById('drive-link-box');
+  var link = document.getElementById('drive-csv-link');
+  if (box)  { box.style.display = ''; box.textContent = base; }
+  if (link) { link.href = base; link.style.display = ''; }
+  try { navigator.clipboard.writeText(base); } catch (_) {}
 }
 
 function crefRenderMontadoras() {
