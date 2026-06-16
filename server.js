@@ -1803,6 +1803,9 @@ app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
                 if (!EXCLUIR.has(k)) colunasSet.add(k);
             }
         }
+        // url_produto construída a partir do objectID (padrão Pellegrino)
+        const urlBase = item.url ? new URL(item.url).origin : 'https://compreonline.pellegrino.com.br';
+        colunasSet.add('url_produto');
         const colunas = [...colunasSet];
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -1812,7 +1815,10 @@ app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
 
         const escreverPagina = (hits) => {
             for (const h of hits) {
-                res.write(colunas.map(k => csvEsc(flat(h[k]))).join(';') + '\r\n');
+                const id = h.objectID || '';
+                const urlProduto = id ? `${urlBase}/catalogo?pdpwsid=${encodeURIComponent(id)}&pdpobjectid=${encodeURIComponent(id)}` : '';
+                const row = { ...h, url_produto: urlProduto };
+                res.write(colunas.map(k => csvEsc(flat(row[k]))).join(';') + '\r\n');
             }
         };
 
