@@ -9026,8 +9026,12 @@ async function crefTestarConector(id) {
     return;
   }
   if (!r || !r.ok) {
-    _crefMostrarResultado('<span style="color:#dc2626">❌ Falha na conexão com <b>' + esc(nome) + '</b>: '
-      + esc(r && r.erro || ('HTTP ' + (r && r.status || '?'))) + '</span>');
+    var msgErr = r && r.erro || ('HTTP ' + (r && r.status || '?'));
+    var multiline = msgErr.indexOf('\n') !== -1;
+    _crefMostrarResultado('<span style="color:#dc2626">❌ Falha na conexão com <b>' + esc(nome) + '</b></span>'
+      + (multiline
+          ? '<details open style="margin-top:6px"><summary style="cursor:pointer;color:#dc2626">Ver diagnóstico</summary><pre style="font-size:11px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px;overflow:auto;max-height:200px;white-space:pre-wrap;margin-top:4px">' + esc(msgErr) + '</pre></details>'
+          : ': <span style="color:#dc2626">' + esc(msgErr) + '</span>'));
     return;
   }
   var cor = r.status < 300 ? '#16a34a' : r.status < 400 ? '#d97706' : '#dc2626';

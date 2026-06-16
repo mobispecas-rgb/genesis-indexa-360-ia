@@ -1117,8 +1117,8 @@ app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
                 return res.json({ ok: true, status: 200, latencia_ms: Date.now() - t0, content_type: 'application/json', auth_tipo: 'magento2-' + mg.tipo, preview: `Token Magento 2 (${mg.tipo}) obtido — credenciais válidas. Clique em 📥 Importar para buscar os produtos.` });
             }
             // Mostra diagnóstico: o que cada tentativa de token retornou
-            const diag = mg && mg.erros ? '\n\nDiagnóstico Magento 2:\n' + mg.erros.join('\n') : '';
-            return res.json({ ok: false, status: r.status, latencia_ms: r.latencia_ms, auth_tipo, preview: `HTTP ${r.status} no site; autenticação Magento 2 falhou em todos os prefixos.${diag}` });
+            const diag = mg && mg.erros ? '\nDiagnóstico:\n' + mg.erros.join('\n') : '';
+            return res.json({ ok: false, status: r.status, latencia_ms: r.latencia_ms, auth_tipo, erro: `HTTP ${r.status} no site; autenticação Magento 2 falhou em todos os prefixos.${diag}` });
         }
 
         res.json({ ok: r.status < 400, status: r.status, latencia_ms: r.latencia_ms, content_type: r.content_type, auth_tipo, preview: r.corpo.substring(0, 500), location: r.location || undefined });
@@ -1162,7 +1162,7 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
                 }
                 return res.json({ ok: false, erro: `Token Magento 2 (${mg.tipo}) obtido, mas nenhum prefixo REST retornou produtos (HTTP ${r.status}). Use uma conta com permissão de catálogo/admin.`, status: r.status, auth_tipo: 'magento2-' + mg.tipo });
             }
-            const diag = mg && mg.erros ? ' Detalhes: ' + mg.erros.join(' | ') : '';
+            const diag = mg && mg.erros ? '\nDiagnóstico:\n' + mg.erros.join('\n') : '';
             return res.json({ ok: false, erro: `HTTP ${r.status} no site; autenticação Magento 2 falhou em todos os prefixos.${diag}`, status: r.status });
         }
 
