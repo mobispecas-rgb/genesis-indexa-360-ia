@@ -8774,6 +8774,7 @@ function crefRenderConectores() {
       + '<td style="padding:6px 12px;text-align:center;white-space:nowrap">'
       + '<button class="btn btn-secondary btn-sm" title="Testar conexão" onclick="_btnFlash(this);crefTestarConector(' + c.id + ')">🔗 Testar</button> '
       + (c.algolia_app_id && c.usuario ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff" title="Renovar chave Algolia automaticamente via login" onclick="_btnFlash(this);crefRenovarChave(' + c.id + ')">🔄 Renovar</button> ' : '')
+      + (c.algolia_app_id ? '<a class="btn btn-sm" style="background:#0ea5e9;color:#fff;text-decoration:none" title="Baixar todos os produtos como CSV" href="/api/ntc-referencias/' + c.id + '/exportar-algolia" target="_blank">⬇️ CSV</a> ' : '')
       + (c.usuario && !c.algolia_app_id ? '<button class="btn btn-sm" style="background:#7c3aed;color:#fff" title="Autenticar via formulário HTML" onclick="_btnFlash(this);crefLoginConector(' + c.id + ')">🔐 Login</button> ' : '')
       + '<button class="btn btn-primary btn-sm" title="Importar produtos" onclick="_btnFlash(this);crefImportarConector(' + c.id + ')">📥 Importar</button>'
       + '</td>'
