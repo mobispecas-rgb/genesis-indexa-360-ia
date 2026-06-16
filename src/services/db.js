@@ -88,6 +88,14 @@ if (!_colunasProdutos.includes('pausado')) {
   db.exec("ALTER TABLE produtos ADD COLUMN pausado INTEGER NOT NULL DEFAULT 0");
 }
 
+// Migração: colunas Algolia — permite configurar busca via API Algolia em
+// conectores que usam esse mecanismo (ex: Pellegrino B2B) sem precisar de
+// scraping autenticado, contornando WAFs que bloqueiam IPs de servidores.
+const _colunasRef = db.prepare("PRAGMA table_info(ntc_referencias)").all().map(c => c.name);
+if (!_colunasRef.includes('algolia_app_id')) db.exec("ALTER TABLE ntc_referencias ADD COLUMN algolia_app_id TEXT");
+if (!_colunasRef.includes('algolia_api_key')) db.exec("ALTER TABLE ntc_referencias ADD COLUMN algolia_api_key TEXT");
+if (!_colunasRef.includes('algolia_index'))   db.exec("ALTER TABLE ntc_referencias ADD COLUMN algolia_index TEXT");
+
 function linhaParaProduto(row) {
   if (!row) return null;
   let dados = {};
@@ -253,8 +261,8 @@ function criarReferencia(r) {
   if (!r.tipo || NTC_REF_TIPOS.indexOf(r.tipo) === -1) throw new Error('tipo inválido');
   if (!r.nome) throw new Error('nome é obrigatório');
   const info = db.prepare(`INSERT INTO ntc_referencias
-    (tipo, nome, logo_url, site, subtipo, nota_ntc_referencia, usuario, senha, url, espelho_nuvem, ativo, observacoes)
-    VALUES (@tipo, @nome, @logo_url, @site, @subtipo, @nota_ntc_referencia, @usuario, @senha, @url, @espelho_nuvem, @ativo, @observacoes)`)
+    (tipo, nome, logo_url, site, subtipo, nota_ntc_referencia, usuario, senha, url, espelho_nuvem, ativo, observacoes, algolia_app_id, algolia_api_key, algolia_index)
+    VALUES (@tipo, @nome, @logo_url, @site, @subtipo, @nota_ntc_referencia, @usuario, @senha, @url, @espelho_nuvem, @ativo, @observacoes, @algolia_app_id, @algolia_api_key, @algolia_index)`)
     .run({
       tipo: r.tipo, nome: r.nome,
       logo_url: r.logo_url || null, site: r.site || null, subtipo: r.subtipo || null,
@@ -263,6 +271,9 @@ function criarReferencia(r) {
       espelho_nuvem: r.espelho_nuvem || null,
       ativo: r.ativo === false ? 0 : 1,
       observacoes: r.observacoes || null,
+      algolia_app_id: r.algolia_app_id || null,
+      algolia_api_key: r.algolia_api_key || null,
+      algolia_index: r.algolia_index || null,
     });
   return db.prepare('SELECT * FROM ntc_referencias WHERE id = ?').get(info.lastInsertRowid);
 }
@@ -282,11 +293,16 @@ function atualizarReferencia(id, r) {
     espelho_nuvem: r.espelho_nuvem !== undefined ? r.espelho_nuvem : existente.espelho_nuvem,
     ativo: r.ativo !== undefined ? (r.ativo ? 1 : 0) : existente.ativo,
     observacoes: r.observacoes !== undefined ? r.observacoes : existente.observacoes,
+    algolia_app_id: r.algolia_app_id !== undefined ? r.algolia_app_id || null : existente.algolia_app_id,
+    algolia_api_key: r.algolia_api_key !== undefined ? r.algolia_api_key || null : existente.algolia_api_key,
+    algolia_index: r.algolia_index !== undefined ? r.algolia_index || null : existente.algolia_index,
     id: id,
   };
   db.prepare(`UPDATE ntc_referencias SET nome=@nome, logo_url=@logo_url, site=@site, subtipo=@subtipo,
     nota_ntc_referencia=@nota_ntc_referencia, usuario=@usuario, senha=@senha, url=@url,
-    espelho_nuvem=@espelho_nuvem, ativo=@ativo, observacoes=@observacoes, atualizado_em=datetime('now')
+    espelho_nuvem=@espelho_nuvem, ativo=@ativo, observacoes=@observacoes,
+    algolia_app_id=@algolia_app_id, algolia_api_key=@algolia_api_key, algolia_index=@algolia_index,
+    atualizado_em=datetime('now')
     WHERE id=@id`).run(campos);
   return db.prepare('SELECT * FROM ntc_referencias WHERE id = ?').get(id);
 }
