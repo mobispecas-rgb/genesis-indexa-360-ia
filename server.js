@@ -1863,9 +1863,18 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
     try {
         const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
         if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
-        if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
 
         const limite = Math.min(parseInt((req.body && req.body.limite) || 20), 200);
+
+        // Se Algolia configurado, usa busca direta sem precisar do site
+        if (item.algolia_app_id && item.algolia_api_key && item.algolia_index) {
+            const resultado = await _buscarAlgolia(item, (req.body && req.body.termo) || '');
+            if (resultado.falha) return res.json({ ok: false, erro: resultado.motivo });
+            const itens = resultado.itens.slice(0, limite);
+            return res.json({ ok: true, formato: 'algolia', itens, preview_itens: itens, total: resultado.total, auth_tipo: 'algolia', latencia_ms: 0 });
+        }
+
+        if (!item.url) return res.status(400).json({ ok: false, erro: 'Este conector não tem URL cadastrada.' });
 
         let r = await _fetchConector(item.url, item.usuario, item.senha);
 
