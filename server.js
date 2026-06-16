@@ -1281,15 +1281,30 @@ function _buscarAlgolia(item, termo) {
                 try {
                     const data = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
                     if (!data.hits) return resolve({ falha: true, motivo: `Algolia HTTP ${res.statusCode}: ${Buffer.concat(chunks).toString('utf-8').substring(0, 200)}` });
-                    const itens = data.hits.map(h => ({
-                        sku: h.sku || h.objectID || '',
-                        nome: h.name || h.nome || h.title || h.titulo || '',
-                        preco: h.price != null ? h.price : (h.preco != null ? h.preco : ''),
-                        marca: h.brand || h.marca || h.fabricante || '',
-                        categoria: h.category || h.categoria || '',
-                        imagem: h.image || h.imagem || h.thumbnail || '',
-                        url: h.url || h.link || '',
-                    }));
+                    // Extrator de campos aninhados com padrão { v: valor } (Pellegrino)
+                    // ou string simples (outros conectores Algolia)
+                    const _v = f => f == null ? '' : (typeof f === 'object' && !Array.isArray(f) ? String(f.v ?? f.value ?? '') : String(f));
+                    const itens = data.hits.map(h => {
+                        // Nome: tenta hierarquia de categorias (Pellegrino b2b), depois campos genéricos
+                        const cat1 = _v(h.categoria_1_b2b || h.categoria_1);
+                        const cat2 = _v(h.categoria_2_b2b || h.categoria_2);
+                        const cat3 = _v(h.categoria_3_b2b || h.categoria_3);
+                        const nomeCateg = [cat1, cat2, cat3].filter(Boolean).join(' › ');
+                        return {
+                            sku:               h.objectID || h.sku || h.codigo || '',
+                            nome:              nomeCateg || h.name || h.nome || h.title || h.descricao || '',
+                            ean:               _v(h.ean) || _v(h.ean_code) || '',
+                            ncm:               _v(h.ncm) || '',
+                            codigo_fabricante: _v(h.codigo_fabricante_br) || _v(h.codigo_fabricante) || '',
+                            marca:             _v(h.marca) || _v(h.fabricante) || h.brand || '',
+                            aplicacao:         _v(h.aplicacao) || h.application || '',
+                            linha:             h.linha || h.line || '',
+                            preco:             h.price != null ? h.price : (h.preco != null ? h.preco : ''),
+                            categoria:         nomeCateg || h.category || _v(h.categoria) || '',
+                            imagem:            h.image || h.imagem || h.thumbnail || '',
+                            url:               h.url || h.link || '',
+                        };
+                    });
                     resolve({ itens, formato: 'algolia', total: data.nbHits || itens.length, url_usada: `algolia://${appId}/${index}` });
                 } catch (e) { resolve({ falha: true, motivo: 'Erro ao parsear resposta Algolia: ' + e.message }); }
             });
