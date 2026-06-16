@@ -965,12 +965,19 @@ app.delete('/api/ntc-referencias/:id', (req, res) => {
 });
 
 // Faz GET HTTP/HTTPS para um URL. authHeader sobrepõe Basic Auth quando fornecido.
+// Usa User-Agent de Chrome real para passar por WAFs que bloqueiam bots.
 function _fetchConector(url, usuario, senha, timeout = 14000, authHeader = null) {
     return new Promise((resolve, reject) => {
         let parsed;
         try { parsed = new URL(url); } catch (e) { return reject(new Error('URL inválida: ' + url)); }
         const proto = parsed.protocol === 'https:' ? https : http;
-        const headers = { 'User-Agent': 'Genesis-NTC-Conector/4.0', 'Accept': 'application/json, text/csv, application/xml, text/html, */*', 'Accept-Encoding': 'identity' };
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Cache-Control': 'no-cache',
+        };
         if (authHeader) {
             headers['Authorization'] = authHeader;
         } else if (usuario || senha) {
@@ -980,10 +987,21 @@ function _fetchConector(url, usuario, senha, timeout = 14000, authHeader = null)
         const t0 = Date.now();
         const req = proto.get(opts, (r) => {
             const latencia = Date.now() - t0;
-            let corpo = '';
-            r.setEncoding('utf8');
-            r.on('data', chunk => { if (corpo.length < 65536) corpo += chunk; });
-            r.on('end', () => resolve({ status: r.statusCode, content_type: r.headers['content-type'] || '', location: r.headers['location'] || '', latencia_ms: latencia, corpo }));
+            const partes = [];
+            let tamanho = 0;
+            r.on('data', chunk => { tamanho += chunk.length; if (tamanho < 65536) partes.push(chunk); });
+            r.on('end', () => {
+                const buf = Buffer.concat(partes);
+                const enc = (r.headers['content-encoding'] || '').toLowerCase();
+                let corpo;
+                try {
+                    corpo = enc === 'br' ? zlib.brotliDecompressSync(buf).toString('utf8')
+                          : enc === 'gzip' ? zlib.gunzipSync(buf).toString('utf8')
+                          : enc === 'deflate' ? zlib.inflateSync(buf).toString('utf8')
+                          : buf.toString('utf8');
+                } catch (_) { corpo = buf.toString('utf8'); }
+                resolve({ status: r.statusCode, content_type: r.headers['content-type'] || '', location: r.headers['location'] || '', latencia_ms: latencia, corpo });
+            });
         });
         req.setTimeout(timeout, () => { req.destroy(); reject(new Error('Timeout após ' + timeout + 'ms')); });
         req.on('error', reject);
