@@ -2040,6 +2040,76 @@ app.get('/api/produtos/export-csv', (req, res) => {
     }
 });
 
+// ─── GOOGLE SHOPPING FEED — XML para Google Merchant Center ──────────────────
+// Retorna feed RSS 2.0 / Google Merchant Center com produtos aprovados (NTC ≥ 0.95).
+// Google Merchant Center: Produtos → Feeds → Adicionar feed → URL agendada → cole esta URL.
+// Listagens gratuitas: 100% free, sem custo por clique.
+app.get('/api/produtos/google-shopping-feed', (req, res) => {
+    const ntcMin = Math.max(0, Math.min(1, parseFloat(req.query.ntc_min || '0.95')));
+    const limite = Math.min(parseInt(req.query.limite || '50000') || 50000, 50000);
+    try {
+        const rows = db.db.prepare(
+            'SELECT * FROM produtos WHERE ntc >= @ntcMin AND decisao = \'APROVADO\' ORDER BY ntc DESC LIMIT @limite'
+        ).all({ ntcMin, limite });
+
+        const siteUrl = process.env.RENDER_EXTERNAL_URL || 'https://genesis-indexa-360-ia.onrender.com';
+        const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+        const items = rows.map(row => {
+            let d = {};
+            try { d = JSON.parse(row.dados_json || '{}'); } catch (_) {}
+            const get = (...keys) => { for (const k of keys) { const v = row[k] != null ? row[k] : d[k]; if (v != null && v !== '') return v; } return ''; };
+            const sku = get('sku');
+            const nome = get('nome');
+            const preco = get('preco_venda', 'preco_custo');
+            const imagem = get('imagem', 'imagem_url');
+            const fabricante = get('fabricante');
+            const gtin = get('ean');
+            const mpn = get('codigo_oem');
+            const desc = get('descricao') || [
+                nome, fabricante && `Fabricante: ${fabricante}`,
+                get('aplicacao') && `Aplicação: ${get('aplicacao')}`,
+                `SKU: ${sku}`
+            ].filter(Boolean).join(' | ');
+
+            if (!nome || !preco) return '';
+
+            return [
+                '    <item>',
+                `      <g:id>${esc(sku)}</g:id>`,
+                `      <g:title>${esc(nome.substring(0,150))}</g:title>`,
+                `      <g:description>${esc(desc.substring(0,5000))}</g:description>`,
+                `      <g:link>${esc(siteUrl)}</g:link>`,
+                imagem ? `      <g:image_link>${esc(imagem)}</g:image_link>` : '',
+                `      <g:condition>new</g:condition>`,
+                `      <g:availability>in_stock</g:availability>`,
+                `      <g:price>${parseFloat(preco).toFixed(2)} BRL</g:price>`,
+                gtin ? `      <g:gtin>${esc(gtin)}</g:gtin>` : '',
+                mpn  ? `      <g:mpn>${esc(mpn)}</g:mpn>` : '',
+                fabricante ? `      <g:brand>${esc(fabricante)}</g:brand>` : '',
+                `      <g:google_product_category>Veículos e Peças</g:google_product_category>`,
+                '    </item>',
+            ].filter(Boolean).join('\n');
+        }).filter(Boolean).join('\n');
+
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:g="http://base.google.com/ns/1.0" version="2.0">
+  <channel>
+    <title>iRollo 360 — Peças Automotivas</title>
+    <link>${esc(siteUrl)}</link>
+    <description>Catálogo de peças automotivas aprovadas NTC 4.0</description>
+${items}
+  </channel>
+</rss>`;
+
+        res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.send(xml);
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // ─── CADASTRO EM MASSA — importar lote de produtos ────────────────────────────
 // Recebe { itens: [...], fornecedor_nome, fonte } e faz upsert em lote.
 // Campos dos itens seguem o padrão Algolia/CSV do Pellegrino B2B.

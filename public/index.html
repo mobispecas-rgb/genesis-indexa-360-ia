@@ -265,35 +265,25 @@ tr:hover td{background:#f9fafb}
 
   <div class="sb-section-label">Principal</div>
   <div class="sb-item active" onclick="nav('dashboard')"><span class="icon">📊</span>Dashboard</div>
-  <div class="sb-item" onclick="nav('oem')"><span class="icon">✨</span>Cadastro Completo</div>
-  <div class="sb-item" onclick="nav('produtos')"><span class="icon">📦</span>Produtos</div>
+  <div class="sb-item" onclick="nav('oem')"><span class="icon">✨</span>Cadastro OEM</div>
+  <div class="sb-item" onclick="nav('produtos')"><span class="icon">📦</span>Cat&aacute;logo</div>
 
-  <div class="sb-section-label">Catalogação</div>
-  <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">✅</span>Aprovação &amp; Congelados<span class="sb-badge" id="badge-aprovacao">0</span></div>
+  <div class="sb-section-label">Qualidade NTC</div>
+  <div class="sb-item" onclick="nav('aprovacao')"><span class="icon">✅</span>Aprova&ccedil;&atilde;o &amp; NTC<span class="sb-badge" id="badge-aprovacao">0</span></div>
   <div class="sb-item" onclick="nav('imagens-aprov')"><span class="icon">🖼️</span>Imagens</div>
   <div class="sb-item" onclick="nav('ean')"><span class="icon">📷</span>EAN Scanner GS1</div>
-  <div class="sb-item" onclick="nav('precificacao')"><span class="icon">💰</span>Precificação</div>
-  <div class="sb-item" onclick="nav('diagnostico')"><span class="icon">🔍</span>Diagnóstico do Catálogo</div>
+  <div class="sb-item" onclick="nav('precificacao')"><span class="icon">💰</span>Precifica&ccedil;&atilde;o</div>
+  <div class="sb-item" onclick="nav('diagnostico')"><span class="icon">🔍</span>Diagn&oacute;stico</div>
 
-  <div class="sb-section-label">Integração</div>
+  <div class="sb-section-label">Integra&ccedil;&atilde;o</div>
   <div class="sb-item" onclick="nav('wix')"><span class="icon">🟣</span>Wix Stores</div>
-  <div class="sb-item" onclick="nav('importar')"><span class="icon">📥</span>Importar Catálogo</div>
+  <div class="sb-item" onclick="nav('google-shopping')"><span class="icon">🛒</span>Google Shopping</div>
+  <div class="sb-item" onclick="nav('importar')"><span class="icon">📥</span>Importar Cat&aacute;logo</div>
 
-  <div class="sb-section-label">Plataforma</div>
-  <div class="sb-item" onclick="nav('pdv')"><span class="icon">🏛️</span>PDV</div>
-  <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🤖</span>Auto-Enriquecimento 24/7</div>
-  <div class="sb-item" onclick="nav('cadastro-massa')"><span class="icon">📦</span>Cadastro em Massa OEM</div>
+  <div class="sb-section-label">Plataforma IA</div>
+  <div class="sb-item" onclick="nav('plataforma-int')"><span class="icon">🧬</span>DNA OEM 360</div>
   <div class="sb-item" onclick="nav('conectores-ntc')"><span class="icon">🔌</span>Conectores NTC</div>
-  <div class="sb-item" onclick="nav('performance')"><span class="icon">⚡</span>Painel de Performance</div>
-  <div class="sb-item" onclick="nav('categoria')"><span class="icon">🏷️</span>Categoria</div>
-  <div class="sb-item" onclick="nav('templates')"><span class="icon">📝</span>Templates</div>
-  <div class="sb-item" onclick="nav('pagamentos')"><span class="icon">💳</span>Pagamentos</div>
-  <div class="sb-item" onclick="nav('planos')"><span class="icon">💰</span>Planos</div>
-  <div class="sb-item" onclick="nav('usuarios')"><span class="icon">👥</span>Usuários</div>
-  <div class="sb-item" onclick="nav('empresa')"><span class="icon">🏢</span>Empresa</div>
-  <div class="sb-item" onclick="nav('preferencias')"><span class="icon">🎵</span>Preferências</div>
-  <div class="sb-item" onclick="nav('relatorios')"><span class="icon">📈</span>Relatórios</div>
-  <div class="sb-item" onclick="nav('config')"><span class="icon">⚙️</span>Configurações</div>
+  <div class="sb-item" onclick="nav('performance')"><span class="icon">⚡</span>Performance</div>
 
   <div class="sb-footer">
     <button id="pwa-install-btn" class="btn btn-sm btn-secondary" style="width:100%;display:none;margin-bottom:8px" onclick="pwaInstalar()">📱 Instalar App</button>
@@ -1277,8 +1267,6 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         </div>
       </div>
     </div>
-    <div class="page" id="page-aplicacoes"><div class="stub-page"><div class="stub-icon">&#128663;</div><h2>Aplica&ccedil;&otilde;es Motor</h2><p>Em desenvolvimento &mdash; Aplica&ccedil;&otilde;es Motor</p></div></div>
-    <div class="page" id="page-fiscal"><div class="stub-page"><div class="stub-icon">&#128203;</div><h2>Fiscal &amp; Log&iacute;stica</h2><p>Em desenvolvimento &mdash; Fiscal &amp; Log&iacute;stica</p></div></div>
 
     <!-- PRECIFICAÇÃO -->
     <div class="page" id="page-precificacao">
@@ -1326,7 +1314,6 @@ PASTILHA DE FREIO - PF4201 - FREMAX
       </div>
     </div>
 
-    <div class="page" id="page-ntc"><div class="stub-page"><div class="stub-icon">&#128302;</div><h2>NTC Inspector</h2><p>Em desenvolvimento &mdash; NTC Inspector</p></div></div>
 
     <div class="page" id="page-diagnostico">
       <div class="page-title">&#128269; Diagn&oacute;stico / Auditoria do Cat&aacute;logo</div>
@@ -1359,7 +1346,6 @@ PASTILHA DE FREIO - PF4201 - FREMAX
         </div>
       </div>
     </div>
-    <div class="page" id="page-relatorios"><div class="stub-page"><div class="stub-icon">&#128200;</div><h2>Relat&oacute;rios</h2><p>Em desenvolvimento &mdash; Relat&oacute;rios</p></div></div>
     <!-- IMPORTAR CATÁLOGO -->
     <div class="page" id="page-importar">
       <div class="page-title">&#128229; Indexador de Cat&aacute;logo</div>
@@ -1444,6 +1430,77 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
         <div id="cat-save-status" style="font-size:12px;color:#555;margin-bottom:12px"></div>
       </div>
+
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 20px">
+      <div class="page-title" style="font-size:16px;margin-bottom:12px">&#128230; Importa&ccedil;&atilde;o em Lote OEM DNA</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Importa em lote o cat&aacute;logo completo do fornecedor (via Conector Algolia ou CSV) e coloca todos os produtos na fila do enriquecimento autom&aacute;tico.</p>
+
+      <!-- Importar via Conector Algolia -->
+      <div class="card">
+        <div class="card-title">&#128269; Importar via Conector Algolia</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Baixa diretamente do &iacute;ndice Algolia configurado no conector, sem precisar do CSV. Cada p&aacute;gina de 200 produtos &eacute; salva automaticamente.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="cm-conector-sel" style="max-width:280px">
+            <option value="">Selecione um conector Algolia...</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="cmIniciarAlgolia()" id="cm-algolia-btn">&#9654;&#65039; Iniciar importa&ccedil;&atilde;o</button>
+          <button class="btn btn-secondary btn-sm" onclick="cmPararAlgolia()" id="cm-algolia-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
+        </div>
+        <div id="cm-algolia-prog-wrap" style="display:none;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+            <span id="cm-algolia-prog-txt">Aguardando...</span>
+            <span id="cm-algolia-prog-pct">0%</span>
+          </div>
+          <div style="background:#e5e7eb;border-radius:6px;height:10px;overflow:hidden">
+            <div id="cm-algolia-prog-bar" style="height:100%;width:0%;background:#ff6500;transition:width .3s"></div>
+          </div>
+        </div>
+        <div id="cm-algolia-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+        <div id="cm-algolia-stats" style="margin-top:8px;display:none">
+          <div class="grid4" id="cm-algolia-stats-grid" style="gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- Importar CSV -->
+      <div class="card">
+        <div class="card-title">&#128196; Importar CSV do Fornecedor</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Carregue o CSV baixado pelo bot&atilde;o &#11015;&#65039; CSV no conector. O sistema detecta automaticamente o formato e importa em lotes de 200 produtos.</div>
+        <div style="margin-bottom:10px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            &#128196; Selecionar arquivo CSV
+            <input type="file" id="cm-csv-file" accept=".csv,.txt" style="display:none" onchange="cmCarregarCsv(this)">
+          </label>
+          <span id="cm-csv-nome" style="font-size:12px;color:#aaa;margin-left:8px"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;color:#555">
+            Fornecedor: <input type="text" id="cm-csv-fornecedor" placeholder="ex: Pellegrino" value="Pellegrino" style="max-width:160px">
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="cmIniciarCsv()" id="cm-csv-btn" disabled>&#9654;&#65039; Importar CSV</button>
+          <button class="btn btn-secondary btn-sm" onclick="cmPararCsv()" id="cm-csv-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
+        </div>
+        <div id="cm-csv-prog-wrap" style="display:none;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+            <span id="cm-csv-prog-txt">Aguardando...</span>
+            <span id="cm-csv-prog-pct">0%</span>
+          </div>
+          <div style="background:#e5e7eb;border-radius:6px;height:10px;overflow:hidden">
+            <div id="cm-csv-prog-bar" style="height:100%;width:0%;background:#00b4d8;transition:width .3s"></div>
+          </div>
+        </div>
+        <div id="cm-csv-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+      </div>
+
+      <!-- Enriquecimento OEM DNA -->
+      <div class="card">
+        <div class="card-title">&#129516; Enriquecimento OEM DNA ap&oacute;s importa&ccedil;&atilde;o</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">O DNA OEM 360 j&aacute; processa os produtos importados automaticamente. Para acelerar, rode um ciclo extra agora.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="cmRodarEnriquecimento()">&#9654;&#65039; Rodar ciclo agora</button>
+          <button class="btn btn-secondary btn-sm" onclick="nav('plataforma-int')">&#129038; DNA OEM 360</button>
+        </div>
+        <div id="cm-enrich-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
+      </div>
     </div>
     <div class="page" id="page-wix">
       <div class="page-title">&#128279; Wix Stores &mdash; mobisautoparts.com.br</div>
@@ -1525,11 +1582,84 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div id="wix-prods-lista" style="font-size:12px;color:#6b7280">Clique em Carregar para ver os produtos.</div>
       </div>
     </div>
-    <div class="page" id="page-pdv"><div class="stub-page"><div class="stub-icon">&#127978;</div><h2>PDV</h2><p>Em desenvolvimento &mdash; PDV</p></div></div>
-    <!-- AUTO-ENRIQUECIMENTO 24/7 -->
+    <!-- GOOGLE SHOPPING -->
+    <div class="page" id="page-google-shopping">
+      <div class="page-title">&#128722; Google Shopping — Vitrine Gratuita</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Exponha seus produtos aprovados (NTC &ge; 95%) no Google Search de forma gratuita. Envie o feed XML ao Google Merchant Center e seus produtos aparecem quando clientes buscam por pe&ccedil;as automotivas.</p>
+
+      <!-- Status do Feed -->
+      <div class="grid3" id="gs-stats" style="margin-bottom:16px">
+        <div class="stat-card">
+          <div class="stat-num" id="gs-total">—</div>
+          <div class="stat-label">Produtos no feed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="gs-aprovados" style="color:#00c853">—</div>
+          <div class="stat-label">Aprovados NTC &ge; 95%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="gs-com-imagem" style="color:#1a73e8">—</div>
+          <div class="stat-label">Com imagem</div>
+        </div>
+      </div>
+
+      <!-- Feed URL -->
+      <div class="card">
+        <div class="card-title">&#128279; URL do Feed XML — Google Merchant Center</div>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Copie esta URL e cadastre no <strong>Google Merchant Center</strong> em <em>Produtos &rarr; Feeds &rarr; Adicionar feed &rarr; URL agendada</em>. O Google busca automaticamente a cada 24h.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <input id="gs-feed-url" readonly style="flex:1;min-width:200px;background:#f8f9fa;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:12px;font-family:monospace;color:#374151" value="">
+          <button class="btn btn-secondary btn-sm" onclick="gsCopiarUrl()">&#128203; Copiar URL</button>
+          <a id="gs-feed-link" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none">&#11015;&#65039; Baixar XML</a>
+        </div>
+        <div id="gs-copy-msg" style="font-size:12px;color:#00c853;display:none">&#10003; URL copiada!</div>
+        <div class="card" style="background:#fffbf0;border-color:#f59e0b30;margin-top:10px;padding:12px">
+          <p style="font-size:12px;color:#92400e;margin:0;line-height:1.6"><strong>&#128161; Dica:</strong> No Merchant Center, configure o idioma como <em>Portugu&ecirc;s (Brasil)</em>, moeda <em>BRL</em>, pa&iacute;s <em>Brasil</em>, e ative "Listagens gratuitas" na aba Cr&eacute;ditos. Isso &eacute; 100% gratuito e seus produtos aparecem no Google.</p>
+        </div>
+      </div>
+
+      <!-- Pr&eacute;-visualiza&ccedil;&atilde;o do Feed -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          &#128202; Pr&eacute;-visualiza&ccedil;&atilde;o dos Produtos no Feed
+          <button class="btn btn-sm btn-secondary" onclick="gsCarregar()">&#8635; Atualizar</button>
+        </div>
+        <div id="gs-preview-status" style="font-size:12px;color:#6b7280;margin-bottom:10px"></div>
+        <div style="overflow-x:auto">
+          <table class="aprov-table" style="width:100%">
+            <thead><tr>
+              <th>Imagem</th>
+              <th>Nome</th>
+              <th>SKU</th>
+              <th>Pre&ccedil;o</th>
+              <th>NTC</th>
+              <th>Fabricante</th>
+            </tr></thead>
+            <tbody id="gs-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Como configurar -->
+      <div class="card">
+        <div class="card-title">&#128218; Como configurar o Google Merchant Center</div>
+        <ol style="font-size:13px;color:#374151;line-height:2.2;padding-left:20px;margin:0">
+          <li>Acesse <strong>merchants.google.com</strong> e crie sua conta</li>
+          <li>Verifique a propriedade do site no Google Search Console</li>
+          <li>V&aacute; em <strong>Produtos &rarr; Feeds &rarr; + Adicionar feed</strong></li>
+          <li>Escolha <em>Feed agendado via URL</em> e cole a URL acima</li>
+          <li>Aguarde 1&ndash;3 dias para aprova&ccedil;&atilde;o dos produtos</li>
+          <li>Ative <strong>Listagens gratuitas</strong> para aparecer no Google Search (0% custo)</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- DNA OEM 360 (ex Auto-Enriquecimento 24/7) -->
     <div class="page" id="page-plataforma-int">
-      <div class="page-title">&#129302; Auto-Enriquecimento 24/7</div>
-      <p style="color:#666;font-size:13px;margin-bottom:16px">Job em segundo plano que melhora continuamente os produtos j&aacute; cadastrados: preserva o fornecedor da nota fiscal de entrada na Linhagem Geneal&oacute;gica (rastreabilidade) ou marca o cadastro como "avulso" quando n&atilde;o h&aacute; fornecedor, busca o DNA na Web (OEM/EAN/NCM/CEST/aplica&ccedil;&atilde;o/motor/material/dimens&otilde;es) e coloniza imagens reais para elevar o m&oacute;dulo IV — sempre recalculando o NTC 4.0.</p>
+      <div class="page-title">&#129516; DNA OEM 360</div>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">Agente de enriquecimento cont&iacute;nuo: busca OEM/EAN/NCM/aplica&ccedil;&atilde;o/motor/imagens na web via IA e recalcula o NTC 4.0 a cada ciclo. Produtos com NTC &ge; 95% s&atilde;o aprovados e sincronizados com Wix, Bling e Google Shopping automaticamente.</p>
 
       <div class="card">
         <div class="card-title">&#128202; Status do Job</div>
@@ -1770,78 +1900,6 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
       </div>
     </div>
-    <!-- CADASTRO EM MASSA E ENRIQUECIMENTO OEM DNA -->
-    <div class="page" id="page-cadastro-massa">
-      <div class="page-title">&#128230; Cadastro em Massa &amp; Enriquecimento OEM DNA</div>
-      <p style="color:#666;font-size:13px;margin-bottom:16px">Importa em lote o cat&aacute;logo completo do fornecedor (via Conector Algolia ou CSV baixado) e coloca todos os produtos na fila do Auto-Enriquecimento 24/7: o agente preenche OEM/EAN/NCM/aplica&ccedil;&atilde;o/motor/imagens e preserva a Linhagem Geneal&oacute;gica do fornecedor.</p>
-
-      <!-- Importar via Conector Algolia -->
-      <div class="card">
-        <div class="card-title">&#128269; Importar via Conector Algolia</div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Baixa diretamente do &iacute;ndice Algolia configurado no conector, sem precisar do CSV. Cada p&aacute;gina de 200 produtos &eacute; salva automaticamente.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-          <select id="cm-conector-sel" style="max-width:280px">
-            <option value="">Selecione um conector Algolia...</option>
-          </select>
-          <button class="btn btn-primary btn-sm" onclick="cmIniciarAlgolia()" id="cm-algolia-btn">&#9654;&#65039; Iniciar importa&ccedil;&atilde;o</button>
-          <button class="btn btn-secondary btn-sm" onclick="cmPararAlgolia()" id="cm-algolia-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
-        </div>
-        <div id="cm-algolia-prog-wrap" style="display:none;margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
-            <span id="cm-algolia-prog-txt">Aguardando...</span>
-            <span id="cm-algolia-prog-pct">0%</span>
-          </div>
-          <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
-            <div id="cm-algolia-prog-bar" style="height:100%;width:0%;background:#ff6500;transition:width .3s"></div>
-          </div>
-        </div>
-        <div id="cm-algolia-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
-        <div id="cm-algolia-stats" style="margin-top:8px;display:none">
-          <div class="grid4" id="cm-algolia-stats-grid" style="gap:8px"></div>
-        </div>
-      </div>
-
-      <!-- Importar CSV do Pellegrino -->
-      <div class="card">
-        <div class="card-title">&#128196; Importar CSV do Pellegrino</div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Carregue o CSV baixado pelo bot&atilde;o &#11015;&#65039; CSV no conector. O sistema detecta automaticamente o formato Pellegrino e importa em lotes de 200 produtos.</div>
-        <div style="margin-bottom:10px">
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-            &#128196; Selecionar arquivo CSV
-            <input type="file" id="cm-csv-file" accept=".csv,.txt" style="display:none" onchange="cmCarregarCsv(this)">
-          </label>
-          <span id="cm-csv-nome" style="font-size:12px;color:#aaa;margin-left:8px"></span>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-          <label style="font-size:12px;display:flex;align-items:center;gap:6px;color:#ccc">
-            Fornecedor: <input type="text" id="cm-csv-fornecedor" placeholder="ex: Pellegrino" value="Pellegrino" style="max-width:160px">
-          </label>
-          <button class="btn btn-primary btn-sm" onclick="cmIniciarCsv()" id="cm-csv-btn" disabled>&#9654;&#65039; Importar CSV</button>
-          <button class="btn btn-secondary btn-sm" onclick="cmPararCsv()" id="cm-csv-parar-btn" style="display:none">&#9646;&#9646; Parar</button>
-        </div>
-        <div id="cm-csv-prog-wrap" style="display:none;margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
-            <span id="cm-csv-prog-txt">Aguardando...</span>
-            <span id="cm-csv-prog-pct">0%</span>
-          </div>
-          <div style="background:#1f1f1f;border-radius:6px;height:10px;overflow:hidden">
-            <div id="cm-csv-prog-bar" style="height:100%;width:0%;background:#00b4d8;transition:width .3s"></div>
-          </div>
-        </div>
-        <div id="cm-csv-msg" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
-      </div>
-
-      <!-- Enriquecimento OEM DNA -->
-      <div class="card">
-        <div class="card-title">&#129516; Enriquecimento OEM DNA ap&oacute;s importa&ccedil;&atilde;o</div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:12px">O Auto-Enriquecimento 24/7 j&aacute; processa os produtos importados automaticamente. Para acelerar, rode um ciclo extra agora ou ative o job cont&iacute;nuo.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="cmRodarEnriquecimento()">&#9654;&#65039; Rodar ciclo de enriquecimento agora</button>
-          <button class="btn btn-secondary btn-sm" onclick="nav('plataforma-int')">&#129302; Ir para Auto-Enriquecimento 24/7</button>
-        </div>
-        <div id="cm-enrich-msg" style="font-size:12px;color:#6b7280;margin-top:8px"></div>
-      </div>
-    </div>
 
     <div class="page" id="page-performance">
       <div class="page-title">&#9889; Painel de Performance</div>
@@ -2037,7 +2095,6 @@ MEDIDA LARGURA  25 MM"></textarea>
         </div>
       </div>
     </div>
-    <div class="page" id="page-categoria"><div class="stub-page"><div class="stub-icon">&#127991;</div><h2>Categoria</h2><p>Em desenvolvimento &mdash; Categoria</p></div></div>
     <div class="page" id="page-templates">
       <div class="page-title">&#128221; Templates de Enriquecimento</div>
       <p style="font-size:13px;color:#666;margin-bottom:18px">Crie seu template a partir de um modelo pronto ou descreva o que precisa, e a IA faz o resto!</p>
@@ -2207,12 +2264,6 @@ MEDIDA LARGURA  25 MM"></textarea>
       </dialog>
 
     </div>
-    <div class="page" id="page-pagamentos"><div class="stub-page"><div class="stub-icon">&#128179;</div><h2>Pagamentos</h2><p>Em desenvolvimento &mdash; Pagamentos</p></div></div>
-    <div class="page" id="page-planos"><div class="stub-page"><div class="stub-icon">&#128176;</div><h2>Planos</h2><p>Em desenvolvimento &mdash; Planos</p></div></div>
-    <div class="page" id="page-usuarios"><div class="stub-page"><div class="stub-icon">&#128101;</div><h2>Usu&aacute;rios</h2><p>Em desenvolvimento &mdash; Usu&aacute;rios</p></div></div>
-    <div class="page" id="page-empresa"><div class="stub-page"><div class="stub-icon">&#127970;</div><h2>Empresa</h2><p>Em desenvolvimento &mdash; Empresa</p></div></div>
-    <div class="page" id="page-preferencias"><div class="stub-page"><div class="stub-icon">&#127925;</div><h2>Prefer&ecirc;ncias</h2><p>Em desenvolvimento &mdash; Prefer&ecirc;ncias</p></div></div>
-    <div class="page" id="page-config"><div class="stub-page"><div class="stub-icon">&#9881;</div><h2>Configura&ccedil;&otilde;es</h2><p>Em desenvolvimento &mdash; Configura&ccedil;&otilde;es</p></div></div>
 
 
     <!-- ═══════════════════════════════════════════
@@ -2268,7 +2319,7 @@ MEDIDA LARGURA  25 MM"></textarea>
         <div style="display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-secondary" onclick="aprovSincronizarAprovadosLote()" style="color:#00c853;border-color:#00c85340">🚀 Sincronizar todos aprovados → Bling</button>
           <button class="btn btn-secondary" onclick="nav('aprovacao')">📋 Ver fila de aprovação</button>
-          <button class="btn btn-secondary" onclick="nav('config')">⚙️ Configurar token Bling</button>
+          <button class="btn btn-secondary" onclick="nav('conectores-ntc')">&#128268; Conectores &amp; Tokens</button>
         </div>
       </div>
 
@@ -2407,7 +2458,8 @@ function nav(page, opts) {
   if (page === 'imagens-aprov') imgAprovRender();
   if (page === 'wix') wixVerificarStatus();
   if (page === 'plataforma-int') { aeAtualizar(); aeCarregarCatalogo(); }
-  if (page === 'cadastro-massa') cmCarregarConectores();
+  if (page === 'importar') cmCarregarConectores();
+  if (page === 'google-shopping') gsCarregar();
   if (page === 'performance') perfAtualizar();
   else perfPararAuto();
   if (page === 'conectores-ntc') crefCarregar();
@@ -8850,6 +8902,61 @@ function imgFiltrarCat(cat, btn) {
 var CREF_TIPO_LABELS = { montadora: 'Montadora', fabricante: 'Fabricante/Importador', catalogo: 'Catálogo de Referência', conector: 'Conector' };
 var _crefDados = { montadora: [], fabricante: [], catalogo: [], conector: [] };
 var _crefEditando = null; // {tipo, id|null}
+
+// ─── GOOGLE SHOPPING ─────────────────────────────────────────────────────────
+async function gsCarregar() {
+  var feedUrl = location.origin + '/api/produtos/google-shopping-feed';
+  var inp = document.getElementById('gs-feed-url');
+  var lnk = document.getElementById('gs-feed-link');
+  if (inp) inp.value = feedUrl;
+  if (lnk) lnk.href = feedUrl;
+  var st = document.getElementById('gs-preview-status');
+  if (st) st.textContent = 'Carregando produtos...';
+  try {
+    var r = await fetch('/api/produtos?limite=500&ntc_min=0.95&decisao=APROVADO');
+    var d = await r.json();
+    var prods = (d.produtos || d.items || d || []);
+    var total = document.getElementById('gs-total');
+    var aprov = document.getElementById('gs-aprovados');
+    var comImg = document.getElementById('gs-com-imagem');
+    var aprovados = prods.filter(function(p){ return p.ntc >= 0.95 || (p.dados_json && JSON.parse(typeof p.dados_json==='string'?p.dados_json:'{}').ntc >= 0.95); });
+    var comImagem = aprovados.filter(function(p){ var dj = p.dados_json ? (typeof p.dados_json==='string'?JSON.parse(p.dados_json):p.dados_json) : p; return dj.imagem || dj.imagem_url || p.imagem; });
+    if (total) total.textContent = aprovados.length;
+    if (aprov) aprov.textContent = aprovados.length;
+    if (comImg) comImg.textContent = comImagem.length;
+    var tbody = document.getElementById('gs-tbody');
+    if (tbody) {
+      if (!aprovados.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa">Nenhum produto aprovado com NTC &ge; 95% ainda.<br><small>Aprove produtos na aba Aprova&ccedil;&atilde;o &amp; NTC primeiro.</small></td></tr>';
+      } else {
+        tbody.innerHTML = aprovados.slice(0,20).map(function(p) {
+          var dj = p.dados_json ? (typeof p.dados_json==='string'?JSON.parse(p.dados_json):p.dados_json) : p;
+          var ntc = dj.ntc || p.ntc || 0;
+          var img = dj.imagem || dj.imagem_url || p.imagem || '';
+          var preco = dj.preco_venda || dj.preco || p.preco_venda || '';
+          return '<tr>'
+            + '<td>' + (img ? '<img src="'+escHtml(img)+'" style="width:40px;height:40px;object-fit:contain;border-radius:4px" onerror="this.style.display=\'none\'">' : '<span style="color:#aaa;font-size:18px">&#128444;&#65039;</span>') + '</td>'
+            + '<td style="font-size:12px">' + escHtml((dj.nome||p.nome||'').substring(0,50)) + '</td>'
+            + '<td style="font-size:11px;color:#6b7280">' + escHtml(p.sku||dj.sku||'') + '</td>'
+            + '<td style="font-size:12px">' + (preco ? 'R$ '+parseFloat(preco).toFixed(2) : '<span style="color:#aaa">—</span>') + '</td>'
+            + '<td><span class="badge" style="background:' + (ntc>=0.95?'#00c85320;color:#00c853':'#ff980020;color:#ff9800') + '">' + Math.round(ntc*100) + '%</span></td>'
+            + '<td style="font-size:11px;color:#6b7280">' + escHtml(dj.fabricante||p.fabricante||'') + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+    }
+    if (st) st.textContent = 'Feed atualizado — ' + aprovados.length + ' produtos aprovados';
+  } catch(e) {
+    if (st) st.textContent = 'Erro ao carregar: ' + e.message;
+  }
+}
+function gsCopiarUrl() {
+  var url = (location.origin + '/api/produtos/google-shopping-feed');
+  navigator.clipboard.writeText(url).then(function(){
+    var m = document.getElementById('gs-copy-msg');
+    if (m) { m.style.display='block'; setTimeout(function(){ m.style.display='none'; }, 2000); }
+  });
+}
 
 // ─── CADASTRO EM MASSA OEM DNA ────────────────────────────────────────────────
 var _cmAlgoliaParado = false;
