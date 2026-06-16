@@ -1162,30 +1162,41 @@ async function _loginFormulario(item) {
     let urlBase;
     try { urlBase = new URL(item.url).origin; } catch (_) { return { falha: true, motivo: 'URL inválida' }; }
 
-    // Caminhos de login comuns — tenta cada um até encontrar formulário com campo senha
-    const loginCandidatos = [
-        urlBase + '/login',
-        urlBase + '/account/login',
-        urlBase + '/customer/account/login',
-        urlBase + '/usuarios/login',
-        urlBase + '/acesso',
-        urlBase + '/entrar',
-        item.url,
-    ];
+    // Se o item.url já é uma página de login, coloca ele primeiro na lista
+    const pareceLogin = /\/(login|acesso|entrar|signin|account\/login|Account\/Login)/i.test(item.url);
+    const loginCandidatos = pareceLogin
+        ? [item.url, urlBase + '/login', urlBase + '/account/login', urlBase + '/customer/account/login', urlBase + '/usuarios/login', urlBase + '/acesso', urlBase + '/entrar']
+        : [urlBase + '/login', urlBase + '/account/login', urlBase + '/customer/account/login', urlBase + '/usuarios/login', urlBase + '/acesso', urlBase + '/entrar', item.url];
 
+    const diagnostico = [];
     let loginHtml = '', loginCookies = '', loginUrl = '';
     for (const lu of loginCandidatos) {
         try {
             const rGet = await _fetchComCookies(lu, '');
+            diagnostico.push(`${lu.replace(urlBase, '') || '/'} → HTTP ${rGet.status}`);
             if (rGet.status === 200 && _ehPaginaLogin(rGet.corpo)) {
                 loginHtml = rGet.corpo;
                 loginCookies = _parseCookies(rGet.setCookies);
                 loginUrl = lu;
                 break;
             }
-        } catch (_) {}
+            // Segue redirect manual se 301/302 e ainda não tentamos o destino
+            if ((rGet.status === 301 || rGet.status === 302) && rGet.location) {
+                try {
+                    const dest = new URL(rGet.location, urlBase).toString();
+                    const rRed = await _fetchComCookies(dest, _parseCookies(rGet.setCookies));
+                    diagnostico.push(`  → redirect ${dest.replace(urlBase, '') || '/'} → HTTP ${rRed.status}`);
+                    if (rRed.status === 200 && _ehPaginaLogin(rRed.corpo)) {
+                        loginHtml = rRed.corpo;
+                        loginCookies = _mesclaCookies(_parseCookies(rGet.setCookies), _parseCookies(rRed.setCookies));
+                        loginUrl = dest;
+                        break;
+                    }
+                } catch (_) {}
+            }
+        } catch (e) { diagnostico.push(`${lu.replace(urlBase, '') || '/'} → erro: ${e.message.substring(0, 60)}`); }
     }
-    if (!loginHtml) return { falha: true, motivo: 'Página de login não encontrada (tentei: ' + loginCandidatos.map(u => u.replace(urlBase, '')).join(', ') + ')' };
+    if (!loginHtml) return { falha: true, motivo: 'Página de login não acessível.\nDiagnóstico:\n' + diagnostico.join('\n') };
 
     // Extrai todos os inputs hidden (ViewState, CSRF token, etc.)
     const camposOcultos = {};
