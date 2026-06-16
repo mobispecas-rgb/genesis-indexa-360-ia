@@ -20,6 +20,7 @@ const { buscarImagensReais } = require('./src/services/image-search');
 const db = require('./src/services/db');
 const autoEnrich = require('./src/services/auto-enrich');
 const { parseNFeXML } = require('./src/services/nfe-parser');
+const driveService = require('./src/services/drive');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -3262,9 +3263,109 @@ app.get('/api/sync/status', (req, res) => {
   });
 });
 
-// Massa (stub)
-app.post('/api/massa/upload', (req, res) => { res.json({ ok: false, erro: 'Instale multer e xlsx para upload' }); });
-app.post('/api/massa/enviar-bling', (req, res) => { res.json({ ok: true, criados: 0, erros: 0 }); });
+// ─── GOOGLE DRIVE — Memória de Catálogos OEM ────────────────────────────────
+// O Drive funciona como camada de armazenamento: CSVs exportados, catálogos PDF
+// e imagens ficam no Drive. O agente lê o Drive para enriquecimento contínuo.
+
+// Status da integração Drive
+app.get('/api/drive/status', (req, res) => {
+    res.json({ ok: true, configurado: driveService.isConfigured(), mensagem: driveService.isConfigured() ? 'Google Drive conectado via Service Account' : 'Adicione GOOGLE_SERVICE_ACCOUNT_JSON nas variáveis de ambiente do Render para ativar.' });
+});
+
+// Exporta CSV de produtos aprovados (NTC ≥ 0.95) direto para uma pasta do Drive
+app.post('/api/drive/exportar-produtos', async (req, res) => {
+    const { folder_id, ntc_min = 0.95, decisao = 'APROVADO' } = req.body || {};
+    try {
+        const ntcMin = Math.max(0, Math.min(1, parseFloat(ntc_min)));
+        let sql = 'SELECT * FROM produtos WHERE ntc >= @ntcMin';
+        const params = { ntcMin };
+        if (decisao) { sql += ' AND decisao = @decisao'; params.decisao = decisao; }
+        sql += ' ORDER BY ntc DESC LIMIT 50000';
+        const rows = db.db.prepare(sql).all(params);
+
+        const campos = ['sku','nome','ean','ncm','fabricante','codigo_oem','aplicacao',
+            'preco_custo','preco_venda','categoria','subcategoria','linha',
+            'url_fornecedor','imagem','ntc','decisao','fornecedor_nome','fonte'];
+        const esc = v => { const s = v == null ? '' : String(v); return /[,"\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+        const linhas = ['﻿' + campos.join(',')];
+        for (const row of rows) {
+            let d = {}; try { d = JSON.parse(row.dados_json || '{}'); } catch (_) {}
+            linhas.push(campos.map(c => esc(row[c] != null ? row[c] : d[c])).join(','));
+        }
+        const csv = linhas.join('\r\n');
+        const nome = `genesis-produtos-ntc${Math.round(ntcMin*100)}-${new Date().toISOString().slice(0,10)}.csv`;
+        const resultado = await driveService.uploadArquivo({ nome, conteudo: csv, mimeType: 'text/csv', folderId: folder_id || null });
+        res.json({ ok: true, total: rows.length, ...resultado, importdata_formula: `=IMPORTDATA("${driveService.urlImportData(resultado.fileId)}")` });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// Lista catálogos CSV/PDF numa pasta do Drive
+app.get('/api/drive/listar-catalogos', async (req, res) => {
+    const { folder_id } = req.query;
+    try {
+        const arquivos = await driveService.listarArquivos(folder_id || null);
+        res.json({ ok: true, arquivos, total: arquivos.length });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// Importa produtos de um CSV no Drive para o Genesis (fila de enriquecimento)
+app.post('/api/drive/importar-catalogo', async (req, res) => {
+    const { file_id, fornecedor_nome = 'Drive Import', fonte = 'drive' } = req.body || {};
+    if (!file_id) return res.status(400).json({ ok: false, erro: 'file_id obrigatório' });
+    try {
+        const buffer = await driveService.lerArquivo(file_id);
+        const texto = buffer.toString('utf-8').replace(/^﻿/, '');
+        const linhas = texto.split(/\r?\n/).filter(Boolean);
+        if (linhas.length < 2) return res.json({ ok: false, erro: 'CSV vazio ou sem dados' });
+
+        const cabecalho = linhas[0].split(',').map(c => c.trim().toLowerCase().replace(/[^a-z0-9_]/g,'_'));
+        const idx = col => cabecalho.indexOf(col);
+        const get = (row, col) => { const i = idx(col); return i >= 0 ? (row[i] || '').trim() : ''; };
+
+        let inseridos = 0, atualizados = 0, erros = 0;
+        for (let i = 1; i < linhas.length; i++) {
+            const row = linhas[i].split(',').map(c => c.replace(/^"|"$/g,'').trim());
+            const sku = get(row,'sku') || get(row,'codigo') || get(row,'part_number');
+            if (!sku) { erros++; continue; }
+            try {
+                const p = {
+                    sku, fornecedor_nome, fonte,
+                    nome: get(row,'nome') || get(row,'descricao') || get(row,'name') || sku,
+                    ean: get(row,'ean') || get(row,'gtin'),
+                    ncm: get(row,'ncm'),
+                    fabricante: get(row,'fabricante') || get(row,'marca') || get(row,'brand'),
+                    codigo_oem: get(row,'codigo_oem') || get(row,'oem') || get(row,'mpn'),
+                    aplicacao: get(row,'aplicacao') || get(row,'application'),
+                    preco_custo: parseFloat(get(row,'preco_custo') || get(row,'preco') || '0') || undefined,
+                    categoria: get(row,'categoria') || get(row,'category'),
+                    subcategoria: get(row,'subcategoria'),
+                    imagem: get(row,'imagem') || get(row,'image') || get(row,'image_link'),
+                };
+                const existente = db.obterProdutoPorSku(sku);
+                db.upsertProduto(p);
+                existente ? atualizados++ : inseridos++;
+            } catch (_) { erros++; }
+        }
+        res.json({ ok: true, inseridos, atualizados, erros, total: linhas.length - 1 });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// Cria uma pasta no Drive para o projeto Genesis
+app.post('/api/drive/criar-pasta', async (req, res) => {
+    const { nome = 'Genesis 360 — Catálogos OEM', parent_id } = req.body || {};
+    try {
+        const folderId = await driveService.criarPastaSeNecessario(nome, parent_id || null);
+        res.json({ ok: true, folder_id: folderId, url: `https://drive.google.com/drive/folders/${folderId}` });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
 
 // Empresa CNPJ
 app.post('/api/empresa/consultar-cnpj', async (req, res) => {
