@@ -1741,6 +1741,83 @@ app.post('/api/ntc-referencias/:id/renovar-chave', async (req, res) => {
     }
 });
 
+// Exporta TODOS os produtos do índice Algolia como CSV para download no PC.
+// Usa a Browse API do Algolia (cursor-based) sem limite de registros.
+app.get('/api/ntc-referencias/:id/exportar-algolia', async (req, res) => {
+    try {
+        const item = db.listarReferencias().find(r => r.id === Number(req.params.id));
+        if (!item) return res.status(404).json({ ok: false, erro: 'Conector não encontrado.' });
+        if (!item.algolia_app_id || !item.algolia_api_key || !item.algolia_index) {
+            return res.status(400).json({ ok: false, erro: 'Conector sem configuração Algolia.' });
+        }
+        const appId  = item.algolia_app_id.trim();
+        const apiKey = item.algolia_api_key.trim();
+        const index  = item.algolia_index.trim();
+        const _v = f => f == null ? '' : (typeof f === 'object' && !Array.isArray(f) ? String(f.v ?? f.value ?? '') : String(f));
+        const csvEsc = s => `"${String(s || '').replace(/"/g, '""')}"`;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="pellegrino-${index}-${new Date().toISOString().slice(0,10)}.csv"`);
+        res.write('﻿'); // BOM para Excel reconhecer UTF-8
+        res.write('sku;nome;ean;ncm;codigo_fabricante;marca;aplicacao;linha;preco;categoria;url\r\n');
+
+        let cursor = null;
+        let total = 0;
+        do {
+            const result = await new Promise((resolve) => {
+                const qs = cursor ? `cursor=${encodeURIComponent(cursor)}` : 'query=&hitsPerPage=1000';
+                const options = {
+                    hostname: `${appId}-dsn.algolia.net`,
+                    path: `/1/indexes/${encodeURIComponent(index)}/browse?${qs}`,
+                    method: 'GET',
+                    headers: {
+                        'X-Algolia-Application-Id': appId,
+                        'X-Algolia-API-Key': apiKey,
+                    },
+                };
+                const req2 = https.request(options, r2 => {
+                    const chunks = [];
+                    r2.on('data', d => chunks.push(d));
+                    r2.on('end', () => {
+                        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); }
+                        catch (e) { resolve({ error: e.message }); }
+                    });
+                });
+                req2.on('error', e => resolve({ error: e.message }));
+                req2.setTimeout(30000, () => { req2.destroy(); resolve({ error: 'timeout' }); });
+                req2.end();
+            });
+            if (result.error || !result.hits) break;
+            for (const h of result.hits) {
+                const cat1 = _v(h.categoria_1_b2b || h.categoria_1);
+                const cat2 = _v(h.categoria_2_b2b || h.categoria_2);
+                const cat3 = _v(h.categoria_3_b2b || h.categoria_3);
+                const nome = [cat1, cat2, cat3].filter(Boolean).join(' › ') || h.name || h.nome || '';
+                res.write([
+                    csvEsc(h.objectID || h.sku || ''),
+                    csvEsc(nome),
+                    csvEsc(_v(h.ean) || _v(h.ean_code) || ''),
+                    csvEsc(_v(h.ncm) || ''),
+                    csvEsc(_v(h.codigo_fabricante_br) || _v(h.codigo_fabricante) || ''),
+                    csvEsc(_v(h.marca) || _v(h.fabricante) || h.brand || ''),
+                    csvEsc(_v(h.aplicacao) || ''),
+                    csvEsc(h.linha || ''),
+                    csvEsc(h.price != null ? h.price : (h.preco != null ? h.preco : '')),
+                    csvEsc([cat1, cat2, cat3].filter(Boolean).join(' › ') || h.category || ''),
+                    csvEsc(h.url || h.link || ''),
+                ].join(';') + '\r\n');
+                total++;
+            }
+            cursor = result.cursor || null;
+        } while (cursor);
+
+        res.end();
+    } catch (e) {
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: e.message });
+        else res.end();
+    }
+});
+
 // Testa login via formulário HTML para um conector (invalida cache forçando novo login).
 app.post('/api/ntc-referencias/:id/login', async (req, res) => {
     try {
