@@ -1015,21 +1015,23 @@ function _httpPostJson(url, payload, authHeader = null, timeout = 12000) {
 
 // Tenta autenticar em uma loja Magento 2 via REST API.
 // Retorna { base, token, tipo } ou null se não for Magento / auth falhar.
+// Tenta múltiplos prefixos de URL pois o prefixo padrão /rest/V1 pode variar por loja.
 async function _tentarMagentoAuth(urlOriginal, usuario, senha) {
     if (!usuario && !senha) return null;
     let base;
     try { base = new URL(urlOriginal).origin; } catch (_) { return null; }
 
-    // Tenta token de cliente primeiro (permissões limitadas mas mais seguro)
     for (const tipo of ['customer', 'admin']) {
-        const endpoint = `${base}/rest/V1/integration/${tipo}/token`;
-        try {
-            const r = await _httpPostJson(endpoint, { username: usuario || '', password: senha || '' });
-            if (r.status === 200) {
-                const token = JSON.parse(r.corpo);
-                if (typeof token === 'string' && token.length > 10) return { base, token, tipo };
-            }
-        } catch (_) {}
+        for (const prefix of _MAGENTO_REST_PREFIXES) {
+            const endpoint = `${base}${prefix}/integration/${tipo}/token`;
+            try {
+                const r = await _httpPostJson(endpoint, { username: usuario || '', password: senha || '' });
+                if (r.status === 200) {
+                    const token = JSON.parse(r.corpo);
+                    if (typeof token === 'string' && token.length > 10) return { base, token, tipo };
+                }
+            } catch (_) {}
+        }
     }
     return null;
 }
@@ -1103,7 +1105,7 @@ app.post('/api/ntc-referencias/:id/testar', async (req, res) => {
         let r = await _fetchConector(item.url, item.usuario, item.senha);
         let auth_tipo = (item.usuario || item.senha) ? 'basic' : 'none';
 
-        if (r.status === 401 || r.status === 403) {
+        if (r.status >= 400 && (item.usuario || item.senha)) {
             const mg = await _tentarMagentoAuth(item.url, item.usuario, item.senha);
             if (mg) {
                 // Token obtido = credenciais válidas. Não fazemos segunda chamada
@@ -1134,8 +1136,9 @@ app.post('/api/ntc-referencias/:id/importar', async (req, res) => {
 
         let r = await _fetchConector(item.url, item.usuario, item.senha);
 
-        // Fallback Magento 2: tenta token e depois GET /products nos prefixos conhecidos
-        if (r.status === 401 || r.status === 403) {
+        // Fallback Magento 2: tenta token e depois GET /products nos prefixos conhecidos.
+        // Dispara em qualquer 4xx (incluindo 405 de páginas de login) quando há credenciais.
+        if (r.status >= 400 && (item.usuario || item.senha)) {
             const mg = await _tentarMagentoAuth(item.url, item.usuario, item.senha);
             if (mg) {
                 const bearerHeader = 'Bearer ' + mg.token;
