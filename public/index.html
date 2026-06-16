@@ -1367,8 +1367,19 @@ PASTILHA DE FREIO - PF4201 - FREMAX
     </div>
     <!-- IMPORTAR CATÁLOGO -->
     <div class="page" id="page-importar">
-      <div class="page-title">&#128229; Indexador de Cat&aacute;logo</div>
-      <p style="color:#666;font-size:13px;margin-bottom:18px">Cole o texto de qualquer cat&aacute;logo de pe&ccedil;as. O motor extrai fabricante, c&oacute;digos OEM, aplica&ccedil;&otilde;es, ficha t&eacute;cnica e calcula o NTC 4.0 automaticamente.</p>
+      <div class="page-title">&#128229; Importar Cat&aacute;logo OEM</div>
+      <p style="color:#666;font-size:13px;margin-bottom:18px">Importe pe&ccedil;as OEM genuínas de qualquer fonte: cole texto de cat&aacute;logo, use o bookmarklet Partsouq para extrair pe&ccedil;as direto da web, ou importe em massa via Algolia/CSV.</p>
+
+      <!-- Partsouq Bookmarklet -->
+      <div class="card" style="border-color:#f59e0b50;margin-bottom:10px">
+        <div class="card-title">&#128269; Partsouq OEM &mdash; Importar Cat&aacute;logo Genuíno</div>
+        <p style="font-size:12px;color:#888;margin-bottom:12px">Arraste o bot&atilde;o abaixo para a barra de favoritos do Chrome. Depois abra qualquer p&aacute;gina de cat&aacute;logo em <strong>partsouq.com</strong> e clique no favorito &mdash; as pe&ccedil;as s&atilde;o importadas automaticamente para o Genesis com fabricante, OEM, aplica&ccedil;&atilde;o e categoria.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span id="partsouq-bm-drag" onclick="partsouqMostrarBookmarklet()" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;padding:10px 18px;border-radius:8px;font-weight:700;text-decoration:none;cursor:pointer;font-size:13px;user-select:none">&#128269; Partsouq &rarr; Genesis</span>
+          <span style="font-size:11px;color:#555">Clique para gerar o link bookmarklet</span>
+        </div>
+        <div id="partsouq-bm-status" style="font-size:12px;color:#888;margin-top:8px;display:none"></div>
+      </div>
 
       <!-- Template ativo -->
       <div class="card" style="padding:10px 14px;margin-bottom:10px">
@@ -8981,6 +8992,86 @@ async function gsCarregar() {
     if (st) st.textContent = 'Erro ao carregar: ' + e.message;
   }
 }
+// ─── PARTSOUQ BOOKMARKLET ─────────────────────────────────────────────────────
+function partsouqMostrarBookmarklet() {
+  var genesisUrl = window.location.origin;
+  // Bookmarklet: extrai peças OEM do partsouq.com e envia para Genesis
+  var code = '(function(){'
+    + 'if(!/partsouq\\.com/i.test(location.hostname)){alert("⚠️ Abra uma página do partsouq.com primeiro.");return;}'
+    // Extrai fabricante e categoria da URL/page
+    + 'var params=new URLSearchParams(location.search);'
+    + 'var marca=params.get("c")||"";'
+    + 'var cname=params.get("cname")||params.get("catname")||"";'
+    + 'var itens=[];'
+    // Tenta múltiplos seletores do partsouq
+    + 'var linhas=document.querySelectorAll(".car-part-item,.part-item,.search-result-item,.genuine-part-item,[class*=part-row],[class*=catalog-item]");'
+    + 'if(!linhas.length){linhas=document.querySelectorAll("tr[data-part],tr[data-num],tr.part");}'
+    // Fallback: tenta encontrar tabela com códigos de peça
+    + 'if(!linhas.length){'
+    +   'var tds=document.querySelectorAll("td");'
+    +   'var seen={};'
+    +   'tds.forEach(function(td){'
+    +     'var t=(td.textContent||"").trim();'
+    +     'if(/^[A-Z0-9][A-Z0-9\\-\\.]{4,25}$/.test(t)&&!seen[t]){'
+    +       'seen[t]=1;'
+    +       'var row=td.closest("tr");'
+    +       'var tds2=row?row.querySelectorAll("td"):[];'
+    +       'var desc=Array.from(tds2).map(function(x){return x.textContent.trim();}).filter(function(x){return x.length>5&&x!==t;}).join(" | ").substring(0,120);'
+    +       'itens.push({sku:t,nome:desc||t,fabricante:marca,codigo_oem:t,categoria:cname});'
+    +     '}'
+    +   '});'
+    + '} else {'
+    +   'linhas.forEach(function(el){'
+    +     'var num=(el.querySelector("[class*=part-num],[class*=number],[data-part],[data-num]")||{}).textContent||(el.dataset.part||el.dataset.num||"");'
+    +     'num=(num||(el.querySelector("td:first-child")||{}).textContent||"").trim();'
+    +     'var desc=(el.querySelector("[class*=name],[class*=desc],[class*=title]")||el.querySelector("td:nth-child(2)")||{}).textContent||"";'
+    +     'desc=desc.trim().substring(0,150);'
+    +     'var preco=(el.querySelector("[class*=price]")||{}).textContent||"";'
+    +     'preco=parseFloat((preco.match(/[\\d.,]+/)||[])[0]||0)||0;'
+    +     'var img=(el.querySelector("img")||{}).src||"";'
+    +     'if(num&&num.length>=4)itens.push({sku:num,nome:desc||num,fabricante:marca,codigo_oem:num,categoria:cname,preco_custo:preco||undefined,imagem:img||undefined});'
+    +   '});'
+    + '}'
+    + 'if(!itens.length){alert("⚠️ Nenhuma peça encontrada nesta página.\\nNavegue até a lista de peças do catálogo e tente novamente.");return;}'
+    + 'if(!confirm("✅ "+itens.length+" peças encontradas ("+marca+")\\nCat: "+cname+"\\n\\nImportar para o Genesis agora?")){return;}'
+    + 'fetch("' + genesisUrl + '/api/produtos/importar-lote",{'
+    +   'method:"POST",'
+    +   'headers:{"Content-Type":"application/json","Accept":"application/json"},'
+    +   'body:JSON.stringify({itens:itens,fornecedor_nome:"Partsouq — "+marca,fonte:"partsouq"})'
+    + '}).then(function(r){return r.json();}).then(function(d){'
+    +   'if(d.ok){alert("✅ Importado!\\nInseridos: "+d.inseridos+"\\nAtualizados: "+d.atualizados+"\\nErros: "+d.erros);}'
+    +   'else{alert("❌ Erro: "+(d.erro||JSON.stringify(d)));}'
+    + '}).catch(function(e){alert("❌ Erro de rede: "+e.message);});'
+    + '})();';
+
+  var link = 'javascript:' + encodeURIComponent(code);
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:#0009;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = '<div style="background:#1e1e24;border:1px solid #2a2a38;border-radius:12px;padding:24px;max-width:560px;width:100%">'
+    + '<div style="font-size:16px;font-weight:700;margin-bottom:8px;color:#f0f0f4">&#128269; Bookmarklet — Partsouq &rarr; Genesis</div>'
+    + '<p style="font-size:13px;color:#888;margin-bottom:16px">Arraste o bot&atilde;o abaixo para a barra de favoritos. Depois abra <strong style="color:#f59e0b">partsouq.com</strong> em qualquer p&aacute;gina de cat&aacute;logo OEM e clique no favorito.</p>'
+    + '<div style="text-align:center;margin-bottom:16px">'
+    + '<a href="' + link + '" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;padding:12px 24px;border-radius:8px;font-weight:700;text-decoration:none;cursor:move;font-size:14px;box-shadow:0 2px 12px #f59e0b40" '
+    + 'onclick="event.preventDefault();alert(\'Arraste este bot&atilde;o para a barra de favoritos do Chrome.\')">&#128269; Partsouq &rarr; Genesis</a>'
+    + '</div>'
+    + '<div style="font-size:12px;color:#666;line-height:1.9;margin-bottom:16px">'
+    + '<strong style="color:#ccc">Como usar:</strong><br>'
+    + '1. Arraste o bot&atilde;o laranja para a barra de favoritos do Chrome<br>'
+    + '2. Abra <strong style="color:#f59e0b">partsouq.com</strong> — exemplo: cat&aacute;logo Volvo Sistema de Admiss&atilde;o<br>'
+    + '3. Navegue at&eacute; a lista de pe&ccedil;as do cat&aacute;logo (tabela com part numbers)<br>'
+    + '4. Clique no favorito <em>Partsouq &rarr; Genesis</em><br>'
+    + '5. Confirme — pe&ccedil;as importadas com OEM, fabricante e categoria!'
+    + '</div>'
+    + '<div style="font-size:11px;color:#555;background:#13131a;border-radius:6px;padding:10px;margin-bottom:14px">'
+    + '&#128161; Funciona em qualquer p&aacute;gina de cat&aacute;logo OEM do Partsouq.<br>'
+    + 'Os c&oacute;digos OEM genuínos s&atilde;o mapeados diretamente como <code>codigo_oem</code> no NTC 4.0.'
+    + '</div>'
+    + '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:#252530;color:#ccc;border:1px solid #333;padding:8px 16px;border-radius:6px;cursor:pointer;width:100%;font-size:13px">Fechar</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+}
+
 function gsCopiarUrl() {
   var url = (location.origin + '/api/produtos/google-shopping-feed');
   navigator.clipboard.writeText(url).then(function(){
