@@ -12,6 +12,7 @@
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
+        "@google/genai": "^1.0.0",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "better-sqlite3": "^9.4.3",
         "cors": "^2.8.5",
