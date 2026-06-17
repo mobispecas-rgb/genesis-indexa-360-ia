@@ -1,13 +1,14 @@
 'use strict';
 
-// Agente de Enriquecimento de DNA via Web — busca na web os campos dos módulos
+// Agente de Enriquecimento de DNA via Web — usa o Gemini com Grounding nativo
+// (Google Search em tempo real) para preencher os campos dos módulos
 // CO/AV/FM/MC/FP do NTC (código OEM, EAN/GTIN, NCM/CEST, aplicação veicular,
 // material, dimensões, FMSI etc.) e devolve, para cada campo, o valor, a fonte
 // (URL) e a confiança (alta/media/baixa). NUNCA inventa: sem fonte, o campo
 // volta null com confiança "baixa" e motivo "fonte não encontrada". EAN passa
 // por checksum GTIN e NCM precisa ter 8 dígitos — senão é marcado para
 // confirmação fiscal. Resultado sempre "pendente_confirmacao": nunca auto-aprova.
-const { buscarWeb, validarGTIN, validarNCM, consultarNCMOficial } = require('./web-utils');
+const { validarGTIN, validarNCM, consultarNCMOficial } = require('./web-utils');
 
 const CAMPOS_DNA = [
     'codigo_oem', 'ean', 'ncm', 'cest', 'motor', 'codigo_motor',
@@ -33,69 +34,24 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
 
     const vazio = camposVazios();
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-        return { ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true };
+    if (!process.env.GEMINI_API_KEY) {
+        return { ok: false, erro: 'GEMINI_API_KEY não configurada', campos: vazio, pendente_confirmacao: true };
     }
 
-    // Múltiplas queries especializadas para cobrir similares, aplicação, fiscal,
-    // marketplaces e catálogos de fabricante/distribuidores — quanto mais fontes
-    // diferentes, maior a chance de completar os 28 campos do DNA e elevar o NTC.
     const termoBase = [fabricante, sku, nome].filter(Boolean).join(' ');
-    const qBase      = termoBase;
-    const qSimilar   = (sku || nome) + ' similares cross-reference aftermarket';
-    const qFiscal    = (sku || nome) + (fabricante ? ' ' + fabricante : '') + ' NCM EAN ficha técnica';
-    const qAplic     = termoBase + ' aplicação veicular motor';
-    const qML        = termoBase + ' site:mercadolivre.com.br';
-    const qCatalogo  = termoBase + ' catálogo peças OEM ficha técnica especificações dimensões peso';
-
-    let trechos = [];
-    try {
-        // Busca base (10 resultados com fetch real das top-3)
-        const r1 = await buscarWeb(qBase, 10);
-        // Busca de similares/cross-codes (5 resultados adicionais)
-        const r2 = await buscarWeb(qSimilar, 5);
-        // Busca fiscal (5 resultados adicionais)
-        const r3 = await buscarWeb(qFiscal, 5);
-        // Busca de aplicação veicular (5 resultados adicionais)
-        const r4 = await buscarWeb(qAplic, 5);
-        // Busca em marketplaces (Mercado Livre) — fichas de produto costumam
-        // trazer EAN, dimensões, peso e cross-codes (5 resultados adicionais)
-        const r5 = await buscarWeb(qML, 5);
-        // Busca em catálogos de fabricantes/distribuidores e fichas técnicas
-        // (5 resultados adicionais)
-        const r6 = await buscarWeb(qCatalogo, 5);
-
-        // Une e deduplica por URL
-        const vistos = new Set();
-        for (const lista of [r1, r2, r3, r4, r5, r6]) {
-            for (const item of lista) {
-                if (!vistos.has(item.fonte)) {
-                    vistos.add(item.fonte);
-                    trechos.push(item);
-                }
-            }
-        }
-        trechos = trechos.slice(0, 28); // max 28 fontes para a IA
-    } catch (e) {
-        console.error('[Enriquecer DNA] busca:', e.message);
-    }
-
-    if (trechos.length === 0) {
-        return {
-            ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
-            mensagem: 'Sem resultados de busca — nenhuma fonte encontrada.'
-        };
-    }
 
     try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 2500,
-            system: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e uma lista numerada de resultados de busca na web sobre esse produto.
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nos resultados numerados e retornar um objeto {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa", "motivo": "..."}. "motivo" é opcional, exceto para "cc_oem" e "fabricante_original" quando "confianca" não for "alta" (ver REGRA 7).
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: `Produto: ${termoBase}\n\nUse o buscador do Google (Grounding) para encontrar o catálogo oficial da marca, lojas especializadas, marketplaces e fichas técnicas sobre esse produto, e então preencha o JSON conforme as instruções do sistema.`,
+            config: {
+                tools: [{ googleSearch: {} }],
+                systemInstruction: `Você é um especialista técnico e fiscal em autopeças automotivas. Vai receber o nome/marca/SKU de um produto. Use OBRIGATORIAMENTE o buscador do Google (Grounding) para localizar evidências reais na web antes de responder — não responda de memória.
+
+Sua tarefa: para CADA campo abaixo, procurar evidência EXPLÍCITA nas páginas encontradas pela busca e retornar um objeto {"valor": ..., "fonte_url": "https://...", "confianca": "alta"|"media"|"baixa", "motivo": "..."}. "motivo" é opcional, exceto para "cc_oem" e "fabricante_original" quando "confianca" não for "alta" (ver REGRA 7). "fonte_url" deve ser a URL real da página onde o valor foi encontrado; se "valor" for null, "fonte_url" também deve ser null.
 
 Campos:
 - codigo_oem: código OEM / part number de referência do fabricante do veículo
@@ -145,25 +101,22 @@ Toda peça nasce de um projeto de uma montadora para um veículo específico (c�
  d) IMPORTADOS COM CÓDIGO ADULTERADO — importadores de peças genéricas (frequentemente chinesas) anunciam códigos OEM de montadoras apenas para indicar "compatibilidade/aplicação", sem a peça ser genuína, clone certificado ou aftermarket de fabricante reconhecido. Esses anúncios NÃO são fonte confiável para fabricante_original/cc_oem com confiança alta.
 
 COMO USAR ESSE CONTEXTO (sem inventar):
-- Use o conhecimento acima SOMENTE para INTERPRETAR e CONECTAR evidências que já aparecem nos resultados numerados — ex.: se um resultado diz que a peça serve "Hyundai HR 2.5 2006-2012" e outro resultado (do mesmo SKU ou de um cross-code já identificado nos resultados) menciona "Kia Bongo K2500 2.5 2006-2012", registre AMBAS as aplicações em aplicacoes_adicionais e os respectivos códigos em cc_oem — pois fazem parte da mesma família genealógica.
-- NUNCA adicione aplicação, código ou fabricante de veículo-irmão que não tenha aparecido em NENHUM resultado — o conhecimento de parcerias serve para reconhecer/relacionar evidências já textuais, nunca para criar dados novos.
+- Use o conhecimento acima SOMENTE para INTERPRETAR e CONECTAR evidências que já apareceram nas páginas encontradas pela busca — ex.: se uma página diz que a peça serve "Hyundai HR 2.5 2006-2012" e outra página (do mesmo SKU ou de um cross-code já identificado) menciona "Kia Bongo K2500 2.5 2006-2012", registre AMBAS as aplicações em aplicacoes_adicionais e os respectivos códigos em cc_oem — pois fazem parte da mesma família genealógica.
+- NUNCA adicione aplicação, código ou fabricante de veículo-irmão que não tenha aparecido em NENHUMA página encontrada — o conhecimento de parcerias serve para reconhecer/relacionar evidências já textuais, nunca para criar dados novos.
 - Para fabricante_original, priorize fabricantes certificados/licenciados citados explicitamente (catálogos oficiais, lojas especializadas) sobre anúncios genéricos de marketplace sem menção de marca/fabricante (caso (d) acima).
 
 REGRAS ABSOLUTAS:
-1. NUNCA invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nos resultados.
-2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
-3. "fonte_idx" é o número do resultado de busca (1 a N) de onde o valor foi extraído. Se "valor" for null, "fonte_idx" também deve ser null. Para "aplicacoes_adicionais", use o fonte_idx do primeiro resultado onde uma aplicação adicional foi encontrada.
+1. PROIBIDO ALUCINAR OU DEDUZIR: nunca invente, estime ou deduza valores que não estejam EXPLICITAMENTE escritos nas páginas retornadas pela busca do Google.
+2. Se não houver evidência clara para um campo, retorne {"valor": null, "fonte_url": null, "confianca": "baixa"}.
+3. "fonte_url" é a URL real da página de onde o valor foi extraído. Se "valor" for null, "fonte_url" também deve ser null.
 4. "confianca": "alta" = valor explícito e específico para este produto/SKU; "media" = valor encontrado mas para produto genérico/equivalente; "baixa" = indício fraco ou ausente.
 5. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, com TODAS as chaves listadas acima.
 6. NUNCA preencha "marca_veiculo" ou "montadora" com o nome do FABRICANTE DA PEÇA (ex: VALEO, Bosch, Mahle, NGK, TRW, Magneti Marelli, Delphi, Denso, Continental são fabricantes de autopeças — NÃO são montadoras de veículo). Esses nomes pertencem apenas a "fabricante_original". "marca_veiculo"/"montadora" só podem ser marcas de veículos (ex: Toyota, Volkswagen, Fiat, Chevrolet, Hyundai, Ford).
-7. Antes de extrair "cc_oem"/"fabricante_original" com confiança "alta", avalie a fonte conforme o CONTEXTO — DNA GENEALÓGICO acima: catálogos oficiais, fabricantes certificados e lojas especializadas que citam "OEM"/"original"/"homologado" têm prioridade. Anúncios genéricos de marketplace (especialmente de peças importadas/genéricas sem marca/fabricante identificado) que apenas citam um código OEM para indicar aplicação devem entrar com confiança "media" ou "baixa", e o "motivo" deve indicar que o código pode ser de aplicação cruzada e não de origem genuína.`,
-            messages: [{
-                role: 'user',
-                content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca numerados:\n`
-                    + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n')
-            }]
+7. Antes de extrair "cc_oem"/"fabricante_original" com confiança "alta", avalie a fonte conforme o CONTEXTO — DNA GENEALÓGICO acima: catálogos oficiais, fabricantes certificados e lojas especializadas que citam "OEM"/"original"/"homologado" têm prioridade. Anúncios genéricos de marketplace (especialmente de peças importadas/genéricas sem marca/fabricante identificado) que apenas citam um código OEM para indicar aplicação devem entrar com confiança "media" ou "baixa", e o "motivo" deve indicar que o código pode ser de aplicação cruzada e não de origem genuína.`
+            }
         });
-        const texto = msg.content?.[0]?.text || '{}';
+
+        const texto = response.text || '{}';
         let bruto;
         try {
             const jsonMatch = texto.match(/\{[\s\S]*\}/);
@@ -172,6 +125,12 @@ REGRAS ABSOLUTAS:
             bruto = {};
         }
 
+        // Fontes citadas pelo Grounding (Google Search) na resposta — usadas
+        // como "fontes_consultadas" e como fallback quando o modelo não citar
+        // uma fonte_url específica para um campo.
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+        const fontesGrounding = groundingChunks.map(g => g.web?.uri).filter(Boolean);
+
         const campos = {};
         CAMPOS_DNA.forEach(c => {
             const item = bruto[c];
@@ -179,9 +138,8 @@ REGRAS ABSOLUTAS:
                 campos[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' };
                 return;
             }
-            const idx = Number(item.fonte_idx);
-            const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
             let valor = item.valor;
+            const fonte = (typeof item.fonte_url === 'string' && item.fonte_url.trim()) ? item.fonte_url.trim() : null;
             let confianca = ['alta', 'media', 'baixa'].includes(item.confianca) ? item.confianca : 'media';
             let motivo = (typeof item.motivo === 'string' && item.motivo.trim()) ? item.motivo.trim() : null;
 
@@ -193,7 +151,7 @@ REGRAS ABSOLUTAS:
                 if (!ncmLimpo) { confianca = 'baixa'; motivo = 'requer confirmação fiscal — NCM deve ter 8 dígitos'; }
                 else valor = ncmLimpo;
             }
-            campos[c] = { valor, fonte: fonte || null, confianca, motivo };
+            campos[c] = { valor, fonte, confianca, motivo };
         });
 
         // Confirma o NCM contra a tabela TIPI oficial (BrasilAPI) — eleva a confiança
@@ -210,7 +168,13 @@ REGRAS ABSOLUTAS:
         }
 
         const encontrado = CAMPOS_DNA.some(c => campos[c].valor != null);
-        return { ok: true, encontrado, campos, fontes_consultadas: trechos.map(t => t.fonte), pendente_confirmacao: true };
+        if (!encontrado && fontesGrounding.length === 0) {
+            return {
+                ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true,
+                mensagem: 'Sem resultados de busca — nenhuma fonte encontrada.'
+            };
+        }
+        return { ok: true, encontrado, campos, fontes_consultadas: fontesGrounding, pendente_confirmacao: true };
     } catch (e) {
         console.error('[Enriquecer DNA] IA:', e.message);
         return { ok: false, erro: e.message, campos: vazio, pendente_confirmacao: true };

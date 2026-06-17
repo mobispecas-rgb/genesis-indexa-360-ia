@@ -2302,6 +2302,7 @@ app.get('/api/sistema/performance', async (req, res) => {
 
         const conectividade = {
             ia_anthropic: !!process.env.ANTHROPIC_API_KEY,
+            ia_gemini: !!process.env.GEMINI_API_KEY,
             busca_serper: !!process.env.SERPER_API_KEY,
             busca_google: !!(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX),
             bling: !!(process.env.BLING_API_KEY || (process.env.BLING_CLIENT_ID && process.env.BLING_CLIENT_SECRET)),
@@ -2326,7 +2327,7 @@ app.get('/api/sistema/performance', async (req, res) => {
         else if (cpuUsoPct > 75) indiceQualidade -= 10;
         if (memUsoPct > 90) indiceQualidade -= 20;
         else if (memUsoPct > 75) indiceQualidade -= 10;
-        if (!conectividade.ia_anthropic) indiceQualidade -= 25;
+        if (!conectividade.ia_gemini) indiceQualidade -= 25;
         indiceQualidade -= Math.round(taxaErroPct * 0.3);
         indiceQualidade = Math.max(0, Math.min(100, indiceQualidade));
 
@@ -2335,7 +2336,7 @@ app.get('/api/sistema/performance', async (req, res) => {
         else if (indiceQualidade < 75) nivel = 'ATENÇÃO';
         else if (indiceQualidade < 90) nivel = 'BOM';
 
-        const riscoAlucinacao = !conectividade.ia_anthropic || !internet.online || taxaErroPct > 40;
+        const riscoAlucinacao = !conectividade.ia_gemini || !internet.online || taxaErroPct > 40;
 
         res.json({
             ok: true,
