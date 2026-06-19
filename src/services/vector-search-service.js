@@ -4,10 +4,19 @@
 // (@google/genai, mesma GEMINI_API_KEY do enriquecimento de DNA) e faz busca
 // por similaridade de cosseno sobre os vetores persistidos no SQLite
 // (tabela produto_embeddings). Não depende de infraestrutura externa
-// (BigQuery/Vertex AI Vector Search) — tudo roda dentro do próprio Genesis,
-// alimentando o Motor DNA/NTC (módulos CC/AV/LG) e o fluxo de
-// reenriquecimento com matching semântico de OEM, aplicação veicular e
-// cross-codes.
+// (BigQuery/Vertex AI Vector Search) — tudo roda dentro do próprio Genesis.
+//
+// REGRA NTC PARA VECTOR SEARCH (não violar):
+// Este módulo NUNCA cria/confirma sozinho aplicação veicular (AV), código OEM
+// ou cross-code (CC), dado fiscal (CO) ou qualquer campo do DNA. Ele apenas
+// SUGERE candidatos por similaridade semântica — toda saída de busca vem com
+// `valor: null`, `fonte: null`, `url_origem: null` e `status: "Sugestão
+// Vetorial"`. Esses campos só passam a ter `valor`/`fonte`/`url_origem`
+// reais depois de validação documental (ex.: confirmados via
+// dna-enricher.js, que sempre exige fonte_url). Só então o dado pode
+// alimentar os módulos AV/CC/CO/DNA do ntc-engine.js. A `confianca` aqui é
+// derivada PURAMENTE da similaridade vetorial (não é confiança documental) e
+// NUNCA deve ser usada para aumentar o score NTC.
 const db = require('./db');
 
 const MODELO_EMBEDDING = process.env.EMBEDDING_MODEL || 'text-embedding-004';
@@ -94,9 +103,22 @@ async function indexarProduto(row) {
     return { ok: true, indexados };
 }
 
+// Classifica a confiança PURAMENTE vetorial (similaridade de cosseno) de uma
+// sugestão. Não tem relação com a confiança documental usada pelo DNA/NTC
+// (dna-enricher.js) e não pode substituí-la nem somar ao score NTC.
+function classificarConfiancaVetorial(similaridade) {
+    if (similaridade >= 0.95) return 'alta';
+    if (similaridade >= 0.85) return 'media';
+    return 'baixa';
+}
+
 // Busca por similaridade de cosseno entre o texto de busca e os embeddings
-// já indexados de um campo (dna | oem | aplicacao | cross_codes). Retorna os
-// produtos mais próximos (similaridade >= threshold), ordenados desc.
+// já indexados de um campo (dna | oem | aplicacao | cross_codes). Retorna
+// SUGESTÕES (não dados confirmados) dos produtos mais próximos (similaridade
+// >= threshold), ordenados desc. Cada sugestão tem `valor: null`,
+// `fonte: null`, `url_origem: null` e `status: "Sugestão Vetorial"` — só uma
+// validação documental posterior (ex.: dna-enricher.js) pode promover o
+// `valor_sugerido` a dado real e alimentar os módulos AV/CC/CO/DNA do NTC.
 async function buscarSimilaridade(texto, { campo = 'dna', limit = 5, threshold = 0.85 } = {}) {
     if (!CAMPOS_VETOR.includes(campo)) throw new Error(`campo inválido: ${campo}`);
     const embeddingBusca = await gerarEmbedding(texto);
@@ -107,7 +129,10 @@ async function buscarSimilaridade(texto, { campo = 'dna', limit = 5, threshold =
         let embedding = [];
         try { embedding = JSON.parse(l.embedding); } catch (e) { /* linha corrompida — similaridade 0 */ }
         return {
-            produto_id: l.produto_id, sku: l.sku, campo, texto: l.texto,
+            produto_id: l.produto_id,
+            sku: l.sku,
+            campo,
+            valor_sugerido: l.texto,
             similaridade: similaridadeCosseno(embeddingBusca, embedding),
         };
     });
@@ -115,7 +140,15 @@ async function buscarSimilaridade(texto, { campo = 'dna', limit = 5, threshold =
     return resultados
         .filter(r => r.similaridade >= threshold)
         .sort((a, b) => b.similaridade - a.similaridade)
-        .slice(0, limit);
+        .slice(0, limit)
+        .map(r => ({
+            ...r,
+            valor: null,
+            fonte: null,
+            url_origem: null,
+            confianca: classificarConfiancaVetorial(r.similaridade),
+            status: 'Sugestão Vetorial',
+        }));
 }
 
 function buscarOEM(texto, opts = {}) { return buscarSimilaridade(texto, { ...opts, campo: 'oem' }); }
@@ -127,6 +160,7 @@ module.exports = {
     CAMPOS_VETOR,
     gerarEmbedding,
     similaridadeCosseno,
+    classificarConfiancaVetorial,
     indexarProduto,
     buscarSimilaridade,
     buscarOEM,

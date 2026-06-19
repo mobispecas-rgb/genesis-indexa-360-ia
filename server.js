@@ -503,6 +503,12 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
 // cosseno sobre o DNA/OEM/aplicação/cross-codes já indexados pelo job de
 // auto-enriquecimento (src/services/vector-search-service.js). Roda dentro
 // do próprio Genesis, sem depender de BigQuery/Vertex AI Vector Search.
+//
+// REGRA NTC: cada item de `resultados` é uma SUGESTÃO (status "Sugestão
+// Vetorial"), nunca um dado confirmado — `valor`/`fonte`/`url_origem` vêm
+// null até validação documental (ex.: dna-enricher.js). Nenhum destes
+// endpoints escreve em produtos nem no score NTC; quem consome a sugestão é
+// responsável por validar a fonte antes de promovê-la para AV/CC/CO/DNA.
 app.post('/api/vector/search', async (req, res) => {
     const { texto, campo, limit, threshold } = req.body;
     if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
