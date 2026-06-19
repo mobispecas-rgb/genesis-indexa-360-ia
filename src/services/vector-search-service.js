@@ -27,26 +27,31 @@ const CAMPOS_VETOR = ['dna', 'oem', 'aplicacao', 'cross_codes'];
 
 function arr(v) { return Array.isArray(v) ? v : []; }
 
+// Remove duplicatas antes de montar o texto vetorial — um mesmo código
+// (ex.: codigo_oem repetido dentro de cc_oem) não deve inflar o texto nem
+// distorcer a similaridade de cosseno.
+function dedup(itens) { return [...new Set(itens.filter(Boolean))]; }
+
 function textoDna(dados) {
-    return [
+    return dedup([
         dados.nome, dados.fabricante, dados.linhagem_fabricante, dados.linhagem_montadora,
         dados.codigo_oem, dados.motor, dados.codigo_motor, dados.marca, dados.modelo, dados.versao,
         dados.material, dados.funcao, dados.posicao,
-    ].filter(Boolean).join(' | ');
+    ]).join(' | ');
 }
 
 function textoOem(dados) {
-    return [dados.codigo_oem, ...arr(dados.cc_oem), ...arr(dados.cc_importadores)].filter(Boolean).join(' ');
+    return dedup([dados.codigo_oem, ...arr(dados.cc_oem), ...arr(dados.cc_importadores)]).join(' ');
 }
 
 function textoAplicacao(dados) {
     const periodo = dados.ano_inicial && dados.ano_final ? `${dados.ano_inicial}-${dados.ano_final}` : (dados.ano_inicial || '');
-    return [dados.marca, dados.modelo, dados.versao, dados.motor, dados.codigo_motor, dados.cilindrada, periodo,
-        ...arr(dados.aplicacoes_adicionais)].filter(Boolean).join(' ');
+    return dedup([dados.marca, dados.modelo, dados.versao, dados.motor, dados.codigo_motor, dados.cilindrada, periodo,
+        ...arr(dados.aplicacoes_adicionais)]).join(' ');
 }
 
 function textoCrossCodes(dados) {
-    return [...arr(dados.cc_aftermarket), ...arr(dados.substituicoes)].filter(Boolean).join(' ');
+    return dedup([...arr(dados.cc_aftermarket), ...arr(dados.substituicoes)]).join(' ');
 }
 
 const GERADORES_TEXTO = { dna: textoDna, oem: textoOem, aplicacao: textoAplicacao, cross_codes: textoCrossCodes };
