@@ -78,6 +78,24 @@ CREATE TABLE IF NOT EXISTS ntc_referencias (
   atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ntc_referencias_tipo ON ntc_referencias(tipo);
+
+-- Embeddings vetoriais por produto/campo (dna | oem | aplicacao | cross_codes),
+-- gerados pelo serviço de busca vetorial (src/services/vector-search-service.js)
+-- e mantidos pelo job de auto-enriquecimento. A coluna embedding guarda o
+-- vetor como JSON (array de floats) — busca por similaridade de cosseno é feita em
+-- memória pelo próprio Node, sem depender de BigQuery/Vertex AI Vector Search.
+CREATE TABLE IF NOT EXISTS produto_embeddings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  produto_id INTEGER NOT NULL,
+  sku TEXT NOT NULL,
+  campo TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  embedding TEXT NOT NULL,
+  modelo TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(produto_id, campo)
+);
+CREATE INDEX IF NOT EXISTS idx_embeddings_campo ON produto_embeddings(campo);
 `);
 
 // Migração: coluna `pausado` — permite excluir um produto específico do job
@@ -201,7 +219,25 @@ function definirPausado(id, pausado) {
 }
 
 function excluirProduto(id) {
+  db.prepare('DELETE FROM produto_embeddings WHERE produto_id = ?').run(id);
   return db.prepare('DELETE FROM produtos WHERE id = ?').run(id);
+}
+
+// ===== Embeddings vetoriais (busca por similaridade — vector-search-service.js) =====
+function salvarEmbeddingProduto({ produto_id, sku, campo, texto, embedding, modelo }) {
+  db.prepare(`INSERT INTO produto_embeddings (produto_id, sku, campo, texto, embedding, modelo)
+    VALUES (@produto_id, @sku, @campo, @texto, @embedding, @modelo)
+    ON CONFLICT(produto_id, campo) DO UPDATE SET
+      sku=@sku, texto=@texto, embedding=@embedding, modelo=@modelo, criado_em=datetime('now')`)
+    .run({ produto_id, sku, campo, texto, embedding, modelo });
+}
+
+function listarEmbeddingsPorCampo(campo) {
+  return db.prepare('SELECT * FROM produto_embeddings WHERE campo = ?').all(campo);
+}
+
+function obterEmbeddingsProduto(produto_id) {
+  return db.prepare('SELECT * FROM produto_embeddings WHERE produto_id = ?').all(produto_id);
 }
 
 function registrarLog({ produto_id, sku, acao, detalhes, ntc_antes, ntc_depois }) {
@@ -440,4 +476,7 @@ module.exports = {
   atualizarReferencia,
   excluirReferencia,
   seedReferenciasNTC,
+  salvarEmbeddingProduto,
+  listarEmbeddingsPorCampo,
+  obterEmbeddingsProduto,
 };
