@@ -16,6 +16,7 @@ const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
 const { httpsJSON, validarGTIN, validarNCM, consultarNCMOficial, buscarWeb } = require('./src/services/web-utils');
 const { enriquecerDnaViaWeb } = require('./src/services/dna-enricher');
+const vectorSearch = require('./src/services/vector-search-service');
 const { buscarImagensReais } = require('./src/services/image-search');
 const db = require('./src/services/db');
 const autoEnrich = require('./src/services/auto-enrich');
@@ -496,6 +497,54 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
     if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
     const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome });
     res.json(resultado);
+});
+
+// Busca Vetorial (Vector Search) — embeddings via Gemini + similaridade de
+// cosseno sobre o DNA/OEM/aplicação/cross-codes já indexados pelo job de
+// auto-enriquecimento (src/services/vector-search-service.js). Roda dentro
+// do próprio Genesis, sem depender de BigQuery/Vertex AI Vector Search.
+app.post('/api/vector/search', async (req, res) => {
+    const { texto, campo, limit, threshold } = req.body;
+    if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
+    try {
+        const resultados = await vectorSearch.buscarSimilaridade(texto, { campo, limit, threshold });
+        res.json({ ok: true, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+app.post('/api/vector/oem', async (req, res) => {
+    const { texto, limit, threshold } = req.body;
+    if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
+    try {
+        const resultados = await vectorSearch.buscarOEM(texto, { limit, threshold });
+        res.json({ ok: true, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+app.post('/api/vector/dna', async (req, res) => {
+    const { texto, limit, threshold } = req.body;
+    if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
+    try {
+        const resultados = await vectorSearch.buscarDNA(texto, { limit, threshold });
+        res.json({ ok: true, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+app.post('/api/vector/application', async (req, res) => {
+    const { texto, limit, threshold } = req.body;
+    if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
+    try {
+        const resultados = await vectorSearch.buscarAplicacaoMotor(texto, { limit, threshold });
+        res.json({ ok: true, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
 });
 
 // Extração de texto de PDF — permite importar catálogos/notas de fornecedor em PDF

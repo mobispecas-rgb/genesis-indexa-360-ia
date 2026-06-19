@@ -15,13 +15,17 @@
 //      + IA. NUNCA sobrescreve um campo já preenchido (nunca inventa).
 //   3. COLONIZAÇÃO DE IMAGENS — busca imagens reais do produto na web para
 //      elevar o módulo IV (Integridade Visual).
-//   4. Recalcula o NTC 4.0 e persiste.
+//   4. INDEXAÇÃO VETORIAL — gera/atualiza embeddings de DNA, OEM, aplicação
+//      veicular e cross-codes (src/services/vector-search-service.js), para
+//      alimentar a busca por similaridade usada pelos módulos CC/AV/LG.
+//   5. Recalcula o NTC 4.0 e persiste.
 //
 // Tudo é registrado em auto_enrich_log para auditoria.
 const db = require('./db');
 const ntcEngine = require('./ntc-engine');
 const { enriquecerDnaViaWeb } = require('./dna-enricher');
 const { buscarImagensReais } = require('./image-search');
+const vectorSearch = require('./vector-search-service');
 
 const DNA_COOLDOWN_MS = (Number(process.env.AUTO_ENRICH_DNA_COOLDOWN_H) || 24) * 60 * 60 * 1000;
 const IMG_COOLDOWN_MS = (Number(process.env.AUTO_ENRICH_IMG_COOLDOWN_H) || 24) * 60 * 60 * 1000;
@@ -160,9 +164,25 @@ async function colonizarImagensSeNecessario(row, dados, acoes, forcar) {
   }
 }
 
-// Processa um único produto: rastreabilidade → DNA web → imagens → recálculo NTC → persistência.
-// `opts.forcar` (disparo manual via "Enriquecer agora") ignora os cooldowns
-// e o gate de "campos-chave já preenchidos" do job 24/7.
+// Passo 4 — Indexação vetorial: gera/atualiza os embeddings (DNA, OEM,
+// aplicação veicular, cross-codes) usados pela busca por similaridade
+// (src/services/vector-search-service.js), para que o matching semântico
+// reflita sempre o DNA mais recente do produto.
+async function indexarVetorSeNecessario(row, dados, acoes) {
+  if (!process.env.GEMINI_API_KEY) return;
+  try {
+    const resultado = await vectorSearch.indexarProduto({ id: row.id, sku: row.sku, dados });
+    if (resultado.ok && resultado.indexados.length) acoes.push('vetor:' + resultado.indexados.join(','));
+  } catch (e) {
+    console.error('[Auto-Enrich] vetor', row.sku, e.message);
+    acoes.push('vetor:erro(' + e.message + ')');
+  }
+}
+
+// Processa um único produto: rastreabilidade → DNA web → imagens → indexação
+// vetorial → recálculo NTC → persistência. `opts.forcar` (disparo manual via
+// "Enriquecer agora") ignora os cooldowns e o gate de "campos-chave já
+// preenchidos" do job 24/7.
 async function enriquecerProdutoAuto(row, opts = {}) {
   const dados = { ...row.dados };
   const acoes = [];
@@ -173,6 +193,7 @@ async function enriquecerProdutoAuto(row, opts = {}) {
   const fonte = aplicarFornecedorOuAvulso(row, dados, acoes);
   await enriquecerDnaSeNecessario(row, dados, acoes, forcar);
   await colonizarImagensSeNecessario(row, dados, acoes, forcar);
+  await indexarVetorSeNecessario(row, dados, acoes);
 
   const depois = ntcEngine.processar(dados);
 
