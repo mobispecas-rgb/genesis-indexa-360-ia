@@ -6,7 +6,7 @@
  *
  * PROIBIÇÕES ABSOLUTAS — NUNCA inventar:
  *   OEM · NCM · EAN · GTIN · CEST · aplicação · motor
- *   peso · medida · imagem · código cambiado · fabricante
+ *   peso · medida · imagem · código cambiado · fabricanteh
  *
  * Sem evidência documental → retornar null / false / []
  * O NTC é a única autoridade de aprovação.
@@ -127,7 +127,7 @@ function moduloTF(d, dnaConfirmado) {
 // MÓDULO FM — Nome técnico completo (mín. 3 palavras)
 // ─────────────────────────────────────────────────────────────
 function moduloFM(d) {
-  const nome    = d.nome || null;
+  const nome    = d.nome || d.nome_tecnico_completo || null;
   const palavras = nome ? nome.trim().split(/\s+/).filter(Boolean) : [];
 
   let score = 0;
