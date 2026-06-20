@@ -117,7 +117,7 @@ async function buscarMultiQuery({ fabricante, sku, nome }) {
   const allResults = [];
   const seenUrls = new Set();
 
-  const resultSets = await Promise.allSettled(queries.map(q => buscarWeb(q, 8)));
+  const resultSets = await Promise.allSettled(queries.map(q => buscarWeb(q, numResultados)));
 
   for (const result of resultSets) {
     if (result.status !== 'fulfilled') continue;
@@ -134,7 +134,7 @@ async function buscarMultiQuery({ fabricante, sku, nome }) {
 }
 
 // -- Enriquecimento principal --
-async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
+async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   if (!sku && !nome) {
     return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true };
   }
@@ -143,6 +143,8 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
     return { ok: false, erro: 'ANTHROPIC_API_KEY nao configurada', campos: vazio, pendente_confirmacao: true };
   }
 
+  const numResultados = nivel_busca === 'agressivo' ? 20 : nivel_busca === 'discreto' ? 5 : 12;
+  const maxTokens = nivel_busca === 'agressivo' ? 3000 : nivel_busca === 'discreto' ? 1000 : 2000;
   let trechos = [];
   try {
     trechos = await buscarMultiQuery({ fabricante, sku, nome });
@@ -212,7 +214,7 @@ REGRAS NTC — OBRIGATORIAS:
 
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 3500,
+      max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: userContent }]
     });
