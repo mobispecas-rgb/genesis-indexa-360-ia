@@ -104,7 +104,7 @@ async function buscarWeb(q, num = 10) {
 }
 
 // -- Multi-query: 4 buscas paralelas targetadas --
-async function buscarMultiQuery({ fabricante, sku, nome }) {
+async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 12 }) {
   const base = [fabricante, sku, nome].filter(Boolean).join(' ');
 
   const queries = [
@@ -147,7 +147,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   const maxTokens = nivel_busca === 'agressivo' ? 3000 : nivel_busca === 'discreto' ? 1000 : 2000;
   let trechos = [];
   try {
-    trechos = await buscarMultiQuery({ fabricante, sku, nome });
+    trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados });
   } catch (e) {
     console.error('[DNA Enricher] busca:', e.message);
   }
