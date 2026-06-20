@@ -1,76 +1,108 @@
 'use strict';
 
 // ============================================================
-// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.0 (2026-06-20)
-// Busca: Gemini 2.0 Flash + Google Search Grounding nativo
-// NÃO depende de SERPER_API_KEY nem GOOGLE_SEARCH_KEY.
-// Requer: GEMINI_API_KEY (já configurada no Render).
+// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.1 (2026-06-20)
+// LLM   : Claude Haiku (ANTHROPIC_API_KEY — configurada)
+// Busca : Serper → DuckDuckGo HTML (sem chave, gratuito)
 // ============================================================
-const { validarGTIN, validarNCM, consultarNCMOficial } = require('./web-utils');
+const https = require('https');
+const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON } = require('./web-utils');
+
+// ─────────────────────────────────────────────────────────────
+// BUSCA WEB: Serper (primário) → DuckDuckGo HTML (fallback)
+// ─────────────────────────────────────────────────────────────
+async function buscarSerper(query, num) {
+  if (!process.env.SERPER_API_KEY) return [];
+  try {
+    const body = JSON.stringify({ q: query, num, gl: 'br', hl: 'pt-br' });
+    const data = await httpsJSON({
+      hostname: 'google.serper.dev', path: '/search', method: 'POST',
+      headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, body, 10000);
+    return (data.organic || []).filter(i => i.title && i.snippet)
+      .map(i => ({ titulo: i.title, fonte: i.link, trecho: i.snippet }));
+  } catch (e) {
+    console.error('[DNA] Serper:', e.message);
+    return [];
+  }
+}
+
+async function buscarDDG(query, num) {
+  return new Promise(resolve => {
+    const q = encodeURIComponent(query);
+    const opts = {
+      hostname: 'html.duckduckgo.com', path: `/html/?q=${q}`, method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
+        'Accept': 'text/html', 'Accept-Language': 'pt-BR,pt;q=0.9'
+      }
+    };
+    const req = https.request(opts, res => {
+      let html = '';
+      res.on('data', d => { if (html.length < 200000) html += d; });
+      res.on('end', () => {
+        const results = [];
+        const blockRe = /<div class="result[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
+        let m;
+        while ((m = blockRe.exec(html)) !== null && results.length < num) {
+          const block = m[1];
+          const titleM = block.match(/<a[^>]+class="result__a"[^>]*>([^<]+)<\/a>/i);
+          const hrefM  = block.match(/<a[^>]+class="result__a"[^>]+href="([^"]+)"/i);
+          const snipM  = block.match(/class="result__snippet"[^>]*>([^<]+)/i);
+          if (titleM && snipM) {
+            let url = hrefM ? hrefM[1] : '';
+            if (url.startsWith('//duckduckgo.com/l/?')) {
+              const uddg = url.match(/uddg=([^&]+)/);
+              if (uddg) url = decodeURIComponent(uddg[1]);
+            }
+            results.push({ titulo: titleM[1].trim(), fonte: url, trecho: snipM[1].trim() });
+          }
+        }
+        resolve(results);
+      });
+      res.on('error', () => resolve([]));
+    });
+    req.on('error', () => resolve([]));
+    req.setTimeout(12000, () => { req.destroy(); resolve([]); });
+    req.end();
+  });
+}
+
+async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10 }) {
+  const base = [fabricante, sku, nome].filter(Boolean).join(' ');
+  const queries = [
+    base + ' ficha tecnica especificacoes autopecas',
+    base + ' NCM EAN codigo fiscal tributario',
+    base + ' aplicacao veicular motor montadora ano',
+    base + ' OEM cross reference equivalente substituicao'
+  ];
+  const seen = new Set(); const all = [];
+  for (const q of queries) {
+    let res = await buscarSerper(q, numResultados);
+    if (res.length === 0) res = await buscarDDG(q, numResultados);
+    for (const r of res) {
+      if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
+    }
+  }
+  console.log(`[DNA v5.1] ${all.length} fontes encontradas`);
+  return all;
+}
 
 // ─────────────────────────────────────────────────────────────
 // REGRAS CANÔNICAS NTC
 // ─────────────────────────────────────────────────────────────
-const NTC_SYSTEM = `Você é o agente "DNA OEM 360" do sistema Genesis iRollo 360 (NTC Engine 4.0) para peças automotivas.
+const NTC_SYSTEM = `Você é o agente "DNA OEM 360" do Genesis iRollo 360 (NTC Engine 4.0).
 
-REGRAS ABSOLUTAS — NUNCA QUEBRE ESTAS REGRAS:
+REGRAS ABSOLUTAS:
+1. NUNCA invente dados sem fonte nos trechos fornecidos. Sem evidência = null.
+2. Três níveis: "confirmado" (2+ fontes independentes específicas), "familia" (código vizinho), "nulo" (sem fonte). Home page de marca NUNCA é fonte válida.
+3. Código incompleto? status="codigo_incompleto" + variantes_possiveis. Não escolha sufixo.
+4. Motor compartilhado entre montadoras? Explique triangulação em mecanismo_triangulacao.
+5. fontes[]: URLs EXATAS do dado específico.
+6. Saída: SOMENTE o JSON. Sem markdown. Sem texto antes ou depois.`;
 
-1. NUNCA invente, deduza ou "complete" um dado que não tenha fonte verificável na web. Se não encontrar evidência, o campo retorna null. Não existe "chute educado" — existe fato com fonte ou null.
+const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_oem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motor":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[]},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
 
-2. SEMPRE diferencie três níveis de confiança por campo:
-   - "confirmado": dado em 2+ fontes INDEPENDENTES E ESPECÍFICAS (página de produto, ficha técnica, catálogo com o código exato). A home page de uma marca (ex: ngk.com, mahle.com, sabo.com.br) NUNCA conta como fonte válida para um campo específico.
-   - "familia": dado de código vizinho/aparentado (mesma família, prefixo ou faixa numérica). É pista, não fato. NUNCA promova "familia" para "confirmado".
-   - "nulo": nenhuma fonte. Campo fica null.
-   PROIBIDO repetir a mesma URL como fonte em múltiplos campos diferentes.
-
-3. Código incompleto (sem sufixo de medida, tipo ou hífen)? Retorne "status": "codigo_incompleto" e liste variantes_possiveis. NÃO escolha um sufixo sozinho.
-
-4. Para APLICAÇÃO VEICULAR com motor compartilhado/licenciado entre montadoras, explique o MECANISMO da triangulação em mecanismo_triangulacao.
-
-5. Em fontes[], coloque as URLs EXATAS onde encontrou aquele dado específico.
-
-6. Saída: SOMENTE o JSON abaixo. Nada antes ou depois. Sem markdown. Sem cercas de código.`;
-
-const NTC_SCHEMA = `{
-  "codigo_entrada": "<código exatamente como recebido>",
-  "status": "ok | codigo_incompleto | nao_encontrado",
-  "variantes_possiveis": [],
-  "dna": {
-    "fabricante_original":           { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] },
-    "codigo_oem":                    { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] },
-    "codigo_fabricante_normalizado": { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] },
-    "ean":                           { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] },
-    "categoria_produto":             { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] }
-  },
-  "fm": {
-    "nome_tecnico_completo": { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] },
-    "funcao_tecnica":        { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] }
-  },
-  "av": {
-    "aplicacoes": [
-      { "montadora": null, "modelo": null, "motor": null, "ano_inicial": null, "ano_final": null, "cilindrada": null, "confianca": "confirmado|familia|nulo", "fontes": [] }
-    ],
-    "mecanismo_triangulacao": null
-  },
-  "co": {
-    "ncm":  { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] },
-    "cest": { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] }
-  },
-  "mc": { "material": { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] } },
-  "ec": { "engenharia_detalhe": { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] } },
-  "bta": { "boletins": [], "substituicoes": [] },
-  "cc": {
-    "cc_oem":          [{ "marca": null, "codigo": null, "confianca": "confirmado|familia|nulo" }],
-    "cc_aftermarket":  [{ "marca": null, "codigo": null, "confianca": "confirmado|familia|nulo" }],
-    "cc_importadores": [{ "marca": null, "codigo": null, "confianca": "confirmado|familia|nulo" }]
-  },
-  "lg": { "linhagem": { "valor": null, "confianca": "confirmado|familia|nulo", "fontes": [] } },
-  "fi_fp": { "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null }
-}`;
-
-// ─────────────────────────────────────────────────────────────
-// CAMPOS LEGACY (compatibilidade com auto-enrich.js)
-// ─────────────────────────────────────────────────────────────
 const CAMPOS_DNA = [
   'codigo_oem','ean','ncm','cest','motor','codigo_motor',
   'marca_veiculo','modelo_veiculo','versao_veiculo','ano_inicial','ano_final','cilindrada',
@@ -86,16 +118,12 @@ function camposVazios() {
   return v;
 }
 
-// ─────────────────────────────────────────────────────────────
-// VALIDADOR DETERMINÍSTICO DE CONFIANÇA
-// Rebaixa "confirmado" → "familia" se < 2 domínios distintos.
-// ─────────────────────────────────────────────────────────────
 function auditarConfianca(campo) {
   if (!campo || campo.confianca !== 'confirmado') return campo;
-  const fontes = (campo.fontes || []).filter(f => f && typeof f === 'string' && f.startsWith('http'));
-  const dominios = new Set();
-  for (const f of fontes) { try { dominios.add(new URL(f).hostname.replace(/^www\./, '')); } catch (_) {} }
-  if (dominios.size < 2) campo.confianca = 'familia';
+  const fontes = (campo.fontes || []).filter(f => f && f.startsWith('http'));
+  const doms = new Set();
+  for (const f of fontes) { try { doms.add(new URL(f).hostname.replace(/^www\./, '')); } catch (_) {} }
+  if (doms.size < 2) campo.confianca = 'familia';
   return campo;
 }
 
@@ -104,9 +132,9 @@ function auditarCanonicoCompleto(can) {
   for (const k of Object.keys(can.dna || {})) auditarConfianca(can.dna[k]);
   for (const k of Object.keys(can.fm  || {})) auditarConfianca(can.fm[k]);
   for (const ap of (can.av?.aplicacoes || [])) {
-    const dom = new Set();
-    for (const f of (ap.fontes || [])) { try { dom.add(new URL(f).hostname.replace(/^www\./, '')); } catch (_) {} }
-    if (ap.confianca === 'confirmado' && dom.size < 2) ap.confianca = 'familia';
+    const doms = new Set();
+    for (const f of (ap.fontes || [])) { try { doms.add(new URL(f).hostname.replace(/^www\./, '')); } catch (_) {} }
+    if (ap.confianca === 'confirmado' && doms.size < 2) ap.confianca = 'familia';
   }
   for (const sec of [can.co, can.mc, can.ec, can.lg]) {
     if (!sec) continue;
@@ -115,9 +143,6 @@ function auditarCanonicoCompleto(can) {
   return can;
 }
 
-// ─────────────────────────────────────────────────────────────
-// BRIDGE: canônico → legacy (para auto-enrich.js)
-// ─────────────────────────────────────────────────────────────
 function canonParaLegado(can) {
   if (!can) return camposVazios();
   const C  = { confirmado: 'alta', familia: 'media', nulo: 'baixa' };
@@ -126,7 +151,7 @@ function canonParaLegado(can) {
   const av0 = Array.isArray(can.av?.aplicacoes) ? can.av.aplicacoes[0] : null;
   const ac  = av0?.confianca || 'nulo';
   const af  = (Array.isArray(av0?.fontes) && av0.fontes.length) ? av0.fontes[0] : null;
-  const avRest = Array.isArray(can.av?.aplicacoes) && can.av.aplicacoes.length > 1
+  const avRest = (can.av?.aplicacoes?.length > 1)
     ? can.av.aplicacoes.slice(1).map(a =>
         [a.montadora, a.modelo, a.motor, a.cilindrada,
          (a.ano_inicial && a.ano_final) ? `${a.ano_inicial}-${a.ano_final}` : a.ano_inicial
@@ -172,116 +197,89 @@ function canonParaLegado(can) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AGENTE PRINCIPAL — Gemini 2.0 Flash + Google Search Grounding
+// AGENTE PRINCIPAL — Claude Haiku + busca web (Serper/DDG)
 // ─────────────────────────────────────────────────────────────
 async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
-  if (!sku && !nome) {
-    return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true };
-  }
-  if (!process.env.GEMINI_API_KEY) {
-    return { ok: false, erro: 'GEMINI_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
-  }
+  if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true };
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, erro: 'ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
 
   const codigoEntrada = sku || nome;
   const termoBase    = [fabricante, sku, nome].filter(Boolean).join(' ');
-  const maxTokens    = nivel_busca === 'agressivo' ? 4096 : nivel_busca === 'discreto' ? 1024 : 2048;
+  const numResultados = nivel_busca === 'agressivo' ? 15 : nivel_busca === 'discreto' ? 5 : 10;
+  const maxTokens    = nivel_busca === 'agressivo' ? 4000 : nivel_busca === 'discreto' ? 1500 : 2500;
+
+  let trechos = [];
+  try { trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados }); }
+  catch (e) { console.error('[DNA v5.1] busca:', e.message); }
+
+  if (trechos.length === 0) {
+    return { ok: true, encontrado: false, campos: camposVazios(), fontes_consultadas: [], campos_preenchidos: 0, pendente_confirmacao: true, mensagem: 'Sem resultados de busca.' };
+  }
 
   try {
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const userPrompt =
-      `CÓDIGO: ${codigoEntrada}\n` +
-      `PRODUTO: ${termoBase}\n\n` +
-      `Pesquise na web e retorne o JSON canônico NTC completo.\n\n` +
-      `ESQUEMA DE SAÍDA OBRIGATÓRIO (retorne SOMENTE este JSON, sem markdown):\n` +
-      NTC_SCHEMA;
+    const userContent =
+      `CÓDIGO: ${codigoEntrada}\nPRODUTO: ${termoBase}\n\n` +
+      `Resultados de busca (${trechos.length} fontes):\n` +
+      trechos.map((t, i) => `[${i+1}] ${t.titulo}\nURL: ${t.fonte}\n${t.trecho}`).join('\n\n') +
+      `\n\nESQUEMA DE SAÍDA (retorne SOMENTE este JSON):\n${NTC_SCHEMA}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: userPrompt,
-      config: {
-        systemInstruction: NTC_SYSTEM,
-        tools: [{ googleSearch: {} }],
-        temperature: 0.1,
-        maxOutputTokens: maxTokens,
-      },
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      system: NTC_SYSTEM,
+      messages: [{ role: 'user', content: userContent }]
     });
 
-    const rawText = response.text || '';
-    console.log(`[DNA v5] Gemini ${rawText.length} chars | ${codigoEntrada}`);
+    const rawText = msg.content?.[0]?.text || '{}';
+    console.log(`[DNA v5.1] Claude ${rawText.length} chars | ${codigoEntrada}`);
 
-    // Parse JSON
     let canonico;
     try {
-      const cleaned = rawText.trim()
-        .replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+      const cleaned = rawText.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
       const m = cleaned.match(/\{[\s\S]*\}/);
       canonico = JSON.parse(m ? m[0] : cleaned);
     } catch (e) {
-      console.error('[DNA v5] parse:', e.message, '| raw:', rawText.substring(0, 200));
+      console.error('[DNA v5.1] parse:', e.message);
       return { ok: false, erro: 'Parse JSON: ' + e.message, campos: camposVazios(), pendente_confirmacao: true };
     }
 
     if (!canonico.codigo_entrada) canonico.codigo_entrada = codigoEntrada;
-
-    // Validador determinístico (rebaixa confirmado sem 2+ domínios)
     auditarCanonicoCompleto(canonico);
 
-    // Validar EAN/GTIN por checksum
     if (canonico.dna?.ean?.valor != null) {
       const s = String(canonico.dna.ean.valor).replace(/\D/g, '');
-      if (!validarGTIN(s)) {
-        canonico.dna.ean = { valor: null, confianca: 'nulo', fontes: [] };
-      } else {
-        canonico.dna.ean.valor = s;
-      }
+      if (!validarGTIN(s)) canonico.dna.ean = { valor: null, confianca: 'nulo', fontes: [] };
+      else canonico.dna.ean.valor = s;
     }
 
-    // Validar NCM + consulta TIPI oficial
     if (canonico.co?.ncm?.valor != null) {
       const l = validarNCM(canonico.co.ncm.valor);
-      if (!l) {
-        canonico.co.ncm = { valor: null, confianca: 'nulo', fontes: [] };
-      } else {
+      if (!l) { canonico.co.ncm = { valor: null, confianca: 'nulo', fontes: [] }; }
+      else {
         canonico.co.ncm.valor = l;
-        try {
-          const desc = await consultarNCMOficial(l);
-          if (desc) { canonico.co.ncm.confianca = 'confirmado'; canonico.co.ncm._tipi = desc; }
-        } catch (_) {}
+        try { const desc = await consultarNCMOficial(l); if (desc) { canonico.co.ncm.confianca = 'confirmado'; canonico.co.ncm._tipi = desc; } } catch (_) {}
       }
     }
 
-    // Normalizar anos
     if (Array.isArray(canonico.av?.aplicacoes)) {
       for (const ap of canonico.av.aplicacoes) {
         for (const f of ['ano_inicial', 'ano_final']) {
-          if (ap[f] != null && ap[f] !== 'atual') {
-            const n = parseInt(ap[f], 10);
-            ap[f] = (!isNaN(n) && n >= 1950 && n <= 2035) ? n : null;
-          }
+          if (ap[f] != null && ap[f] !== 'atual') { const n = parseInt(ap[f],10); ap[f] = (!isNaN(n)&&n>=1950&&n<=2035)?n:null; }
         }
       }
     }
 
     const camposLegado      = canonParaLegado(canonico);
     const campos_preenchidos = CAMPOS_DNA.filter(c => camposLegado[c]?.valor != null).length;
+    console.log(`[DNA v5.1] ${campos_preenchidos}/${CAMPOS_DNA.length} | status: ${canonico.status||'ok'}`);
 
-    console.log(`[DNA v5] ${campos_preenchidos}/${CAMPOS_DNA.length} campos | status: ${canonico.status || 'ok'}`);
-
-    return {
-      ok: true,
-      encontrado: campos_preenchidos > 0,
-      campos: camposLegado,
-      campos_canonico: canonico,
-      fontes_consultadas: [],
-      campos_preenchidos,
-      total_campos: CAMPOS_DNA.length,
-      pendente_confirmacao: true,
-    };
+    return { ok: true, encontrado: campos_preenchidos > 0, campos: camposLegado, campos_canonico: canonico, fontes_consultadas: trechos.map(t => t.fonte), campos_preenchidos, total_campos: CAMPOS_DNA.length, pendente_confirmacao: true };
 
   } catch (e) {
-    console.error('[DNA v5] Gemini:', e.message);
+    console.error('[DNA v5.1] Claude:', e.message);
     return { ok: false, erro: e.message, campos: camposVazios(), pendente_confirmacao: true };
   }
 }
