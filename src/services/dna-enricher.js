@@ -34,20 +34,28 @@ function httpsJSON(options, body) {
   });
 }
 
+// Retorna { resultados: [...], erro: string|null }
 async function buscarWeb(q, num = 12) {
-  if (!process.env.SERPER_API_KEY) return [];
+  if (!process.env.SERPER_API_KEY) return { resultados: [], erro: 'SERPER_API_KEY não configurada' };
   try {
     const body = JSON.stringify({ q, num, gl: 'br', hl: 'pt-br' });
     const data = await httpsJSON({
       hostname: 'google.serper.dev', path: '/search', method: 'POST',
       headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     }, body);
-    return (data.organic || []).slice(0, num)
+    // Detectar erro de quota/autenticação — SERPER retorna JSON sem "organic"
+    if (!data.organic && (data.message || data.error || data.statusCode)) {
+      const msg = data.message || data.error || ('HTTP ' + data.statusCode);
+      console.error('[DNA Enricher] SERPER erro:', msg);
+      return { resultados: [], erro: 'SERPER: ' + msg };
+    }
+    const resultados = (data.organic || []).slice(0, num)
       .filter(i => i.title && i.snippet)
       .map(i => ({ titulo: i.title, fonte: i.link, trecho: i.snippet }));
+    return { resultados, erro: null };
   } catch (e) {
     console.error('[DNA Enricher] busca:', e.message);
-    return [];
+    return { resultados: [], erro: e.message };
   }
 }
 
@@ -57,11 +65,18 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, erro: 'ANTHROPIC_API_KEY não configurada', campos: vazio, pendente_confirmacao: true };
 
   const termoBase = [fabricante, sku, nome].filter(Boolean).join(' ');
-  let trechos = [];
-  try { trechos = await buscarWeb(termoBase, 12); } catch (e) { console.error('[DNA Enricher]', e.message); }
+  let trechos = [], buscaErro = null;
+  try {
+    const busca = await buscarWeb(termoBase, 12);
+    trechos = busca.resultados;
+    buscaErro = busca.erro;
+  } catch (e) { console.error('[DNA Enricher]', e.message); }
 
   if (trechos.length === 0) {
-    return { ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true, mensagem: 'Sem resultados de busca.' };
+    const mensagem = buscaErro
+      ? 'Busca web indisponível: ' + buscaErro
+      : 'Sem resultados de busca para: ' + termoBase;
+    return { ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true, mensagem, debug_serper: buscaErro };
   }
 
   try {
