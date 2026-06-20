@@ -494,7 +494,7 @@ REGRAS ABSOLUTAS:
 // confirmação fiscal. Resultado sempre "pendente_confirmacao": nunca auto-aprova.
 // (lógica compartilhada com o job de auto-enriquecimento em src/services/dna-enricher.js)
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
-    const { sku, fabricante, nome } = req.body;
+    const { sku, fabricante, nome, nivel_busca } = req.body;
     if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
     const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca });
     // Calcula NTC 4.0 sobre os campos enriquecidos
