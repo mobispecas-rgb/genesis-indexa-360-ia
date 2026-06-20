@@ -1,6 +1,7 @@
 'use strict';
 
-// Agente de Enriquecimento de DNA via Web — Claude Haiku 4.5 + SERPER
+// Agente de Enriquecimento de DNA via Web — Claude Haiku 4.5
+// Busca: Brave Search API (grátis $5/mês) com fallback SERPER
 // NUNCA inventa: sem fonte, campo retorna null com confiança "baixa".
 const https = require('https');
 const { validarGTIN, validarNCM, consultarNCMOficial } = require('./web-utils');
@@ -34,16 +35,43 @@ function httpsJSON(options, body) {
   });
 }
 
-// Retorna { resultados: [...], erro: string|null }
-async function buscarWeb(q, num = 12) {
-  if (!process.env.SERPER_API_KEY) return { resultados: [], erro: 'SERPER_API_KEY não configurada' };
+// Brave Search API — $5 crédito grátis/mês (~1.000 buscas)
+async function buscarBrave(q, num = 10) {
+  const key = process.env.BRAVE_API_KEY;
+  if (!key) return { resultados: [], erro: 'BRAVE_API_KEY não configurada' };
+  try {
+    const encoded = encodeURIComponent(q);
+    const data = await httpsJSON({
+      hostname: 'api.search.brave.com',
+      path: '/res/v1/web/search?q=' + encoded + '&count=' + num + '&country=br&search_lang=pt&safesearch=off',
+      method: 'GET',
+      headers: { 'Accept': 'application/json', 'X-Subscription-Token': key }
+    });
+    if (data.type === 'ErrorResponse' || (!data.web && data.message)) {
+      const msg = data.message || JSON.stringify(data);
+      console.error('[DNA Enricher] Brave erro:', msg);
+      return { resultados: [], erro: 'Brave: ' + msg };
+    }
+    const resultados = (data.web?.results || []).slice(0, num)
+      .filter(r => r.title && r.description)
+      .map(r => ({ titulo: r.title, fonte: r.url, trecho: r.description }));
+    return { resultados, erro: null };
+  } catch (e) {
+    console.error('[DNA Enricher] Brave:', e.message);
+    return { resultados: [], erro: 'Brave: ' + e.message };
+  }
+}
+
+// SERPER — fallback caso BRAVE_API_KEY não esteja configurada
+async function buscarSerper(q, num = 12) {
+  const key = process.env.SERPER_API_KEY;
+  if (!key) return { resultados: [], erro: 'SERPER_API_KEY não configurada' };
   try {
     const body = JSON.stringify({ q, num, gl: 'br', hl: 'pt-br' });
     const data = await httpsJSON({
       hostname: 'google.serper.dev', path: '/search', method: 'POST',
-      headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      headers: { 'X-API-KEY': key, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     }, body);
-    // Detectar erro de quota/autenticação — SERPER retorna JSON sem "organic"
     if (!data.organic && (data.message || data.error || data.statusCode)) {
       const msg = data.message || data.error || ('HTTP ' + data.statusCode);
       console.error('[DNA Enricher] SERPER erro:', msg);
@@ -54,9 +82,16 @@ async function buscarWeb(q, num = 12) {
       .map(i => ({ titulo: i.title, fonte: i.link, trecho: i.snippet }));
     return { resultados, erro: null };
   } catch (e) {
-    console.error('[DNA Enricher] busca:', e.message);
-    return { resultados: [], erro: e.message };
+    console.error('[DNA Enricher] SERPER:', e.message);
+    return { resultados: [], erro: 'SERPER: ' + e.message };
   }
+}
+
+// Seleciona provedor: Brave (primário) > SERPER (fallback)
+async function buscarWeb(q, num = 12) {
+  if (process.env.BRAVE_API_KEY) return buscarBrave(q, Math.min(num, 10));
+  if (process.env.SERPER_API_KEY) return buscarSerper(q, num);
+  return { resultados: [], erro: 'Nenhuma API de busca configurada (BRAVE_API_KEY ou SERPER_API_KEY)' };
 }
 
 async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
@@ -76,7 +111,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
     const mensagem = buscaErro
       ? 'Busca web indisponível: ' + buscaErro
       : 'Sem resultados de busca para: ' + termoBase;
-    return { ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true, mensagem, debug_serper: buscaErro };
+    return { ok: true, encontrado: false, campos: vazio, fontes_consultadas: [], pendente_confirmacao: true, mensagem, debug_busca: buscaErro };
   }
 
   try {
@@ -84,9 +119,22 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const system = `Você é especialista técnico e fiscal em autopeças. Recebe dados de produto + resultados de busca numerados.
-Para CADA campo, retorne {"valor":...,"fonte_idx":N,"confianca":"alta"|"media"|"baixa","motivo":"..."}.
-Campos: codigo_oem, ean, ncm, cest, motor, codigo_motor, marca_veiculo, modelo_veiculo, versao_veiculo, ano_inicial, ano_final, cilindrada, material, posicao, fmsi, comprimento, largura, altura, cross_codes, aplicacoes_adicionais, funcao_tecnica, boletins, substituicoes, fabricante_original, montadora, cc_oem, cc_importadores, peso_bruto, peso_liquido.
-REGRAS: 1)NUNCA invente. 2)Sem evidência: null. 3)fonte_idx=N do resultado. 4)Não use fabricante de peças em marca_veiculo/montadora. 5)JSON puro sem markdown.`;
+
+Para CADA campo abaixo, retorne {"valor": ..., "fonte_idx": N, "confianca": "alta"|"media"|"baixa", "motivo": "..."}.
+
+Campos obrigatórios (retorne todos):
+- codigo_oem, ean, ncm, cest, motor, codigo_motor, marca_veiculo, modelo_veiculo, versao_veiculo
+- ano_inicial, ano_final, cilindrada, material, posicao, fmsi, comprimento, largura, altura
+- cross_codes (string: "MARCA COD; MARCA COD"), aplicacoes_adicionais (string: uma por linha)
+- funcao_tecnica, boletins, substituicoes, fabricante_original, montadora
+- cc_oem, cc_importadores, peso_bruto, peso_liquido
+
+REGRAS ABSOLUTAS:
+1. NUNCA invente — só use valores EXPLÍCITOS nos resultados de busca.
+2. Sem evidência: {"valor": null, "fonte_idx": null, "confianca": "baixa"}.
+3. fonte_idx = número do resultado (1..N) de onde extraiu o valor.
+4. NUNCA use nome de fabricante de peças (Bosch, NGK, Mahle) em marca_veiculo/montadora.
+5. Responda SOMENTE com JSON válido, sem markdown.`;
 
     const userContent = `Produto: ${termoBase}\n\nResultados:\n` +
       trechos.map((t, i) => `${i+1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n');
@@ -105,7 +153,10 @@ REGRAS: 1)NUNCA invente. 2)Sem evidência: null. 3)fonte_idx=N do resultado. 4)N
     const campos = {};
     CAMPOS_DNA.forEach(c => {
       const item = bruto[c];
-      if (!item || item.valor == null || item.valor === '') { campos[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' }; return; }
+      if (!item || item.valor == null || item.valor === '') {
+        campos[c] = { valor: null, fonte: null, confianca: 'baixa', motivo: 'fonte não encontrada' };
+        return;
+      }
       let valor = item.valor;
       const idx = Number(item.fonte_idx);
       const fonte = (idx >= 1 && idx <= trechos.length) ? trechos[idx - 1].fonte : null;
