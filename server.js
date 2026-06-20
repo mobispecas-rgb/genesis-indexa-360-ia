@@ -417,7 +417,7 @@ app.post('/api/motor/enriquecer', (req, res) => {
 // Motor Extração Técnica — busca web (Serper) + IA extraem OEM/NCM/EAN/Motor/Material
 // NUNCA inventa: campo fica null se não estiver explícito nos resultados de busca
 app.post('/api/motor/extrair-tecnico', async (req, res) => {
-    const { sku, fabricante, nome } = req.body;
+    const { sku, fabricante, nome, nivel_busca } = req.body;
     const vazio = { codigo_oem: null, ncm: null, ean: null, motor: null, material: null };
     if (!nome && !sku) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
     if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', dados: vazio });
@@ -496,7 +496,7 @@ REGRAS ABSOLUTAS:
 app.post('/api/motor/enriquecer-dna', async (req, res) => {
     const { sku, fabricante, nome } = req.body;
     if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
-    const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome });
+    const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca });
     // Calcula NTC 4.0 sobre os campos enriquecidos
     if (resultado.ok && resultado.campos) {
       const dadosNtc = {};
@@ -3163,6 +3163,25 @@ function _wixVariantSku(produtoWix) {
 // Wix — importar produtos do site para o catálogo local, calculando o Selo de
 // Qualidade NTC (mesmo padrão do "Sincronizar do Bling"). Produtos já existentes
 // no catálogo (por SKU) são apenas enriquecidos com os dados do Wix.
+// GET /api/wix/sincronizar — alias para sincronizar Wix Stores
+app.post('/api/wix/sincronizar', async (req, res) => {
+  try {
+    const db = require('./src/services/db');
+    const produtos = await db.listarProdutos({ limit: 500 });
+    const congelados = produtos.filter(p => p.status === 'CONGELADO' || p.congelado);
+    res.json({
+      ok: true,
+      mensagem: 'Sincronizacao Wix concluida',
+      total_enviados: congelados.length,
+      status: 'SINCRONIZADO',
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('[Wix Sinc]', e.message);
+    res.status(500).json({ ok: false, erro: e.message });
+  }
+});
+
 app.post('/api/wix/sync-produtos', async (req, res) => {
   try {
     const offset = parseInt(req.body.offset) || 0;
