@@ -303,7 +303,7 @@ app.post('/api/motor/voz', async (req, res) => {
         const Anthropic = require('@anthropic-ai/sdk');
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 400,
             system: `Você é um redator técnico de autopeças. Regras absolutas:
 1. USE SOMENTE os dados fornecidos pelo usuário. NUNCA invente.
@@ -327,7 +327,7 @@ app.get('/api/ia/status', async (req, res) => {
     try {
         const Anthropic = require('@anthropic-ai/sdk');
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        await client.models.retrieve('claude-sonnet-4-6');
+        await client.models.retrieve('claude-haiku-4-5-20251001');
         res.json({ ok: true, configurado: true, mensagem: 'Motor IA conectado — Claude Sonnet 4.6' });
     } catch (e) {
         res.json({ ok: false, configurado: false, mensagem: e.message });
@@ -446,7 +446,7 @@ app.post('/api/motor/extrair-tecnico', async (req, res) => {
         const Anthropic = require('@anthropic-ai/sdk');
         const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 500,
             system: `Você é um especialista técnico em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e trechos de resultados de busca na web sobre esse produto.
 
@@ -647,7 +647,7 @@ app.post('/api/catalogo/raspar', async (req, res) => {
         ].filter(Boolean).join('\n\n');
 
         const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 600,
             system: `Você é um especialista em catalogação de autopeças. Vai receber o conteúdo de uma página de produto/fornecedor (título, dados estruturados, meta tags e texto).
 
@@ -718,7 +718,7 @@ app.post('/api/catalogo/raspar-lista', async (req, res) => {
         const texto = htmlParaTextoComLinks(html, url);
 
         const msg = await client.messages.create({
-            model: 'claude-sonnet-4-6',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 2000,
             system: `Você é um especialista em catalogação de autopeças. Vai receber o texto de uma página de catálogo/categoria de um fornecedor, com links no formato "Texto (LINK: url)".
 
