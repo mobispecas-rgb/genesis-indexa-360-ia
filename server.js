@@ -779,17 +779,17 @@ app.get('/api/imagens/buscar', async (req, res) => {
     const { q, fonte } = req.query;
     if (!q) return res.json({ ok: false, erro: 'Parametro q obrigatorio', imagens: [] });
 
-    if (!process.env.SERPER_API_KEY && !(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX)) {
+    if (!process.env.BRAVE_API_KEY && !process.env.SERPER_API_KEY && !(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX)) {
         return res.json({
             ok: false, imagens: [],
-            mensagem: 'Configure SERPER_API_KEY no Render para busca de imagens (2.500 buscas grátis em serper.dev).',
+            mensagem: 'Configure BRAVE_API_KEY (primário) ou SERPER_API_KEY no Render para busca de imagens.',
             q, fonte
         });
     }
 
     try {
         const imagens = await buscarImagensReais(q, 12);
-        const provider = process.env.SERPER_API_KEY ? 'serper' : 'google';
+        const provider = process.env.BRAVE_API_KEY ? 'brave' : process.env.SERPER_API_KEY ? 'serper' : 'google';
         res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider });
     } catch (e) {
         res.json({ ok: false, erro: e.message, imagens: [] });
