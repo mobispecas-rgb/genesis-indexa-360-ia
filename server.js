@@ -335,7 +335,8 @@ app.get('/api/ia/status', async (req, res) => {
 });
 
 // ─── NTC Engine (Núcleo de Triangulação Certificada) ─────────
-const ntcEngine = require('./src/services/ntc-engine');
+const ntcEngine = require('./src/services/ntc-engine')
+const ntcNormalizerPatch = require('./src/services/ntc-normalizer-patch');
 
 // Motor NTC — 13 componentes — NUNCA inventa dados
 // normalizaAliases: converte os nomes que o frontend/DNA envia para os nomes que o ntc-engine lê
@@ -496,6 +497,14 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
     const { sku, fabricante, nome } = req.body;
     if (!sku && !nome) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
     const resultado = await enriquecerDnaViaWeb({ sku, fabricante, nome });
+    // Calcula NTC 4.0 sobre os campos enriquecidos
+    if (resultado.ok && resultado.campos) {
+      const dadosNtc = {};
+      for (const [k, v] of Object.entries(resultado.campos)) {
+        if (v && v.valor != null) dadosNtc[k] = v.valor;
+      }
+      try { resultado.ntc = ntcEngine.processar(dadosNtc); } catch (_) {}
+    }
     res.json(resultado);
 });
 
