@@ -65,10 +65,20 @@ const LABELS = {
 // ─────────────────────────────────────────────────────────────
 // MÓDULO DNA — Fabricante original comprovado
 // ─────────────────────────────────────────────────────────────
+
+// Helper: converte string/array em array (split por ; ou ,)
+function toArray(v) {
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (v && typeof v === 'string' && v.trim()) {
+    return v.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function moduloDNA(d) {
   const dna = {
-    fabricante_original: d.fabricante || null,
-    codigo_dna:          d.codigo_fabricante || null,
+    fabricante_original: d.fabricante || d.fabricante_original || null,
+    codigo_dna:          d.codigo_fabricante || d.codigo_oem || d.oem || null,
     familia_tecnica:     d.familia_tecnica   || null,
     confirmado:          false,
   };
@@ -90,9 +100,9 @@ function moduloDNA(d) {
 // MÓDULO TF — Triangulação: Fabricante + Código + Aplicação
 // ─────────────────────────────────────────────────────────────
 function moduloTF(d, dnaConfirmado) {
-  const temFabricante  = !!(d.fabricante);
+  const temFabricante  = !!(d.fabricante || d.fabricante_original);
   const temCodigo      = !!(d.codigo_oem || d.oem);
-  const temAplicacao   = !!(d.motor || d.codigo_motor || d.modelo);
+  const temAplicacao   = !!(d.motor || d.codigo_motor || d.modelo || d.modelo_veiculo);
 
   let score = 0;
   if (temFabricante && temCodigo && temAplicacao) score = 1.0;
@@ -104,9 +114,9 @@ function moduloTF(d, dnaConfirmado) {
 
   return {
     dados: {
-      fabricante:  d.fabricante  || null,
+      fabricante:  d.fabricante  || d.fabricante_original || null,
       codigo:      d.codigo_oem  || d.oem || null,
-      aplicacao:   d.motor       || null,
+      aplicacao:   d.motor || d.modelo || d.modelo_veiculo || null,
       triangulado,
     },
     score: triangulado ? score : 0,
@@ -154,9 +164,9 @@ function moduloCO(d) {
 // ─────────────────────────────────────────────────────────────
 function moduloAV(d) {
   const av = {
-    montadora:    d.marca         || null,
-    veiculo:      d.modelo        || null,
-    versao:       d.versao        || null,
+    montadora:    d.marca         || d.marca_veiculo    || null,
+    veiculo:      d.modelo        || d.modelo_veiculo   || null,
+    versao:       d.versao        || d.versao_veiculo   || null,
     motor:        d.motor         || null,
     codigo_motor: d.codigo_motor  || null,
     cilindrada:   d.cilindrada    || null,
@@ -193,7 +203,7 @@ function moduloMC(d) {
 // ─────────────────────────────────────────────────────────────
 function moduloEC(d) {
   const ec = {
-    funcao:         d.funcao         || null,
+    funcao:         d.funcao || d.funcao_tecnica || null,
     especificacoes: Array.isArray(d.especificacoes) ? d.especificacoes : [],
     dimensoes:      Array.isArray(d.dimensoes)      ? d.dimensoes      : [],
     pressao:        d.pressao        || null,
@@ -211,9 +221,9 @@ function moduloEC(d) {
 // ─────────────────────────────────────────────────────────────
 function moduloBTA(d) {
   const bta = {
-    boletins:      Array.isArray(d.boletins)      ? d.boletins      : [],
-    revisoes:      Array.isArray(d.revisoes)       ? d.revisoes      : [],
-    substituicoes: Array.isArray(d.substituicoes)  ? d.substituicoes : [],
+    boletins:      toArray(d.boletins),
+    revisoes:      toArray(d.revisoes),
+    substituicoes: toArray(d.substituicoes),
   };
   const total = bta.boletins.length + bta.revisoes.length + bta.substituicoes.length;
   const score = total > 0 ? Math.min(total / 3, 1.0) : 0;
@@ -225,10 +235,10 @@ function moduloBTA(d) {
 // ─────────────────────────────────────────────────────────────
 function moduloCC(d) {
   const cc = {
-    dna:         Array.isArray(d.cc_dna)         ? d.cc_dna         : [],
-    oem:         Array.isArray(d.cc_oem)         ? d.cc_oem         : [],
-    aftermarket: Array.isArray(d.cc_aftermarket) ? d.cc_aftermarket : [],
-    importadores:Array.isArray(d.cc_importadores)? d.cc_importadores: [],
+    dna:         toArray(d.cc_dna),
+    oem:         toArray(d.cc_oem),
+    aftermarket: toArray(d.cc_aftermarket || d.cross_codes),
+    importadores:toArray(d.cc_importadores),
   };
   const total = cc.dna.length + cc.oem.length + cc.aftermarket.length + cc.importadores.length;
   const score = total > 0 ? Math.min(total / 4, 1.0) : 0;
@@ -240,8 +250,8 @@ function moduloCC(d) {
 // ─────────────────────────────────────────────────────────────
 function moduloLG(d) {
   const lg = {
-    fabricante_original: d.linhagem_fabricante    || null,
-    montadora:           d.linhagem_montadora     || null,
+    fabricante_original: d.linhagem_fabricante   || d.fabricante_original || d.fabricante || null,
+    montadora:           d.linhagem_montadora    || d.marca_veiculo || d.marca || null,
     distribuidor:        d.linhagem_distribuidor  || null,
     importador:          d.linhagem_importador    || null,
     marketplace:         d.linhagem_marketplace   || null,
