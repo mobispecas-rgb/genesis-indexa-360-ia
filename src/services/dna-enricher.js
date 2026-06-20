@@ -7,7 +7,7 @@
 // (URL) e a confiança (alta/media/baixa). NUNCA inventa: sem fonte, o campo
 // volta null com confiança "baixa" e motivo "fonte não encontrada". EAN passa
 // por checksum GTIN e NCM precisa ter 8 dígitos — senão é marcado para
-// confirmação fiscal. Resultado sempre "pendente_confirmacao": nunca auto-aprova.
+// confirmação fiscal. Resultado sempre "pendente_confirmacao": nuhnca auto-aprova.
 const { validarGTIN, validarNCM, consultarNCMOficial } = require('./web-utils');
 
 const CAMPOS_DNA = [
@@ -45,7 +45,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome }) {
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.0-flash',
             contents: `Produto: ${termoBase}\n\nUse o buscador do Google (Grounding) para encontrar o catálogo oficial da marca, lojas especializadas, marketplaces e fichas técnicas sobre esse produto, e então preencha o JSON conforme as instruções do sistema.`,
             config: {
                 tools: [{ googleSearch: {} }],
