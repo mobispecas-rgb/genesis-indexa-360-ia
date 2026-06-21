@@ -1,7 +1,7 @@
 'use strict';
 
 // ============================================================
-// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.1 (2026-06-20)
+// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.2 (2026-06-20)
 // LLM   : Claude Haiku (ANTHROPIC_API_KEY — configurada)
 // Busca : Serper → DuckDuckGo HTML (sem chave, gratuito)
 // ============================================================
@@ -84,7 +84,7 @@ async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10 }) {
       if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
     }
   }
-  console.log(`[DNA v5.1] ${all.length} fontes encontradas`);
+  console.log(`[DNA v5.2] ${all.length} fontes encontradas`);
   return all;
 }
 
@@ -200,7 +200,7 @@ function canonParaLegado(can) {
 // AGENTE PRINCIPAL — Claude Haiku + busca web (Serper/DDG)
 // ─────────────────────────────────────────────────────────────
 async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
-  if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true };
+  if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true, usou_busca_web: usouBusca };
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, erro: 'ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
 
   const codigoEntrada = sku || nome;
@@ -210,21 +210,25 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
 
   let trechos = [];
   try { trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados }); }
-  catch (e) { console.error('[DNA v5.1] busca:', e.message); }
+  catch (e) { console.error('[DNA v5.2] busca:', e.message); }
 
-  if (trechos.length === 0) {
-    return { ok: true, encontrado: false, campos: camposVazios(), fontes_consultadas: [], campos_preenchidos: 0, pendente_confirmacao: true, mensagem: 'Sem resultados de busca.' };
-  }
-
+  // 2. Claude Haiku — com resultados de busca OU com conhecimento de treinamento
+  const usouBusca = trechos.length > 0;
   try {
     const Anthropic = require('@anthropic-ai/sdk');
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+    const contexto = usouBusca
+      ? `Resultados de busca (${trechos.length} fontes):\n` +
+        trechos.map((t, i) => `[${i+1}] ${t.titulo}\nURL: ${t.fonte}\n${t.trecho}`).join('\n\n')
+      : `Nenhum resultado de busca disponível. Use seu conhecimento de treinamento sobre este produto.\n` +
+        `Para campos baseados em conhecimento de treinamento (não em fonte web ao vivo), use confianca="familia".\n` +
+        `Cite as fontes que você conhece do treinamento (ex: catálogos Mahle, NGK, Toyota OEM, Mercado Livre etc).`;
+
     const userContent =
       `CÓDIGO: ${codigoEntrada}\nPRODUTO: ${termoBase}\n\n` +
-      `Resultados de busca (${trechos.length} fontes):\n` +
-      trechos.map((t, i) => `[${i+1}] ${t.titulo}\nURL: ${t.fonte}\n${t.trecho}`).join('\n\n') +
-      `\n\nESQUEMA DE SAÍDA (retorne SOMENTE este JSON):\n${NTC_SCHEMA}`;
+      contexto +
+      `\n\nESQUEMA DE SAÍDA (retorne SOMENTE este JSON):\n${NTC_SCHEMA}`
 
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -234,7 +238,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
     });
 
     const rawText = msg.content?.[0]?.text || '{}';
-    console.log(`[DNA v5.1] Claude ${rawText.length} chars | ${codigoEntrada}`);
+    console.log(`[DNA v5.2] Claude ${rawText.length} chars | ${codigoEntrada}`);
 
     let canonico;
     try {
@@ -242,7 +246,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
       const m = cleaned.match(/\{[\s\S]*\}/);
       canonico = JSON.parse(m ? m[0] : cleaned);
     } catch (e) {
-      console.error('[DNA v5.1] parse:', e.message);
+      console.error('[DNA v5.2] parse:', e.message);
       return { ok: false, erro: 'Parse JSON: ' + e.message, campos: camposVazios(), pendente_confirmacao: true };
     }
 
@@ -274,12 +278,12 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
 
     const camposLegado      = canonParaLegado(canonico);
     const campos_preenchidos = CAMPOS_DNA.filter(c => camposLegado[c]?.valor != null).length;
-    console.log(`[DNA v5.1] ${campos_preenchidos}/${CAMPOS_DNA.length} | status: ${canonico.status||'ok'}`);
+    console.log(`[DNA v5.2] ${campos_preenchidos}/${CAMPOS_DNA.length} | status: ${canonico.status||'ok'}`);
 
     return { ok: true, encontrado: campos_preenchidos > 0, campos: camposLegado, campos_canonico: canonico, fontes_consultadas: trechos.map(t => t.fonte), campos_preenchidos, total_campos: CAMPOS_DNA.length, pendente_confirmacao: true };
 
   } catch (e) {
-    console.error('[DNA v5.1] Claude:', e.message);
+    console.error('[DNA v5.2] Claude:', e.message);
     return { ok: false, erro: e.message, campos: camposVazios(), pendente_confirmacao: true };
   }
 }
