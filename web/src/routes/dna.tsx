@@ -15,6 +15,7 @@ export function DnaOem360() {
   const [resultados, setResultados] = useState<VectorResultado[]>([]);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [buscou, setBuscou] = useState(false);
 
   async function buscar() {
     if (!query.trim()) return;
@@ -27,6 +28,7 @@ export function DnaOem360() {
       setResultados([]);
     } finally {
       setLoading(false);
+      setBuscou(true);
     }
   }
 
@@ -79,7 +81,11 @@ export function DnaOem360() {
       {erro && <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{erro}</div>}
 
       {resultados.length === 0 && !loading && !erro ? (
-        <p className="text-sm text-muted-foreground">Nenhuma busca realizada ainda.</p>
+        <p className="text-sm text-muted-foreground">
+          {buscou
+            ? "Nenhum produto similar encontrado no índice — este produto (ou nenhum parecido) ainda foi indexado. Salve/enriqueça-o na tela de Enriquecimento e tente de novo."
+            : "Nenhuma busca realizada ainda."}
+        </p>
       ) : (
         <ul className="divide-y divide-border/60 rounded-xl border border-border bg-card">
           {resultados.map((r, i) => (
