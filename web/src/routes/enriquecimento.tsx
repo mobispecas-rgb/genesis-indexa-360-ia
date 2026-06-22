@@ -222,12 +222,12 @@ export function Enriquecimento() {
             </div>
           </div>
           <QuotaIaWidget />
-          <div className="space-y-2 rounded-xl border border-border bg-card p-4">
+          <div className="space-y-2.5 rounded-xl border border-border bg-card p-4">
             <button
               onClick={handlePublish}
               disabled={!publishable}
               className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition",
+                "flex h-10 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition",
                 publishable
                   ? "bg-success text-success-foreground hover:opacity-90"
                   : "cursor-not-allowed bg-muted text-muted-foreground",
@@ -235,23 +235,23 @@ export function Enriquecimento() {
             >
               <Rocket className="h-4 w-4" /> Publicar
             </button>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => handleSave()}
-                className="flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition hover:border-primary/40"
+                className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium transition hover:border-primary/40"
               >
                 <Save className="h-4 w-4" /> Salvar
               </button>
               <button
                 onClick={handleFreeze}
-                className="flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition hover:border-info/40"
+                className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium transition hover:border-info/40"
               >
                 <Snowflake className="h-4 w-4" /> Congelar
               </button>
             </div>
             <button
               onClick={handleDelete}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/20"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 text-sm font-medium text-destructive transition hover:bg-destructive/20"
             >
               <Trash2 className="h-4 w-4" /> Excluir cadastro
             </button>
@@ -324,7 +324,7 @@ export function Enriquecimento() {
           )}
           {/* Identificação */}
           <Section title="Identificação do Produto" step={1}>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="SKU / Part Number" required>
                 <input className={inputCls} value={product.sku} onChange={(e) => set("sku", e.target.value)} />
               </Field>
@@ -335,7 +335,7 @@ export function Enriquecimento() {
                   onChange={(e) => set("fabricante", e.target.value)}
                 />
               </Field>
-              <Field label="Nome do Produto" required className="sm:col-span-2">
+              <Field label="Nome do Produto" required className="sm:col-span-2 lg:col-span-1">
                 <input className={inputCls} value={product.nome} onChange={(e) => set("nome", e.target.value)} />
               </Field>
               <Field label="Família Técnica">
@@ -380,7 +380,7 @@ export function Enriquecimento() {
                   onChange={(e) => set("material", e.target.value)}
                 />
               </Field>
-              <Field label="Dimensões / Peso" className="sm:col-span-2">
+              <Field label="Dimensões / Peso" className="sm:col-span-2 lg:col-span-3">
                 <input
                   className={inputCls}
                   value={product.dimensoes}
