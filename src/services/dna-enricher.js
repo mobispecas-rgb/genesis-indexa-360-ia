@@ -110,14 +110,34 @@ async function buscarDDG(query, num) {
   });
 }
 
-async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10 }) {
-  const base = [fabricante, sku, nome].filter(Boolean).join(' ');
+// Conjunto de queries cobrindo catálogos técnicos, fontes fiscais, aplicação
+// veicular (cruzada com motor/ano/modelo/cilindrada) e os grandes marketplaces
+// (Mercado Livre, Amazon, Shopee) — onde fabricantes/lojistas costumam publicar
+// a ficha técnica completa e os códigos OEM/cross-reference de peças
+// equivalentes. Em "agressivo" inclui também catálogos em PDF de
+// fabricantes/montadoras e importadores certificados.
+function montarQueries(base, nivel_busca) {
   const queries = [
-    base + ' ficha tecnica especificacoes autopecas',
+    base + ' ficha tecnica especificacoes autopecas catalogo',
     base + ' NCM EAN codigo fiscal tributario',
-    base + ' aplicacao veicular motor montadora ano',
-    base + ' OEM cross reference equivalente substituicao'
+    base + ' aplicacao veicular motor montadora ano modelo cilindrada',
+    base + ' OEM cross reference codigo original equivalente substituicao',
+    base + ' site:mercadolivre.com.br',
+    base + ' site:amazon.com.br',
   ];
+  if (nivel_busca === 'agressivo') {
+    queries.push(
+      base + ' catalogo tecnico filetype:pdf',
+      base + ' peca cambiada equivalente importador certificado cross code',
+      base + ' site:shopee.com.br',
+    );
+  }
+  return nivel_busca === 'discreto' ? queries.slice(0, 4) : queries;
+}
+
+async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10, nivel_busca }) {
+  const base = [fabricante, sku, nome].filter(Boolean).join(' ');
+  const queries = montarQueries(base, nivel_busca);
   const seen = new Set(); const all = [];
   for (const q of queries) {
     let res = await buscarSerper(q, numResultados);
@@ -126,7 +146,7 @@ async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10 }) {
       if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
     }
   }
-  console.log(`[DNA v5.3] ${all.length} fontes encontradas`);
+  console.log(`[DNA v5.3] ${all.length} fontes encontradas (${queries.length} queries)`);
   return all;
 }
 
@@ -143,7 +163,9 @@ REGRAS ABSOLUTAS:
 5. fontes[]: URLs EXATAS do dado específico.
 6. NUNCA misture código OEM/cross-reference (codigo_oem, cc_oem, cc_aftermarket, cc_importadores) de uma categoria de peça diferente da peça pesquisada (ex.: pastilha de freio não é cross-reference de cilindro mestre de embreagem, mesmo que apareçam no mesmo resultado de busca). Se a categoria do trecho não corresponder à categoria do produto de entrada, descarte o código e retorne null.
 7. bta.instrucoes_instalacao: só preencha com texto de boletim técnico/manual de instalação do fabricante encontrado nas fontes — nunca generalize um procedimento padrão de oficina.
-8. Saída: SOMENTE o JSON. Sem markdown. Sem texto antes ou depois.`;
+8. Cruzamento de aplicação (av.aplicacoes): um código OEM/cross-reference só é válido para uma aplicação (montadora/modelo/motor/ano/cilindrada) se o BLOCO DO MOTOR (código do motor) ou a aplicação real bater entre as fontes — nunca herde aplicação só porque o nome da peça é parecido. Catálogos de marketplaces (Mercado Livre, Amazon, Shopee) e blogs de autopeças são fontes válidas de aplicação/cross-reference, mas description de vendedor sem ficha técnica visível não conta como fonte específica.
+9. cc_oem/cc_aftermarket/cc_importadores: cruze o código da peça pesquisada com catálogos de OUTROS fabricantes de autopeças, montadoras e importadores certificados — um código só entra como cross-reference confirmado se pelo menos uma fonte mostrar explicitamente a equivalência (tabela de substituição, "equivalente a", "substitui", "cross reference"), nunca por mera coincidência de aplicação.
+10. Saída: SOMENTE o JSON. Sem markdown. Sem texto antes ou depois.`;
 
 const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_oem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motor":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[],"instrucoes_instalacao":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
 
@@ -298,7 +320,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   const maxTokens    = nivel_busca === 'agressivo' ? 4000 : nivel_busca === 'discreto' ? 1500 : 2500;
 
   let trechos = [];
-  try { trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados }); }
+  try { trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados, nivel_busca }); }
   catch (e) { console.error('[DNA v5.3] busca:', e.message); }
 
   // 2. LLM — com resultados de busca OU com conhecimento de treinamento
