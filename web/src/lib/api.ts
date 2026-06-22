@@ -120,6 +120,7 @@ export interface EnrichApiResult {
   patch: Partial<Product>;
   sources: DnaSource[];
   ntcReal: number | null; // 0-100, calculado pelo Motor NTC 4.0 real (não o cálculo local de ntc.ts)
+  raw: { campos: Record<string, unknown>; ntc: unknown } | null; // payload completo do backend, para o painel de resultado (hierarquia/aplicações/clones)
 }
 
 // Busca DNA real na web (Serper/DuckDuckGo + IA) via dna-enricher.js. Cada
@@ -160,7 +161,8 @@ export async function apiEnriquecerDna(p: Product): Promise<EnrichApiResult> {
   }
 
   const ntcReal = json.ntc && typeof json.ntc.ntc === "number" ? Math.round(json.ntc.ntc * 100) : null;
-  return { patch, sources, ntcReal };
+  const raw = json.campos ? { campos: json.campos as Record<string, unknown>, ntc: json.ntc ?? null } : null;
+  return { patch, sources, ntcReal, raw };
 }
 
 export interface ImagemBusca {
