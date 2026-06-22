@@ -166,4 +166,21 @@ export async function apiEnriquecerDna(p: Product): Promise<EnrichApiResult> {
   return { patch, sources, ntcReal };
 }
 
+export interface ImagemBusca {
+  url: string;
+  thumb: string;
+  titulo?: string;
+  fonte?: string;
+}
+
+// Busca imagens reais do produto (Brave/Serper/Google Custom Search) via
+// /api/imagens/buscar. Retorna [] se nenhum provedor estiver configurado —
+// nesse caso `mensagem` explica o que falta configurar no Render.
+export async function apiBuscarImagens(q: string): Promise<{ imagens: ImagemBusca[]; mensagem?: string }> {
+  const r = await fetch(`/api/imagens/buscar?q=${encodeURIComponent(q)}`);
+  const json = await r.json();
+  if (!json.ok) return { imagens: [], mensagem: json.mensagem || json.erro || "Falha ao buscar imagens" };
+  return { imagens: json.imagens as ImagemBusca[] };
+}
+
 export { calcNtc };
