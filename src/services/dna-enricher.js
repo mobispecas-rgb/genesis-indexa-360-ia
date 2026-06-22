@@ -1,8 +1,10 @@
 'use strict';
 
 // ============================================================
-// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.2 (2026-06-20)
-// LLM   : Claude Haiku (ANTHROPIC_API_KEY — configurada)
+// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.3 (2026-06-22)
+// LLM   : Gemini 2.0 Flash (GEMINI_API_KEY — gratuito até a cota diária,
+//         pago é o mais barato do mercado) → Claude Haiku como fallback
+//         se só ANTHROPIC_API_KEY estiver configurada
 // Busca : Serper → DuckDuckGo HTML (sem chave, gratuito)
 // ============================================================
 const https = require('https');
@@ -124,7 +126,7 @@ async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10 }) {
       if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
     }
   }
-  console.log(`[DNA v5.2] ${all.length} fontes encontradas`);
+  console.log(`[DNA v5.3] ${all.length} fontes encontradas`);
   return all;
 }
 
@@ -240,9 +242,41 @@ function canonParaLegado(can) {
 // ─────────────────────────────────────────────────────────────
 // AGENTE PRINCIPAL — Claude Haiku + busca web (Serper/DDG)
 // ─────────────────────────────────────────────────────────────
+// Chama o LLM de interpretação do DNA. Prioriza Gemini 2.0 Flash
+// (GEMINI_API_KEY) — gratuito até a cota diária e o mais barato do mercado
+// no tier pago — e cai para Claude Haiku só se apenas ANTHROPIC_API_KEY
+// estiver configurada (compatibilidade com quem já tinha essa chave).
+async function chamarLLM({ system, userContent, maxTokens }) {
+  if (process.env.GEMINI_API_KEY) {
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: userContent,
+      config: { systemInstruction: system, maxOutputTokens: maxTokens, temperature: 0.2 },
+    });
+    const texto = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    return { texto, motor: 'Gemini 2.0 Flash' };
+  }
+  if (process.env.ANTHROPIC_API_KEY) {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: userContent }],
+    });
+    return { texto: msg.content?.[0]?.text || '{}', motor: 'Claude Haiku' };
+  }
+  throw new Error('GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada');
+}
+
 async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true, usou_busca_web: usouBusca };
-  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, erro: 'ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
+  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, erro: 'GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
+  }
 
   const codigoEntrada = sku || nome;
   const termoBase    = [fabricante, sku, nome].filter(Boolean).join(' ');
@@ -251,14 +285,11 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
 
   let trechos = [];
   try { trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados }); }
-  catch (e) { console.error('[DNA v5.2] busca:', e.message); }
+  catch (e) { console.error('[DNA v5.3] busca:', e.message); }
 
-  // 2. Claude Haiku — com resultados de busca OU com conhecimento de treinamento
+  // 2. LLM — com resultados de busca OU com conhecimento de treinamento
   const usouBusca = trechos.length > 0;
   try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
     const contexto = usouBusca
       ? `Resultados de busca (${trechos.length} fontes):\n` +
         trechos.map((t, i) => `[${i+1}] ${t.titulo}\nURL: ${t.fonte}\n${t.trecho}`).join('\n\n')
@@ -271,15 +302,8 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
       contexto +
       `\n\nESQUEMA DE SAÍDA (retorne SOMENTE este JSON):\n${NTC_SCHEMA}`
 
-    const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system: NTC_SYSTEM,
-      messages: [{ role: 'user', content: userContent }]
-    });
-
-    const rawText = msg.content?.[0]?.text || '{}';
-    console.log(`[DNA v5.2] Claude ${rawText.length} chars | ${codigoEntrada}`);
+    const { texto: rawText, motor } = await chamarLLM({ system: NTC_SYSTEM, userContent, maxTokens });
+    console.log(`[DNA v5.3] ${motor} ${rawText.length} chars | ${codigoEntrada}`);
 
     let canonico;
     try {
@@ -287,7 +311,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
       const m = cleaned.match(/\{[\s\S]*\}/);
       canonico = JSON.parse(m ? m[0] : cleaned);
     } catch (e) {
-      console.error('[DNA v5.2] parse:', e.message);
+      console.error('[DNA v5.3] parse:', e.message);
       return { ok: false, erro: 'Parse JSON: ' + e.message, campos: camposVazios(), pendente_confirmacao: true };
     }
 
@@ -319,7 +343,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
 
     const camposLegado      = canonParaLegado(canonico);
     let campos_preenchidos = CAMPOS_DNA.filter(c => camposLegado[c]?.valor != null).length;
-    console.log(`[DNA v5.2] ${campos_preenchidos}/${CAMPOS_DNA.length} | status: ${canonico.status||'ok'}`);
+    console.log(`[DNA v5.3] ${campos_preenchidos}/${CAMPOS_DNA.length} | status: ${canonico.status||'ok'}`);
 
     // Nem busca web nem conhecimento de treinamento renderam campo algum —
     // plano B: herdar sugestões (rotuladas, não confirmadas) de peças da
@@ -334,7 +358,7 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
     return { ok: true, encontrado: campos_preenchidos > 0, campos: camposLegado, campos_canonico: canonico, fontes_consultadas: trechos.map(t => t.fonte), campos_preenchidos, total_campos: CAMPOS_DNA.length, pendente_confirmacao: true };
 
   } catch (e) {
-    console.error('[DNA v5.2] Claude:', e.message);
+    console.error('[DNA v5.3] LLM:', e.message);
     return { ok: false, erro: e.message, campos: camposVazios(), pendente_confirmacao: true };
   }
 }
