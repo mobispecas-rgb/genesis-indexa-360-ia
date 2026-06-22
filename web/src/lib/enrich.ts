@@ -78,12 +78,14 @@ const KNOWN: KnownPart[] = [
 ];
 
 const FAMILY_HINTS: Array<[RegExp, ProductFamily]> = [
-  [/freio|pastilha|disco|lona|pin[çc]a/i, "Freios"],
+  // Embreagem/transmissão testada antes de Freios para evitar colisão com
+  // "disco" em "plato/disco/rolamento" (disco de embreagem, não de freio).
+  [/embreagem|c[aâ]mbio|transmiss|junta homo|plato/i, "Transmissão"],
+  [/freio|pastilha|(?:disco(?!.*embreagem))|lona|pin[çc]a/i, "Freios"],
   [/filtro/i, "Filtros"],
   [/amortecedor|mola|bandeja|pivo|suspens/i, "Suspensão"],
   [/radiador|bomba.*[aá]gua|v[aá]lvula termost|arrefec|mangueira/i, "Arrefecimento"],
   [/sensor|rel[eé]|bobina|vela|alternador|motor de partida|el[eé]tric/i, "Elétrica"],
-  [/embreagem|c[aâ]mbio|transmiss|junta homo/i, "Transmissão"],
   [/cremalheira|terminal|caixa.*dire|dire[çc]/i, "Direção"],
   [/comando|virabrequim|pist[aã]o|biela|junta|bronzina|motor/i, "Motor"],
 ];
@@ -142,7 +144,8 @@ export function enrich(product: Product): EnrichResult {
     Transmissão: "87084000",
     Direção: "87089400",
   };
-  const oem = `${digits(s, 5)}-${digits(s >> 5, 5)}`;
+  const hasOem = Boolean(product.oem && product.oem.trim() !== "");
+  const oem = hasOem ? product.oem! : `${digits(s, 5)}-${digits(s >> 5, 5)}`;
   const ean = gtin13(s);
   const patch: Partial<Product> = {
     familia: family,
@@ -156,7 +159,9 @@ export function enrich(product: Product): EnrichResult {
   };
   const sources: DnaSource[] = [
     { field: "ncm", value: patch.ncm!, source: "TIPI oficial (inferência por família)", confidence: 72 },
-    { field: "oem", value: oem, source: "Cruzamento de catálogo (estimado)", confidence: 58 },
+    hasOem
+      ? { field: "oem", value: oem, source: "Preservado — informado manualmente pelo usuário", confidence: 100 }
+      : { field: "oem", value: oem, source: "Cruzamento de catálogo (estimado)", confidence: 58 },
     { field: "ean", value: ean, source: "Estrutura GS1 (validar GTIN real)", confidence: 45 },
     { field: "familia", value: family, source: "Classificador de família NTC", confidence: 80 },
   ];

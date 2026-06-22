@@ -239,6 +239,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Servir arquivos estaticos (frontend)
 app.use(express.static(path.join(__dirname, 'public')));
+// iRollo 360 — novo frontend React (Vite build), serve a partir da raiz
+app.use(express.static(path.join(__dirname, 'web', 'dist')));
 
 // Logger
 app.use((req, res, next) => {
@@ -3494,9 +3496,14 @@ app.post('/api/empresa/consultar-cnpj', async (req, res) => {
 });
 
 // -----------------------------------------------------------
-// ROTA RAIZ — Serve o frontend HTML
+// ROTA RAIZ — Serve o novo frontend iRollo 360 (React/Vite)
 // -----------------------------------------------------------
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'web', 'dist', 'index.html'));
+});
+
+// Site legado (HTML estatico anterior), preservado por compatibilidade
+app.get('/legacy', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -3510,12 +3517,12 @@ app.get('/seo', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'seo.html'));
 });
 
-// Todas as outras rotas retornam o frontend (SPA)
+// Todas as outras rotas retornam o frontend (SPA do iRollo 360 — TanStack Router)
 app.get('*', (req, res) => {
     if (req.path.startsWith('/api/')) {
           return res.status(404).json({ ok: false, erro: 'Rota nao encontrada' });
     }
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'web', 'dist', 'index.html'));
 });
 
 // -----------------------------------------------------------
