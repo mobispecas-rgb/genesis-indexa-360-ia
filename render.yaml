@@ -3,7 +3,7 @@ services:
     name: genesis-indexa-360-ia
     env: node
     plan: starter
-    buildCommand: npm install
+    buildCommand: npm install && cd web && npm install && npm run build && cd ..
     startCommand: node server.js
     envVars:
       - key: DB_PATH

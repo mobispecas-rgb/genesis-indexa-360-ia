@@ -7,6 +7,42 @@
 // ============================================================
 const https = require('https');
 const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON } = require('./web-utils');
+const { listarSimilaresConfirmados } = require('./db');
+
+// Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
+// são específicos demais por peça para herdar de um produto "parecido").
+const CAMPOS_HERDAVEIS = ['ncm', 'cest', 'material', 'comprimento', 'largura', 'altura', 'peso_bruto', 'peso_liquido'];
+
+// Quando a IA não encontra nenhum campo confiável (0 fontes na web e sem
+// conhecimento de treinamento), sugere valores herdados de peças JÁ
+// CONFIRMADAS da mesma família técnica/fabricante — sempre rotulado como
+// "família" (nunca "confirmado") e nunca aplicado automaticamente ao NTC.
+function herdarDeFamiliaTecnica({ fabricante, nome, sku }) {
+  let similares = [];
+  try { similares = listarSimilaresConfirmados({ fabricante, nome, excluirSku: sku, limit: 5 }); }
+  catch (e) { console.error('[DNA] herança família:', e.message); return null; }
+  if (!similares.length) return null;
+
+  const campos = camposVazios();
+  let preenchidos = 0;
+  for (const campo of CAMPOS_HERDAVEIS) {
+    for (const doador of similares) {
+      const valor = doador.dados?.[campo];
+      if (valor != null && valor !== '') {
+        campos[campo] = {
+          valor,
+          fonte: null,
+          confianca: 'baixa',
+          motivo: `Herdado da peça similar ${doador.sku} (família técnica) — PENDENTE de confirmação`,
+        };
+        preenchidos++;
+        break;
+      }
+    }
+  }
+  if (!preenchidos) return null;
+  return { ok: true, encontrado: true, campos, campos_preenchidos: preenchidos, total_campos: CAMPOS_DNA.length, fontes_consultadas: [], pendente_confirmacao: true, herdado_de_familia: true };
+}
 
 // ─────────────────────────────────────────────────────────────
 // BUSCA WEB: Serper (primário) → DuckDuckGo HTML (fallback)
@@ -42,21 +78,25 @@ async function buscarDDG(query, num) {
       res.on('data', d => { if (html.length < 200000) html += d; });
       res.on('end', () => {
         const results = [];
-        const blockRe = /<div class="result[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
-        let m;
-        while ((m = blockRe.exec(html)) !== null && results.length < num) {
-          const block = m[1];
-          const titleM = block.match(/<a[^>]+class="result__a"[^>]*>([^<]+)<\/a>/i);
-          const hrefM  = block.match(/<a[^>]+class="result__a"[^>]+href="([^"]+)"/i);
-          const snipM  = block.match(/class="result__snippet"[^>]*>([^<]+)/i);
-          if (titleM && snipM) {
-            let url = hrefM ? hrefM[1] : '';
-            if (url.startsWith('//duckduckgo.com/l/?')) {
-              const uddg = url.match(/uddg=([^&]+)/);
-              if (uddg) url = decodeURIComponent(uddg[1]);
-            }
-            results.push({ titulo: titleM[1].trim(), fonte: url, trecho: snipM[1].trim() });
+        // DDG HTML muda a estrutura de divs com frequência; em vez de tentar
+        // casar um bloco aninhado inteiro (frágil — quebra com qualquer div
+        // extra entre título e snippet), casamos título+href e snippet em
+        // sequência direto no HTML, na ordem em que aparecem.
+        const titleRe = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+        const snippetRe = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+        const strip = (s) => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        const titles = []; let tm;
+        while ((tm = titleRe.exec(html)) !== null) titles.push({ href: tm[1], titulo: strip(tm[2]) });
+        const snippets = []; let sm;
+        while ((sm = snippetRe.exec(html)) !== null) snippets.push(strip(sm[1]));
+        for (let i = 0; i < titles.length && results.length < num; i++) {
+          if (!titles[i].titulo || !snippets[i]) continue;
+          let url = titles[i].href;
+          if (url.startsWith('//duckduckgo.com/l/?') || url.startsWith('/l/?')) {
+            const uddg = url.match(/uddg=([^&]+)/);
+            if (uddg) url = decodeURIComponent(uddg[1]);
           }
+          results.push({ titulo: titles[i].titulo, fonte: url, trecho: snippets[i] });
         }
         resolve(results);
       });
@@ -277,8 +317,18 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
     }
 
     const camposLegado      = canonParaLegado(canonico);
-    const campos_preenchidos = CAMPOS_DNA.filter(c => camposLegado[c]?.valor != null).length;
+    let campos_preenchidos = CAMPOS_DNA.filter(c => camposLegado[c]?.valor != null).length;
     console.log(`[DNA v5.2] ${campos_preenchidos}/${CAMPOS_DNA.length} | status: ${canonico.status||'ok'}`);
+
+    // Nem busca web nem conhecimento de treinamento renderam campo algum —
+    // plano B: herdar sugestões (rotuladas, não confirmadas) de peças da
+    // mesma família técnica já validadas, para não deixar a tela em 0%.
+    if (campos_preenchidos === 0) {
+      const heranca = herdarDeFamiliaTecnica({ fabricante, nome, sku });
+      if (heranca) {
+        return { ...heranca, campos_canonico: canonico, fontes_consultadas: trechos.map(t => t.fonte) };
+      }
+    }
 
     return { ok: true, encontrado: campos_preenchidos > 0, campos: camposLegado, campos_canonico: canonico, fontes_consultadas: trechos.map(t => t.fonte), campos_preenchidos, total_campos: CAMPOS_DNA.length, pendente_confirmacao: true };
 
