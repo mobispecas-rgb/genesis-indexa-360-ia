@@ -3500,6 +3500,16 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ERP — genesis-indexa-360-ia.onrender.com/erp
+app.get('/erp', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'erp.html'));
+});
+
+// Motor SEO — genesis-indexa-360-ia.onrender.com/seo
+app.get('/seo', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'seo.html'));
+});
+
 // Todas as outras rotas retornam o frontend (SPA)
 app.get('*', (req, res) => {
     if (req.path.startsWith('/api/')) {
