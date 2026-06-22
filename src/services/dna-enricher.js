@@ -361,7 +361,14 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
 
   } catch (e) {
     console.error('[DNA v5.3] LLM:', e.message);
-    return { ok: false, erro: e.message, campos: camposVazios(), pendente_confirmacao: true };
+    // Erros de cota (429) trazem o corpo bruto da API (JSON gigante) na
+    // mensagem — nunca repassar isso ao frontend, só uma mensagem curta e
+    // o motivo, para não quebrar o layout com um bloco de texto técnico.
+    const cotaExcedida = /RESOURCE_EXHAUSTED|429|quota/i.test(e.message || '');
+    const erro = cotaExcedida
+      ? 'Cota diária de IA esgotada — tente novamente mais tarde ou configure um plano pago no Google AI Studio.'
+      : String(e.message || 'Falha ao consultar a IA').slice(0, 200);
+    return { ok: false, erro, cota_excedida: cotaExcedida, campos: camposVazios(), pendente_confirmacao: true };
   }
 }
 

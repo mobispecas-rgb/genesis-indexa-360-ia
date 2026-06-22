@@ -100,8 +100,14 @@ export function Enriquecimento() {
         });
       }
     } catch (e) {
-      toast.error(`Falha ao buscar DNA na web: ${(e as Error).message}`, {
-        description: "Verifique se ANTHROPIC_API_KEY (e SERPER_API_KEY) estão configuradas no Render — sem elas a busca real não funciona.",
+      // Mensagens de erro de API (ex.: 429 do Gemini) podem vir longas — nunca
+      // jogar o texto bruto no toast, só um resumo curto e amigável.
+      const msg = (e as Error).message || "Erro desconhecido";
+      const curta = msg.length > 160 ? `${msg.slice(0, 160)}…` : msg;
+      toast.error("Falha ao buscar DNA na web", {
+        description: curta.toLowerCase().includes("cota") || curta.toLowerCase().includes("esgotada")
+          ? curta
+          : `${curta} — verifique se GEMINI_API_KEY/ANTHROPIC_API_KEY (e SERPER_API_KEY) estão configuradas no Render.`,
       });
     } finally {
       setEnriching(false);
