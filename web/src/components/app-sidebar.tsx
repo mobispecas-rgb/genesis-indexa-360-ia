@@ -29,6 +29,7 @@ const main = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Enriquecimento", url: "/enriquecimento", icon: Sparkles },
   { title: "Aprovação & NTC", url: "/aprovacao", icon: CheckCircle2 },
+  { title: "Integrações", url: "/integracoes", icon: Plug },
 ];
 
 const soon = [
@@ -37,7 +38,6 @@ const soon = [
   { title: "EAN Scanner GS1", icon: ScanLine },
   { title: "Precificação", icon: Tag },
   { title: "DNA OEM 360", icon: Dna },
-  { title: "Integrações", icon: Plug },
   { title: "Performance", icon: Activity },
 ];
 

@@ -180,4 +180,34 @@ export async function apiBuscarImagens(q: string): Promise<{ imagens: ImagemBusc
   return { imagens: json.imagens as ImagemBusca[] };
 }
 
+export interface IntegracaoStatus {
+  ok: boolean;
+  configurado: boolean;
+  mensagem: string;
+}
+
+export async function apiStatusWix(): Promise<IntegracaoStatus> {
+  const r = await fetch("/api/wix/status");
+  return r.json();
+}
+
+export async function apiStatusBling(): Promise<IntegracaoStatus> {
+  const r = await fetch("/api/bling/status");
+  return r.json();
+}
+
+export interface SincronizarResultado {
+  ok: boolean;
+  wix: { ok: boolean; id?: string; erro?: string } | null;
+  bling: { ok: boolean; id?: string; erro?: string } | null;
+}
+
+// Publica um produto já aprovado no Wix Stores e no Bling V3 — leva selo NTC,
+// rast-hash e categorias resolvidas automaticamente (lógica já existe no
+// backend, isso só chama o endpoint combinado).
+export async function apiSincronizarProduto(id: string): Promise<SincronizarResultado> {
+  const r = await fetch(`/api/produtos/${id}/sincronizar`, { method: "POST" });
+  return r.json();
+}
+
 export { calcNtc };

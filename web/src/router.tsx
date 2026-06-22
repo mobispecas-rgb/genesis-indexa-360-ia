@@ -3,6 +3,7 @@ import { RootLayout } from "@/components/layout";
 import { Dashboard } from "@/routes/index";
 import { Enriquecimento } from "@/routes/enriquecimento";
 import { Aprovacao } from "@/routes/aprovacao";
+import { Integracoes } from "@/routes/integracoes";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -27,7 +28,13 @@ const aprovacaoRoute = createRoute({
   component: Aprovacao,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, enriquecimentoRoute, aprovacaoRoute]);
+const integracoesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/integracoes",
+  component: Integracoes,
+});
+
+const routeTree = rootRoute.addChildren([indexRoute, enriquecimentoRoute, aprovacaoRoute, integracoesRoute]);
 
 export const router = createRouter({ routeTree });
 
