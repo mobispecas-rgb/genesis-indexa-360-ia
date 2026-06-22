@@ -67,23 +67,41 @@ export function Enriquecimento() {
     setProgress(20);
     try {
       const { patch, sources, ntcReal } = await apiEnriquecerDna(product);
-      setProgress(100);
-      setProduct((p) => ({
-        ...p,
+      setProgress(70);
+      const merged: Product = {
+        ...product,
         ...patch,
         enriched: true,
         dnaSources: sources,
-        ntc: ntcReal ?? p.ntc,
-      }));
+        ntc: ntcReal ?? product.ntc,
+      };
+      // Com SKU + marca + nome já em mãos, a mesma ação completa também a
+      // descrição (template local, só com campos confirmados) e busca as
+      // imagens reais do produto — para não exigir 3 cliques separados.
+      if (sources.length > 0 && !merged.descricao) {
+        merged.descricao = generateDescription(merged, tone);
+      }
+      setProduct(merged);
+      setProgress(90);
+      if (sources.length > 0) {
+        const query = [merged.fabricante, merged.nome, merged.oem].filter(Boolean).join(" ");
+        try {
+          const { imagens } = await apiBuscarImagens(query);
+          if (imagens.length > 0) setImageResults(imagens);
+        } catch { /* busca de imagem é complementar — não bloqueia o enriquecimento */ }
+      }
+      setProgress(100);
       if (sources.length === 0) {
         toast.warning("Nenhuma fonte confiável encontrada na web — sem evidência, nenhum campo foi preenchido.");
       } else {
-        toast.success("DNA encontrado na web — confirme os dados antes de publicar.", {
+        toast.success("DNA, descrição e imagens atualizados — confirme os dados antes de publicar.", {
           description: `${sources.length} campo(s) sugerido(s) com fonte e confiança.`,
         });
       }
     } catch (e) {
-      toast.error(`Falha ao buscar DNA na web: ${(e as Error).message}`);
+      toast.error(`Falha ao buscar DNA na web: ${(e as Error).message}`, {
+        description: "Verifique se ANTHROPIC_API_KEY (e SERPER_API_KEY) estão configuradas no Render — sem elas a busca real não funciona.",
+      });
     } finally {
       setEnriching(false);
     }
