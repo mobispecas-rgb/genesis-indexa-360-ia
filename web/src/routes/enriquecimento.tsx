@@ -19,7 +19,7 @@ import { useProducts } from "@/lib/store";
 import { emptyProduct, FAMILIES, NTC_META, type Product, type ProductFamily } from "@/lib/types";
 import { calcNtc, missingCriteria, canPublish } from "@/lib/ntc";
 import { generateDescription } from "@/lib/enrich";
-import { apiEnriquecerDna } from "@/lib/api";
+import { apiEnriquecerDna, apiBuscarImagens, type ImagemBusca } from "@/lib/api";
 import { NtcGauge } from "@/components/ntc-gauge";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +36,8 @@ export function Enriquecimento() {
   const [enriching, setEnriching] = useState(false);
   const [progress, setProgress] = useState(0);
   const [tone, setTone] = useState<"tecnico" | "comercial" | "seo">("tecnico");
+  const [imageResults, setImageResults] = useState<ImagemBusca[]>([]);
+  const [searchingImages, setSearchingImages] = useState(false);
 
   useEffect(() => {
     if (!loaded) loadFromServer();
@@ -129,9 +131,31 @@ export function Enriquecimento() {
     toast.success("Cadastro excluído.");
   }
 
-  function addImage() {
-    const slot = ["📦", "🗂️", "🏷️", "📐", "🔍"][product.images.length % 5];
-    set("images", [...product.images, slot]);
+  async function buscarImagens() {
+    if (!product.nome.trim()) {
+      toast.error("Informe ao menos o nome do produto para buscar imagens.");
+      return;
+    }
+    setSearchingImages(true);
+    try {
+      const query = [product.fabricante, product.nome, product.oem].filter(Boolean).join(" ");
+      const { imagens, mensagem } = await apiBuscarImagens(query);
+      setImageResults(imagens);
+      if (imagens.length === 0) toast.warning(mensagem || "Nenhuma imagem encontrada.");
+    } catch (e) {
+      toast.error(`Falha ao buscar imagens: ${(e as Error).message}`);
+    } finally {
+      setSearchingImages(false);
+    }
+  }
+
+  function addImage(url: string) {
+    if (product.images.includes(url)) return;
+    set("images", [...product.images, url]);
+  }
+
+  function removeImage(url: string) {
+    set("images", product.images.filter((u) => u !== url));
   }
 
   function genDescription() {
@@ -364,22 +388,54 @@ export function Enriquecimento() {
           {/* Imagens */}
           <Section title="Imagens do Produto" step={2}>
             <div className="flex flex-wrap gap-3">
-              {product.images.map((img, i) => (
+              {product.images.map((url) => (
                 <div
-                  key={i}
-                  className="flex h-20 w-20 items-center justify-center rounded-lg border border-border bg-background text-3xl"
+                  key={url}
+                  className="group relative h-20 w-20 overflow-hidden rounded-lg border border-border bg-background"
                 >
-                  {img}
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <button
+                    onClick={() => removeImage(url)}
+                    className="absolute right-0.5 top-0.5 rounded-md bg-background/90 p-1 opacity-0 transition group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                  </button>
                 </div>
               ))}
               <button
-                onClick={addImage}
-                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                onClick={buscarImagens}
+                disabled={searchingImages}
+                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-muted-foreground transition hover:border-primary/50 hover:text-primary disabled:opacity-60"
               >
-                <ImagePlus className="h-5 w-5" />
-                <span className="text-[10px]">Adicionar</span>
+                {searchingImages ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                <span className="text-[10px]">{searchingImages ? "Buscando…" : "Buscar na web"}</span>
               </button>
             </div>
+            {imageResults.length > 0 && (
+              <div className="mt-4">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Resultados — clique para adicionar
+                </span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {imageResults.map((img) => (
+                    <button
+                      key={img.url}
+                      type="button"
+                      title={img.fonte}
+                      onClick={() => addImage(img.url)}
+                      className={cn(
+                        "h-16 w-16 overflow-hidden rounded-lg border transition",
+                        product.images.includes(img.url)
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-border hover:border-primary/50",
+                      )}
+                    >
+                      <img src={img.thumb || img.url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </Section>
           {/* Descrição */}
           <Section title="Voz do Lojista — Descrição IA" step={3}>
