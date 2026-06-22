@@ -6778,14 +6778,14 @@ var CNTC_CAMPOS = {
     desc: 'Nasce do motor. Versão e código motor são obrigatórios para 100%.',
     cor: '#ffaa00',
     campos: [
-      {id:'cntc-av-marca',    key:'marca',       label:'Marca do Veículo',   ph:'Toyota, Honda...'},
-      {id:'cntc-av-modelo',   key:'modelo',      label:'Modelo',             ph:'Hilux, Civic...'},
-      {id:'cntc-av-versao',   key:'versao',      label:'Versão',             ph:'SR, EXL, Sport...'},
-      {id:'cntc-av-motor',    key:'motor',       label:'Motor (obrigatório)',  ph:'2.8 TDI, 1.0 TSI...'},
-      {id:'cntc-av-codmot',   key:'codigo_motor',label:'Código Motor',        ph:'1GD-FTV, EA211...'},
-      {id:'cntc-av-cil',      key:'cilindrada',  label:'Cilindrada',          ph:'2800, 1000...'},
-      {id:'cntc-av-anoi',     key:'ano_inicial', label:'Ano Inicial',         ph:'2016', tipo:'number'},
-      {id:'cntc-av-anof',     key:'ano_final',   label:'Ano Final',           ph:'2023', tipo:'number'},
+      {id:'cntc-av-marca',    key:'marca',       label:'Marca do Veículo',   ph:'ex.: Toyota, Honda...'},
+      {id:'cntc-av-modelo',   key:'modelo',      label:'Modelo',             ph:'ex.: Hilux, Civic...'},
+      {id:'cntc-av-versao',   key:'versao',      label:'Versão',             ph:'ex.: SR, EXL, Sport...'},
+      {id:'cntc-av-motor',    key:'motor',       label:'Motor (obrigatório)',  ph:'ex.: 2.8 TDI, 1.0 TSI...'},
+      {id:'cntc-av-codmot',   key:'codigo_motor',label:'Código Motor',        ph:'ex.: 1GD-FTV, EA211...'},
+      {id:'cntc-av-cil',      key:'cilindrada',  label:'Cilindrada',          ph:'ex.: 2800, 1000...'},
+      {id:'cntc-av-anoi',     key:'ano_inicial', label:'Ano Inicial',         ph:'ex.: 2016', tipo:'number'},
+      {id:'cntc-av-anof',     key:'ano_final',   label:'Ano Final',           ph:'ex.: 2023', tipo:'number'},
     ]
   },
   MC: {
@@ -6793,7 +6793,7 @@ var CNTC_CAMPOS = {
     desc: 'Informe o material do produto conforme documentação técnica.',
     cor: '#ff8800',
     campos: [
-      {id:'cntc-mc-mat', key:'material', label:'Material / Composição', ph:'Borracha EPDM e Aço temperado...'},
+      {id:'cntc-mc-mat', key:'material', label:'Material / Composição', ph:'ex.: Borracha EPDM e Aço temperado...'},
     ]
   },
   EC: {
@@ -6801,8 +6801,8 @@ var CNTC_CAMPOS = {
     desc: 'Função técnica e especificações do produto.',
     cor: '#ff8800',
     campos: [
-      {id:'cntc-ec-funcao', key:'funcao', label:'Função Técnica', ph:'Kit completo de distribuição com correia dentada...'},
-      {id:'cntc-ec-espec',  key:'_especificacoes_txt', label:'Especificações (uma por linha)', ph:'Correia EPDM\nTensor hidráulico\nDentes: 130', tipo:'textarea'},
+      {id:'cntc-ec-funcao', key:'funcao', label:'Função Técnica', ph:'ex.: Kit completo de distribuição com correia dentada...'},
+      {id:'cntc-ec-espec',  key:'_especificacoes_txt', label:'Especificações (uma por linha)', ph:'ex.: Correia EPDM\nTensor hidráulico\nDentes: 130', tipo:'textarea'},
     ]
   },
   BTA: {
@@ -6810,9 +6810,9 @@ var CNTC_CAMPOS = {
     desc: 'Boletins técnicos, revisões e substituições documentadas.',
     cor: '#ff8800',
     campos: [
-      {id:'cntc-bta-boletins', key:'_boletins_txt',    label:'Boletins Técnicos (um por linha)', ph:'Boletim NYTRON BT-2023-001\nHomologado Toyota Hilux GD', tipo:'textarea'},
-      {id:'cntc-bta-rev',      key:'_revisoes_txt',    label:'Revisões (opcional)',              ph:'Rev.01 Jun/2023', tipo:'textarea'},
-      {id:'cntc-bta-subst',    key:'_substituicoes_txt',label:'Substituições (opcional)',        ph:'KIT9063A', tipo:'textarea'},
+      {id:'cntc-bta-boletins', key:'_boletins_txt',    label:'Boletins Técnicos (um por linha)', ph:'ex.: Boletim NYTRON BT-2023-001\nHomologado Toyota Hilux GD', tipo:'textarea'},
+      {id:'cntc-bta-rev',      key:'_revisoes_txt',    label:'Revisões (opcional)',              ph:'ex.: Rev.01 Jun/2023', tipo:'textarea'},
+      {id:'cntc-bta-subst',    key:'_substituicoes_txt',label:'Substituições (opcional)',        ph:'ex.: KIT9063A', tipo:'textarea'},
     ]
   },
   CC: {
@@ -6820,9 +6820,9 @@ var CNTC_CAMPOS = {
     desc: 'Nunca misturar fabricantes. OEM, aftermarket e importadores separados.',
     cor: '#ff8800',
     campos: [
-      {id:'cntc-cc-oem',    key:'_cc_oem_txt',    label:'Códigos OEM (um por linha)',          ph:'58101-2BA70'},
-      {id:'cntc-cc-after',  key:'_cc_after_txt',  label:'Aftermarket (um por linha)',          ph:'Gates K015642XS\nDayco KTB1009\nContiTech CT1162K3\nINA 530 0453 10', tipo:'textarea'},
-      {id:'cntc-cc-import', key:'_cc_import_txt', label:'Importadores (um por linha)',         ph:'NYTRON-BR-KIT9063'},
+      {id:'cntc-cc-oem',    key:'_cc_oem_txt',    label:'Códigos OEM (um por linha)',          ph:'ex.: 58101-2BA70'},
+      {id:'cntc-cc-after',  key:'_cc_after_txt',  label:'Aftermarket (um por linha)',          ph:'ex.: Gates K015642XS\nDayco KTB1009\nContiTech CT1162K3\nINA 530 0453 10', tipo:'textarea'},
+      {id:'cntc-cc-import', key:'_cc_import_txt', label:'Importadores (um por linha)',         ph:'ex.: NYTRON-BR-KIT9063'},
     ]
   },
   LG: {
@@ -6830,8 +6830,8 @@ var CNTC_CAMPOS = {
     desc: 'Cadeia: fabricante → montadora → distribuidor → importador → marketplace.',
     cor: '#ff8800',
     campos: [
-      {id:'cntc-lg-fab',   key:'linhagem_fabricante',   label:'Fabricante Original',   ph:'NYTRON'},
-      {id:'cntc-lg-mont',  key:'linhagem_montadora',    label:'Montadora',             ph:'Toyota Motor Corporation'},
+      {id:'cntc-lg-fab',   key:'linhagem_fabricante',   label:'Fabricante Original',   ph:'ex.: NYTRON'},
+      {id:'cntc-lg-mont',  key:'linhagem_montadora',    label:'Montadora',             ph:'ex.: Toyota Motor Corporation'},
       {id:'cntc-lg-dist',  key:'linhagem_distribuidor', label:'Distribuidor',          ph:'iRollo 360'},
       {id:'cntc-lg-imp',   key:'linhagem_importador',   label:'Importador (opcional)', ph:''},
     ]
@@ -6845,7 +6845,7 @@ var CNTC_CAMPOS = {
       {id:'cntc-iv-emb', key:'iv_embalagem',      label:'Foto da embalagem?',         tipo:'check'},
       {id:'cntc-iv-et',  key:'iv_etiqueta',       label:'Foto da etiqueta/código?',   tipo:'check'},
       {id:'cntc-iv-ocr', key:'iv_ocr',            label:'OCR / leitura de código?',   tipo:'check'},
-      {id:'cntc-iv-ang', key:'iv_angulos',         label:'Qtd de ângulos/fotos',       ph:'6', tipo:'number'},
+      {id:'cntc-iv-ang', key:'iv_angulos',         label:'Qtd de ângulos/fotos',       ph:'ex.: 6', tipo:'number'},
     ]
   },
   FM: {
@@ -6853,9 +6853,9 @@ var CNTC_CAMPOS = {
     desc: 'NCM de 8 dígitos, CEST, CST e origem ICMS.',
     cor: '#ffaa00',
     campos: [
-      {id:'cntc-fm-ncm',    key:'ncm',    label:'NCM (8 dígitos)',    ph:'84091900', maxlen:'12'},
-      {id:'cntc-fm-cest',   key:'cest',   label:'CEST',               ph:'01.065.00', maxlen:'10'},
-      {id:'cntc-fm-cst',    key:'cst',    label:'CST',                ph:'000'},
+      {id:'cntc-fm-ncm',    key:'ncm',    label:'NCM (8 dígitos)',    ph:'ex.: 84091900', maxlen:'12'},
+      {id:'cntc-fm-cest',   key:'cest',   label:'CEST',               ph:'ex.: 01.065.00', maxlen:'10'},
+      {id:'cntc-fm-cst',    key:'cst',    label:'CST',                ph:'ex.: 000'},
       {id:'cntc-fm-origem', key:'origem', label:'Origem ICMS',        ph:'0 = Nacional', tipo:'select',
        opcoes:[{v:'',l:'Selecione...'},{v:'0',l:'0-Nacional'},{v:'1',l:'1-Importado direto'},{v:'2',l:'2-Adquirido merc.int.'},{v:'3',l:'3-Nacional>40%'},{v:'4',l:'4-Processos básicos'},{v:'5',l:'5-Nacional≤40%'},{v:'6',l:'6-Importado c/similar'},{v:'7',l:'7-Sem similar'},{v:'8',l:'8-Nacional>70%'}]},
     ]
@@ -6865,8 +6865,8 @@ var CNTC_CAMPOS = {
     desc: 'Código de referência do fabricante.',
     cor: '#ffaa00',
     campos: [
-      {id:'cntc-co-oem', key:'codigo_oem', label:'Código OEM / Part Number', ph:'KIT9063, 58101-2BA70...'},
-      {id:'cntc-co-ean', key:'ean',        label:'EAN / GTIN (se houver na embalagem)', ph:'7891234567890', maxlen:'14'},
+      {id:'cntc-co-oem', key:'codigo_oem', label:'Código OEM / Part Number', ph:'ex.: KIT9063, 58101-2BA70...'},
+      {id:'cntc-co-ean', key:'ean',        label:'EAN / GTIN (se houver na embalagem)', ph:'ex.: 7891234567890', maxlen:'14'},
     ]
   },
   FI: {
@@ -6874,8 +6874,8 @@ var CNTC_CAMPOS = {
     desc: 'Peso bruto e líquido com base em documentação.',
     cor: '#888',
     campos: [
-      {id:'cntc-fi-pesob', key:'peso_bruto',   label:'Peso Bruto (kg)',   ph:'1.200', tipo:'number'},
-      {id:'cntc-fi-pesol', key:'peso_liquido', label:'Peso Líquido (kg)', ph:'1.000', tipo:'number'},
+      {id:'cntc-fi-pesob', key:'peso_bruto',   label:'Peso Bruto (kg)',   ph:'ex.: 1.200', tipo:'number'},
+      {id:'cntc-fi-pesol', key:'peso_liquido', label:'Peso Líquido (kg)', ph:'ex.: 1.000', tipo:'number'},
     ]
   },
   FP: {
@@ -6883,9 +6883,9 @@ var CNTC_CAMPOS = {
     desc: 'Comprimento, largura e altura em cm.',
     cor: '#888',
     campos: [
-      {id:'cntc-fp-comp', key:'comprimento', label:'Comprimento (cm)', ph:'35.0', tipo:'number'},
-      {id:'cntc-fp-larg', key:'largura',     label:'Largura (cm)',     ph:'20.0', tipo:'number'},
-      {id:'cntc-fp-alt',  key:'altura',      label:'Altura (cm)',      ph:'10.0', tipo:'number'},
+      {id:'cntc-fp-comp', key:'comprimento', label:'Comprimento (cm)', ph:'ex.: 35.0', tipo:'number'},
+      {id:'cntc-fp-larg', key:'largura',     label:'Largura (cm)',     ph:'ex.: 20.0', tipo:'number'},
+      {id:'cntc-fp-alt',  key:'altura',      label:'Altura (cm)',      ph:'ex.: 10.0', tipo:'number'},
     ]
   },
 };
