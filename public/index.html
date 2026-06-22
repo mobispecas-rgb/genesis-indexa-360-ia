@@ -4711,6 +4711,13 @@ function oemColetar() {
   });
 }
 
+// Flag de bypass do gate de NTC mínimo — só vem true em dev local (ver /api/config
+// em server.js). Em produção fica sempre false, então o gate nunca é afetado.
+var _devBypassNtcGate = false;
+(function _carregarConfigServidor() {
+  api('GET', '/config').then(function(r) { _devBypassNtcGate = !!(r && r.devBypassNtcGate); }).catch(function(){});
+})();
+
 // Atualiza o card "NTC 4.0 — Atualiza em tempo real" e os botões de
 // publicar/bloqueado com base no resultado mais recente de /motor/nct.
 function _oemAtualizarPainel(dados, r) {
@@ -4728,8 +4735,8 @@ function _oemAtualizarPainel(dados, r) {
   var elFalta = document.getElementById('oem-ntc-falta');
   if (elFalta) elFalta.textContent = falta.length ? 'Faltando: ' + falta.join(', ') : '';
 
-  // Botões: só libera com NTC ≥ 0.60
-  var bloqueado = ntc < 0.60 || !dados.fabricante || !dados.codigo_fabricante || !dados.nome;
+  // Botões: só libera com NTC ≥ 0.60 (salvo bypass de dev local)
+  var bloqueado = !_devBypassNtcGate && (ntc < 0.60 || !dados.fabricante || !dados.codigo_fabricante || !dados.nome);
   var elAcoes = document.getElementById('oem-acoes');
   var elAcoesBloqueado = document.getElementById('oem-acoes-bloqueado');
   if (elAcoes) elAcoes.style.display = bloqueado ? 'none' : 'block';
@@ -4748,7 +4755,7 @@ function _oemAtualizarPainel(dados, r) {
 async function oemPublicar() {
   var dados = oemColetar();
   var r = _oemDados._ntcResult || {};
-  if ((r.ntc || 0) < 0.60) { alert('NTC insuficiente. Complete os campos obrigatórios.'); return; }
+  if (!_devBypassNtcGate && (r.ntc || 0) < 0.60) { alert('NTC insuficiente. Complete os campos obrigatórios.'); return; }
   var prods = getProds();
   var extras = { ntc: r.ntc, decisao: r.decisao, rast_hash: r.rast_hash, ts: Date.now(), _publicado: true, _publicado_em: new Date().toISOString() };
   if (_oemEditIdx != null && prods[_oemEditIdx]) {
@@ -4895,6 +4902,8 @@ var MAPA_CAMPOS_DNA_TODOS = Object.assign({}, MAPA_CAMPOS_DNA_OEM, MAPA_CAMPOS_D
 // de oemBuscar() prévio. Botão sempre visível no topo da página de cadastro.
 // ── IMAGENS: toggle seleção ──
 var _ivSelecionadas = [true,true,true,false,false]; // Principal e Embalagem por padrão
+// Slot 0=Principal, 1=Embalagem, 2=Etiqueta — espelham os checklists do módulo IV (NTC)
+var IV_SLOT_PARA_CNTC = { 0: 'cntc-iv-fp', 1: 'cntc-iv-emb', 2: 'cntc-iv-et' };
 function ivToggle(idx) {
   _ivSelecionadas[idx] = !_ivSelecionadas[idx];
   var slot = document.getElementById('iv-slot-' + idx);
@@ -4919,6 +4928,18 @@ function ivToggle(idx) {
   var sel = _ivSelecionadas.filter(Boolean).length;
   var st = document.getElementById('oem-iv-status');
   if (st) st.textContent = sel + ' imagem(ns) selecionada(s) para publicação';
+
+  // Espelha a seleção no checklist do módulo IV (NTC) quando o checkbox existe na tela
+  var cntcId = IV_SLOT_PARA_CNTC[idx];
+  if (cntcId) {
+    var cb = document.getElementById(cntcId);
+    if (cb) cb.checked = _ivSelecionadas[idx];
+  }
+  var ang = document.getElementById('cntc-iv-ang');
+  if (ang) ang.value = sel;
+  if (typeof _cntcOnInput === 'function' && (document.getElementById('cntc-iv-fp') || ang)) {
+    _cntcOnInput();
+  }
 }
 
 // Inicializar slots com estado padrão
@@ -7085,7 +7106,59 @@ function _cntcOnInput() {
   _cntcDebounce = setTimeout(_cntcRecalcular, 500);
 }
 
+// Extrai dados estruturados (pesos, dimensões, motor/cilindrada/ano) já
+// digitados em texto livre nos campos descritivos (EC — Função Técnica e
+// Especificações) e auto-preenche os campos vazios de FI (pesos), FP
+// (dimensões) e AV (motor/cilindrada/ano), sem nunca sobrescrever um valor
+// que o usuário já tenha preenchido manualmente.
+function _cntcExtrairFichaTecnica() {
+  var elFuncao = document.getElementById('cntc-ec-funcao');
+  var elEspec  = document.getElementById('cntc-ec-espec');
+  var texto = [(elFuncao && elFuncao.value) || '', (elEspec && elEspec.value) || ''].join('\n');
+  if (!texto.trim()) return;
+
+  var setIfEmpty = function(id, valor) {
+    var el = document.getElementById(id);
+    if (el && !el.value && valor != null) { el.value = valor; el.style.borderColor = '#ffaa00'; el.title = 'Auto-extraído do campo descritivo (EC) — confirme'; }
+  };
+
+  // FI — pesos (kg)
+  var mPesoBruto = texto.match(/peso\s*bruto\D{0,6}([\d]+[.,]?\d*)\s*kg/i);
+  var mPesoLiq   = texto.match(/peso\s*l[íi]quido\D{0,6}([\d]+[.,]?\d*)\s*kg/i);
+  var mPesoGen   = texto.match(/\bpeso\D{0,6}([\d]+[.,]?\d*)\s*kg/i);
+  if (mPesoBruto) setIfEmpty('cntc-fi-pesob', mPesoBruto[1].replace(',', '.'));
+  if (mPesoLiq) setIfEmpty('cntc-fi-pesol', mPesoLiq[1].replace(',', '.'));
+  if (!mPesoBruto && !mPesoLiq && mPesoGen) {
+    setIfEmpty('cntc-fi-pesob', mPesoGen[1].replace(',', '.'));
+    setIfEmpty('cntc-fi-pesol', mPesoGen[1].replace(',', '.'));
+  }
+
+  // FP — dimensões (cm): "35 x 20 x 10 cm" ou rotuladas individualmente
+  var mDims = texto.match(/(\d+[.,]?\d*)\s*[x×]\s*(\d+[.,]?\d*)\s*[x×]\s*(\d+[.,]?\d*)\s*cm/i);
+  if (mDims) {
+    setIfEmpty('cntc-fp-comp', mDims[1].replace(',', '.'));
+    setIfEmpty('cntc-fp-larg', mDims[2].replace(',', '.'));
+    setIfEmpty('cntc-fp-alt',  mDims[3].replace(',', '.'));
+  }
+  var mComp = texto.match(/comprimento\D{0,6}([\d]+[.,]?\d*)\s*cm/i);
+  var mLarg = texto.match(/largura\D{0,6}([\d]+[.,]?\d*)\s*cm/i);
+  var mAlt  = texto.match(/altura\D{0,6}([\d]+[.,]?\d*)\s*cm/i);
+  if (mComp) setIfEmpty('cntc-fp-comp', mComp[1].replace(',', '.'));
+  if (mLarg) setIfEmpty('cntc-fp-larg', mLarg[1].replace(',', '.'));
+  if (mAlt)  setIfEmpty('cntc-fp-alt',  mAlt[1].replace(',', '.'));
+
+  // AV — cilindrada e ano (ex: "1.8 8V", "2012-2015")
+  var mCil = texto.match(/\b(\d\.\d)\s*(TSI|TDI|turbo|flex|8v|16v)?\b/i);
+  var mAno = texto.match(/\b(19[5-9]\d|20[0-3]\d)\s*-\s*(19[5-9]\d|20[0-3]\d|atual)\b/i);
+  if (mCil) setIfEmpty('cntc-av-cil', mCil[1]);
+  if (mAno) { setIfEmpty('cntc-av-anoi', mAno[1]); if (mAno[2] !== 'atual') setIfEmpty('cntc-av-anof', mAno[2]); }
+}
+
 async function _cntcRecalcular() {
+  // 0. Auto-preenche FI/FP/AV a partir do texto descritivo (EC), sem
+  // sobrescrever campos já preenchidos manualmente.
+  _cntcExtrairFichaTecnica();
+
   // 1. Lê os campos dos módulos CNTC renderizados em tela para _cntcDados
   Object.keys(CNTC_CAMPOS).forEach(function(mod) {
     var meta = CNTC_CAMPOS[mod];

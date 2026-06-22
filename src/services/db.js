@@ -455,9 +455,29 @@ function seedReferenciasNTC() {
   tx();
 }
 
+// Peças confirmadas (NTC alto / decisao APROVADO) do mesmo fabricante e/ou
+// com palavras em comum no nome — usadas como base de herança (família
+// técnica) quando a busca DNA na web não encontra nenhuma fonte. Nunca
+// retorna o próprio SKU consultado, e só considera dados já validados.
+function listarSimilaresConfirmados({ fabricante, nome, excluirSku, limit = 5 } = {}) {
+  const palavras = String(nome || '').toUpperCase().match(/[A-ZÀ-Ú0-9]{4,}/g) || [];
+  const where = ["(ntc >= 0.7 OR decisao = 'APROVADO')"];
+  const params = {};
+  if (excluirSku) { where.push('sku != @excluirSku'); params.excluirSku = excluirSku; }
+  const orParts = [];
+  if (fabricante) { orParts.push("dados_json LIKE @fab"); params.fab = '%' + fabricante + '%'; }
+  palavras.slice(0, 4).forEach((p, i) => { orParts.push(`nome LIKE @p${i}`); params['p' + i] = '%' + p + '%'; });
+  if (orParts.length) where.push('(' + orParts.join(' OR ') + ')');
+  const sql = `SELECT * FROM produtos WHERE ${where.join(' AND ')} ORDER BY ntc DESC LIMIT @limit`;
+  params.limit = limit;
+  const rows = db.prepare(sql).all(params);
+  return rows.map(linhaParaProduto);
+}
+
 module.exports = {
   db,
   upsertProduto,
+  listarSimilaresConfirmados,
   obterProduto,
   obterProdutoPorSku,
   listarProdutos,

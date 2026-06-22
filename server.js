@@ -254,6 +254,16 @@ app.use((req, res, next) => {
 // -----------------------------------------------------------
 
 // Health check
+// Flag de ambiente só para dev local — NUNCA true em produção (Render não define
+// DEV_BYPASS_NTC_GATE). Permite testar os botões de publicação (Bling/Wix/Publicar)
+// sem precisar completar o NTC mínimo enquanto o front-end ainda está em desenvolvimento.
+app.get('/api/config', (req, res) => {
+    res.json({
+          ok: true,
+          devBypassNtcGate: process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_NTC_GATE === 'true'
+    });
+});
+
 app.get('/api/health', (req, res) => {
     res.json({
           ok: true,
