@@ -576,12 +576,29 @@ app.post('/api/vector/search', async (req, res) => {
     }
 });
 
+// Quando a busca vetorial local não acha nenhum produto parecido no catálogo
+// já indexado, cai para o mesmo agente de DNA na Web do Enriquecimento — para
+// o lojista não precisar trocar de tela manualmente para descobrir o DNA de
+// um produto novo. Cada campo retornado já vem com fonte e nível de
+// confiança (igual ao Enriquecimento); nunca inventa dado sem fonte.
+async function fallbackWebSeVazio(texto, resultados) {
+    if (resultados.length > 0) return null;
+    try {
+        const resultado = await enriquecerDnaViaWeb({ nome: texto });
+        if (!resultado.ok || !resultado.encontrado) return { ok: false, erro: resultado.erro || null, encontrado: false };
+        return { ok: true, campos: resultado.campos, encontrado: true };
+    } catch (e) {
+        return { ok: false, erro: e.message, encontrado: false };
+    }
+}
+
 app.post('/api/vector/oem', async (req, res) => {
     const { texto, limit, threshold } = req.body;
     if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
     try {
         const resultados = await vectorSearch.buscarOEM(texto, { limit, threshold });
-        res.json({ ok: true, resultados });
+        const busca_web = await fallbackWebSeVazio(texto, resultados);
+        res.json({ ok: true, resultados, busca_web });
     } catch (e) {
         res.status(500).json({ ok: false, erro: e.message });
     }
@@ -592,7 +609,8 @@ app.post('/api/vector/dna', async (req, res) => {
     if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
     try {
         const resultados = await vectorSearch.buscarDNA(texto, { limit, threshold });
-        res.json({ ok: true, resultados });
+        const busca_web = await fallbackWebSeVazio(texto, resultados);
+        res.json({ ok: true, resultados, busca_web });
     } catch (e) {
         res.status(500).json({ ok: false, erro: e.message });
     }
@@ -603,7 +621,8 @@ app.post('/api/vector/application', async (req, res) => {
     if (!texto) return res.status(400).json({ ok: false, erro: 'texto é obrigatório' });
     try {
         const resultados = await vectorSearch.buscarAplicacaoMotor(texto, { limit, threshold });
-        res.json({ ok: true, resultados });
+        const busca_web = await fallbackWebSeVazio(texto, resultados);
+        res.json({ ok: true, resultados, busca_web });
     } catch (e) {
         res.status(500).json({ ok: false, erro: e.message });
     }

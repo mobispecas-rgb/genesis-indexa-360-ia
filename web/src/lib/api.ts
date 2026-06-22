@@ -284,12 +284,26 @@ export interface VectorResultado {
   similaridade?: number;
 }
 
+export interface BuscaWebFallback {
+  ok: boolean;
+  encontrado: boolean;
+  erro?: string | null;
+  campos?: Record<string, unknown>;
+}
+
+export interface VectorBuscaResultado {
+  resultados: VectorResultado[];
+  buscaWeb: BuscaWebFallback | null;
+}
+
 // Busca por similaridade no "DNA" técnico já aprendido (OEM, família/DNA,
 // aplicação de motor) — usa o índice vetorial local (src/services/vector-search.js).
+// Quando o índice não tem nada parecido, o backend cai automaticamente para o
+// mesmo agente de DNA na Web do Enriquecimento (ver server.js fallbackWebSeVazio).
 export async function apiVectorBusca(
   tipo: "oem" | "dna" | "application",
   texto: string,
-): Promise<VectorResultado[]> {
+): Promise<VectorBuscaResultado> {
   const endpoint = tipo === "oem" ? "/api/vector/oem" : tipo === "dna" ? "/api/vector/dna" : "/api/vector/application";
   const r = await fetch(endpoint, {
     method: "POST",
@@ -298,7 +312,7 @@ export async function apiVectorBusca(
   });
   const json = await r.json();
   if (!json.ok) throw new Error(json.erro || "Falha na busca DNA");
-  return json.resultados as VectorResultado[];
+  return { resultados: json.resultados as VectorResultado[], buscaWeb: (json.busca_web as BuscaWebFallback) ?? null };
 }
 
 export { calcNtc };

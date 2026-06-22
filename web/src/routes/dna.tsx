@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Dna, Search, Loader2 } from "lucide-react";
-import { apiVectorBusca, type VectorResultado } from "@/lib/api";
+import { Dna, Search, Loader2, Globe } from "lucide-react";
+import { apiVectorBusca, type VectorResultado, type BuscaWebFallback } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const TIPOS = [
@@ -16,13 +16,17 @@ export function DnaOem360() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [buscou, setBuscou] = useState(false);
+  const [buscaWeb, setBuscaWeb] = useState<BuscaWebFallback | null>(null);
 
   async function buscar() {
     if (!query.trim()) return;
     setLoading(true);
     setErro(null);
+    setBuscaWeb(null);
     try {
-      setResultados(await apiVectorBusca(tipo, query.trim()));
+      const { resultados: r, buscaWeb: bw } = await apiVectorBusca(tipo, query.trim());
+      setResultados(r);
+      setBuscaWeb(bw);
     } catch (e) {
       setErro((e as Error).message);
       setResultados([]);
@@ -81,11 +85,37 @@ export function DnaOem360() {
       {erro && <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{erro}</div>}
 
       {resultados.length === 0 && !loading && !erro ? (
-        <p className="text-sm text-muted-foreground">
-          {buscou
-            ? "Nenhum produto similar encontrado no índice — este produto (ou nenhum parecido) ainda foi indexado. Salve/enriqueça-o na tela de Enriquecimento e tente de novo."
-            : "Nenhuma busca realizada ainda."}
-        </p>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {buscou
+              ? "Nenhum produto similar encontrado no índice — este produto (ou nenhum parecido) ainda foi indexado."
+              : "Nenhuma busca realizada ainda."}
+          </p>
+          {buscaWeb && (
+            <div className="rounded-xl border border-info/30 bg-info/5 p-4">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-info" />
+                <h3 className="font-display text-sm font-semibold">
+                  {buscaWeb.encontrado ? "DNA encontrado na web — confirme antes de cadastrar" : "Busca na web"}
+                </h3>
+              </div>
+              {!buscaWeb.ok || !buscaWeb.encontrado ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {buscaWeb.erro || "Nenhuma fonte confiável encontrada na web para esse produto."}
+                </p>
+              ) : (
+                <>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Não havia esse produto no catálogo indexado, então buscamos na web. Confirme os dados e cadastre-o na tela de Enriquecimento para ele passar a aparecer aqui também.
+                  </p>
+                  <pre className="mt-3 max-h-72 overflow-auto rounded-lg border border-border bg-background p-3 font-mono text-[11px] leading-relaxed">
+                    {JSON.stringify(buscaWeb.campos, null, 2)}
+                  </pre>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       ) : (
         <ul className="divide-y divide-border/60 rounded-xl border border-border bg-card">
           {resultados.map((r, i) => (
