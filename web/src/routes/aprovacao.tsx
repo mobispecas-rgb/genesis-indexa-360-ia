@@ -9,6 +9,9 @@ import {
   Pencil,
   Search,
   ListFilter,
+  Image as ImageIcon,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useProducts } from "@/lib/store";
 import type { Product, ProductStatus } from "@/lib/types";
@@ -16,6 +19,7 @@ import { missingCriteria } from "@/lib/ntc";
 import { NtcBar, NtcGauge } from "@/components/ntc-gauge";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
+import { apiBuscarImagens, type ImagemBusca } from "@/lib/api";
 
 type Filter = "all" | ProductStatus;
 
@@ -77,6 +81,46 @@ export function Aprovacao() {
     op.then(() => toast.success(`Status atualizado para "${status}".`)).catch((e) => toast.error(e.message));
   }
 
+  async function deleteIds(ids: string[]) {
+    if (ids.length === 0) return;
+    if (!window.confirm(ids.length === 1 ? "Excluir este produto?" : `Excluir ${ids.length} produtos selecionados?`)) return;
+    try {
+      await Promise.all(ids.map((id) => remove(id)));
+      if (activeId && ids.includes(activeId)) setActiveId(null);
+      setSelected((s) => s.filter((id) => !ids.includes(id)));
+      toast.success(ids.length === 1 ? "Produto excluído." : `${ids.length} produtos excluídos.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function deleteAll() {
+    if (list.length === 0) return;
+    if (!window.confirm(`Excluir TODOS os ${list.length} produtos desta visão? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await Promise.all(list.map((p) => remove(p.id)));
+      setActiveId(null);
+      setSelected([]);
+      toast.success(`${list.length} produtos excluídos.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  // Tecla Delete/Backspace exclui o produto ativo ou a seleção atual — só
+  // quando o foco não está em um campo de texto (busca, edição, etc).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (selected.length > 0) deleteIds(selected);
+      else if (activeId) deleteIds([activeId]);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selected, activeId]);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
       <div className="mb-5 flex items-center gap-2">
@@ -117,6 +161,14 @@ export function Aprovacao() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={deleteAll}
+              disabled={list.length === 0}
+              title="Excluir todos os produtos desta visão"
+              className="inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2.5 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/10 disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Excluir todos
+            </button>
           </div>
           {/* Bulk bar */}
           {selected.length > 0 && (
@@ -139,6 +191,12 @@ export function Aprovacao() {
                 className="inline-flex items-center gap-1 rounded-md bg-info/15 px-2.5 py-1 text-xs font-medium text-info hover:bg-info/25"
               >
                 <Snowflake className="h-3.5 w-3.5" /> Congelar
+              </button>
+              <button
+                onClick={() => deleteIds(selected)}
+                className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/25"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Excluir
               </button>
             </div>
           )}
@@ -207,10 +265,7 @@ export function Aprovacao() {
                           </IconBtn>
                           <IconBtn
                             title="Excluir"
-                            onClick={() => {
-                              remove(p.id);
-                              if (activeId === p.id) setActiveId(null);
-                            }}
+                            onClick={() => deleteIds([p.id])}
                             className="text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -234,6 +289,80 @@ export function Aprovacao() {
           />
         </aside>
       </div>
+      <FloatingImages product={active} />
+    </div>
+  );
+}
+
+// Aba flutuante com 6 imagens reais do produto selecionado, buscadas na web
+// (Brave/Serper/Google — mesma fonte do enriquecimento). Fica fixa no canto
+// da tela para conferir rapidamente a foto antes de aprovar/reprovar.
+function FloatingImages({ product }: { product: Product | null }) {
+  const [open, setOpen] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [imagens, setImagens] = useState<ImagemBusca[]>([]);
+  const [mensagem, setMensagem] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!product) {
+      setImagens([]);
+      setMensagem(null);
+      return;
+    }
+    const query = `${product.nome} ${product.fabricante} ${product.oem}`.trim();
+    if (!query) return;
+    setLoading(true);
+    setMensagem(null);
+    apiBuscarImagens(query)
+      .then((r) => {
+        setImagens(r.imagens.slice(0, 6));
+        if (r.mensagem) setMensagem(r.mensagem);
+      })
+      .finally(() => setLoading(false));
+  }, [product?.id]);
+
+  if (!product) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 w-72 rounded-xl border border-border bg-card shadow-lg">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold"
+      >
+        <span className="flex items-center gap-1.5">
+          <ImageIcon className="h-4 w-4 text-primary" /> Imagens web
+        </span>
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className={cn("h-3.5 w-3.5 transition", !open && "rotate-45")} />}
+      </button>
+      {open && (
+        <div className="border-t border-border p-3">
+          {mensagem ? (
+            <p className="text-[11px] text-muted-foreground">{mensagem}</p>
+          ) : imagens.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">{loading ? "Buscando…" : "Nenhuma imagem encontrada."}</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {imagens.map((img, i) => (
+                <a
+                  key={i}
+                  href={img.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="overflow-hidden rounded-md border border-border/60"
+                  title={img.titulo}
+                >
+                  <img
+                    src={`/api/imagens/proxy?url=${encodeURIComponent(img.thumb || img.url)}`}
+                    alt={img.titulo || ""}
+                    className="aspect-square w-full object-cover transition hover:scale-105"
+                    loading="lazy"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
