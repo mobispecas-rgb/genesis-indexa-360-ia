@@ -19,7 +19,7 @@ import { useProducts } from "@/lib/store";
 import { emptyProduct, FAMILIES, NTC_META, type Product, type ProductFamily } from "@/lib/types";
 import { calcNtc, missingCriteria, canPublish } from "@/lib/ntc";
 import { generateDescription } from "@/lib/enrich";
-import { apiEnriquecerDna, apiBuscarImagens, type ImagemBusca } from "@/lib/api";
+import { apiEnriquecerDna, apiBuscarImagens, type ImagemBusca, type EnrichApiResult } from "@/lib/api";
 import { NtcGauge } from "@/components/ntc-gauge";
 import { QuotaIaWidget } from "@/components/quota-ia-widget";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,8 @@ export function Enriquecimento() {
   const [tone, setTone] = useState<"tecnico" | "comercial" | "seo">("tecnico");
   const [imageResults, setImageResults] = useState<ImagemBusca[]>([]);
   const [searchingImages, setSearchingImages] = useState(false);
+  const [resultadoBusca, setResultadoBusca] = useState<EnrichApiResult["raw"]>(null);
+  const [viewModo, setViewModo] = useState<"json" | "csv">("json");
 
   useEffect(() => {
     if (!loaded) loadFromServer();
@@ -67,8 +69,9 @@ export function Enriquecimento() {
     setEnriching(true);
     setProgress(20);
     try {
-      const { patch, sources, ntcReal } = await apiEnriquecerDna(product);
+      const { patch, sources, ntcReal, raw } = await apiEnriquecerDna(product);
       setProgress(70);
+      setResultadoBusca(raw);
       const merged: Product = {
         ...product,
         ...patch,
@@ -328,6 +331,33 @@ export function Enriquecimento() {
               </div>
             </div>
           )}
+          {/* Resultado completo da busca — hierarquia, aplicações, clones etc. */}
+          {resultadoBusca && (
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-display text-sm font-semibold">Resultado da busca</h3>
+                <div className="flex gap-1.5">
+                  {(["json", "csv"] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setViewModo(m)}
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase transition",
+                        viewModo === m
+                          ? "border-primary/50 bg-primary/15 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <pre className="mt-3 max-h-96 overflow-auto rounded-lg border border-border bg-background p-3 font-mono text-[11px] leading-relaxed">
+                {viewModo === "json" ? JSON.stringify(resultadoBusca.campos, null, 2) : camposParaCsv(resultadoBusca.campos)}
+              </pre>
+            </div>
+          )}
           {/* Identificação */}
           <Section title="Identificação do Produto" step={1}>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -502,6 +532,19 @@ export function Enriquecimento() {
       </div>
     </div>
   );
+}
+
+// Achata o objeto `campos` retornado pelo dna-enricher (cada campo é
+// {valor, fonte, confianca, ...} ou array) em linhas CSV campo;valor;fonte;confianca
+// — cobre hierarquia, aplicações, OEM, SKU, EAN, clones (cc_oem/cc_aftermarket etc.)
+function camposParaCsv(campos: Record<string, unknown>): string {
+  const linhas = ["campo;valor;fonte;confianca"];
+  for (const [campo, info] of Object.entries(campos || {})) {
+    const obj = (info ?? {}) as { valor?: unknown; fonte?: string | null; confianca?: string };
+    const valor = Array.isArray(obj.valor) ? obj.valor.join(", ") : Array.isArray(info) ? (info as unknown[]).join(", ") : obj.valor ?? "";
+    linhas.push([campo, String(valor ?? ""), obj.fonte ?? "", obj.confianca ?? ""].join(";"));
+  }
+  return linhas.join("\n");
 }
 
 const inputCls =
