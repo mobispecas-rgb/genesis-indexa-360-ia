@@ -210,4 +210,74 @@ export async function apiSincronizarProduto(id: string): Promise<SincronizarResu
   return r.json();
 }
 
+export interface CategoriaResumo {
+  categoria: string;
+  subcategoria: string | null;
+  total: number;
+}
+
+export async function apiListarCategorias(): Promise<CategoriaResumo[]> {
+  const r = await fetch("/api/categorias");
+  const json = await r.json();
+  if (!json.ok) throw new Error(json.erro || "Falha ao listar categorias");
+  return json.categorias as CategoriaResumo[];
+}
+
+export interface PerformanceSistema {
+  ok: boolean;
+  indice_qualidade: number;
+  nivel: string;
+  risco_alucinacao: boolean;
+  sistema: {
+    cpu_uso_pct: number;
+    cpu_nucleos: number;
+    mem_uso_pct: number;
+    mem_total_mb: number;
+    mem_livre_mb: number;
+    processo_rss_mb: number;
+    uptime_s: number;
+  };
+  internet: { online: boolean; latencia_ms?: number };
+  conectividade: Record<string, boolean>;
+  enriquecimento: {
+    total: number;
+    media_ntc: number;
+    por_decisao: Record<string, number>;
+    pendentes_enriquecer: number;
+    taxa_erro_pct_recente: number;
+    logs_recentes: number;
+  };
+}
+
+export async function apiPerformance(): Promise<PerformanceSistema> {
+  const r = await fetch("/api/sistema/performance");
+  return r.json();
+}
+
+export interface VectorResultado {
+  id?: string | number;
+  sku?: string;
+  nome?: string;
+  texto?: string;
+  score?: number;
+  similaridade?: number;
+}
+
+// Busca por similaridade no "DNA" técnico já aprendido (OEM, família/DNA,
+// aplicação de motor) — usa o índice vetorial local (src/services/vector-search.js).
+export async function apiVectorBusca(
+  tipo: "oem" | "dna" | "application",
+  texto: string,
+): Promise<VectorResultado[]> {
+  const endpoint = tipo === "oem" ? "/api/vector/oem" : tipo === "dna" ? "/api/vector/dna" : "/api/vector/application";
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texto, limit: 15 }),
+  });
+  const json = await r.json();
+  if (!json.ok) throw new Error(json.erro || "Falha na busca DNA");
+  return json.resultados as VectorResultado[];
+}
+
 export { calcNtc };
