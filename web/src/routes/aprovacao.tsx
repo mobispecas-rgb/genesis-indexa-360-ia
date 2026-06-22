@@ -11,7 +11,6 @@ import {
   ListFilter,
 } from "lucide-react";
 import { useProducts } from "@/lib/store";
-import { seedIfEmpty } from "@/lib/seed";
 import type { Product, ProductStatus } from "@/lib/types";
 import { missingCriteria } from "@/lib/ntc";
 import { NtcBar, NtcGauge } from "@/components/ntc-gauge";
@@ -30,6 +29,8 @@ const filters: { key: Filter; label: string }[] = [
 
 export function Aprovacao() {
   const products = useProducts((s) => s.products);
+  const loaded = useProducts((s) => s.loaded);
+  const loadFromServer = useProducts((s) => s.loadFromServer);
   const setStatus = useProducts((s) => s.setStatus);
   const bulkStatus = useProducts((s) => s.bulkStatus);
   const remove = useProducts((s) => s.remove);
@@ -41,8 +42,8 @@ export function Aprovacao() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
-    seedIfEmpty();
-  }, []);
+    if (!loaded) loadFromServer();
+  }, [loaded, loadFromServer]);
 
   const list = useMemo(() => {
     return products
@@ -67,14 +68,13 @@ export function Aprovacao() {
   }
 
   function act(status: ProductStatus, id?: string) {
-    if (id) {
-      setStatus(id, status);
-    } else {
-      if (selected.length === 0) return toast.error("Selecione ao menos um produto.");
-      bulkStatus(selected, status);
-      setSelected([]);
-    }
-    toast.success(`Status atualizado para "${status}".`);
+    const op = id
+      ? setStatus(id, status)
+      : selected.length === 0
+        ? Promise.reject(new Error("Selecione ao menos um produto."))
+        : bulkStatus(selected, status);
+    if (!id) setSelected([]);
+    op.then(() => toast.success(`Status atualizado para "${status}".`)).catch((e) => toast.error(e.message));
   }
 
   return (

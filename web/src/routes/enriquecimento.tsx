@@ -18,7 +18,8 @@ import {
 import { useProducts } from "@/lib/store";
 import { emptyProduct, FAMILIES, NTC_META, type Product, type ProductFamily } from "@/lib/types";
 import { calcNtc, missingCriteria, canPublish } from "@/lib/ntc";
-import { enrich, generateDescription } from "@/lib/enrich";
+import { generateDescription } from "@/lib/enrich";
+import { apiEnriquecerDna } from "@/lib/api";
 import { NtcGauge } from "@/components/ntc-gauge";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,8 @@ export function Enriquecimento() {
   const upsert = useProducts((s) => s.upsert);
   const remove = useProducts((s) => s.remove);
   const getProduct = useProducts((s) => s.get);
+  const loaded = useProducts((s) => s.loaded);
+  const loadFromServer = useProducts((s) => s.loadFromServer);
 
   const [product, setProduct] = useState<Product>(() => emptyProduct());
   const [enriching, setEnriching] = useState(false);
@@ -35,11 +38,15 @@ export function Enriquecimento() {
   const [tone, setTone] = useState<"tecnico" | "comercial" | "seo">("tecnico");
 
   useEffect(() => {
+    if (!loaded) loadFromServer();
+  }, [loaded, loadFromServer]);
+
+  useEffect(() => {
     if (id) {
       const existing = getProduct(id);
       if (existing) setProduct(existing);
     }
-  }, [id, getProduct]);
+  }, [id, getProduct, loaded]);
 
   const ntc = useMemo(() => calcNtc(product), [product]);
   const missing = useMemo(() => missingCriteria(product), [product]);
@@ -55,30 +62,47 @@ export function Enriquecimento() {
       return;
     }
     setEnriching(true);
-    setProgress(0);
-    const steps = [18, 42, 67, 88, 100];
-    for (const s of steps) {
-      await new Promise((r) => setTimeout(r, 260));
-      setProgress(s);
+    setProgress(20);
+    try {
+      const { patch, sources, ntcReal } = await apiEnriquecerDna(product);
+      setProgress(100);
+      setProduct((p) => ({
+        ...p,
+        ...patch,
+        enriched: true,
+        dnaSources: sources,
+        ntc: ntcReal ?? p.ntc,
+      }));
+      if (sources.length === 0) {
+        toast.warning("Nenhuma fonte confiável encontrada na web — sem evidência, nenhum campo foi preenchido.");
+      } else {
+        toast.success("DNA encontrado na web — confirme os dados antes de publicar.", {
+          description: `${sources.length} campo(s) sugerido(s) com fonte e confiança.`,
+        });
+      }
+    } catch (e) {
+      toast.error(`Falha ao buscar DNA na web: ${(e as Error).message}`);
+    } finally {
+      setEnriching(false);
     }
-    const { patch, sources } = enrich(product);
-    setProduct((p) => ({ ...p, ...patch, enriched: true, dnaSources: sources }));
-    setEnriching(false);
-    toast.success("DNA encontrado na web — confirme os dados antes de publicar.", {
-      description: `${sources.length} campo(s) sugerido(s) com fonte e confiança.`,
-    });
   }
 
-  function handleSave(status?: Product["status"]) {
+  async function handleSave(status?: Product["status"]) {
     if (!product.nome.trim() || !product.sku.trim() || !product.fabricante.trim()) {
       toast.error("Preencha SKU, Fabricante e Nome para salvar.");
       return;
     }
     const next: Product = { ...product, status: status ?? product.status };
-    upsert(next);
-    setProduct(next);
-    toast.success(status === "approved" ? "Produto publicado e aprovado." : "Cadastro salvo.");
-    if (!id) navigate({ to: "/enriquecimento", search: { id: next.id } });
+    try {
+      const saved = await upsert(next);
+      // O backend recalcula a decisão pelo Motor NTC 4.0 real; "congelar" é uma
+      // intenção manual que ainda não tem persistência própria no servidor.
+      setProduct(status === "frozen" ? { ...saved, status: "frozen" } : saved);
+      toast.success(status === "approved" ? "Produto publicado e aprovado." : "Cadastro salvo.");
+      if (!id || id !== saved.id) navigate({ to: "/enriquecimento", search: { id: saved.id } });
+    } catch (e) {
+      toast.error(`Falha ao salvar: ${(e as Error).message}`);
+    }
   }
 
   function handlePublish() {
@@ -98,8 +122,8 @@ export function Enriquecimento() {
     toast.info("Produto congelado — bloqueado para edição em massa.");
   }
 
-  function handleDelete() {
-    if (id) remove(id);
+  async function handleDelete() {
+    if (id) await remove(id);
     setProduct(emptyProduct());
     navigate({ to: "/enriquecimento", search: {} });
     toast.success("Cadastro excluído.");
