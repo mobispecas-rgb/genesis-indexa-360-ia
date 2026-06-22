@@ -4,6 +4,7 @@ import { Boxes, CheckCircle2, Clock, XCircle, Sparkles, ArrowRight } from "lucid
 import { useProducts } from "@/lib/store";
 import { NtcBar } from "@/components/ntc-gauge";
 import { StatusBadge } from "@/components/status-badge";
+import { QuotaIaWidget } from "@/components/quota-ia-widget";
 
 export function Dashboard() {
   const products = useProducts((s) => s.products);
@@ -108,6 +109,9 @@ export function Dashboard() {
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="font-display text-base font-semibold">Ações Rápidas</h2>
+          <div className="mt-4">
+            <QuotaIaWidget />
+          </div>
           <div className="mt-4 space-y-2.5">
             <Link
               to="/enriquecimento"

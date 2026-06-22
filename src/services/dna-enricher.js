@@ -9,7 +9,7 @@
 // ============================================================
 const https = require('https');
 const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON } = require('./web-utils');
-const { listarSimilaresConfirmados } = require('./db');
+const { listarSimilaresConfirmados, registrarUsoApi } = require('./db');
 
 // Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
 // são específicos demais por peça para herdar de um produto "parecido").
@@ -256,6 +256,7 @@ async function chamarLLM({ system, userContent, maxTokens }) {
       config: { systemInstruction: system, maxOutputTokens: maxTokens, temperature: 0.2 },
     });
     const texto = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    registrarUsoApi('gemini');
     return { texto, motor: 'Gemini 2.0 Flash' };
   }
   if (process.env.ANTHROPIC_API_KEY) {
@@ -267,6 +268,7 @@ async function chamarLLM({ system, userContent, maxTokens }) {
       system,
       messages: [{ role: 'user', content: userContent }],
     });
+    registrarUsoApi('claude');
     return { texto: msg.content?.[0]?.text || '{}', motor: 'Claude Haiku' };
   }
   throw new Error('GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada');

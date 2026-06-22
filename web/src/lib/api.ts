@@ -254,6 +254,25 @@ export async function apiPerformance(): Promise<PerformanceSistema> {
   return r.json();
 }
 
+export interface QuotaIa {
+  ok: boolean;
+  configurado: boolean;
+  mensagem?: string;
+  provedor?: string;
+  usado_hoje?: number;
+  limite_diario?: number | null;
+  restante?: number | null;
+  percentual?: number | null;
+}
+
+// Cota diária de chamadas de IA gasta no enriquecimento DNA — mostra quanto
+// já foi usado hoje e quanto resta, para o lojista calcular quantos produtos
+// ainda pode cadastrar/enriquecer no dia.
+export async function apiQuotaIa(): Promise<QuotaIa> {
+  const r = await fetch("/api/ia/quota");
+  return r.json();
+}
+
 export interface VectorResultado {
   id?: string | number;
   sku?: string;
