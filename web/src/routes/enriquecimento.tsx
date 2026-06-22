@@ -21,6 +21,7 @@ import { calcNtc, missingCriteria, canPublish } from "@/lib/ntc";
 import { generateDescription } from "@/lib/enrich";
 import { apiEnriquecerDna, apiBuscarImagens, type ImagemBusca } from "@/lib/api";
 import { NtcGauge } from "@/components/ntc-gauge";
+import { QuotaIaWidget } from "@/components/quota-ia-widget";
 import { cn } from "@/lib/utils";
 
 export function Enriquecimento() {
@@ -220,6 +221,7 @@ export function Enriquecimento() {
               <Mini label="Família" value={product.familia} />
             </div>
           </div>
+          <QuotaIaWidget />
           <div className="space-y-2 rounded-xl border border-border bg-card p-4">
             <button
               onClick={handlePublish}

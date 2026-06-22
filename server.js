@@ -349,6 +349,34 @@ app.get('/api/ia/status', async (req, res) => {
     }
 });
 
+// Cota diária de chamadas de IA usada no enriquecimento DNA — mostra ao
+// lojista quanto já foi consumido hoje e quanto resta, para planejar
+// quantos produtos ainda pode cadastrar/enriquecer no dia. Os limites
+// abaixo refletem o tier gratuito padrão de cada provedor (configuráveis
+// via env caso o lojista esteja num plano pago com cota diferente).
+app.get('/api/ia/quota', (req, res) => {
+    const { obterUsoApiHoje } = require('./src/services/db');
+    const provedor = process.env.GEMINI_API_KEY ? 'gemini' : (process.env.ANTHROPIC_API_KEY ? 'claude' : null);
+    if (!provedor) {
+        return res.json({ ok: false, configurado: false, mensagem: 'Configure GEMINI_API_KEY ou ANTHROPIC_API_KEY no Render' });
+    }
+    const limite = provedor === 'gemini'
+        ? Number(process.env.GEMINI_LIMITE_DIARIO || 1500)
+        : Number(process.env.CLAUDE_LIMITE_DIARIO || 0);
+    const usado = obterUsoApiHoje(provedor);
+    const restante = limite > 0 ? Math.max(0, limite - usado) : null;
+    const percentual = limite > 0 ? Math.min(100, Math.round((usado / limite) * 100)) : null;
+    res.json({
+        ok: true,
+        configurado: true,
+        provedor: provedor === 'gemini' ? 'Gemini 2.0 Flash' : 'Claude Haiku',
+        usado_hoje: usado,
+        limite_diario: limite || null,
+        restante,
+        percentual,
+    });
+});
+
 // ─── NTC Engine (Núcleo de Triangulação Certificada) ─────────
 const ntcEngine = require('./src/services/ntc-engine')
 const ntcNormalizerPatch = require('./src/services/ntc-normalizer-patch');

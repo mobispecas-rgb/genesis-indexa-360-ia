@@ -96,6 +96,16 @@ CREATE TABLE IF NOT EXISTS produto_embeddings (
   UNIQUE(produto_id, campo)
 );
 CREATE INDEX IF NOT EXISTS idx_embeddings_campo ON produto_embeddings(campo);
+
+-- Contagem diária de chamadas por provedor de IA (Gemini/Claude), usada
+-- para o lojista acompanhar a cota gratuita/paga restante antes de
+-- cadastrar mais produtos (vide /api/ia/quota).
+CREATE TABLE IF NOT EXISTS api_uso (
+  data TEXT NOT NULL,
+  provedor TEXT NOT NULL,
+  contagem INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (data, provedor)
+);
 `);
 
 // Migração: coluna `pausado` — permite excluir um produto específico do job
@@ -483,8 +493,24 @@ function listarSimilaresConfirmados({ fabricante, nome, excluirSku, limit = 5 } 
   return rows.map(linhaParaProduto);
 }
 
+function registrarUsoApi(provedor) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  db.prepare(`
+    INSERT INTO api_uso (data, provedor, contagem) VALUES (@hoje, @provedor, 1)
+    ON CONFLICT(data, provedor) DO UPDATE SET contagem = contagem + 1
+  `).run({ hoje, provedor });
+}
+
+function obterUsoApiHoje(provedor) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const row = db.prepare('SELECT contagem FROM api_uso WHERE data = ? AND provedor = ?').get(hoje, provedor);
+  return row ? row.contagem : 0;
+}
+
 module.exports = {
   db,
+  registrarUsoApi,
+  obterUsoApiHoje,
   upsertProduto,
   listarSimilaresConfirmados,
   obterProduto,
