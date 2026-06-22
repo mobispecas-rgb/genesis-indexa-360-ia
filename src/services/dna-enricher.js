@@ -142,16 +142,17 @@ REGRAS ABSOLUTAS:
 4. Motor compartilhado entre montadoras? Explique triangulação em mecanismo_triangulacao.
 5. fontes[]: URLs EXATAS do dado específico.
 6. NUNCA misture código OEM/cross-reference (codigo_oem, cc_oem, cc_aftermarket, cc_importadores) de uma categoria de peça diferente da peça pesquisada (ex.: pastilha de freio não é cross-reference de cilindro mestre de embreagem, mesmo que apareçam no mesmo resultado de busca). Se a categoria do trecho não corresponder à categoria do produto de entrada, descarte o código e retorne null.
-7. Saída: SOMENTE o JSON. Sem markdown. Sem texto antes ou depois.`;
+7. bta.instrucoes_instalacao: só preencha com texto de boletim técnico/manual de instalação do fabricante encontrado nas fontes — nunca generalize um procedimento padrão de oficina.
+8. Saída: SOMENTE o JSON. Sem markdown. Sem texto antes ou depois.`;
 
-const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_oem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motor":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[]},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
+const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_oem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motor":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[],"instrucoes_instalacao":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
 
 const CAMPOS_DNA = [
   'codigo_oem','ean','ncm','cest','motor','codigo_motor',
   'marca_veiculo','modelo_veiculo','versao_veiculo','ano_inicial','ano_final','cilindrada',
   'material','posicao','fmsi','comprimento','largura','altura',
-  'cross_codes','aplicacoes_adicionais','funcao_tecnica',
-  'boletins','substituicoes','fabricante_original','montadora',
+  'cross_codes','concorrentes','aplicacoes_adicionais','funcao_tecnica',
+  'boletins','substituicoes','instrucoes_instalacao','fabricante_original','montadora',
   'cc_oem','cc_importadores','peso_bruto','peso_liquido'
 ];
 
@@ -183,6 +184,7 @@ function auditarCanonicoCompleto(can) {
     if (!sec) continue;
     for (const k of Object.keys(sec)) auditarConfianca(sec[k]);
   }
+  if (can.bta?.instrucoes_instalacao) auditarConfianca(can.bta.instrucoes_instalacao);
   return can;
 }
 
@@ -226,10 +228,12 @@ function canonParaLegado(can) {
     largura:               mk(can.fi_fp?.largura     || null, 'familia', null),
     altura:                mk(can.fi_fp?.altura      || null, 'familia', null),
     cross_codes:           { valor: am.length ? am : null,  fonte: null, confianca: 'media', motivo: null },
+    concorrentes:          { valor: am.length ? am : null,  fonte: null, confianca: 'media', motivo: null },
     aplicacoes_adicionais: { valor: avRest,                 fonte: null, confianca: 'media', motivo: null },
     funcao_tecnica:        mk(g(can.fm?.funcao_tecnica),       can.fm?.funcao_tecnica?.confianca,       gf(can.fm?.funcao_tecnica)),
     boletins:              { valor: can.bta?.boletins?.length    ? can.bta.boletins    : null, fonte: null, confianca: 'media', motivo: null },
     substituicoes:         { valor: can.bta?.substituicoes?.length ? can.bta.substituicoes : null, fonte: null, confianca: 'media', motivo: null },
+    instrucoes_instalacao: mk(g(can.bta?.instrucoes_instalacao), can.bta?.instrucoes_instalacao?.confianca, gf(can.bta?.instrucoes_instalacao)),
     fabricante_original:   mk(g(can.dna?.fabricante_original), can.dna?.fabricante_original?.confianca, gf(can.dna?.fabricante_original)),
     montadora:             ma(av0?.montadora || null),
     cc_oem:                { valor: oe.length ? oe : null, fonte: null, confianca: 'media', motivo: null },
