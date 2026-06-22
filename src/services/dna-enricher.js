@@ -248,20 +248,28 @@ function canonParaLegado(can) {
 // ─────────────────────────────────────────────────────────────
 // Chama o LLM de interpretação do DNA. Prioriza Gemini 2.0 Flash
 // (GEMINI_API_KEY) — gratuito até a cota diária e o mais barato do mercado
-// no tier pago — e cai para Claude Haiku só se apenas ANTHROPIC_API_KEY
-// estiver configurada (compatibilidade com quem já tinha essa chave).
+// no tier pago. Se Gemini falhar por cota esgotada (429/RESOURCE_EXHAUSTED) e
+// ANTHROPIC_API_KEY também estiver configurada, tenta Claude Haiku como
+// failover real — só nesse caso de exceção, para não gerar custo do Claude
+// sem necessidade enquanto o Gemini estiver funcionando normalmente.
 async function chamarLLM({ system, userContent, maxTokens }) {
   if (process.env.GEMINI_API_KEY) {
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: userContent,
-      config: { systemInstruction: system, maxOutputTokens: maxTokens, temperature: 0.2 },
-    });
-    const texto = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    registrarUsoApi('gemini');
-    return { texto, motor: 'Gemini 2.0 Flash' };
+    try {
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: userContent,
+        config: { systemInstruction: system, maxOutputTokens: maxTokens, temperature: 0.2 },
+      });
+      const texto = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      registrarUsoApi('gemini');
+      return { texto, motor: 'Gemini 2.0 Flash' };
+    } catch (e) {
+      const cotaExcedida = /RESOURCE_EXHAUSTED|429|quota/i.test(e.message || '');
+      if (!cotaExcedida || !process.env.ANTHROPIC_API_KEY) throw e;
+      console.error('[DNA v5.3] Gemini cota esgotada — failover para Claude Haiku:', e.message);
+    }
   }
   if (process.env.ANTHROPIC_API_KEY) {
     const Anthropic = require('@anthropic-ai/sdk');
