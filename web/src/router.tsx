@@ -5,6 +5,7 @@ import { Enriquecimento } from "@/routes/enriquecimento";
 import { Aprovacao } from "@/routes/aprovacao";
 import { Integracoes } from "@/routes/integracoes";
 import { Catalogo } from "@/routes/catalogo";
+import { CatalogoCertificado } from "@/routes/catalogo-certificado";
 import { Imagens } from "@/routes/imagens";
 import { DnaOem360 } from "@/routes/dna";
 import { Performance } from "@/routes/performance";
@@ -44,6 +45,12 @@ const catalogoRoute = createRoute({
   component: Catalogo,
 });
 
+const catalogoCertificadoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/catalogo-certificado",
+  component: CatalogoCertificado,
+});
+
 const imagensRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/imagens",
@@ -68,6 +75,7 @@ const routeTree = rootRoute.addChildren([
   aprovacaoRoute,
   integracoesRoute,
   catalogoRoute,
+  catalogoCertificadoRoute,
   imagensRoute,
   dnaRoute,
   performanceRoute,

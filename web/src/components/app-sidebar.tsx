@@ -10,6 +10,7 @@ import {
   Activity,
   Plug,
   Dna,
+  BadgeCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const main = [
 
 const plataforma = [
   { title: "Catálogo", url: "/catalogo", icon: Boxes },
+  { title: "Catálogo Certificado", url: "/catalogo-certificado", icon: BadgeCheck },
   { title: "Imagens", url: "/imagens", icon: Image },
   { title: "DNA OEM 360", url: "/dna", icon: Dna },
   { title: "Integrações", url: "/integracoes", icon: Plug },
