@@ -19,7 +19,9 @@
 // NUNCA deve ser usada para aumentar o score NTC.
 const db = require('./db');
 
-const MODELO_EMBEDDING = process.env.EMBEDDING_MODEL || 'text-embedding-004';
+// text-embedding-004 foi descontinuado na Gemini API (retorna 404 em v1beta);
+// gemini-embedding-001 é o modelo de embedding atual.
+const MODELO_EMBEDDING = process.env.EMBEDDING_MODEL || 'gemini-embedding-001';
 
 // Campos vetoriais indexáveis e o texto composto que cada um representa,
 // extraído do mesmo objeto `dados` usado pelo NTC engine / DNA enricher.
