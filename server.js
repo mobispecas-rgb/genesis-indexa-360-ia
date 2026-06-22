@@ -360,8 +360,12 @@ app.get('/api/ia/quota', (req, res) => {
     if (!provedor) {
         return res.json({ ok: false, configurado: false, mensagem: 'Configure GEMINI_API_KEY ou ANTHROPIC_API_KEY no Render' });
     }
+    // 200/dia é o tier gratuito real do gemini-2.0-flash (RPD por projeto/modelo);
+    // a conta do lojista pode esgotar a cota do Google antes deste contador local
+    // chegar no limite se outras chamadas (vector-search, auto-enrich) também
+    // consumirem a mesma chave — por isso o valor é conservador, não otimista.
     const limite = provedor === 'gemini'
-        ? Number(process.env.GEMINI_LIMITE_DIARIO || 1500)
+        ? Number(process.env.GEMINI_LIMITE_DIARIO || 200)
         : Number(process.env.CLAUDE_LIMITE_DIARIO || 0);
     const usado = obterUsoApiHoje(provedor);
     const restante = limite > 0 ? Math.max(0, limite - usado) : null;
