@@ -237,10 +237,13 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Servir arquivos estaticos (frontend)
-app.use(express.static(path.join(__dirname, 'public')));
+// Servir arquivos estaticos (frontend). index:false em ambos para que o
+// index.html de cada pasta NUNCA seja servido automaticamente em "/" — quem
+// decide qual index.html responde a "/" são as rotas explícitas abaixo
+// (app.get('/') -> web/dist, app.get('/legacy') -> public).
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 // iRollo 360 — novo frontend React (Vite build), serve a partir da raiz
-app.use(express.static(path.join(__dirname, 'web', 'dist')));
+app.use(express.static(path.join(__dirname, 'web', 'dist'), { index: false }));
 
 // Logger
 app.use((req, res, next) => {
