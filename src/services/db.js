@@ -223,6 +223,15 @@ function excluirProduto(id) {
   return db.prepare('DELETE FROM produtos WHERE id = ?').run(id);
 }
 
+// Override manual de decisão (aprovar/reprovar/congelar) — usado pela tela de
+// Aprovação. O NTC 4.0 calcula a decisão automaticamente a partir dos dados,
+// mas a curadoria humana pode sobrepor essa decisão sem alterar o score/dados.
+function definirDecisao(id, decisao) {
+  const info = db.prepare('UPDATE produtos SET decisao = ? WHERE id = ?').run(decisao, id);
+  if (info.changes === 0) return null;
+  return obterProduto(id);
+}
+
 // ===== Embeddings vetoriais (busca por similaridade — vector-search-service.js) =====
 function salvarEmbeddingProduto({ produto_id, sku, campo, texto, embedding, modelo }) {
   db.prepare(`INSERT INTO produto_embeddings (produto_id, sku, campo, texto, embedding, modelo)
@@ -485,6 +494,7 @@ module.exports = {
   listarParaEnriquecer,
   contarParaEnriquecer,
   definirPausado,
+  definirDecisao,
   excluirProduto,
   registrarLog,
   listarLogsRecentes,

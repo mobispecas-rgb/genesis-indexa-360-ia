@@ -893,6 +893,23 @@ app.delete('/api/produtos/:id', (req, res) => {
     }
 });
 
+// Override manual de decisão (aprovar/reprovar/congelar) feito na curadoria
+// humana, sem recalcular o NTC 4.0 — usado pela tela de Aprovação.
+const DECISOES_VALIDAS = ['APROVADO', 'REPROVADO', 'PENDENTE', 'CONGELADO'];
+app.patch('/api/produtos/:id/decisao', (req, res) => {
+    try {
+        const { decisao } = req.body || {};
+        if (!DECISOES_VALIDAS.includes(decisao)) {
+            return res.status(400).json({ ok: false, erro: `decisao deve ser uma de: ${DECISOES_VALIDAS.join(', ')}` });
+        }
+        const produto = db.definirDecisao(req.params.id, decisao);
+        if (!produto) return res.status(404).json({ ok: false, erro: 'Produto não encontrado' });
+        res.json({ ok: true, produto });
+    } catch (e) {
+        res.json({ ok: false, erro: e.message });
+    }
+});
+
 // Pausa/retoma o auto-enriquecimento 24/7 para um produto específico — permite
 // selecionar exatamente quais produtos o job processa automaticamente,
 // mantendo os demais "congelados" para não consumir créditos da API durante testes.

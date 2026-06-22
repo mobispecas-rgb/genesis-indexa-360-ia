@@ -100,17 +100,14 @@ export async function apiSalvarProduto(p: Product): Promise<Product> {
 }
 
 export async function apiAtualizarStatus(p: Product, status: Product["status"]): Promise<Product> {
-  const r = await fetch("/api/produtos", {
-    method: "POST",
+  const r = await fetch(`/api/produtos/${p.id}/decisao`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sku: p.sku, dados: productParaDados(p), fonte: "manual" }),
+    body: JSON.stringify({ decisao: statusParaDecisao(status) }),
   });
   const json = await r.json();
   if (!json.ok) throw new Error(json.erro || "Falha ao atualizar status");
-  // O backend recalcula a decisão via NTC 4.0; status manual (congelar) é só local
-  // até existir um endpoint de override — refletimos a intenção mesmo assim.
-  const saved = rowParaProduct(json.produto);
-  return { ...saved, status: status === "frozen" ? "frozen" : saved.status };
+  return rowParaProduct(json.produto);
 }
 
 export async function apiExcluirProduto(id: string): Promise<void> {
