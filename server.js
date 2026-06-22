@@ -911,6 +911,14 @@ app.post('/api/produtos', (req, res) => {
         });
 
         res.json({ ok: true, produto, ntc: resultado.ntc, decisao: resultado.decisao, rast_hash: resultado.rast_hash });
+
+        // Indexa os embeddings logo após salvar — sem esperar o ciclo do job
+        // 24/7 (auto-enrich.js), que só processa produtos com NTC < 0.95 e
+        // roda a cada AUTO_ENRICH_INTERVAL_MIN minutos. Assim a busca DNA OEM
+        // 360 (vector-search-service.js) já encontra o produto imediatamente
+        // após o cadastro/enriquecimento manual, mesmo quando o NTC já está
+        // alto. Roda depois do res.json para não atrasar a resposta ao lojista.
+        vectorSearch.indexarProduto(produto).catch(e => console.error('[Vector Search] indexar', produto.sku, e.message));
     } catch (e) {
         res.json({ ok: false, erro: e.message });
     }
