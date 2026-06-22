@@ -8,7 +8,7 @@
 // Busca : Serper → DuckDuckGo HTML (sem chave, gratuito)
 // ============================================================
 const https = require('https');
-const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON } = require('./web-utils');
+const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON, fetchHtmlSeguro, htmlParaTexto } = require('./web-utils');
 const { listarSimilaresConfirmados, registrarUsoApi } = require('./db');
 
 // Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
@@ -135,6 +135,27 @@ function montarQueries(base, nivel_busca) {
   return nivel_busca === 'discreto' ? queries.slice(0, 4) : queries;
 }
 
+// Snippet do Google/DDG tem ~150 chars — tabelas de "Códigos Externos",
+// lista completa de aplicações e Ficha Técnica de páginas de distribuidor só
+// aparecem no corpo real da página. Busca o HTML real dos melhores resultados
+// (anti-SSRF via fetchHtmlSeguro) e substitui o trecho pelo texto completo.
+async function enriquecerComPaginaReal(resultados, max = 8) {
+  const candidatos = resultados.slice(0, max);
+  await Promise.all(candidatos.map(async (item) => {
+    try {
+      const html = await fetchHtmlSeguro(item.fonte);
+      const textoCompleto = htmlParaTexto(html, 6000);
+      if (textoCompleto.length > item.trecho.length) {
+        item.trecho = textoCompleto;
+        item.trecho_completo = true;
+      }
+    } catch (e) {
+      // Silencia erro de fetch individual — snippet original ainda está disponível
+    }
+  }));
+  return resultados;
+}
+
 async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10, nivel_busca }) {
   const base = [fabricante, sku, nome].filter(Boolean).join(' ');
   const queries = montarQueries(base, nivel_busca);
@@ -146,6 +167,7 @@ async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10, niv
       if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
     }
   }
+  await enriquecerComPaginaReal(all, nivel_busca === 'agressivo' ? 12 : 8);
   console.log(`[DNA v5.3] ${all.length} fontes encontradas (${queries.length} queries)`);
   return all;
 }
