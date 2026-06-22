@@ -4,6 +4,10 @@ import { Dashboard } from "@/routes/index";
 import { Enriquecimento } from "@/routes/enriquecimento";
 import { Aprovacao } from "@/routes/aprovacao";
 import { Integracoes } from "@/routes/integracoes";
+import { Catalogo } from "@/routes/catalogo";
+import { Imagens } from "@/routes/imagens";
+import { DnaOem360 } from "@/routes/dna";
+import { Performance } from "@/routes/performance";
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
@@ -34,7 +38,40 @@ const integracoesRoute = createRoute({
   component: Integracoes,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, enriquecimentoRoute, aprovacaoRoute, integracoesRoute]);
+const catalogoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/catalogo",
+  component: Catalogo,
+});
+
+const imagensRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/imagens",
+  component: Imagens,
+});
+
+const dnaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dna",
+  component: DnaOem360,
+});
+
+const performanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/performance",
+  component: Performance,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  enriquecimentoRoute,
+  aprovacaoRoute,
+  integracoesRoute,
+  catalogoRoute,
+  imagensRoute,
+  dnaRoute,
+  performanceRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

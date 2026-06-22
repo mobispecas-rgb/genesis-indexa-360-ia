@@ -29,16 +29,19 @@ const main = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Enriquecimento", url: "/enriquecimento", icon: Sparkles },
   { title: "Aprovação & NTC", url: "/aprovacao", icon: CheckCircle2 },
+];
+
+const plataforma = [
+  { title: "Catálogo", url: "/catalogo", icon: Boxes },
+  { title: "Imagens", url: "/imagens", icon: Image },
+  { title: "DNA OEM 360", url: "/dna", icon: Dna },
   { title: "Integrações", url: "/integracoes", icon: Plug },
+  { title: "Performance", url: "/performance", icon: Activity },
 ];
 
 const soon = [
-  { title: "Catálogo", icon: Boxes },
-  { title: "Imagens", icon: Image },
   { title: "EAN Scanner GS1", icon: ScanLine },
   { title: "Precificação", icon: Tag },
-  { title: "DNA OEM 360", icon: Dna },
-  { title: "Performance", icon: Activity },
 ];
 
 export function AppSidebar() {
@@ -87,6 +90,16 @@ export function AppSidebar() {
           <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {plataforma.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title}>
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
               {soon.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
