@@ -2,16 +2,17 @@ import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Boxes, CheckCircle2, Clock, XCircle, Sparkles, ArrowRight } from "lucide-react";
 import { useProducts } from "@/lib/store";
-import { seedIfEmpty } from "@/lib/seed";
 import { NtcBar } from "@/components/ntc-gauge";
 import { StatusBadge } from "@/components/status-badge";
 
 export function Dashboard() {
   const products = useProducts((s) => s.products);
+  const loaded = useProducts((s) => s.loaded);
+  const loadFromServer = useProducts((s) => s.loadFromServer);
 
   useEffect(() => {
-    seedIfEmpty();
-  }, []);
+    if (!loaded) loadFromServer();
+  }, [loaded, loadFromServer]);
 
   const total = products.length;
   const approved = products.filter((p) => p.status === "approved" || p.status === "frozen").length;
