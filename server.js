@@ -883,6 +883,9 @@ Para CADA produto identificado, extraia, SOMENTE se EXPLICITAMENTE presente no t
 - imagens: array de URLs de imagem do produto (copie literalmente as URLs presentes no texto, nunca invente)
 - codigo_ncm: código NCM (exatamente 8 dígitos numéricos; se não tiver 8 dígitos, retorne null)
 - codigo_cest: código CEST
+- ean: código EAN/GTIN do produto (8, 12, 13 ou 14 dígitos numéricos)
+- material: material/composição do produto (ex: "Aço forjado", "Alumínio")
+- cross_codes: array de códigos equivalentes/cross-reference de outros fabricantes (ex: ["BOSCH 0986...", "NAKATA JFC..."])
 - peso_bruto, peso_liquido: em kg (apenas número)
 - comprimento, largura, altura: em cm (apenas número)
 - categoria, subcategoria: árvore taxonômica do produto (ex: "Freio", "Pastilha de Freio")
@@ -898,7 +901,7 @@ REGRAS ABSOLUTAS:
 3. Sem "sku" e sem "nome" identificáveis, NÃO inclua o produto no resultado.
 4. Se houver uma tabela de aplicações veiculares com várias linhas (montadora/modelo/motor/ano), preencha TODAS em "aplicacoes" — não descarte nenhuma linha.
 5. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
-[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`,
+[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "ean": null, "material": null, "cross_codes": [], "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`,
             messages: [{ role: 'user', content: texto.slice(0, 30000) }]
         });
 
@@ -920,8 +923,15 @@ REGRAS ABSOLUTAS:
             if (!item.sku || !item.nome) continue;
 
             if (item.codigo_ncm && !validarNCM(item.codigo_ncm)) item.codigo_ncm = null;
+            if (item.ean && !validarGTIN(item.ean)) item.ean = null;
 
             const imagens = [...new Set([...(Array.isArray(item.imagens) ? item.imagens : []), ...imagensDoTexto])];
+            const dimensoesPartes = [
+                item.comprimento && item.largura && item.altura
+                    ? `${item.comprimento} × ${item.largura} × ${item.altura} cm`
+                    : null,
+                item.peso_bruto ? `${item.peso_bruto} kg` : null,
+            ].filter(Boolean);
 
             const dados = {
                 fabricante: item.fabricante || null,
@@ -929,23 +939,30 @@ REGRAS ABSOLUTAS:
                 oem: item.part_number_automotivo || null,
                 codigo_oem: item.part_number_automotivo || null,
                 imagens,
+                images: imagens,
                 ncm: item.codigo_ncm || null,
                 cest: item.codigo_cest || null,
+                ean: item.ean || null,
+                material: item.material || null,
+                cc_oem: Array.isArray(item.cross_codes) ? item.cross_codes : [],
                 peso_bruto: item.peso_bruto || null,
                 peso_liquido: item.peso_liquido || null,
                 comprimento: item.comprimento || null,
                 largura: item.largura || null,
                 altura: item.altura || null,
+                dimensoes: dimensoesPartes.length > 0 ? dimensoesPartes.join(' — ') : null,
                 familia: item.categoria || null,
                 subcategoria: item.subcategoria || null,
                 marca: item.montadora_veiculo || null,
                 modelo: item.modelo_veiculo || null,
                 motor: item.motorizacao_alvo_veiculo || null,
                 motorizacao_alvo_veiculo: item.motorizacao_alvo_veiculo || null,
+                aplicacao_veicular: item.motorizacao_alvo_veiculo || null,
                 ano_inicial: item.ano_inicial || null,
                 ano_final: item.ano_final || null,
                 aplicacoes: Array.isArray(item.aplicacoes) ? item.aplicacoes : [],
                 descricao_comercial: item.descricao_comercial || null,
+                descricao: item.descricao_comercial || null,
                 tags: Array.isArray(item.tags) ? item.tags : [],
             };
 
