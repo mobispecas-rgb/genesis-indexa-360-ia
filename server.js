@@ -839,6 +839,165 @@ REGRAS ABSOLUTAS:
     }
 });
 
+// Mapeador Universal 360 — extrai produtos de qualquer texto bruto colado
+// (catálogo de fornecedor, planilha, payload, e-mail, etc.), agnóstico de
+// marca/fornecedor específico. Para cada produto identificado, valida
+// NCM/GTIN, isola URLs de imagem do texto, monta a cascata de categoria e já
+// persiste via db.upsertProduto + ntcEngine (mesmo pipeline do Enriquecimento
+// manual), retornando o status luminoso (verde/amarelo/vermelho) por NTC.
+function extrairUrlsImagem(texto) {
+    if (!texto) return [];
+    const candidatas = String(texto).match(/https?:\/\/[^\s"'<>)]+/g) || [];
+    return [...new Set(candidatas.filter(u => /\.(jpe?g|png|webp|gif|avif)(\?[^\s]*)?$/i.test(u)))];
+}
+
+function statusLuminoso(ntc) {
+    if (ntc >= 0.95) return 'verde';
+    if (ntc >= 0.60) return 'amarelo';
+    return 'vermelho';
+}
+
+app.post('/api/mapeador-universal/processar', async (req, res) => {
+    const { texto, fornecedor_nome } = req.body;
+    if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
+    if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', produtos: [] });
+
+    const imagensDoTexto = extrairUrlsImagem(texto);
+
+    try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+        const msg = await client.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 4000,
+            system: `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
+
+Vai receber um texto bruto colado pelo usuário (pode ser HTML simplificado, planilha colada, payload de API, e-mail de fornecedor, ficha técnica, etc.) contendo um ou mais produtos.
+
+Para CADA produto identificado, extraia, SOMENTE se EXPLICITAMENTE presente no texto:
+- sku: código/part number do produto
+- nome: nome/descrição do produto
+- fabricante: marca/fabricante
+- part_number_automotivo: código OEM
+- imagens: array de URLs de imagem do produto (copie literalmente as URLs presentes no texto, nunca invente)
+- codigo_ncm: código NCM (exatamente 8 dígitos numéricos; se não tiver 8 dígitos, retorne null)
+- codigo_cest: código CEST
+- peso_bruto, peso_liquido: em kg (apenas número)
+- comprimento, largura, altura: em cm (apenas número)
+- categoria, subcategoria: árvore taxonômica do produto (ex: "Freio", "Pastilha de Freio")
+- montadora_veiculo, modelo_veiculo, motorizacao_alvo_veiculo: aplicação veicular, se houver
+- descricao_comercial: texto técnico-comercial persuasivo e otimizado para SEO (2-3 frases), gerado a partir dos dados reais extraídos — NUNCA invente especificação técnica que não esteja no texto, apenas redija de forma mais comercial os dados confirmados
+- tags: array de strings separadas por categoria>subcategoria>aplicação, para uso em SEO/Bling/Wix (ex: ["Freio", "Pastilha de Freio", "Honda Civic"])
+
+REGRAS ABSOLUTAS:
+1. NUNCA invente, estime ou deduza valores que não estejam no texto. Campo ausente = null (ou [] para listas).
+2. codigo_ncm só é válido com exatamente 8 dígitos numéricos — caso contrário, null.
+3. Sem "sku" e sem "nome" identificáveis, NÃO inclua o produto no resultado.
+4. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
+[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "descricao_comercial": null, "tags": []}]`,
+            messages: [{ role: 'user', content: texto.slice(0, 30000) }]
+        });
+
+        const respostaTexto = msg.content?.[0]?.text || '[]';
+        let extraidos;
+        try {
+            const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
+            extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
+            if (!Array.isArray(extraidos)) extraidos = [];
+        } catch (e) {
+            return res.json({ ok: false, erro: 'Parse JSON: ' + e.message, produtos: [] });
+        }
+
+        const produtos = [];
+        for (const item of extraidos) {
+            if (!item.sku || !item.nome) continue;
+
+            if (item.codigo_ncm && !validarNCM(item.codigo_ncm)) item.codigo_ncm = null;
+
+            const imagens = [...new Set([...(Array.isArray(item.imagens) ? item.imagens : []), ...imagensDoTexto])];
+
+            const dados = {
+                fabricante: item.fabricante || null,
+                part_number_automotivo: item.part_number_automotivo || null,
+                imagens,
+                ncm: item.codigo_ncm || null,
+                cest: item.codigo_cest || null,
+                peso_bruto: item.peso_bruto || null,
+                peso_liquido: item.peso_liquido || null,
+                comprimento: item.comprimento || null,
+                largura: item.largura || null,
+                altura: item.altura || null,
+                familia: item.categoria || null,
+                subcategoria: item.subcategoria || null,
+                marca: item.montadora_veiculo || null,
+                modelo: item.modelo_veiculo || null,
+                motorizacao_alvo_veiculo: item.motorizacao_alvo_veiculo || null,
+                descricao_comercial: item.descricao_comercial || null,
+                tags: Array.isArray(item.tags) ? item.tags : [],
+            };
+
+            const resultado = ntcEngine.processar(dados);
+            const salvo = db.upsertProduto({
+                sku: item.sku,
+                nome: item.nome,
+                dados,
+                fornecedor_nome: fornecedor_nome || null,
+                fonte: 'mapeador_universal',
+                ntc: resultado.ntc,
+                decisao: resultado.decisao,
+                rast_hash: resultado.rast_hash,
+            });
+
+            produtos.push({ id: salvo.id, sku: item.sku, nome: item.nome, ntc: resultado.ntc, decisao: resultado.decisao, status: statusLuminoso(resultado.ntc) });
+        }
+
+        res.json({ ok: true, total: produtos.length, produtos });
+    } catch (e) {
+        console.error('[Mapeador Universal] IA:', e.message);
+        res.json({ ok: false, erro: e.message, produtos: [] });
+    }
+});
+
+// Limpeza única dos produtos "fantasma" deixados pelo bug do botão "Excluir
+// Selecionados" do Mapeador Universal (não chamava a API de exclusão antes
+// da correção). Protegido por ADMIN_TOKEN — configure essa variável no Render
+// e envie no header x-admin-token. Sem ?confirmar=1, só lista quantos seriam
+// removidos (dry-run).
+app.post('/api/admin/limpar-mapeador-universal-orfaos', (req, res) => {
+    const token = process.env.ADMIN_TOKEN;
+    if (!token) return res.status(503).json({ ok: false, erro: 'ADMIN_TOKEN não configurado no servidor' });
+    if (req.get('x-admin-token') !== token) return res.status(401).json({ ok: false, erro: 'Token inválido' });
+
+    try {
+        const candidatos = db.db
+            .prepare(
+                `SELECT id, sku, nome FROM produtos
+                 WHERE fonte = 'mapeador_universal'
+                   AND (ntc IS NULL OR decisao != 'APROVADO')`,
+            )
+            .all();
+
+        if (req.query.confirmar !== '1') {
+            return res.json({ ok: true, dryRun: true, total: candidatos.length, amostra: candidatos.slice(0, 10) });
+        }
+
+        const excluirEmbeddings = db.db.prepare('DELETE FROM produto_embeddings WHERE produto_id = ?');
+        const excluirProduto = db.db.prepare('DELETE FROM produtos WHERE id = ?');
+        const transacao = db.db.transaction((ids) => {
+            for (const id of ids) {
+                excluirEmbeddings.run(id);
+                excluirProduto.run(id);
+            }
+        });
+        transacao(candidatos.map((p) => p.id));
+
+        res.json({ ok: true, dryRun: false, removidos: candidatos.length });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // Proxy de imagem — evita bloqueio por hotlinking/CORS no navegador
 app.get('/api/imagens/proxy', (req, res) => {
     const imgUrl = req.query.url;

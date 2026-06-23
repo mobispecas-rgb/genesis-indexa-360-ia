@@ -8,6 +8,7 @@ import { Catalogo } from "@/routes/catalogo";
 import { CatalogoCertificado } from "@/routes/catalogo-certificado";
 import { Imagens } from "@/routes/imagens";
 import { DnaOem360 } from "@/routes/dna";
+import { MapeadorUniversal } from "@/routes/mapeador-universal";
 import { Performance } from "@/routes/performance";
 
 const rootRoute = createRootRoute({ component: RootLayout });
@@ -63,6 +64,12 @@ const dnaRoute = createRoute({
   component: DnaOem360,
 });
 
+const mapeadorUniversalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/mapeador-universal",
+  component: MapeadorUniversal,
+});
+
 const performanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/performance",
@@ -78,6 +85,7 @@ const routeTree = rootRoute.addChildren([
   catalogoCertificadoRoute,
   imagensRoute,
   dnaRoute,
+  mapeadorUniversalRoute,
   performanceRoute,
 ]);
 
