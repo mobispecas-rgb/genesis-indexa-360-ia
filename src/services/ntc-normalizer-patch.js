@@ -171,7 +171,7 @@ function agenteParaNTC(d) {
   const av0 = Array.isArray(d.av?.aplicacoes) ? d.av.aplicacoes[0] : null;
   const aplicacoesAdicionais = Array.isArray(d.av?.aplicacoes) && d.av.aplicacoes.length > 1
     ? d.av.aplicacoes.slice(1).map(a =>
-        [a.montadora, a.modelo, a.motor, a.cilindrada,
+        [a.montadora, a.modelo, a.motorizacao_alvo_veiculo, a.cilindrada,
          a.ano_inicial && a.ano_final ? a.ano_inicial + '-' + a.ano_final : a.ano_inicial
         ].filter(Boolean).join(' ')
       ).join('\n')
@@ -180,8 +180,9 @@ function agenteParaNTC(d) {
   return {
     fabricante:          get(d.dna?.fabricante_original),
     fabricante_original: get(d.dna?.fabricante_original),
-    codigo_oem:          get(d.dna?.codigo_oem),
-    codigo_fabricante:   get(d.dna?.codigo_fabricante_normalizado) || get(d.dna?.codigo_oem),
+    part_number_automotivo: get(d.dna?.part_number_automotivo),
+    codigo_oem:          get(d.dna?.part_number_automotivo),
+    codigo_fabricante:   get(d.dna?.codigo_fabricante_normalizado) || get(d.dna?.part_number_automotivo),
     ean:                 get(d.dna?.ean),
     familia_tecnica:     get(d.dna?.categoria_produto),
     nome:                get(d.fm?.nome_tecnico_completo),
@@ -191,7 +192,8 @@ function agenteParaNTC(d) {
     marca_veiculo:       av0?.montadora    || null,
     modelo:              av0?.modelo       || null,
     modelo_veiculo:      av0?.modelo       || null,
-    motor:               av0?.motor        || null,
+    motorizacao_alvo_veiculo: av0?.motorizacao_alvo_veiculo || null,
+    motor:               av0?.motorizacao_alvo_veiculo || null,
     cilindrada:          av0?.cilindrada   || null,
     ano_inicial:         av0?.ano_inicial  || null,
     ano_final:           av0?.ano_final    || null,

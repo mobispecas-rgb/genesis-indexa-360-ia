@@ -176,26 +176,26 @@ async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10, niv
 // ─────────────────────────────────────────────────────────────
 // REGRAS CANÔNICAS NTC
 // ─────────────────────────────────────────────────────────────
-const NTC_SYSTEM = `Você é o agente "DNA OEM 360" do Genesis iRollo 360 (NTC Engine 4.0).
+const NTC_SYSTEM = `Você é o agente "DNA OEM 360" do Genesis iRollo 360 (NTC Engine 4.0), especializado em CATALOGAÇÃO TÉCNICA AUTOMOTIVA (autopeças de reposição) para sincronização com Bling e Wix. Todo campo de código que você preencher (part_number_automotivo, cc_oem, cc_aftermarket, cc_importadores) é uma REFERÊNCIA DE PEÇA AUTOMOTIVA — original do fabricante do veículo ou de fabricante de autopeças — nunca um código genérico de catálogo interno. Toda motorização (motorizacao_alvo_veiculo) e posição de montagem (posicao_montagem_peca) descrevem a aplicação real da peça no veículo, não uma característica do produto isolada do contexto automotivo.
 
 REGRAS ABSOLUTAS:
 1. NUNCA invente dados sem fonte nos trechos fornecidos. Sem evidência = null.
 2. Três níveis: "confirmado" (2+ fontes independentes específicas), "familia" (código vizinho), "nulo" (sem fonte). Home page de marca NUNCA é fonte válida.
 3. Código incompleto? status="codigo_incompleto" + variantes_possiveis. Não escolha sufixo.
-4. Motor compartilhado entre montadoras? Explique triangulação em mecanismo_triangulacao.
+4. Motorização compartilhada entre montadoras? Explique triangulação em mecanismo_triangulacao.
 5. fontes[]: URLs EXATAS do dado específico.
-6. NUNCA misture código OEM/cross-reference (codigo_oem, cc_oem, cc_aftermarket, cc_importadores) de uma categoria de peça diferente da peça pesquisada (ex.: pastilha de freio não é cross-reference de cilindro mestre de embreagem, mesmo que apareçam no mesmo resultado de busca). Se a categoria do trecho não corresponder à categoria do produto de entrada, descarte o código e retorne null.
+6. NUNCA misture código original/cross-reference (part_number_automotivo, cc_oem, cc_aftermarket, cc_importadores) de uma categoria de peça diferente da peça pesquisada (ex.: pastilha de freio não é cross-reference de cilindro mestre de embreagem, mesmo que apareçam no mesmo resultado de busca). Se a categoria do trecho não corresponder à categoria do produto de entrada, descarte o código e retorne null.
 7. bta.instrucoes_instalacao: só preencha com texto de boletim técnico/manual de instalação do fabricante encontrado nas fontes — nunca generalize um procedimento padrão de oficina.
-8. Cruzamento de aplicação (av.aplicacoes): um código OEM/cross-reference só é válido para uma aplicação (montadora/modelo/motor/ano/cilindrada) se o BLOCO DO MOTOR (código do motor) ou a aplicação real bater entre as fontes — nunca herde aplicação só porque o nome da peça é parecido. Catálogos de marketplaces (Mercado Livre, Amazon, Shopee) e blogs de autopeças são fontes válidas de aplicação/cross-reference, mas description de vendedor sem ficha técnica visível não conta como fonte específica.
+8. Cruzamento de aplicação (av.aplicacoes): um código original/cross-reference só é válido para uma aplicação (montadora/modelo/motorizacao_alvo_veiculo/ano/cilindrada) se o BLOCO DO MOTOR (código do motor) ou a aplicação real bater entre as fontes — nunca herde aplicação só porque o nome da peça é parecido. Catálogos de marketplaces (Mercado Livre, Amazon, Shopee) e blogs de autopeças são fontes válidas de aplicação/cross-reference, mas description de vendedor sem ficha técnica visível não conta como fonte específica.
 9. cc_oem/cc_aftermarket/cc_importadores: cruze o código da peça pesquisada com catálogos de OUTROS fabricantes de autopeças, montadoras e importadores certificados — um código só entra como cross-reference confirmado se pelo menos uma fonte mostrar explicitamente a equivalência (tabela de substituição, "equivalente a", "substitui", "cross reference"), nunca por mera coincidência de aplicação.
 10. Saída: SOMENTE o JSON. Sem markdown. Sem texto antes ou depois.`;
 
-const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_oem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motor":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[],"instrucoes_instalacao":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
+const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"part_number_automotivo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motorizacao_alvo_veiculo":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[],"instrucoes_instalacao":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
 
 const CAMPOS_DNA = [
-  'codigo_oem','ean','ncm','cest','motor','codigo_motor',
+  'part_number_automotivo','ean','ncm','cest','motorizacao_alvo_veiculo','codigo_motor',
   'marca_veiculo','modelo_veiculo','versao_veiculo','ano_inicial','ano_final','cilindrada',
-  'material','posicao','fmsi','comprimento','largura','altura',
+  'material','posicao_montagem_peca','fmsi','comprimento','largura','altura',
   'cross_codes','concorrentes','aplicacoes_adicionais','funcao_tecnica',
   'boletins','substituicoes','instrucoes_instalacao','fabricante_original','montadora',
   'cc_oem','cc_importadores','peso_bruto','peso_liquido'
@@ -243,7 +243,7 @@ function canonParaLegado(can) {
   const af  = (Array.isArray(av0?.fontes) && av0.fontes.length) ? av0.fontes[0] : null;
   const avRest = (can.av?.aplicacoes?.length > 1)
     ? can.av.aplicacoes.slice(1).map(a =>
-        [a.montadora, a.modelo, a.motor, a.cilindrada,
+        [a.montadora, a.modelo, a.motorizacao_alvo_veiculo, a.cilindrada,
          (a.ano_inicial && a.ano_final) ? `${a.ano_inicial}-${a.ano_final}` : a.ano_inicial
         ].filter(Boolean).join(' ')
       ).join('\n')
@@ -260,11 +260,11 @@ function canonParaLegado(can) {
   // evidência = null, sem confiança associada).
   const mkLista = (valor, confiancaSeTemValor) => ({ valor, fonte: null, confianca: valor ? confiancaSeTemValor : 'baixa', motivo: null });
   return {
-    codigo_oem:            mk(g(can.dna?.codigo_oem),         can.dna?.codigo_oem?.confianca,         gf(can.dna?.codigo_oem)),
+    part_number_automotivo: mk(g(can.dna?.part_number_automotivo), can.dna?.part_number_automotivo?.confianca, gf(can.dna?.part_number_automotivo)),
     ean:                   mk(g(can.dna?.ean),                can.dna?.ean?.confianca,                 gf(can.dna?.ean)),
     ncm:                   mk(g(can.co?.ncm),                 can.co?.ncm?.confianca,                  gf(can.co?.ncm)),
     cest:                  mk(g(can.co?.cest),                can.co?.cest?.confianca,                 gf(can.co?.cest)),
-    motor:                 ma(av0?.motor      || null),
+    motorizacao_alvo_veiculo: ma(av0?.motorizacao_alvo_veiculo || null),
     codigo_motor:          mk(null, 'nulo', null),
     marca_veiculo:         ma(av0?.montadora  || null),
     modelo_veiculo:        ma(av0?.modelo     || null),
@@ -273,7 +273,7 @@ function canonParaLegado(can) {
     ano_final:             ma(av0?.ano_final   || null),
     cilindrada:            ma(av0?.cilindrada  || null),
     material:              mk(g(can.mc?.material),             can.mc?.material?.confianca,             gf(can.mc?.material)),
-    posicao:               mk(null, 'nulo', null),
+    posicao_montagem_peca: mk(null, 'nulo', null),
     fmsi:                  mk(null, 'nulo', null),
     comprimento:           mkLista(can.fi_fp?.comprimento || null, 'familia'),
     largura:               mkLista(can.fi_fp?.largura     || null, 'familia'),

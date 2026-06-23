@@ -33,11 +33,11 @@ const MIN_IMAGENS_IV = 4;
 
 // Mapa: campo do agente de DNA na Web → campo simples em `dados` (NTC engine)
 const MAPA_DNA_SIMPLES = {
-  codigo_oem: 'codigo_oem', ean: 'ean', ncm: 'ncm', cest: 'cest',
-  motor: 'motor', codigo_motor: 'codigo_motor',
+  part_number_automotivo: 'part_number_automotivo', ean: 'ean', ncm: 'ncm', cest: 'cest',
+  motorizacao_alvo_veiculo: 'motorizacao_alvo_veiculo', codigo_motor: 'codigo_motor',
   marca_veiculo: 'marca', modelo_veiculo: 'modelo', versao_veiculo: 'versao',
   ano_inicial: 'ano_inicial', ano_final: 'ano_final', cilindrada: 'cilindrada',
-  material: 'material', posicao: 'posicao', fmsi: 'fmsi',
+  material: 'material', posicao_montagem_peca: 'posicao_montagem_peca', fmsi: 'fmsi',
   comprimento: 'comprimento', largura: 'largura', altura: 'altura',
   funcao_tecnica: 'funcao',
   fabricante_original: 'linhagem_fabricante',
@@ -109,8 +109,8 @@ async function enriquecerDnaSeNecessario(row, dados, acoes, forcar) {
     const ultimaTentativa = dados._auto_dna_tentativa ? new Date(dados._auto_dna_tentativa).getTime() : 0;
     if (Date.now() - ultimaTentativa < DNA_COOLDOWN_MS) return;
 
-    const camposChaveFaltando = !dados.codigo_oem || !dados.ean || !dados.ncm
-      || !dados.motor || !dados.material || !dados.cilindrada;
+    const camposChaveFaltando = !dados.part_number_automotivo || !dados.ean || !dados.ncm
+      || !dados.motorizacao_alvo_veiculo || !dados.material || !dados.cilindrada;
     if (!camposChaveFaltando) return;
   }
 

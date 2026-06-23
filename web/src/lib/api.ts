@@ -41,10 +41,10 @@ function rowParaProduct(row: BackendProdutoRow): Product {
     fabricante: String(d.fabricante || d.marca || ""),
     nome: row.nome || String(d.nome || ""),
     familia: (String(d.familia_tecnica || d.familia || "") as Product["familia"]) || "",
-    oem: String(d.codigo_oem || d.oem || ""),
+    oem: String(d.part_number_automotivo || d.codigo_oem || d.oem || ""),
     ncm: String(d.ncm || ""),
     ean: String(d.ean || ""),
-    motor: String(d.aplicacao_veicular || d.motor || ""),
+    motor: String(d.aplicacao_veicular || d.motorizacao_alvo_veiculo || d.motor || ""),
     material: String(d.material || ""),
     aplicacao: String(d.aplicacao_veicular || ""),
     dimensoes: String(d.dimensoes || ""),
@@ -56,7 +56,7 @@ function rowParaProduct(row: BackendProdutoRow): Product {
     status: decisaoParaStatus(row.decisao),
     createdAt: row.criado_em ? new Date(row.criado_em).getTime() : base.createdAt,
     updatedAt: row.atualizado_em ? new Date(row.atualizado_em).getTime() : base.updatedAt,
-    enriched: !!d.codigo_oem || !!d.oem,
+    enriched: !!d.part_number_automotivo || !!d.codigo_oem || !!d.oem,
     dnaSources: [],
   };
   return p;
@@ -68,10 +68,11 @@ function productParaDados(p: Product): Record<string, unknown> {
     fabricante: p.fabricante,
     marca: p.fabricante,
     familia_tecnica: p.familia,
-    codigo_oem: p.oem,
+    part_number_automotivo: p.oem,
     ncm: p.ncm,
     ean: p.ean,
     aplicacao_veicular: p.motor,
+    motorizacao_alvo_veiculo: p.motor,
     material: p.material,
     dimensoes: p.dimensoes,
     preco: p.preco,
@@ -137,11 +138,13 @@ export async function apiEnriquecerDna(p: Product): Promise<EnrichApiResult> {
   const patch: Partial<Product> = {};
   const sources: DnaSource[] = [];
   const campoParaProduct: Record<string, keyof Product> = {
+    part_number_automotivo: "oem",
     codigo_oem: "oem",
     ncm: "ncm",
     ean: "ean",
     familia_tecnica: "familia",
     aplicacao_veicular: "motor",
+    motorizacao_alvo_veiculo: "motor",
     material: "material",
     dimensoes: "dimensoes",
     descricao: "descricao",

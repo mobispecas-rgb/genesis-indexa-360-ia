@@ -39,7 +39,7 @@ function criarServidorMcp({
   server.tool(
     'criar_produto',
     'Cadastra um novo produto no Bling a partir dos dados do Motor NTC (nome, sku/código, fabricante, OEM, EAN, NCM, aplicação veicular etc.). Categoria e ficha técnica são montadas automaticamente.',
-    { dados: z.record(z.any()).describe('Objeto com os campos do produto (nome, sku, fabricante, codigo_oem, ean, ncm, familia_tecnica, marca_veiculo, modelo_veiculo, motor, preco, imagens, etc.)') },
+    { dados: z.record(z.any()).describe('Objeto com os campos do produto (nome, sku, fabricante, part_number_automotivo, ean, ncm, familia_tecnica, marca_veiculo, modelo_veiculo, motorizacao_alvo_veiculo, preco, imagens, etc.)') },
     async ({ dados }) => {
       const payload = await montarPayloadProdutoBling(dados);
       const data = await blingRequest('POST', '/produtos', payload);
@@ -75,7 +75,7 @@ function criarServidorMcp({
   server.tool(
     'cadastrar_produto_completo',
     'Cadastra um produto (já enriquecido pelo Motor NTC 4.0) simultaneamente no Bling e na loja Wix Stores (mobisautoparts.com.br), com categoria/ficha técnica resolvidas automaticamente em cada plataforma.',
-    { dados: z.record(z.any()).describe('Objeto com os campos do produto (nome, sku, fabricante, codigo_oem, ean, ncm, familia_tecnica, marca_veiculo, modelo_veiculo, motor, preco, imagens, rast_hash, ntc, etc.)') },
+    { dados: z.record(z.any()).describe('Objeto com os campos do produto (nome, sku, fabricante, part_number_automotivo, ean, ncm, familia_tecnica, marca_veiculo, modelo_veiculo, motorizacao_alvo_veiculo, preco, imagens, rast_hash, ntc, etc.)') },
     async ({ dados }) => {
       const resultado = { bling: null, wix: null };
 

@@ -37,18 +37,18 @@ function dedup(itens) { return [...new Set(itens.filter(Boolean))]; }
 function textoDna(dados) {
     return dedup([
         dados.nome, dados.fabricante, dados.linhagem_fabricante, dados.linhagem_montadora,
-        dados.codigo_oem, dados.motor, dados.codigo_motor, dados.marca, dados.modelo, dados.versao,
-        dados.material, dados.funcao, dados.posicao,
+        dados.part_number_automotivo || dados.codigo_oem, dados.motorizacao_alvo_veiculo || dados.motor, dados.codigo_motor, dados.marca, dados.modelo, dados.versao,
+        dados.material, dados.funcao, dados.posicao_montagem_peca || dados.posicao,
     ]).join(' | ');
 }
 
 function textoOem(dados) {
-    return dedup([dados.codigo_oem, ...arr(dados.cc_oem), ...arr(dados.cc_importadores)]).join(' ');
+    return dedup([dados.part_number_automotivo || dados.codigo_oem, ...arr(dados.cc_oem), ...arr(dados.cc_importadores)]).join(' ');
 }
 
 function textoAplicacao(dados) {
     const periodo = dados.ano_inicial && dados.ano_final ? `${dados.ano_inicial}-${dados.ano_final}` : (dados.ano_inicial || '');
-    return dedup([dados.marca, dados.modelo, dados.versao, dados.motor, dados.codigo_motor, dados.cilindrada, periodo,
+    return dedup([dados.marca, dados.modelo, dados.versao, dados.motorizacao_alvo_veiculo || dados.motor, dados.codigo_motor, dados.cilindrada, periodo,
         ...arr(dados.aplicacoes_adicionais)]).join(' ');
 }
 
