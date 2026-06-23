@@ -959,6 +959,45 @@ REGRAS ABSOLUTAS:
     }
 });
 
+// Limpeza única dos produtos "fantasma" deixados pelo bug do botão "Excluir
+// Selecionados" do Mapeador Universal (não chamava a API de exclusão antes
+// da correção). Protegido por ADMIN_TOKEN — configure essa variável no Render
+// e envie no header x-admin-token. Sem ?confirmar=1, só lista quantos seriam
+// removidos (dry-run).
+app.post('/api/admin/limpar-mapeador-universal-orfaos', (req, res) => {
+    const token = process.env.ADMIN_TOKEN;
+    if (!token) return res.status(503).json({ ok: false, erro: 'ADMIN_TOKEN não configurado no servidor' });
+    if (req.get('x-admin-token') !== token) return res.status(401).json({ ok: false, erro: 'Token inválido' });
+
+    try {
+        const candidatos = db.db
+            .prepare(
+                `SELECT id, sku, nome FROM produtos
+                 WHERE fonte = 'mapeador_universal'
+                   AND (ntc IS NULL OR decisao != 'APROVADO')`,
+            )
+            .all();
+
+        if (req.query.confirmar !== '1') {
+            return res.json({ ok: true, dryRun: true, total: candidatos.length, amostra: candidatos.slice(0, 10) });
+        }
+
+        const excluirEmbeddings = db.db.prepare('DELETE FROM produto_embeddings WHERE produto_id = ?');
+        const excluirProduto = db.db.prepare('DELETE FROM produtos WHERE id = ?');
+        const transacao = db.db.transaction((ids) => {
+            for (const id of ids) {
+                excluirEmbeddings.run(id);
+                excluirProduto.run(id);
+            }
+        });
+        transacao(candidatos.map((p) => p.id));
+
+        res.json({ ok: true, dryRun: false, removidos: candidatos.length });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // Proxy de imagem — evita bloqueio por hotlinking/CORS no navegador
 app.get('/api/imagens/proxy', (req, res) => {
     const imgUrl = req.query.url;
