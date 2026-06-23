@@ -252,6 +252,12 @@ function canonParaLegado(can) {
   const im = (can.cc?.cc_importadores || []).filter(c => c?.codigo).map(c => `${c.marca||''} ${c.codigo}`.trim());
   const mk = (valor, k, f) => ({ valor, fonte: f, confianca: C[k] || 'baixa', motivo: null });
   const ma = v => mk(v, ac, af);
+  // Campos sem objeto { confianca, fontes } próprio (listas derivadas de
+  // cc_oem/cc_aftermarket/cc_importadores, boletins, substituições, dimensões
+  // herdadas por família): confiança só existe se houver valor — campo vazio
+  // nunca pode carregar confiança "media"/"familia" (regra de ouro: sem
+  // evidência = null, sem confiança associada).
+  const mkLista = (valor, confiancaSeTemValor) => ({ valor, fonte: null, confianca: valor ? confiancaSeTemValor : 'baixa', motivo: null });
   return {
     codigo_oem:            mk(g(can.dna?.codigo_oem),         can.dna?.codigo_oem?.confianca,         gf(can.dna?.codigo_oem)),
     ean:                   mk(g(can.dna?.ean),                can.dna?.ean?.confianca,                 gf(can.dna?.ean)),
@@ -268,22 +274,22 @@ function canonParaLegado(can) {
     material:              mk(g(can.mc?.material),             can.mc?.material?.confianca,             gf(can.mc?.material)),
     posicao:               mk(null, 'nulo', null),
     fmsi:                  mk(null, 'nulo', null),
-    comprimento:           mk(can.fi_fp?.comprimento || null, 'familia', null),
-    largura:               mk(can.fi_fp?.largura     || null, 'familia', null),
-    altura:                mk(can.fi_fp?.altura      || null, 'familia', null),
-    cross_codes:           { valor: am.length ? am : null,  fonte: null, confianca: 'media', motivo: null },
-    concorrentes:          { valor: am.length ? am : null,  fonte: null, confianca: 'media', motivo: null },
-    aplicacoes_adicionais: { valor: avRest,                 fonte: null, confianca: 'media', motivo: null },
+    comprimento:           mkLista(can.fi_fp?.comprimento || null, 'familia'),
+    largura:               mkLista(can.fi_fp?.largura     || null, 'familia'),
+    altura:                mkLista(can.fi_fp?.altura      || null, 'familia'),
+    cross_codes:           mkLista(am.length ? am : null, 'media'),
+    concorrentes:          mkLista(am.length ? am : null, 'media'),
+    aplicacoes_adicionais: mkLista(avRest, 'media'),
     funcao_tecnica:        mk(g(can.fm?.funcao_tecnica),       can.fm?.funcao_tecnica?.confianca,       gf(can.fm?.funcao_tecnica)),
-    boletins:              { valor: can.bta?.boletins?.length    ? can.bta.boletins    : null, fonte: null, confianca: 'media', motivo: null },
-    substituicoes:         { valor: can.bta?.substituicoes?.length ? can.bta.substituicoes : null, fonte: null, confianca: 'media', motivo: null },
+    boletins:              mkLista(can.bta?.boletins?.length    ? can.bta.boletins    : null, 'media'),
+    substituicoes:         mkLista(can.bta?.substituicoes?.length ? can.bta.substituicoes : null, 'media'),
     instrucoes_instalacao: mk(g(can.bta?.instrucoes_instalacao), can.bta?.instrucoes_instalacao?.confianca, gf(can.bta?.instrucoes_instalacao)),
     fabricante_original:   mk(g(can.dna?.fabricante_original), can.dna?.fabricante_original?.confianca, gf(can.dna?.fabricante_original)),
     montadora:             ma(av0?.montadora || null),
-    cc_oem:                { valor: oe.length ? oe : null, fonte: null, confianca: 'media', motivo: null },
-    cc_importadores:       { valor: im.length ? im : null, fonte: null, confianca: 'media', motivo: null },
-    peso_bruto:            mk(can.fi_fp?.peso_bruto   || null, 'familia', null),
-    peso_liquido:          mk(can.fi_fp?.peso_liquido || null, 'familia', null),
+    cc_oem:                mkLista(oe.length ? oe : null, 'media'),
+    cc_importadores:       mkLista(im.length ? im : null, 'media'),
+    peso_bruto:            mkLista(can.fi_fp?.peso_bruto   || null, 'familia'),
+    peso_liquido:          mkLista(can.fi_fp?.peso_liquido || null, 'familia'),
   };
 }
 
