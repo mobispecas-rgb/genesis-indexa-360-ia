@@ -886,7 +886,9 @@ Para CADA produto identificado, extraia, SOMENTE se EXPLICITAMENTE presente no t
 - peso_bruto, peso_liquido: em kg (apenas número)
 - comprimento, largura, altura: em cm (apenas número)
 - categoria, subcategoria: árvore taxonômica do produto (ex: "Freio", "Pastilha de Freio")
-- montadora_veiculo, modelo_veiculo, motorizacao_alvo_veiculo: aplicação veicular, se houver
+- montadora_veiculo, modelo_veiculo, motorizacao_alvo_veiculo: aplicação veicular principal (a primeira/mais relevante), se houver
+- ano_inicial, ano_final: ano inicial e final de fabricação da aplicação principal (apenas número, ex: 1985)
+- aplicacoes: array com TODAS as aplicações veiculares da tabela de compatibilidade, se houver mais de uma — cada item: {"montadora": null, "modelo": null, "motor": null, "ano_inicial": null, "ano_final": null}
 - descricao_comercial: texto técnico-comercial persuasivo e otimizado para SEO (2-3 frases), gerado a partir dos dados reais extraídos — NUNCA invente especificação técnica que não esteja no texto, apenas redija de forma mais comercial os dados confirmados
 - tags: array de strings separadas por categoria>subcategoria>aplicação, para uso em SEO/Bling/Wix (ex: ["Freio", "Pastilha de Freio", "Honda Civic"])
 
@@ -894,8 +896,9 @@ REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam no texto. Campo ausente = null (ou [] para listas).
 2. codigo_ncm só é válido com exatamente 8 dígitos numéricos — caso contrário, null.
 3. Sem "sku" e sem "nome" identificáveis, NÃO inclua o produto no resultado.
-4. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
-[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "descricao_comercial": null, "tags": []}]`,
+4. Se houver uma tabela de aplicações veiculares com várias linhas (montadora/modelo/motor/ano), preencha TODAS em "aplicacoes" — não descarte nenhuma linha.
+5. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
+[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`,
             messages: [{ role: 'user', content: texto.slice(0, 30000) }]
         });
 
@@ -923,6 +926,8 @@ REGRAS ABSOLUTAS:
             const dados = {
                 fabricante: item.fabricante || null,
                 part_number_automotivo: item.part_number_automotivo || null,
+                oem: item.part_number_automotivo || null,
+                codigo_oem: item.part_number_automotivo || null,
                 imagens,
                 ncm: item.codigo_ncm || null,
                 cest: item.codigo_cest || null,
@@ -935,7 +940,11 @@ REGRAS ABSOLUTAS:
                 subcategoria: item.subcategoria || null,
                 marca: item.montadora_veiculo || null,
                 modelo: item.modelo_veiculo || null,
+                motor: item.motorizacao_alvo_veiculo || null,
                 motorizacao_alvo_veiculo: item.motorizacao_alvo_veiculo || null,
+                ano_inicial: item.ano_inicial || null,
+                ano_final: item.ano_final || null,
+                aplicacoes: Array.isArray(item.aplicacoes) ? item.aplicacoes : [],
                 descricao_comercial: item.descricao_comercial || null,
                 tags: Array.isArray(item.tags) ? item.tags : [],
             };
