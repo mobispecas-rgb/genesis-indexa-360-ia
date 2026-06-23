@@ -37,6 +37,7 @@ const plataforma = [
   { title: "Catálogo Certificado", url: "/catalogo-certificado", icon: BadgeCheck },
   { title: "Imagens", url: "/imagens", icon: Image },
   { title: "DNA OEM 360", url: "/dna", icon: Dna },
+  { title: "Mapeador Universal", url: "/mapeador-universal", icon: ScanLine },
   { title: "Integrações", url: "/integracoes", icon: Plug },
   { title: "Performance", url: "/performance", icon: Activity },
 ];

@@ -318,4 +318,26 @@ export async function apiVectorBusca(
   return { resultados: json.resultados as VectorResultado[], buscaWeb: (json.busca_web as BuscaWebFallback) ?? null };
 }
 
+export interface MapeadorUniversalProduto {
+  id: number;
+  sku: string;
+  nome: string;
+  ntc: number; // 0-1
+  decisao: string; // 'APROVADO' | 'PENDENTE' | 'REPROVADO'
+  status: "verde" | "amarelo" | "vermelho";
+}
+
+// Mapeador Universal 360 — cola texto bruto de qualquer fornecedor/catálogo e
+// extrai/cadastra os produtos via IA (ver server.js /api/mapeador-universal/processar).
+export async function apiMapeadorUniversalProcessar(texto: string): Promise<MapeadorUniversalProduto[]> {
+  const r = await fetch("/api/mapeador-universal/processar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texto }),
+  });
+  const json = await r.json();
+  if (!json.ok) throw new Error(json.erro || "Falha ao processar texto");
+  return json.produtos as MapeadorUniversalProduto[];
+}
+
 export { calcNtc };
