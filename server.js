@@ -356,24 +356,29 @@ app.get('/api/ia/status', async (req, res) => {
 // via env caso o lojista esteja num plano pago com cota diferente).
 app.get('/api/ia/quota', (req, res) => {
     const { obterUsoApiHoje } = require('./src/services/db');
-    const provedor = process.env.GEMINI_API_KEY ? 'gemini' : (process.env.ANTHROPIC_API_KEY ? 'claude' : null);
+    const provedor = process.env.GEMINI_API_KEY ? 'gemini' : (process.env.DEEPSEEK_API_KEY ? 'deepseek' : (process.env.ANTHROPIC_API_KEY ? 'claude' : null));
     if (!provedor) {
-        return res.json({ ok: false, configurado: false, mensagem: 'Configure GEMINI_API_KEY ou ANTHROPIC_API_KEY no Render' });
+        return res.json({ ok: false, configurado: false, mensagem: 'Configure GEMINI_API_KEY, DEEPSEEK_API_KEY ou ANTHROPIC_API_KEY no Render' });
     }
     // 200/dia é o tier gratuito real do gemini-2.0-flash (RPD por projeto/modelo);
     // a conta do lojista pode esgotar a cota do Google antes deste contador local
     // chegar no limite se outras chamadas (vector-search, auto-enrich) também
     // consumirem a mesma chave — por isso o valor é conservador, não otimista.
+    // DeepSeek e Claude são pagos por token, sem cota diária fixa — por isso
+    // não têm limite_diario configurado a menos que o lojista defina um.
     const limite = provedor === 'gemini'
         ? Number(process.env.GEMINI_LIMITE_DIARIO || 200)
-        : Number(process.env.CLAUDE_LIMITE_DIARIO || 0);
+        : provedor === 'deepseek'
+            ? Number(process.env.DEEPSEEK_LIMITE_DIARIO || 0)
+            : Number(process.env.CLAUDE_LIMITE_DIARIO || 0);
     const usado = obterUsoApiHoje(provedor);
     const restante = limite > 0 ? Math.max(0, limite - usado) : null;
     const percentual = limite > 0 ? Math.min(100, Math.round((usado / limite) * 100)) : null;
+    const nomes = { gemini: 'Gemini 2.0 Flash', deepseek: 'DeepSeek Chat', claude: 'Claude Haiku' };
     res.json({
         ok: true,
         configurado: true,
-        provedor: provedor === 'gemini' ? 'Gemini 2.0 Flash' : 'Claude Haiku',
+        provedor: nomes[provedor],
         usado_hoje: usado,
         limite_diario: limite || null,
         restante,

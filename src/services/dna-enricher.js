@@ -295,14 +295,36 @@ function canonParaLegado(can) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AGENTE PRINCIPAL — Claude Haiku + busca web (Serper/DDG)
+// AGENTE PRINCIPAL — Gemini → DeepSeek → Claude Haiku + busca web (Serper/DDG)
 // ─────────────────────────────────────────────────────────────
+async function chamarDeepSeek({ system, userContent, maxTokens }) {
+  const body = JSON.stringify({
+    model: 'deepseek-chat',
+    max_tokens: maxTokens,
+    temperature: 0.2,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: userContent },
+    ],
+  });
+  const data = await httpsJSON({
+    hostname: 'api.deepseek.com', path: '/chat/completions', method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    },
+  }, body, 60000);
+  if (data.error) throw new Error(data.error.message || 'Erro DeepSeek');
+  return data?.choices?.[0]?.message?.content || '{}';
+}
+
 // Chama o LLM de interpretação do DNA. Prioriza Gemini 2.0 Flash
-// (GEMINI_API_KEY) — gratuito até a cota diária e o mais barato do mercado
-// no tier pago. Se Gemini falhar por cota esgotada (429/RESOURCE_EXHAUSTED) e
-// ANTHROPIC_API_KEY também estiver configurada, tenta Claude Haiku como
-// failover real — só nesse caso de exceção, para não gerar custo do Claude
-// sem necessidade enquanto o Gemini estiver funcionando normalmente.
+// (GEMINI_API_KEY) — gratuito até a cota diária. Se Gemini falhar por cota
+// esgotada (429/RESOURCE_EXHAUSTED), tenta DeepSeek (DEEPSEEK_API_KEY) —
+// o mais barato do mercado no tier pago — e só recorre a Claude Haiku
+// (ANTHROPIC_API_KEY) como último failover, para não gerar o custo mais
+// alto da cadeia sem necessidade enquanto as opções mais baratas funcionam.
 async function chamarLLM({ system, userContent, maxTokens }) {
   if (process.env.GEMINI_API_KEY) {
     try {
@@ -318,8 +340,18 @@ async function chamarLLM({ system, userContent, maxTokens }) {
       return { texto, motor: 'Gemini 2.0 Flash' };
     } catch (e) {
       const cotaExcedida = /RESOURCE_EXHAUSTED|429|quota/i.test(e.message || '');
-      if (!cotaExcedida || !process.env.ANTHROPIC_API_KEY) throw e;
-      console.error('[DNA v5.3] Gemini cota esgotada — failover para Claude Haiku:', e.message);
+      if (!cotaExcedida || (!process.env.DEEPSEEK_API_KEY && !process.env.ANTHROPIC_API_KEY)) throw e;
+      console.error('[DNA v5.3] Gemini cota esgotada — failover:', e.message);
+    }
+  }
+  if (process.env.DEEPSEEK_API_KEY) {
+    try {
+      const texto = await chamarDeepSeek({ system, userContent, maxTokens });
+      registrarUsoApi('deepseek');
+      return { texto, motor: 'DeepSeek Chat' };
+    } catch (e) {
+      if (!process.env.ANTHROPIC_API_KEY) throw e;
+      console.error('[DNA v5.3] DeepSeek falhou — failover para Claude Haiku:', e.message);
     }
   }
   if (process.env.ANTHROPIC_API_KEY) {
@@ -334,13 +366,13 @@ async function chamarLLM({ system, userContent, maxTokens }) {
     registrarUsoApi('claude');
     return { texto: msg.content?.[0]?.text || '{}', motor: 'Claude Haiku' };
   }
-  throw new Error('GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada');
+  throw new Error('GEMINI_API_KEY, DEEPSEEK_API_KEY ou ANTHROPIC_API_KEY nao configurada');
 }
 
 async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true, usou_busca_web: usouBusca };
-  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, erro: 'GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
+  if (!process.env.GEMINI_API_KEY && !process.env.DEEPSEEK_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, erro: 'GEMINI_API_KEY, DEEPSEEK_API_KEY ou ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
   }
 
   const codigoEntrada = sku || nome;
