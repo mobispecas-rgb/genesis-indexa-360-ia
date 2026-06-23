@@ -33,11 +33,11 @@ const MIN_IMAGENS_IV = 4;
 
 // Mapa: campo do agente de DNA na Web → campo simples em `dados` (NTC engine)
 const MAPA_DNA_SIMPLES = {
-  part_number_automotivo: 'part_number_automotivo', ean: 'ean', ncm: 'ncm', cest: 'cest',
-  motorizacao_alvo_veiculo: 'motorizacao_alvo_veiculo', codigo_motor: 'codigo_motor',
-  marca_veiculo: 'marca', modelo_veiculo: 'modelo', versao_veiculo: 'versao',
+  part_number_automotivo: 'part_number_automotivo', codigo_ean: 'ean', codigo_ncm: 'ncm', codigo_cest: 'cest',
+  motorizacao_alvo_veiculo: 'motorizacao_alvo_veiculo', codigo_identificador_motor: 'codigo_motor',
+  montadora_veiculo: 'marca', modelo_veiculo: 'modelo', versao_acabamento_veiculo: 'versao',
   ano_inicial: 'ano_inicial', ano_final: 'ano_final', cilindrada: 'cilindrada',
-  material: 'material', posicao_montagem_peca: 'posicao_montagem_peca', fmsi: 'fmsi',
+  composicao_material_peca: 'material', posicao_montagem_peca: 'posicao_montagem_peca', fmsi: 'fmsi',
   comprimento: 'comprimento', largura: 'largura', altura: 'altura',
   funcao_tecnica: 'funcao',
   fabricante_original: 'linhagem_fabricante',

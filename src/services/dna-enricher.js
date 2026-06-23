@@ -14,7 +14,7 @@ const { validarRespostaAgente } = require('./ntc-normalizer-patch');
 
 // Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
 // são específicos demais por peça para herdar de um produto "parecido").
-const CAMPOS_HERDAVEIS = ['ncm', 'cest', 'material', 'comprimento', 'largura', 'altura', 'peso_bruto', 'peso_liquido'];
+const CAMPOS_HERDAVEIS = ['codigo_ncm', 'codigo_cest', 'composicao_material_peca', 'comprimento', 'largura', 'altura', 'peso_bruto', 'peso_liquido'];
 
 // Quando a IA não encontra nenhum campo confiável (0 fontes na web e sem
 // conhecimento de treinamento), sugere valores herdados de peças JÁ
@@ -193,9 +193,9 @@ REGRAS ABSOLUTAS:
 const NTC_SCHEMA = `{"codigo_entrada":"<exato>","status":"ok|codigo_incompleto|nao_encontrado","variantes_possiveis":[],"dna":{"fabricante_original":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"part_number_automotivo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"codigo_fabricante_normalizado":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"ean":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"categoria_produto":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fm":{"nome_tecnico_completo":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"funcao_tecnica":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"av":{"aplicacoes":[{"montadora":null,"modelo":null,"motorizacao_alvo_veiculo":null,"ano_inicial":null,"ano_final":null,"cilindrada":null,"confianca":"confirmado|familia|nulo","fontes":[]}],"mecanismo_triangulacao":null},"co":{"ncm":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]},"cest":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"mc":{"material":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"ec":{"engenharia_detalhe":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"bta":{"boletins":[],"substituicoes":[],"instrucoes_instalacao":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"cc":{"cc_oem":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_aftermarket":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}],"cc_importadores":[{"marca":null,"codigo":null,"confianca":"confirmado|familia|nulo"}]},"lg":{"linhagem":{"valor":null,"confianca":"confirmado|familia|nulo","fontes":[]}},"fi_fp":{"peso_bruto":null,"peso_liquido":null,"comprimento":null,"largura":null,"altura":null}}`;
 
 const CAMPOS_DNA = [
-  'part_number_automotivo','ean','ncm','cest','motorizacao_alvo_veiculo','codigo_motor',
-  'marca_veiculo','modelo_veiculo','versao_veiculo','ano_inicial','ano_final','cilindrada',
-  'material','posicao_montagem_peca','fmsi','comprimento','largura','altura',
+  'part_number_automotivo','codigo_ean','codigo_ncm','codigo_cest','motorizacao_alvo_veiculo','codigo_identificador_motor',
+  'montadora_veiculo','modelo_veiculo','versao_acabamento_veiculo','ano_inicial','ano_final','cilindrada',
+  'composicao_material_peca','posicao_montagem_peca','fmsi','comprimento','largura','altura',
   'cross_codes','concorrentes','aplicacoes_adicionais','funcao_tecnica',
   'boletins','substituicoes','instrucoes_instalacao','fabricante_original','montadora',
   'cc_oem','cc_importadores','peso_bruto','peso_liquido'
@@ -261,18 +261,18 @@ function canonParaLegado(can) {
   const mkLista = (valor, confiancaSeTemValor) => ({ valor, fonte: null, confianca: valor ? confiancaSeTemValor : 'baixa', motivo: null });
   return {
     part_number_automotivo: mk(g(can.dna?.part_number_automotivo), can.dna?.part_number_automotivo?.confianca, gf(can.dna?.part_number_automotivo)),
-    ean:                   mk(g(can.dna?.ean),                can.dna?.ean?.confianca,                 gf(can.dna?.ean)),
-    ncm:                   mk(g(can.co?.ncm),                 can.co?.ncm?.confianca,                  gf(can.co?.ncm)),
-    cest:                  mk(g(can.co?.cest),                can.co?.cest?.confianca,                 gf(can.co?.cest)),
+    codigo_ean:            mk(g(can.dna?.ean),                can.dna?.ean?.confianca,                 gf(can.dna?.ean)),
+    codigo_ncm:            mk(g(can.co?.ncm),                 can.co?.ncm?.confianca,                  gf(can.co?.ncm)),
+    codigo_cest:           mk(g(can.co?.cest),                can.co?.cest?.confianca,                 gf(can.co?.cest)),
     motorizacao_alvo_veiculo: ma(av0?.motorizacao_alvo_veiculo || null),
-    codigo_motor:          mk(null, 'nulo', null),
-    marca_veiculo:         ma(av0?.montadora  || null),
+    codigo_identificador_motor: mk(null, 'nulo', null),
+    montadora_veiculo:     ma(av0?.montadora  || null),
     modelo_veiculo:        ma(av0?.modelo     || null),
-    versao_veiculo:        mk(null, 'nulo', null),
+    versao_acabamento_veiculo: mk(null, 'nulo', null),
     ano_inicial:           ma(av0?.ano_inicial || null),
     ano_final:             ma(av0?.ano_final   || null),
     cilindrada:            ma(av0?.cilindrada  || null),
-    material:              mk(g(can.mc?.material),             can.mc?.material?.confianca,             gf(can.mc?.material)),
+    composicao_material_peca: mk(g(can.mc?.material),         can.mc?.material?.confianca,             gf(can.mc?.material)),
     posicao_montagem_peca: mk(null, 'nulo', null),
     fmsi:                  mk(null, 'nulo', null),
     comprimento:           mkLista(can.fi_fp?.comprimento || null, 'familia'),
