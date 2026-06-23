@@ -103,7 +103,11 @@ export function MapeadorUniversal() {
         className="mb-3 w-full resize-y rounded-lg border border-border bg-card p-3 font-mono text-xs outline-none focus:border-primary/50"
       />
 
-      {erro && <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{erro}</div>}
+      {erro && (
+        <div key="status-erro" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {erro}
+        </div>
+      )}
 
       <div className="mb-6 flex flex-wrap gap-2">
         <button
@@ -130,11 +134,11 @@ export function MapeadorUniversal() {
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         {produtos.length === 0 ? (
-          <p className="px-5 py-12 text-center text-sm text-muted-foreground">
+          <p key="estado-vazio" className="px-5 py-12 text-center text-sm text-muted-foreground">
             {loading ? "Processando…" : "Nenhum produto processado ainda."}
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <table key="tabela-produtos" className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30 text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="w-10 px-4 py-2">
@@ -153,7 +157,7 @@ export function MapeadorUniversal() {
             </thead>
             <tbody className="divide-y divide-border/60">
               {produtos.map((p) => (
-                <tr key={p.id} className="hover:bg-muted/20">
+                <tr key={`produto-${p.id}`} className="hover:bg-muted/20">
                   <td className="px-4 py-2.5">
                     <input
                       type="checkbox"

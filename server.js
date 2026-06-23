@@ -866,11 +866,11 @@ app.post('/api/mapeador-universal/processar', async (req, res) => {
 
     try {
         const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 75_000 });
 
         const msg = await client.messages.create({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 4000,
+            max_tokens: 8000,
             system: `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
 
 Vai receber um texto bruto colado pelo usuário (pode ser HTML simplificado, planilha colada, payload de API, e-mail de fornecedor, ficha técnica, etc.) contendo um ou mais produtos.
@@ -906,7 +906,10 @@ REGRAS ABSOLUTAS:
             extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
             if (!Array.isArray(extraidos)) extraidos = [];
         } catch (e) {
-            return res.json({ ok: false, erro: 'Parse JSON: ' + e.message, produtos: [] });
+            const motivo = msg.stop_reason === 'max_tokens'
+                ? 'Resposta da IA foi truncada (catálogo muito extenso). Cole um trecho menor por vez.'
+                : 'Parse JSON: ' + e.message;
+            return res.json({ ok: false, erro: motivo, produtos: [] });
         }
 
         const produtos = [];
