@@ -16,6 +16,7 @@ const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
 const { httpsJSON, validarGTIN, validarNCM, consultarNCMOficial, buscarWeb } = require('./src/services/web-utils');
 const { enriquecerDnaViaWeb } = require('./src/services/dna-enricher');
+const { chamarLLM, verificarStatus: verificarStatusLLM } = require('./src/services/llm');
 const vectorSearch = require('./src/services/vector-search-service');
 const { buscarImagensReais } = require('./src/services/image-search');
 const db = require('./src/services/db');
@@ -315,20 +316,16 @@ app.post('/api/motor/voz', async (req, res) => {
     if (!prompt) return res.status(400).json({ ok: false, erro: 'Prompt obrigatório' });
 
     try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const msg = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 400,
+        const { texto } = await chamarLLM({
             system: `Você é um redator técnico de autopeças. Regras absolutas:
 1. USE SOMENTE os dados fornecidos pelo usuário. NUNCA invente.
 2. Se um campo não estiver nos dados: NÃO mencione, NÃO estime, NÃO deduza.
 3. NUNCA invente: OEM, NCM, EAN, aplicação veicular, motor, pressão, torque, material, medida ou garantia.
 4. Se os dados forem insuficientes para uma frase completa, responda apenas: "Dados insuficientes para gerar descrição. Complete os campos obrigatórios."
 5. Máximo 2 frases. Sem bullet points. Sem markdown.`,
-            messages: [{ role: 'user', content: prompt }]
+            userContent: prompt,
+            maxTokens: 400,
         });
-        const texto = msg.content?.[0]?.text || '';
         res.json({ ok: true, texto, perfil });
     } catch (e) {
         console.error('[Voz IA]', e.message);
@@ -336,17 +333,10 @@ app.post('/api/motor/voz', async (req, res) => {
     }
 });
 
-// Status do Motor IA (Claude Sonnet) — usado pela Voz do Lojista e demais motores de IA
+// Status do Motor IA (DeepSeek) — usado pela Voz do Lojista e demais motores de IA
 app.get('/api/ia/status', async (req, res) => {
-    if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, configurado: false, mensagem: 'Configure ANTHROPIC_API_KEY no Render' });
-    try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        await client.models.retrieve('claude-haiku-4-5-20251001');
-        res.json({ ok: true, configurado: true, mensagem: 'Motor IA conectado — Claude Sonnet 4.6' });
-    } catch (e) {
-        res.json({ ok: false, configurado: false, mensagem: e.message });
-    }
+    const status = await verificarStatusLLM();
+    res.json(status);
 });
 
 // Cota diária de chamadas de IA usada no enriquecimento DNA — mostra ao
@@ -356,29 +346,19 @@ app.get('/api/ia/status', async (req, res) => {
 // via env caso o lojista esteja num plano pago com cota diferente).
 app.get('/api/ia/quota', (req, res) => {
     const { obterUsoApiHoje } = require('./src/services/db');
-    const provedor = process.env.GEMINI_API_KEY ? 'gemini' : (process.env.DEEPSEEK_API_KEY ? 'deepseek' : (process.env.ANTHROPIC_API_KEY ? 'claude' : null));
-    if (!provedor) {
-        return res.json({ ok: false, configurado: false, mensagem: 'Configure GEMINI_API_KEY, DEEPSEEK_API_KEY ou ANTHROPIC_API_KEY no Render' });
+    if (!process.env.DEEPSEEK_API_KEY) {
+        return res.json({ ok: false, configurado: false, mensagem: 'Configure DEEPSEEK_API_KEY no Render' });
     }
-    // 200/dia é o tier gratuito real do gemini-2.0-flash (RPD por projeto/modelo);
-    // a conta do lojista pode esgotar a cota do Google antes deste contador local
-    // chegar no limite se outras chamadas (vector-search, auto-enrich) também
-    // consumirem a mesma chave — por isso o valor é conservador, não otimista.
-    // DeepSeek e Claude são pagos por token, sem cota diária fixa — por isso
-    // não têm limite_diario configurado a menos que o lojista defina um.
-    const limite = provedor === 'gemini'
-        ? Number(process.env.GEMINI_LIMITE_DIARIO || 200)
-        : provedor === 'deepseek'
-            ? Number(process.env.DEEPSEEK_LIMITE_DIARIO || 0)
-            : Number(process.env.CLAUDE_LIMITE_DIARIO || 0);
-    const usado = obterUsoApiHoje(provedor);
+    // DeepSeek é pago por token, sem cota diária fixa — só tem limite_diario
+    // se o lojista configurar um (ex: para controlar gasto mensal manualmente).
+    const limite = Number(process.env.DEEPSEEK_LIMITE_DIARIO || 0);
+    const usado = obterUsoApiHoje('deepseek');
     const restante = limite > 0 ? Math.max(0, limite - usado) : null;
     const percentual = limite > 0 ? Math.min(100, Math.round((usado / limite) * 100)) : null;
-    const nomes = { gemini: 'Gemini 2.0 Flash', deepseek: 'DeepSeek Chat', claude: 'Claude Haiku' };
     res.json({
         ok: true,
         configurado: true,
-        provedor: nomes[provedor],
+        provedor: 'DeepSeek Chat',
         usado_hoje: usado,
         limite_diario: limite || null,
         restante,
@@ -482,7 +462,7 @@ app.post('/api/motor/extrair-tecnico', async (req, res) => {
     const { sku, fabricante, nome, nivel_busca } = req.body;
     const vazio = { part_number_automotivo: null, codigo_ncm: null, codigo_ean: null, motorizacao_alvo_veiculo: null, composicao_material_peca: null };
     if (!nome && !sku) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
-    if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', dados: vazio });
+    if (!process.env.DEEPSEEK_API_KEY) return res.json({ ok: false, erro: 'DEEPSEEK_API_KEY não configurada', dados: vazio });
 
     const q = [fabricante, sku, nome].filter(Boolean).join(' ');
     let trechos = [];
@@ -506,11 +486,7 @@ app.post('/api/motor/extrair-tecnico', async (req, res) => {
     }
 
     try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const msg = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 500,
+        const { texto } = await chamarLLM({
             system: `Você é um especialista técnico em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e trechos de resultados de busca na web sobre esse produto.
 
 Sua tarefa: extrair os seguintes dados técnicos, SOMENTE se estiverem EXPLICITAMENTE presentes nos trechos fornecidos:
@@ -525,13 +501,10 @@ REGRAS ABSOLUTAS:
 2. Se um dado não estiver EXPLICITAMENTE nos trechos, retorne null para esse campo.
 3. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, no formato exato:
 {"part_number_automotivo": null, "codigo_ncm": null, "codigo_ean": null, "motorizacao_alvo_veiculo": null, "composicao_material_peca": null}`,
-            messages: [{
-                role: 'user',
-                content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca:\n`
-                    + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n')
-            }]
+            userContent: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca:\n`
+                + trechos.map((t, i) => `${i + 1}. ${t.titulo}\n${t.trecho}\nFonte: ${t.fonte}`).join('\n\n'),
+            maxTokens: 500,
         });
-        const texto = msg.content?.[0]?.text || '{}';
         let dados;
         try {
             const jsonMatch = texto.match(/\{[\s\S]*\}/);
@@ -714,17 +687,15 @@ app.post('/api/catalogo/raspar', async (req, res) => {
     const { titulo, meta, produtoLd } = extrairMetaProduto(html);
     const texto = htmlParaTexto(html);
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.DEEPSEEK_API_KEY) {
         return res.json({
             ok: true, encontrado: false, dados: vazio,
             bruto: { titulo, produtoLd },
-            mensagem: 'ANTHROPIC_API_KEY não configurada — não foi possível identificar os dados do produto.'
+            mensagem: 'DEEPSEEK_API_KEY não configurada — não foi possível identificar os dados do produto.'
         });
     }
 
     try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const contexto = [
             'Título da página: ' + (titulo || ''),
             produtoLd ? 'Dados estruturados (schema.org Product): ' + JSON.stringify(produtoLd).slice(0, 3000) : '',
@@ -736,9 +707,7 @@ app.post('/api/catalogo/raspar', async (req, res) => {
             'Texto da página (truncado): ' + texto
         ].filter(Boolean).join('\n\n');
 
-        const msg = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 600,
+        const { texto: respostaTexto } = await chamarLLM({
             system: `Você é um especialista em catalogação de autopeças. Vai receber o conteúdo de uma página de produto/fornecedor (título, dados estruturados, meta tags e texto).
 
 Sua tarefa: extrair os seguintes dados do produto, SOMENTE se estiverem EXPLICITAMENTE presentes no conteúdo:
@@ -757,9 +726,9 @@ REGRAS ABSOLUTAS:
 2. Se um dado não estiver explícito, retorne null para esse campo.
 3. Responda APENAS com um objeto JSON válido, sem markdown, no formato exato:
 {"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "codigo_ncm": null, "codigo_ean": null, "motorizacao_alvo_veiculo": null, "composicao_material_peca": null, "preco": null}`,
-            messages: [{ role: 'user', content: contexto }]
+            userContent: contexto,
+            maxTokens: 600,
         });
-        const respostaTexto = msg.content?.[0]?.text || '{}';
         let dados;
         try {
             const jsonMatch = respostaTexto.match(/\{[\s\S]*\}/);
@@ -795,21 +764,17 @@ app.post('/api/catalogo/raspar-lista', async (req, res) => {
         return res.json({ ok: true, encontrado: true, produtos: produtosLd, total: produtosLd.length, fonte: 'schema.org' });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.DEEPSEEK_API_KEY) {
         return res.json({
             ok: true, encontrado: false, produtos: [],
-            mensagem: 'ANTHROPIC_API_KEY não configurada — não foi possível identificar os produtos da página.'
+            mensagem: 'DEEPSEEK_API_KEY não configurada — não foi possível identificar os produtos da página.'
         });
     }
 
     try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const texto = htmlParaTextoComLinks(html, url);
 
-        const msg = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 2000,
+        const { texto: respostaTexto } = await chamarLLM({
             system: `Você é um especialista em catalogação de autopeças. Vai receber o texto de uma página de catálogo/categoria de um fornecedor, com links no formato "Texto (LINK: url)".
 
 Sua tarefa: identificar cada PRODUTO listado na página e extrair, SOMENTE se estiver EXPLICITAMENTE presente no texto:
@@ -826,9 +791,9 @@ REGRAS ABSOLUTAS:
 4. Liste no máximo 40 produtos.
 5. Responda APENAS com um array JSON válido, sem markdown, no formato:
 [{"nome": null, "sku": null, "fabricante": null, "preco": null, "url": null}]`,
-            messages: [{ role: 'user', content: texto }]
+            userContent: texto,
+            maxTokens: 2000,
         });
-        const respostaTexto = msg.content?.[0]?.text || '[]';
         let produtos;
         try {
             const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
@@ -865,17 +830,13 @@ function statusLuminoso(ntc) {
 app.post('/api/mapeador-universal/processar', async (req, res) => {
     const { texto, fornecedor_nome } = req.body;
     if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
-    if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', produtos: [] });
+    if (!process.env.DEEPSEEK_API_KEY) return res.json({ ok: false, erro: 'DEEPSEEK_API_KEY não configurada', produtos: [] });
 
     const imagensDoTexto = extrairUrlsImagem(texto);
 
     try {
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 75_000 });
-
-        const msg = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 8000,
+        const { texto: respostaTexto, finishReason } = await chamarLLM({
+            maxTokens: 8000,
             system: `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
 
 Vai receber um texto bruto colado pelo usuário (pode ser HTML simplificado, planilha colada, payload de API, e-mail de fornecedor, ficha técnica, etc.) contendo um ou mais produtos.
@@ -907,17 +868,16 @@ REGRAS ABSOLUTAS:
 4. Se houver uma tabela de aplicações veiculares com várias linhas (montadora/modelo/motor/ano), preencha TODAS em "aplicacoes" — não descarte nenhuma linha.
 5. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
 [{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "ean": null, "material": null, "cross_codes": [], "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`,
-            messages: [{ role: 'user', content: texto.slice(0, 30000) }]
+            userContent: texto.slice(0, 30000),
         });
 
-        const respostaTexto = msg.content?.[0]?.text || '[]';
         let extraidos;
         try {
             const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
             extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
             if (!Array.isArray(extraidos)) extraidos = [];
         } catch (e) {
-            const motivo = msg.stop_reason === 'max_tokens'
+            const motivo = finishReason === 'length'
                 ? 'Resposta da IA foi truncada (catálogo muito extenso). Cole um trecho menor por vez.'
                 : 'Parse JSON: ' + e.message;
             return res.json({ ok: false, erro: motivo, produtos: [] });
@@ -2638,7 +2598,7 @@ app.post('/api/ntc-referencias/:id/importar-algolia-pagina', async (req, res) =>
 function medirLatenciaInternet() {
     return new Promise((resolve) => {
         const inicio = Date.now();
-        const req = https.get('https://api.anthropic.com', { timeout: 4000 }, (r) => {
+        const req = https.get('https://api.deepseek.com', { timeout: 4000 }, (r) => {
             r.resume();
             resolve({ online: true, latencia_ms: Date.now() - inicio });
         });
@@ -2659,8 +2619,7 @@ app.get('/api/sistema/performance', async (req, res) => {
         const cpuUsoPct = cpus.length ? Math.min(100, Math.round((loadavg[0] / cpus.length) * 100)) : 0;
 
         const conectividade = {
-            ia_anthropic: !!process.env.ANTHROPIC_API_KEY,
-            ia_gemini: !!process.env.GEMINI_API_KEY,
+            ia_deepseek: !!process.env.DEEPSEEK_API_KEY,
             busca_serper: !!process.env.SERPER_API_KEY,
             busca_google: !!(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX),
             bling: !!(process.env.BLING_API_KEY || (process.env.BLING_CLIENT_ID && process.env.BLING_CLIENT_SECRET)),
@@ -2685,7 +2644,7 @@ app.get('/api/sistema/performance', async (req, res) => {
         else if (cpuUsoPct > 75) indiceQualidade -= 10;
         if (memUsoPct > 90) indiceQualidade -= 20;
         else if (memUsoPct > 75) indiceQualidade -= 10;
-        if (!conectividade.ia_gemini) indiceQualidade -= 25;
+        if (!conectividade.ia_deepseek) indiceQualidade -= 25;
         indiceQualidade -= Math.round(taxaErroPct * 0.3);
         indiceQualidade = Math.max(0, Math.min(100, indiceQualidade));
 
@@ -2694,7 +2653,7 @@ app.get('/api/sistema/performance', async (req, res) => {
         else if (indiceQualidade < 75) nivel = 'ATENÇÃO';
         else if (indiceQualidade < 90) nivel = 'BOM';
 
-        const riscoAlucinacao = !conectividade.ia_gemini || !internet.online || taxaErroPct > 40;
+        const riscoAlucinacao = !conectividade.ia_deepseek || !internet.online || taxaErroPct > 40;
 
         res.json({
             ok: true,

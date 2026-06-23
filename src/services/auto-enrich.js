@@ -103,7 +103,7 @@ function aplicarFornecedorOuAvulso(row, dados, acoes) {
 // pediu explicitamente uma nova busca para completar TODOS os campos do DNA
 // (cross-codes, boletins, substituições, cc_oem, pesos, dimensões etc.).
 async function enriquecerDnaSeNecessario(row, dados, acoes, forcar) {
-  if (!process.env.GEMINI_API_KEY) return;
+  if (!process.env.DEEPSEEK_API_KEY) return;
 
   if (!forcar) {
     const ultimaTentativa = dados._auto_dna_tentativa ? new Date(dados._auto_dna_tentativa).getTime() : 0;

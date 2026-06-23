@@ -1,16 +1,15 @@
 'use strict';
 
 // ============================================================
-// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.3 (2026-06-22)
-// LLM   : Gemini 2.0 Flash (GEMINI_API_KEY — gratuito até a cota diária,
-//         pago é o mais barato do mercado) → Claude Haiku como fallback
-//         se só ANTHROPIC_API_KEY estiver configurada
+// Agente DNA OEM 360 — Motor NTC 4.0  ·  v6.0 (2026-06-23)
+// LLM   : DeepSeek Chat (DEEPSEEK_API_KEY) — agente universal único
 // Busca : Serper → DuckDuckGo HTML (sem chave, gratuito)
 // ============================================================
 const https = require('https');
 const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON, fetchHtmlSeguro, htmlParaTexto } = require('./web-utils');
 const { listarSimilaresConfirmados, registrarUsoApi } = require('./db');
 const { validarRespostaAgente } = require('./ntc-normalizer-patch');
+const { chamarLLM: chamarLLMUniversal } = require('./llm');
 
 // Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
 // são específicos demais por peça para herdar de um produto "parecido").
@@ -295,84 +294,18 @@ function canonParaLegado(can) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AGENTE PRINCIPAL — Gemini → DeepSeek → Claude Haiku + busca web (Serper/DDG)
+// AGENTE PRINCIPAL — DeepSeek (agente universal único) + busca web (Serper/DDG)
 // ─────────────────────────────────────────────────────────────
-async function chamarDeepSeek({ system, userContent, maxTokens }) {
-  const body = JSON.stringify({
-    model: 'deepseek-chat',
-    max_tokens: maxTokens,
-    temperature: 0.2,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: userContent },
-    ],
-  });
-  const data = await httpsJSON({
-    hostname: 'api.deepseek.com', path: '/chat/completions', method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(body),
-    },
-  }, body, 60000);
-  if (data.error) throw new Error(data.error.message || 'Erro DeepSeek');
-  return data?.choices?.[0]?.message?.content || '{}';
-}
-
-// Chama o LLM de interpretação do DNA. Prioriza Gemini 2.0 Flash
-// (GEMINI_API_KEY) — gratuito até a cota diária. Se Gemini falhar por cota
-// esgotada (429/RESOURCE_EXHAUSTED), tenta DeepSeek (DEEPSEEK_API_KEY) —
-// o mais barato do mercado no tier pago — e só recorre a Claude Haiku
-// (ANTHROPIC_API_KEY) como último failover, para não gerar o custo mais
-// alto da cadeia sem necessidade enquanto as opções mais baratas funcionam.
 async function chamarLLM({ system, userContent, maxTokens }) {
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const { GoogleGenAI } = require('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: userContent,
-        config: { systemInstruction: system, maxOutputTokens: maxTokens, temperature: 0.2 },
-      });
-      const texto = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      registrarUsoApi('gemini');
-      return { texto, motor: 'Gemini 2.0 Flash' };
-    } catch (e) {
-      const cotaExcedida = /RESOURCE_EXHAUSTED|429|quota/i.test(e.message || '');
-      if (!cotaExcedida || (!process.env.DEEPSEEK_API_KEY && !process.env.ANTHROPIC_API_KEY)) throw e;
-      console.error('[DNA v5.3] Gemini cota esgotada — failover:', e.message);
-    }
-  }
-  if (process.env.DEEPSEEK_API_KEY) {
-    try {
-      const texto = await chamarDeepSeek({ system, userContent, maxTokens });
-      registrarUsoApi('deepseek');
-      return { texto, motor: 'DeepSeek Chat' };
-    } catch (e) {
-      if (!process.env.ANTHROPIC_API_KEY) throw e;
-      console.error('[DNA v5.3] DeepSeek falhou — failover para Claude Haiku:', e.message);
-    }
-  }
-  if (process.env.ANTHROPIC_API_KEY) {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: userContent }],
-    });
-    registrarUsoApi('claude');
-    return { texto: msg.content?.[0]?.text || '{}', motor: 'Claude Haiku' };
-  }
-  throw new Error('GEMINI_API_KEY, DEEPSEEK_API_KEY ou ANTHROPIC_API_KEY nao configurada');
+  const { texto, motor } = await chamarLLMUniversal({ system, userContent, maxTokens });
+  registrarUsoApi('deepseek');
+  return { texto, motor };
 }
 
 async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true, usou_busca_web: usouBusca };
-  if (!process.env.GEMINI_API_KEY && !process.env.DEEPSEEK_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, erro: 'GEMINI_API_KEY, DEEPSEEK_API_KEY ou ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
+  if (!process.env.DEEPSEEK_API_KEY) {
+    return { ok: false, erro: 'DEEPSEEK_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
   }
 
   const codigoEntrada = sku || nome;
