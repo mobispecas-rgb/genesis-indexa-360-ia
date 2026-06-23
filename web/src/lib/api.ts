@@ -353,6 +353,13 @@ export async function apiMapeadorUniversalProcessar(
   } finally {
     clearTimeout(timeoutId);
   }
+  if (!r.headers.get("content-type")?.includes("application/json")) {
+    throw new Error(
+      r.status >= 500 || r.status === 0
+        ? "O servidor demorou demais ou caiu durante o processamento. Tente colar um texto menor."
+        : `Resposta inesperada do servidor (status ${r.status}). Tente novamente.`,
+    );
+  }
   const json = await r.json();
   if (!json.ok) throw new Error(json.erro || "Falha ao processar texto");
   return json.produtos as MapeadorUniversalProduto[];
