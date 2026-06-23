@@ -335,11 +335,24 @@ export async function apiMapeadorUniversalProcessar(
   texto: string,
   fornecedorNome?: string,
 ): Promise<MapeadorUniversalProduto[]> {
-  const r = await fetch("/api/mapeador-universal/processar", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ texto, fornecedor_nome: fornecedorNome?.trim() || null }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90_000);
+  let r: Response;
+  try {
+    r = await fetch("/api/mapeador-universal/processar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto, fornecedor_nome: fornecedorNome?.trim() || null }),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") {
+      throw new Error("Tempo de processamento excedido (90s). Tente colar um texto menor ou dividir em partes.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const json = await r.json();
   if (!json.ok) throw new Error(json.erro || "Falha ao processar texto");
   return json.produtos as MapeadorUniversalProduto[];
