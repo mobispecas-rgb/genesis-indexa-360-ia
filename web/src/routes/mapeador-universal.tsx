@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ScanLine, Loader2, Trash2 } from "lucide-react";
-import { apiMapeadorUniversalProcessar, type MapeadorUniversalProduto } from "@/lib/api";
+import { apiExcluirProduto, apiMapeadorUniversalProcessar, type MapeadorUniversalProduto } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<MapeadorUniversalProduto["status"], string> = {
@@ -17,10 +17,12 @@ const STATUS_CLASSE: Record<MapeadorUniversalProduto["status"], string> = {
 };
 
 export function MapeadorUniversal() {
+  const [fornecedorNome, setFornecedorNome] = useState("");
   const [texto, setTexto] = useState("");
   const [produtos, setProdutos] = useState<MapeadorUniversalProduto[]>([]);
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   async function processar() {
@@ -28,7 +30,7 @@ export function MapeadorUniversal() {
     setLoading(true);
     setErro(null);
     try {
-      const r = await apiMapeadorUniversalProcessar(texto.trim());
+      const r = await apiMapeadorUniversalProcessar(texto.trim(), fornecedorNome);
       setProdutos(r);
       setSelecionados(new Set());
     } catch (e) {
@@ -51,9 +53,19 @@ export function MapeadorUniversal() {
     setSelecionados((prev) => (prev.size === produtos.length ? new Set() : new Set(produtos.map((p) => p.id))));
   }
 
-  function excluirSelecionados() {
-    setProdutos((prev) => prev.filter((p) => !selecionados.has(p.id)));
-    setSelecionados(new Set());
+  async function excluirSelecionados() {
+    if (selecionados.size === 0) return;
+    setExcluindo(true);
+    setErro(null);
+    try {
+      await Promise.all([...selecionados].map((id) => apiExcluirProduto(String(id))));
+      setProdutos((prev) => prev.filter((p) => !selecionados.has(p.id)));
+      setSelecionados(new Set());
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setExcluindo(false);
+    }
   }
 
   function limparTudo() {
@@ -75,6 +87,14 @@ export function MapeadorUniversal() {
         os produtos automaticamente.
       </p>
 
+      <label className="mb-1 block text-xs font-medium text-muted-foreground">Nome do fornecedor (opcional)</label>
+      <input
+        value={fornecedorNome}
+        onChange={(e) => setFornecedorNome(e.target.value)}
+        placeholder="Ex: Distribuidora ABC Autopeças"
+        className="mb-3 w-full max-w-sm rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary/50"
+      />
+
       <textarea
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
@@ -95,10 +115,10 @@ export function MapeadorUniversal() {
         </button>
         <button
           onClick={excluirSelecionados}
-          disabled={selecionados.size === 0}
+          disabled={selecionados.size === 0 || excluindo}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition hover:border-destructive/40 hover:text-destructive disabled:opacity-50"
         >
-          <Trash2 className="h-4 w-4" /> Excluir Selecionados
+          {excluindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Excluir Selecionados
         </button>
         <button
           onClick={limparTudo}

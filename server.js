@@ -858,7 +858,7 @@ function statusLuminoso(ntc) {
 }
 
 app.post('/api/mapeador-universal/processar', async (req, res) => {
-    const { texto } = req.body;
+    const { texto, fornecedor_nome } = req.body;
     if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
     if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', produtos: [] });
 
@@ -942,6 +942,7 @@ REGRAS ABSOLUTAS:
                 sku: item.sku,
                 nome: item.nome,
                 dados,
+                fornecedor_nome: fornecedor_nome || null,
                 fonte: 'mapeador_universal',
                 ntc: resultado.ntc,
                 decisao: resultado.decisao,
