@@ -383,7 +383,6 @@ app.get('/api/ia/quota', (req, res) => {
 
 // ─── NTC Engine (Núcleo de Triangulação Certificada) ─────────
 const ntcEngine = require('./src/services/ntc-engine')
-const ntcNormalizerPatch = require('./src/services/ntc-normalizer-patch');
 
 // Motor NTC — 13 componentes — NUNCA inventa dados
 // normalizaAliases: converte os nomes que o frontend/DNA envia para os nomes que o ntc-engine lê
@@ -391,11 +390,21 @@ function normalizaAliases(d) {
     const r = Object.assign({}, d);
     // AV — aplicação veicular
     if (!r.marca  && r.marca_veiculo)    r.marca  = r.marca_veiculo;
+    if (!r.marca  && r.montadora_veiculo) r.marca = r.montadora_veiculo;
     if (!r.modelo && r.modelo_veiculo)   r.modelo = r.modelo_veiculo;
+    if (!r.versao && r.versao_acabamento_veiculo) r.versao = r.versao_acabamento_veiculo;
+    if (!r.versao && r.versao_veiculo)   r.versao = r.versao_veiculo;
+    if (!r.codigo_motor && r.codigo_identificador_motor) r.codigo_motor = r.codigo_identificador_motor;
     if (!r.motor  && r.motor_aplicacao)  r.motor  = r.motor_aplicacao;
+    if (!r.motor  && r.motorizacao_alvo_veiculo) r.motor = r.motorizacao_alvo_veiculo;
+    if (!r.posicao && r.posicao_montagem_peca)   r.posicao = r.posicao_montagem_peca;
     // DNA
     if (!r.fabricante && r.fabricante_original) r.fabricante = r.fabricante_original;
     if (!r.codigo_fabricante && r.sku)          r.codigo_fabricante = r.sku;
+    if (!r.codigo_oem && r.part_number_automotivo) r.codigo_oem = r.part_number_automotivo;
+    if (!r.ean && r.codigo_ean) r.ean = r.codigo_ean;
+    if (!r.ncm && r.codigo_ncm) r.ncm = r.codigo_ncm;
+    if (!r.cest && r.codigo_cest) r.cest = r.codigo_cest;
     if (!r.familia_tecnica && r.familia)        r.familia_tecnica = r.familia;
     // EC
     if (!r.funcao && r.funcao_tecnica) r.funcao = r.funcao_tecnica;
@@ -406,6 +415,7 @@ function normalizaAliases(d) {
     if (!r.linhagem_importador && r.importador)          r.linhagem_importador = r.importador;
     // MC — material
     if (!r.material && r.material_composicao) r.material = r.material_composicao;
+    if (!r.material && r.composicao_material_peca) r.material = r.composicao_material_peca;
     return r;
 }
 
@@ -465,7 +475,7 @@ app.post('/api/motor/enriquecer', (req, res) => {
 // NUNCA inventa: campo fica null se não estiver explícito nos resultados de busca
 app.post('/api/motor/extrair-tecnico', async (req, res) => {
     const { sku, fabricante, nome, nivel_busca } = req.body;
-    const vazio = { codigo_oem: null, ncm: null, ean: null, motor: null, material: null };
+    const vazio = { part_number_automotivo: null, codigo_ncm: null, codigo_ean: null, motorizacao_alvo_veiculo: null, composicao_material_peca: null };
     if (!nome && !sku) return res.status(400).json({ ok: false, erro: 'SKU ou Nome obrigatório' });
     if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, erro: 'ANTHROPIC_API_KEY não configurada', dados: vazio });
 
@@ -499,17 +509,17 @@ app.post('/api/motor/extrair-tecnico', async (req, res) => {
             system: `Você é um especialista técnico em autopeças automotivas. Vai receber dados de um produto (nome, marca, SKU) e trechos de resultados de busca na web sobre esse produto.
 
 Sua tarefa: extrair os seguintes dados técnicos, SOMENTE se estiverem EXPLICITAMENTE presentes nos trechos fornecidos:
-- codigo_oem: código OEM (Original Equipment Manufacturer) do fabricante do veículo
-- ncm: código NCM (8 dígitos numéricos)
-- ean: código EAN/GTIN (8, 12, 13 ou 14 dígitos numéricos)
-- motor: aplicação de motor/veículo (ex: "GM Família I 8V", "Fiat Fire 1.0/1.4")
-- material: material/composição da peça
+- part_number_automotivo: código OEM (Original Equipment Manufacturer) do fabricante do veículo
+- codigo_ncm: código NCM (8 dígitos numéricos)
+- codigo_ean: código EAN/GTIN (8, 12, 13 ou 14 dígitos numéricos)
+- motorizacao_alvo_veiculo: aplicação de motor/veículo (ex: "GM Família I 8V", "Fiat Fire 1.0/1.4")
+- composicao_material_peca: material/composição da peça
 
 REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam escritos nos trechos.
 2. Se um dado não estiver EXPLICITAMENTE nos trechos, retorne null para esse campo.
 3. Responda APENAS com um objeto JSON válido, sem markdown, sem texto adicional, no formato exato:
-{"codigo_oem": null, "ncm": null, "ean": null, "motor": null, "material": null}`,
+{"part_number_automotivo": null, "codigo_ncm": null, "codigo_ean": null, "motorizacao_alvo_veiculo": null, "composicao_material_peca": null}`,
             messages: [{
                 role: 'user',
                 content: `Produto: ${[fabricante, sku, nome].filter(Boolean).join(' | ')}\n\nResultados de busca:\n`
@@ -686,7 +696,7 @@ app.post('/api/catalogo/extrair-pdf', upload.single('arquivo'), async (req, res)
 // NUNCA inventa: campo fica null se não estiver explícito no conteúdo da página.
 app.post('/api/catalogo/raspar', async (req, res) => {
     const { url } = req.body;
-    const vazio = { sku: null, nome: null, fabricante: null, codigo_oem: null, ncm: null, ean: null, motor: null, material: null, preco: null };
+    const vazio = { sku: null, nome: null, fabricante: null, part_number_automotivo: null, codigo_ncm: null, codigo_ean: null, motorizacao_alvo_veiculo: null, composicao_material_peca: null, preco: null };
     if (!url) return res.status(400).json({ ok: false, erro: 'URL obrigatória' });
 
     let html;
@@ -730,18 +740,18 @@ Sua tarefa: extrair os seguintes dados do produto, SOMENTE se estiverem EXPLICIT
 - sku: código/part number do produto (do fabricante)
 - nome: nome/descrição do produto
 - fabricante: marca/fabricante
-- codigo_oem: código OEM
-- ncm: código NCM (8 dígitos)
-- ean: código EAN/GTIN
-- motor: aplicação de motor/veículo
-- material: material/composição
+- part_number_automotivo: código OEM
+- codigo_ncm: código NCM (8 dígitos)
+- codigo_ean: código EAN/GTIN
+- motorizacao_alvo_veiculo: aplicação de motor/veículo
+- composicao_material_peca: material/composição
 - preco: preço numérico (apenas número, sem símbolo de moeda; use ponto como separador decimal)
 
 REGRAS ABSOLUTAS:
 1. NUNCA invente, estime ou deduza valores que não estejam no conteúdo.
 2. Se um dado não estiver explícito, retorne null para esse campo.
 3. Responda APENAS com um objeto JSON válido, sem markdown, no formato exato:
-{"sku": null, "nome": null, "fabricante": null, "codigo_oem": null, "ncm": null, "ean": null, "motor": null, "material": null, "preco": null}`,
+{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "codigo_ncm": null, "codigo_ean": null, "motorizacao_alvo_veiculo": null, "composicao_material_peca": null, "preco": null}`,
             messages: [{ role: 'user', content: contexto }]
         });
         const respostaTexto = msg.content?.[0]?.text || '{}';
@@ -910,7 +920,7 @@ app.post('/api/produtos', (req, res) => {
     try {
         const body = req.body || {};
         const dados = body.dados && typeof body.dados === 'object' ? body.dados : body;
-        const sku = body.sku || dados.codigo_fabricante || dados.sku || dados.codigo_oem;
+        const sku = body.sku || dados.codigo_fabricante || dados.sku || dados.part_number_automotivo || dados.codigo_oem;
         if (!sku) return res.status(400).json({ ok: false, erro: 'sku (ou codigo_fabricante) obrigatório' });
 
         const resultado = ntcEngine.processar(dados);
@@ -2174,7 +2184,7 @@ app.get('/api/produtos/export-csv', (req, res) => {
         params.limite = limite;
         const rows = db.db.prepare(sql).all(params);
 
-        const campos = ['sku','nome','ean','ncm','fabricante','codigo_oem','aplicacao',
+        const campos = ['sku','nome','ean','ncm','fabricante','part_number_automotivo','aplicacao',
             'preco_custo','categoria','subcategoria','linha','url_fornecedor','imagem',
             'ntc','decisao','fornecedor_nome','fonte'];
         const esc = v => {
@@ -2221,7 +2231,7 @@ app.get('/api/produtos/google-shopping-feed', (req, res) => {
             const imagem = get('imagem', 'imagem_url');
             const fabricante = get('fabricante');
             const gtin = get('ean');
-            const mpn = get('codigo_oem');
+            const mpn = get('part_number_automotivo');
             const desc = get('descricao') || [
                 nome, fabricante && `Fabricante: ${fabricante}`,
                 get('aplicacao') && `Aplicação: ${get('aplicacao')}`,
@@ -2288,7 +2298,7 @@ app.post('/api/produtos/importar-lote', (req, res) => {
                     ean:          item.ean || item.codigo_ean,
                     ncm:          item.ncm,
                     fabricante:   item.marca || item.fabricante,
-                    codigo_oem:   item.codigo_fabricante || item.codigo_fabricante_br || item.codigo_oem,
+                    part_number_automotivo: item.codigo_fabricante || item.codigo_fabricante_br || item.codigo_oem || item.part_number_automotivo,
                     aplicacao:    item.aplicacao || item.descricao_aplicacao,
                     preco_custo:  item.preco || item.preco_custo || item.price,
                     categoria:    item.categoria_1 || item.categoria,
@@ -2397,7 +2407,7 @@ app.post('/api/ntc-referencias/:id/importar-algolia-pagina', async (req, res) =>
                     ean:          _v(h.ean) || _v(h.ean_code),
                     ncm:          _v(h.ncm),
                     fabricante:   _v(h.marca) || _v(h.fabricante) || h.brand,
-                    codigo_oem:   _v(h.codigo_fabricante_br) || _v(h.codigo_fabricante),
+                    part_number_automotivo: _v(h.codigo_fabricante_br) || _v(h.codigo_fabricante),
                     aplicacao:    _v(h.aplicacao) || h.application,
                     preco_custo:  h.price != null ? String(h.price) : (h.preco != null ? String(h.preco) : ''),
                     categoria:    cat1,
@@ -2763,19 +2773,19 @@ function montarFichaTecnica(p) {
   // ── DNA / Identificação ──
   if (p.codigo_fabricante || p.sku) linhas.push('SKU / Código de Fábrica: ' + (p.codigo_fabricante || p.sku));
   if (p.familia_tecnica || p.familia) linhas.push('Família: ' + (p.familia_tecnica || p.familia));
-  if (p.posicao)         linhas.push('Posição: ' + p.posicao);
+  if (p.posicao_montagem_peca || p.posicao) linhas.push('Posição: ' + (p.posicao_montagem_peca || p.posicao));
 
   // ── AV — Aplicação Veicular ──
   const av = [p.marca_veiculo || p.marca, p.modelo_veiculo || p.modelo, p.versao_veiculo || p.versao].filter(Boolean).join(' ');
   if (av)                linhas.push('Veículo: ' + av);
   const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join(' a ');
   if (anos)              linhas.push('Anos: ' + anos);
-  if (p.motor || p.motor_aplicacao) linhas.push('Motor: ' + (p.motor || p.motor_aplicacao));
+  if (p.motorizacao_alvo_veiculo || p.motor || p.motor_aplicacao) linhas.push('Motor: ' + (p.motorizacao_alvo_veiculo || p.motor || p.motor_aplicacao));
   if (p.codigo_motor)    linhas.push('Código motor: ' + p.codigo_motor);
   if (p.cilindrada)      linhas.push('Cilindrada: ' + p.cilindrada + ' cc');
 
   // ── TF — Triangulação ──
-  const oems = [p.codigo_oem, ...(p.cc_oem || [])].filter(Boolean);
+  const oems = [p.part_number_automotivo, p.codigo_oem, ...(p.cc_oem || [])].filter(Boolean);
   const oemsUniq = [...new Set(oems)];
   if (oemsUniq.length)   linhas.push('Código OEM: ' + oemsUniq.join(' / '));
 
@@ -2785,7 +2795,7 @@ function montarFichaTecnica(p) {
   if (p.cross_codes)     linhas.push('Similares: ' + p.cross_codes);
 
   // ── MC — Material ──
-  if (p.material || p.material_composicao) linhas.push('Material: ' + (p.material || p.material_composicao));
+  if (p.composicao_material_peca || p.material || p.material_composicao) linhas.push('Material: ' + (p.composicao_material_peca || p.material || p.material_composicao));
 
   // ── EC — Especificações ──
   if (Array.isArray(p.especificacoes) && p.especificacoes.length)
@@ -2798,9 +2808,9 @@ function montarFichaTecnica(p) {
   if (dim.length)        linhas.push('Dimensões (C×L×A): ' + dim.join(' × '));
 
   // ── Fiscal ──
-  if (p.ean)             linhas.push('EAN/GTIN: ' + p.ean);
-  if (p.ncm)             linhas.push('NCM: ' + p.ncm);
-  if (p.cest)            linhas.push('CEST: ' + p.cest);
+  if (p.codigo_ean || p.ean)   linhas.push('EAN/GTIN: ' + (p.codigo_ean || p.ean));
+  if (p.codigo_ncm || p.ncm)   linhas.push('NCM: ' + (p.codigo_ncm || p.ncm));
+  if (p.codigo_cest || p.cest) linhas.push('CEST: ' + (p.codigo_cest || p.cest));
 
   // ── NTC ──
   if (p.rast_hash)       linhas.push('RAST-HASH NTC: ' + p.rast_hash);
@@ -2813,8 +2823,8 @@ function montarFichaTecnica(p) {
 // Monta o payload completo (fiscal + categoria + ficha técnica/PDV) para /produtos do Bling
 async function montarPayloadProdutoBling(p) {
   const midia = (p.imagens || []).slice(0, 6).map((url, i) => ({ tipo: 'F', thumbnail: i === 0, url }));
-  const ean = (p.ean || '').replace(/\D/g, '');
-  const ncm = (p.ncm || '').replace(/\D/g, '').substring(0, 8);
+  const ean = (p.codigo_ean || p.ean || '').replace(/\D/g, '');
+  const ncm = (p.codigo_ncm || p.ncm || '').replace(/\D/g, '').substring(0, 8);
   const fichaTecnica = montarFichaTecnica(p);
   const familia = p.familia_tecnica || p.familia;
   const idCategoria = await resolverCategoriaBling(familia, p.nome);
@@ -2836,12 +2846,12 @@ async function montarPayloadProdutoBling(p) {
   // descricaoCurta: texto da voz do lojista OU descrição curta OU monta automático
   const autoDescCurta = (() => {
     const partes = [];
-    if (p.posicao) partes.push(p.posicao + '.');
+    if (p.posicao_montagem_peca || p.posicao) partes.push((p.posicao_montagem_peca || p.posicao) + '.');
     const vei = [p.marca_veiculo || p.marca, p.modelo_veiculo || p.modelo].filter(Boolean).join(' ');
     if (vei) partes.push('Aplicação: ' + vei);
     const anos = [p.ano_inicial, p.ano_final].filter(Boolean).join('-');
     if (anos) partes.push(anos + '.');
-    if (p.motor || p.motor_aplicacao) partes.push('Motor ' + (p.motor || p.motor_aplicacao) + '.');
+    if (p.motorizacao_alvo_veiculo || p.motor || p.motor_aplicacao) partes.push('Motor ' + (p.motorizacao_alvo_veiculo || p.motor || p.motor_aplicacao) + '.');
     return partes.join(' ');
   })();
   const descCurta = (p.descricao || p.voz_do_lojista || autoDescCurta).substring(0, 300);
@@ -2859,7 +2869,7 @@ async function montarPayloadProdutoBling(p) {
     tributacao: {
       ncm,
       origem: origemFiscal,
-      ...(p.cest ? { cest: (p.cest || '').replace(/\D/g, '') } : {}),
+      ...((p.codigo_cest || p.cest) ? { cest: (p.codigo_cest || p.cest || '').replace(/\D/g, '') } : {}),
     },
     estoque: { minimo: 0, maximo: 0, crossdocking: 0, localizacao: '' },
     ...(ean ? { gtin: ean } : {}),
@@ -3458,7 +3468,7 @@ app.post('/api/drive/exportar-produtos', async (req, res) => {
         sql += ' ORDER BY ntc DESC LIMIT 50000';
         const rows = db.db.prepare(sql).all(params);
 
-        const campos = ['sku','nome','ean','ncm','fabricante','codigo_oem','aplicacao',
+        const campos = ['sku','nome','ean','ncm','fabricante','part_number_automotivo','aplicacao',
             'preco_custo','preco_venda','categoria','subcategoria','linha',
             'url_fornecedor','imagem','ntc','decisao','fornecedor_nome','fonte'];
         const esc = v => { const s = v == null ? '' : String(v); return /[,"\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
@@ -3513,7 +3523,7 @@ app.post('/api/drive/importar-catalogo', async (req, res) => {
                     ean: get(row,'ean') || get(row,'gtin'),
                     ncm: get(row,'ncm'),
                     fabricante: get(row,'fabricante') || get(row,'marca') || get(row,'brand'),
-                    codigo_oem: get(row,'codigo_oem') || get(row,'oem') || get(row,'mpn'),
+                    part_number_automotivo: get(row,'part_number_automotivo') || get(row,'codigo_oem') || get(row,'oem') || get(row,'mpn'),
                     aplicacao: get(row,'aplicacao') || get(row,'application'),
                     preco_custo: parseFloat(get(row,'preco_custo') || get(row,'preco') || '0') || undefined,
                     categoria: get(row,'categoria') || get(row,'category'),

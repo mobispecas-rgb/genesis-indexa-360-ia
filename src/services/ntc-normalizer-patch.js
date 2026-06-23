@@ -171,7 +171,7 @@ function agenteParaNTC(d) {
   const av0 = Array.isArray(d.av?.aplicacoes) ? d.av.aplicacoes[0] : null;
   const aplicacoesAdicionais = Array.isArray(d.av?.aplicacoes) && d.av.aplicacoes.length > 1
     ? d.av.aplicacoes.slice(1).map(a =>
-        [a.montadora, a.modelo, a.motor, a.cilindrada,
+        [a.montadora, a.modelo, a.motorizacao_alvo_veiculo, a.cilindrada,
          a.ano_inicial && a.ano_final ? a.ano_inicial + '-' + a.ano_final : a.ano_inicial
         ].filter(Boolean).join(' ')
       ).join('\n')
@@ -180,25 +180,32 @@ function agenteParaNTC(d) {
   return {
     fabricante:          get(d.dna?.fabricante_original),
     fabricante_original: get(d.dna?.fabricante_original),
-    codigo_oem:          get(d.dna?.codigo_oem),
-    codigo_fabricante:   get(d.dna?.codigo_fabricante_normalizado) || get(d.dna?.codigo_oem),
+    part_number_automotivo: get(d.dna?.part_number_automotivo),
+    codigo_oem:          get(d.dna?.part_number_automotivo),
+    codigo_fabricante:   get(d.dna?.codigo_fabricante_normalizado) || get(d.dna?.part_number_automotivo),
     ean:                 get(d.dna?.ean),
+    codigo_ean:          get(d.dna?.ean),
     familia_tecnica:     get(d.dna?.categoria_produto),
     nome:                get(d.fm?.nome_tecnico_completo),
     funcao_tecnica:      get(d.fm?.funcao_tecnica),
     funcao:              get(d.fm?.funcao_tecnica),
     marca:               av0?.montadora    || null,
     marca_veiculo:       av0?.montadora    || null,
+    montadora_veiculo:   av0?.montadora    || null,
     modelo:              av0?.modelo       || null,
     modelo_veiculo:      av0?.modelo       || null,
-    motor:               av0?.motor        || null,
+    motorizacao_alvo_veiculo: av0?.motorizacao_alvo_veiculo || null,
+    motor:               av0?.motorizacao_alvo_veiculo || null,
     cilindrada:          av0?.cilindrada   || null,
     ano_inicial:         av0?.ano_inicial  || null,
     ano_final:           av0?.ano_final    || null,
     aplicacoes_adicionais: aplicacoesAdicionais,
     ncm:                 get(d.co?.ncm),
+    codigo_ncm:          get(d.co?.ncm),
     cest:                get(d.co?.cest),
+    codigo_cest:         get(d.co?.cest),
     material:            get(d.mc?.material),
+    composicao_material_peca: get(d.mc?.material),
     boletins:            toArray(d.bta?.boletins),
     substituicoes:       toArray(d.bta?.substituicoes),
     cc_oem:              toArray(d.cc?.cc_oem),
