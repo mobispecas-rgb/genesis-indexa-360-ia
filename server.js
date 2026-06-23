@@ -383,7 +383,6 @@ app.get('/api/ia/quota', (req, res) => {
 
 // ─── NTC Engine (Núcleo de Triangulação Certificada) ─────────
 const ntcEngine = require('./src/services/ntc-engine')
-const ntcNormalizerPatch = require('./src/services/ntc-normalizer-patch');
 
 // Motor NTC — 13 componentes — NUNCA inventa dados
 // normalizaAliases: converte os nomes que o frontend/DNA envia para os nomes que o ntc-engine lê

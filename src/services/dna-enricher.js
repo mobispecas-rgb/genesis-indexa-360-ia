@@ -10,6 +10,7 @@
 const https = require('https');
 const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON, fetchHtmlSeguro, htmlParaTexto } = require('./web-utils');
 const { listarSimilaresConfirmados, registrarUsoApi } = require('./db');
+const { validarRespostaAgente } = require('./ntc-normalizer-patch');
 
 // Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
 // são específicos demais por peça para herdar de um produto "parecido").
@@ -381,6 +382,16 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
 
     if (!canonico.codigo_entrada) canonico.codigo_entrada = codigoEntrada;
     auditarCanonicoCompleto(canonico);
+
+    // Camada extra de validação: rebaixa "confirmado" para "familia"/"nulo"
+    // quando as fontes citadas não são URLs específicas de produto (ex.: home
+    // page institucional da marca, domínio raiz) — auditarCanonicoCompleto já
+    // rebaixa por contagem de domínios, isto reforça pela qualidade da URL.
+    const { dados: canonicoValidado, auditoria } = validarRespostaAgente(canonico);
+    if (auditoria?.modificado) {
+      console.log(`[DNA v5.3] validarRespostaAgente rebaixou ${auditoria.total_rebaixamentos} campo(s) | ${codigoEntrada}`);
+    }
+    canonico = canonicoValidado;
 
     if (canonico.dna?.ean?.valor != null) {
       const s = String(canonico.dna.ean.valor).replace(/\D/g, '');
