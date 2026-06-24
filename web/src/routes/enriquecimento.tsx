@@ -46,12 +46,21 @@ export function Enriquecimento() {
     if (!loaded) loadFromServer();
   }, [loaded, loadFromServer]);
 
+  // Quando a navegação chega com ?id=X mas o produto não está no cache local
+  // (ex.: acabou de ser criado pelo Mapeador Universal, que não atualiza esta
+  // store), refaz o carregamento do servidor uma vez em vez de deixar a tela
+  // em branco.
+  const [refetchedForId, setRefetchedForId] = useState<string | null>(null);
   useEffect(() => {
-    if (id) {
-      const existing = getProduct(id);
-      if (existing) setProduct(existing);
+    if (!id || !loaded) return;
+    const existing = getProduct(id);
+    if (existing) {
+      setProduct(existing);
+    } else if (refetchedForId !== id) {
+      setRefetchedForId(id);
+      loadFromServer();
     }
-  }, [id, getProduct, loaded]);
+  }, [id, getProduct, loaded, refetchedForId, loadFromServer]);
 
   const ntc = useMemo(() => calcNtc(product), [product]);
   const missing = useMemo(() => missingCriteria(product), [product]);
