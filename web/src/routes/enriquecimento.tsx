@@ -70,23 +70,41 @@ export function Enriquecimento() {
     setProduct((p) => ({ ...p, [key]: value }));
   }
 
+  // Hábito comum vindo do Bling: colar "NOME - CODIGO - FABRICANTE" inteiro no
+  // campo SKU, deixando Fabricante/Nome em branco. A busca na web ainda
+  // funciona com o texto bruto, mas o cadastro nunca preenche fabricante/nome
+  // (trava o "O que falta para aprovação" e a herança por família técnica).
+  // Detecta o padrão de 3 partes e separa antes de buscar/salvar.
+  function separarSkuColado(p: Product): Product {
+    if (p.fabricante.trim() || p.nome.trim()) return p;
+    const partes = p.sku.split(" - ").map((s) => s.trim()).filter(Boolean);
+    if (partes.length !== 3) return p;
+    const [nome, codigo, fabricante] = partes;
+    return { ...p, sku: codigo, nome, fabricante };
+  }
+
   async function handleEnrich() {
     if (!product.nome && !product.sku) {
       toast.error("Informe ao menos o nome ou o SKU para buscar o DNA.");
       return;
     }
+    const separado = separarSkuColado(product);
+    if (separado !== product) {
+      setProduct(separado);
+      toast.info("SKU colado com nome/fabricante juntos — separei os campos automaticamente.");
+    }
     setEnriching(true);
     setProgress(20);
     try {
-      const { patch, sources, ntcReal, raw } = await apiEnriquecerDna(product);
+      const { patch, sources, ntcReal, raw } = await apiEnriquecerDna(separado);
       setProgress(70);
       setResultadoBusca(raw);
       const merged: Product = {
-        ...product,
+        ...separado,
         ...patch,
         enriched: true,
         dnaSources: sources,
-        ntc: ntcReal ?? product.ntc,
+        ntc: ntcReal ?? separado.ntc,
       };
       // Com SKU + marca + nome já em mãos, a mesma ação completa também a
       // descrição (template local, só com campos confirmados) e busca as
