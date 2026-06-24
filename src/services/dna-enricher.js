@@ -179,20 +179,39 @@ async function enriquecerComPaginaReal(resultados, max = 8) {
   return resultados;
 }
 
+async function buscarUmaQuery(q, numResultados) {
+  let res = await buscarSerper(q, numResultados);
+  if (res.length === 0) res = await buscarBrave(q, numResultados);
+  if (res.length === 0) res = await buscarDDG(q, numResultados);
+  return res;
+}
+
 async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10, nivel_busca }) {
   const base = [fabricante, sku, nome].filter(Boolean).join(' ');
   const queries = montarQueries(base, nivel_busca);
   const seen = new Set(); const all = [];
   for (const q of queries) {
-    let res = await buscarSerper(q, numResultados);
-    if (res.length === 0) res = await buscarBrave(q, numResultados);
-    if (res.length === 0) res = await buscarDDG(q, numResultados);
+    const res = await buscarUmaQuery(q, numResultados);
     for (const r of res) {
       if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
     }
   }
+
+  // SKUs com pouca presença web costumam não bater com nenhuma das queries
+  // compostas (termos extras como "ficha tecnica especificacoes catalogo"
+  // restringem demais a busca) — antes de desistir, tenta o termo puro
+  // (sku/nome/fabricante sem sufixo) como última rede de segurança.
+  let usouFallback = false;
+  if (all.length === 0 && base) {
+    usouFallback = true;
+    const res = await buscarUmaQuery(base, numResultados);
+    for (const r of res) {
+      if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
+    }
+  }
+
   await enriquecerComPaginaReal(all, nivel_busca === 'agressivo' ? 12 : 8);
-  console.log(`[DNA v5.3] ${all.length} fontes encontradas (${queries.length} queries)`);
+  console.log(`[DNA v5.3] ${all.length} fontes encontradas (${queries.length} queries${usouFallback ? ' + fallback termo puro' : ''})`);
   return all;
 }
 
