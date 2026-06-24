@@ -103,14 +103,14 @@ export function Enriquecimento() {
         });
       }
     } catch (e) {
-      // Mensagens de erro de API (ex.: 429 do Gemini) podem vir longas — nunca
-      // jogar o texto bruto no toast, só um resumo curto e amigável.
+      // Mensagens de erro de API (ex.: saldo insuficiente do DeepSeek) podem vir
+      // longas — nunca jogar o texto bruto no toast, só um resumo curto e amigável.
       const msg = (e as Error).message || "Erro desconhecido";
       const curta = msg.length > 160 ? `${msg.slice(0, 160)}…` : msg;
       toast.error("Falha ao buscar DNA na web", {
-        description: curta.toLowerCase().includes("cota") || curta.toLowerCase().includes("esgotada")
+        description: curta.toLowerCase().includes("cota") || curta.toLowerCase().includes("esgotada") || curta.toLowerCase().includes("balance")
           ? curta
-          : `${curta} — verifique se GEMINI_API_KEY/ANTHROPIC_API_KEY (e SERPER_API_KEY) estão configuradas no Render.`,
+          : `${curta} — verifique se DEEPSEEK_API_KEY (e SERPER_API_KEY) estão configuradas no Render.`,
       });
     } finally {
       setEnriching(false);
