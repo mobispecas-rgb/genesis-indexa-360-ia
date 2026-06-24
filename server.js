@@ -827,6 +827,16 @@ function statusLuminoso(ntc) {
     return 'vermelho';
 }
 
+// Detecta quando a IA "alucinou" um SKU concatenando nome+código+fabricante
+// (ex.: "TENSOR DA CORREIA DENTADA - V57313 - CONTITECH") em vez de extrair
+// só o código real — viola a regra de ouro do NTC (nunca inventar). Um SKU/
+// part number de verdade não tem 3+ segmentos separados por " - ".
+function skuPareceDescricaoInventada(sku) {
+    if (!sku) return false;
+    const segmentos = String(sku).split(/\s+-\s+/).filter(Boolean);
+    return segmentos.length >= 3;
+}
+
 // Divide o texto bruto em lotes menores para o Mapeador Universal — catálogos
 // grandes estouram o limite de tokens de saída da IA antes de fechar o JSON.
 // Tenta quebrar em uma quebra de linha próxima do limite, para não cortar um
@@ -925,6 +935,14 @@ app.post('/api/mapeador-universal/processar', async (req, res) => {
         const produtos = [];
         for (const item of extraidos) {
             if (!item.sku || !item.nome) continue;
+
+            if (skuPareceDescricaoInventada(item.sku)) {
+                if (item.part_number_automotivo && !skuPareceDescricaoInventada(item.part_number_automotivo)) {
+                    item.sku = item.part_number_automotivo;
+                } else {
+                    continue; // sem código real identificável — não inventa, não cadastra
+                }
+            }
 
             if (item.codigo_ncm && !validarNCM(item.codigo_ncm)) item.codigo_ncm = null;
             if (item.ean && !validarGTIN(item.ean)) item.ean = null;
