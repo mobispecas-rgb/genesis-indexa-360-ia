@@ -827,17 +827,28 @@ function statusLuminoso(ntc) {
     return 'vermelho';
 }
 
-app.post('/api/mapeador-universal/processar', async (req, res) => {
-    const { texto, fornecedor_nome } = req.body;
-    if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
-    if (!process.env.DEEPSEEK_API_KEY) return res.json({ ok: false, erro: 'DEEPSEEK_API_KEY não configurada', produtos: [] });
+// Divide o texto bruto em lotes menores para o Mapeador Universal — catálogos
+// grandes estouram o limite de tokens de saída da IA antes de fechar o JSON.
+// Tenta quebrar em uma quebra de linha próxima do limite, para não cortar um
+// produto no meio.
+function dividirEmLotes(texto, tamanho = 12000) {
+    const t = String(texto);
+    if (t.length <= tamanho) return [t];
+    const lotes = [];
+    let pos = 0;
+    while (pos < t.length) {
+        let fim = Math.min(pos + tamanho, t.length);
+        if (fim < t.length) {
+            const quebra = t.lastIndexOf('\n', fim);
+            if (quebra > pos + tamanho * 0.5) fim = quebra;
+        }
+        lotes.push(t.slice(pos, fim));
+        pos = fim;
+    }
+    return lotes;
+}
 
-    const imagensDoTexto = extrairUrlsImagem(texto);
-
-    try {
-        const { texto: respostaTexto, finishReason } = await chamarLLM({
-            maxTokens: 8000,
-            system: `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
+const SYSTEM_PROMPT_MAPEADOR_UNIVERSAL = `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
 
 Vai receber um texto bruto colado pelo usuário (pode ser HTML simplificado, planilha colada, payload de API, e-mail de fornecedor, ficha técnica, etc.) contendo um ou mais produtos.
 
@@ -867,20 +878,48 @@ REGRAS ABSOLUTAS:
 3. Sem "sku" e sem "nome" identificáveis, NÃO inclua o produto no resultado.
 4. Se houver uma tabela de aplicações veiculares com várias linhas (montadora/modelo/motor/ano), preencha TODAS em "aplicacoes" — não descarte nenhuma linha.
 5. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
-[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "ean": null, "material": null, "cross_codes": [], "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`,
-            userContent: texto.slice(0, 30000),
-        });
+[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "ean": null, "material": null, "cross_codes": [], "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`;
 
-        let extraidos;
-        try {
-            const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
-            extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
-            if (!Array.isArray(extraidos)) extraidos = [];
-        } catch (e) {
-            const motivo = finishReason === 'length'
-                ? 'Resposta da IA foi truncada (catálogo muito extenso). Cole um trecho menor por vez.'
-                : 'Parse JSON: ' + e.message;
-            return res.json({ ok: false, erro: motivo, produtos: [] });
+// Extrai os produtos de UM lote de texto via IA. Retorna { extraidos, erro }
+// — nunca lança, para que o caller possa continuar processando os demais
+// lotes mesmo se um deles falhar.
+async function extrairProdutosDoLote(lote) {
+    const { texto: respostaTexto, finishReason } = await chamarLLM({
+        maxTokens: 8000,
+        system: SYSTEM_PROMPT_MAPEADOR_UNIVERSAL,
+        userContent: lote,
+    });
+    try {
+        const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
+        const extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
+        return { extraidos: Array.isArray(extraidos) ? extraidos : [], erro: null };
+    } catch (e) {
+        const motivo = finishReason === 'length'
+            ? 'Lote truncado pela IA (trecho ainda muito extenso)'
+            : 'Parse JSON: ' + e.message;
+        return { extraidos: [], erro: motivo };
+    }
+}
+
+app.post('/api/mapeador-universal/processar', async (req, res) => {
+    const { texto, fornecedor_nome } = req.body;
+    if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
+    if (!process.env.DEEPSEEK_API_KEY) return res.json({ ok: false, erro: 'DEEPSEEK_API_KEY não configurada', produtos: [] });
+
+    const imagensDoTexto = extrairUrlsImagem(texto);
+
+    try {
+        const lotes = dividirEmLotes(texto);
+        const extraidos = [];
+        const errosLotes = [];
+        for (const lote of lotes) {
+            const resultado = await extrairProdutosDoLote(lote);
+            extraidos.push(...resultado.extraidos);
+            if (resultado.erro) errosLotes.push(resultado.erro);
+        }
+
+        if (!extraidos.length && errosLotes.length) {
+            return res.json({ ok: false, erro: errosLotes[0], produtos: [] });
         }
 
         const produtos = [];
@@ -946,7 +985,12 @@ REGRAS ABSOLUTAS:
             produtos.push({ id: salvo.id, sku: item.sku, nome: item.nome, ntc: resultado.ntc, decisao: resultado.decisao, status: statusLuminoso(resultado.ntc) });
         }
 
-        res.json({ ok: true, total: produtos.length, produtos });
+        res.json({
+            ok: true,
+            total: produtos.length,
+            produtos,
+            aviso: errosLotes.length ? `${errosLotes.length} de ${lotes.length} lote(s) tiveram problemas: ${errosLotes[0]}` : undefined,
+        });
     } catch (e) {
         console.error('[Mapeador Universal] IA:', e.message);
         res.json({ ok: false, erro: e.message, produtos: [] });
