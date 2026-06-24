@@ -317,15 +317,20 @@ async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   try { trechos = await buscarMultiQuery({ fabricante, sku, nome, numResultados, nivel_busca }); }
   catch (e) { console.error('[DNA v5.3] busca:', e.message); }
 
-  // 2. LLM — com resultados de busca OU com conhecimento de treinamento
+  // 2. LLM — SEMPRE com base nos resultados de busca real. Conhecimento de
+  // treinamento do DeepSeek NUNCA é usado como substituto de fonte web: a
+  // regra de ouro do NTC ("sem evidência = null") não admite excecão para
+  // "lembrar" um catálogo de memória, porque não há como auditar/citar a URL
+  // exata — é exatamente esse tipo de "lembrança" que produz dado errado
+  // (cross-reference, NCM, aplicação) sem nenhuma fonte real por trás.
   const usouBusca = trechos.length > 0;
   try {
     const contexto = usouBusca
       ? `Resultados de busca (${trechos.length} fontes):\n` +
         trechos.map((t, i) => `[${i+1}] ${t.titulo}\nURL: ${t.fonte}\n${t.trecho}`).join('\n\n')
-      : `Nenhum resultado de busca disponível. Use seu conhecimento de treinamento sobre este produto.\n` +
-        `Para campos baseados em conhecimento de treinamento (não em fonte web ao vivo), use confianca="familia".\n` +
-        `Cite as fontes que você conhece do treinamento (ex: catálogos Mahle, NGK, Toyota OEM, Mercado Livre etc).`;
+      : `Nenhum resultado de busca disponível para este produto. NÃO use conhecimento de treinamento/memória ` +
+        `para preencher campos — isso viola a regra de ouro do NTC (nunca inventar sem fonte real auditável). ` +
+        `Retorne TODOS os campos com confianca="nulo", valor=null e fontes=[], e status="nao_encontrado".`;
 
     const userContent =
       `CÓDIGO: ${codigoEntrada}\nPRODUTO: ${termoBase}\n\n` +
