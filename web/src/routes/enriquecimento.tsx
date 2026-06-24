@@ -70,23 +70,63 @@ export function Enriquecimento() {
     setProduct((p) => ({ ...p, [key]: value }));
   }
 
-  async function handleEnrich() {
-    if (!product.nome && !product.sku) {
+  // Hábito comum vindo do Bling: colar "NOME - CODIGO - FABRICANTE" inteiro
+  // (no campo SKU ou na busca rápida), em vez de preencher os 3 campos
+  // separados. Reconhece "X - Y - Z" (nome - código - fabricante) e "X - Y"
+  // (nome - código); texto sem " - " é tratado como o próprio código/SKU.
+  function separarTextoColado(texto: string): { sku: string; nome: string; fabricante: string } {
+    const partes = texto.split(" - ").map((s) => s.trim()).filter(Boolean);
+    if (partes.length >= 3) {
+      const fabricante = partes[partes.length - 1];
+      const sku = partes[partes.length - 2];
+      const nome = partes.slice(0, partes.length - 2).join(" - ");
+      return { sku, nome, fabricante };
+    }
+    if (partes.length === 2) return { sku: partes[1], nome: partes[0], fabricante: "" };
+    return { sku: texto.trim(), nome: "", fabricante: "" };
+  }
+
+  function separarSkuColado(p: Product): Product {
+    if (p.fabricante.trim() || p.nome.trim()) return p;
+    const partes = p.sku.split(" - ").map((s) => s.trim()).filter(Boolean);
+    if (partes.length !== 3) return p;
+    const { sku, nome, fabricante } = separarTextoColado(p.sku);
+    return { ...p, sku, nome, fabricante };
+  }
+
+  const [buscaRapida, setBuscaRapida] = useState("");
+  async function handleBuscaRapida() {
+    if (!buscaRapida.trim()) return;
+    const { sku, nome, fabricante } = separarTextoColado(buscaRapida);
+    const preenchido: Product = { ...product, sku, nome, fabricante };
+    setProduct(preenchido);
+    setBuscaRapida("");
+    await handleEnrich(preenchido);
+  }
+
+  async function handleEnrich(base?: Product) {
+    const partida = base ?? product;
+    if (!partida.nome && !partida.sku) {
       toast.error("Informe ao menos o nome ou o SKU para buscar o DNA.");
       return;
+    }
+    const separado = separarSkuColado(partida);
+    if (separado !== partida) {
+      setProduct(separado);
+      toast.info("SKU colado com nome/fabricante juntos — separei os campos automaticamente.");
     }
     setEnriching(true);
     setProgress(20);
     try {
-      const { patch, sources, ntcReal, raw } = await apiEnriquecerDna(product);
+      const { patch, sources, ntcReal, raw } = await apiEnriquecerDna(separado);
       setProgress(70);
       setResultadoBusca(raw);
       const merged: Product = {
-        ...product,
+        ...separado,
         ...patch,
         enriched: true,
         dnaSources: sources,
-        ntc: ntcReal ?? product.ntc,
+        ntc: ntcReal ?? separado.ntc,
       };
       // Com SKU + marca + nome já em mãos, a mesma ação completa também a
       // descrição (template local, só com campos confirmados) e busca as
@@ -220,7 +260,7 @@ export function Enriquecimento() {
             <span className="text-xs uppercase tracking-wide text-muted-foreground">Motor NTC 4.0</span>
             <NtcGauge value={ntc} />
             <button
-              onClick={handleEnrich}
+              onClick={() => handleEnrich()}
               disabled={enriching}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
             >
@@ -304,6 +344,32 @@ export function Enriquecimento() {
         </aside>
         {/* Formulário */}
         <div className="space-y-6">
+          {/* Busca rápida: cola "Nome - Código - Fabricante" (ou só o código/SKU/OEM)
+              num único campo e a tela separa e busca o DNA sozinha. */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <h3 className="font-display text-sm font-semibold">Busca rápida</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cole tudo junto — ex.: <span className="font-mono">Junta de Cabecote Metalica - 82792 - Sabo</span> —
+              ou só o código/SKU/OEM. A tela separa os campos e busca o DNA na web sozinha.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <input
+                className={inputCls}
+                placeholder="Nome - Código - Fabricante (ou só o código/SKU/OEM)"
+                value={buscaRapida}
+                onChange={(e) => setBuscaRapida(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleBuscaRapida(); }}
+              />
+              <button
+                onClick={handleBuscaRapida}
+                disabled={enriching || !buscaRapida.trim()}
+                className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+              >
+                {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                Buscar e preencher
+              </button>
+            </div>
+          </div>
           {/* Web data */}
           {product.dnaSources.length > 0 && (
             <div className="rounded-xl border border-info/30 bg-info/5 p-4">
