@@ -3,7 +3,7 @@ import { Gauge, AlertTriangle } from "lucide-react";
 import { apiQuotaIa, type QuotaIa } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Mostra ao lojista quantas chamadas de IA (Gemini/Claude) já foram usadas
+// Mostra ao lojista quantas chamadas de IA (DeepSeek) já foram usadas
 // hoje no enriquecimento DNA e quantas ainda restam, para calcular quantos
 // produtos ainda pode cadastrar/enriquecer no dia antes de bater a cota.
 export function QuotaIaWidget() {

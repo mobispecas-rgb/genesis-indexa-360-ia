@@ -10,9 +10,9 @@ services:
         value: /opt/render/project/src/data
       - key: DEEPSEEK_API_KEY
         sync: false
-      - key: GEMINI_API_KEY
-        sync: false
       - key: SERPER_API_KEY
+        sync: false
+      - key: BRAVE_API_KEY
         sync: false
       - key: GOOGLE_SEARCH_KEY
         sync: false

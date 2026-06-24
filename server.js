@@ -543,10 +543,10 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
     res.json(resultado);
 });
 
-// Busca Vetorial (Vector Search) — embeddings via Gemini + similaridade de
-// cosseno sobre o DNA/OEM/aplicação/cross-codes já indexados pelo job de
-// auto-enriquecimento (src/services/vector-search-service.js). Roda dentro
-// do próprio Genesis, sem depender de BigQuery/Vertex AI Vector Search.
+// Busca Vetorial (Vector Search) — comparação semântica via DeepSeek sobre o
+// DNA/OEM/aplicação/cross-codes já indexados pelo job de auto-enriquecimento
+// (src/services/vector-search-service.js). Roda dentro do próprio Genesis,
+// sem depender de BigQuery/Vertex AI Vector Search nem de Gemini.
 //
 // REGRA NTC: cada item de `resultados` é uma SUGESTÃO (status "Sugestão
 // Vetorial"), nunca um dado confirmado — `valor`/`fonte`/`url_origem` vêm
@@ -827,17 +827,38 @@ function statusLuminoso(ntc) {
     return 'vermelho';
 }
 
-app.post('/api/mapeador-universal/processar', async (req, res) => {
-    const { texto, fornecedor_nome } = req.body;
-    if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
-    if (!process.env.DEEPSEEK_API_KEY) return res.json({ ok: false, erro: 'DEEPSEEK_API_KEY não configurada', produtos: [] });
+// Detecta quando a IA "alucinou" um SKU concatenando nome+código+fabricante
+// (ex.: "TENSOR DA CORREIA DENTADA - V57313 - CONTITECH") em vez de extrair
+// só o código real — viola a regra de ouro do NTC (nunca inventar). Um SKU/
+// part number de verdade não tem 3+ segmentos separados por " - ".
+function skuPareceDescricaoInventada(sku) {
+    if (!sku) return false;
+    const segmentos = String(sku).split(/\s+-\s+/).filter(Boolean);
+    return segmentos.length >= 3;
+}
 
-    const imagensDoTexto = extrairUrlsImagem(texto);
+// Divide o texto bruto em lotes menores para o Mapeador Universal — catálogos
+// grandes estouram o limite de tokens de saída da IA antes de fechar o JSON.
+// Tenta quebrar em uma quebra de linha próxima do limite, para não cortar um
+// produto no meio.
+function dividirEmLotes(texto, tamanho = 12000) {
+    const t = String(texto);
+    if (t.length <= tamanho) return [t];
+    const lotes = [];
+    let pos = 0;
+    while (pos < t.length) {
+        let fim = Math.min(pos + tamanho, t.length);
+        if (fim < t.length) {
+            const quebra = t.lastIndexOf('\n', fim);
+            if (quebra > pos + tamanho * 0.5) fim = quebra;
+        }
+        lotes.push(t.slice(pos, fim));
+        pos = fim;
+    }
+    return lotes;
+}
 
-    try {
-        const { texto: respostaTexto, finishReason } = await chamarLLM({
-            maxTokens: 8000,
-            system: `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
+const SYSTEM_PROMPT_MAPEADOR_UNIVERSAL = `Você é um motor agnóstico de extração de dados de autopeças — NUNCA presuma o fornecedor/fabricante pelo formato do texto, apenas extraia o que estiver explícito.
 
 Vai receber um texto bruto colado pelo usuário (pode ser HTML simplificado, planilha colada, payload de API, e-mail de fornecedor, ficha técnica, etc.) contendo um ou mais produtos.
 
@@ -867,25 +888,61 @@ REGRAS ABSOLUTAS:
 3. Sem "sku" e sem "nome" identificáveis, NÃO inclua o produto no resultado.
 4. Se houver uma tabela de aplicações veiculares com várias linhas (montadora/modelo/motor/ano), preencha TODAS em "aplicacoes" — não descarte nenhuma linha.
 5. Responda APENAS com um array JSON válido, sem markdown, no formato exato (todos os produtos encontrados):
-[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "ean": null, "material": null, "cross_codes": [], "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`,
-            userContent: texto.slice(0, 30000),
-        });
+[{"sku": null, "nome": null, "fabricante": null, "part_number_automotivo": null, "imagens": [], "codigo_ncm": null, "codigo_cest": null, "ean": null, "material": null, "cross_codes": [], "peso_bruto": null, "peso_liquido": null, "comprimento": null, "largura": null, "altura": null, "categoria": null, "subcategoria": null, "montadora_veiculo": null, "modelo_veiculo": null, "motorizacao_alvo_veiculo": null, "ano_inicial": null, "ano_final": null, "aplicacoes": [], "descricao_comercial": null, "tags": []}]`;
 
-        let extraidos;
-        try {
-            const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
-            extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
-            if (!Array.isArray(extraidos)) extraidos = [];
-        } catch (e) {
-            const motivo = finishReason === 'length'
-                ? 'Resposta da IA foi truncada (catálogo muito extenso). Cole um trecho menor por vez.'
-                : 'Parse JSON: ' + e.message;
-            return res.json({ ok: false, erro: motivo, produtos: [] });
+// Extrai os produtos de UM lote de texto via IA. Retorna { extraidos, erro }
+// — nunca lança, para que o caller possa continuar processando os demais
+// lotes mesmo se um deles falhar.
+async function extrairProdutosDoLote(lote) {
+    const { texto: respostaTexto, finishReason } = await chamarLLM({
+        maxTokens: 8000,
+        system: SYSTEM_PROMPT_MAPEADOR_UNIVERSAL,
+        userContent: lote,
+    });
+    try {
+        const jsonMatch = respostaTexto.match(/\[[\s\S]*\]/);
+        const extraidos = JSON.parse(jsonMatch ? jsonMatch[0] : respostaTexto);
+        return { extraidos: Array.isArray(extraidos) ? extraidos : [], erro: null };
+    } catch (e) {
+        const motivo = finishReason === 'length'
+            ? 'Lote truncado pela IA (trecho ainda muito extenso)'
+            : 'Parse JSON: ' + e.message;
+        return { extraidos: [], erro: motivo };
+    }
+}
+
+app.post('/api/mapeador-universal/processar', async (req, res) => {
+    const { texto, fornecedor_nome } = req.body;
+    if (!texto || !texto.trim()) return res.status(400).json({ ok: false, erro: 'Texto bruto é obrigatório' });
+    if (!process.env.DEEPSEEK_API_KEY) return res.json({ ok: false, erro: 'DEEPSEEK_API_KEY não configurada', produtos: [] });
+
+    const imagensDoTexto = extrairUrlsImagem(texto);
+
+    try {
+        const lotes = dividirEmLotes(texto);
+        const extraidos = [];
+        const errosLotes = [];
+        for (const lote of lotes) {
+            const resultado = await extrairProdutosDoLote(lote);
+            extraidos.push(...resultado.extraidos);
+            if (resultado.erro) errosLotes.push(resultado.erro);
+        }
+
+        if (!extraidos.length && errosLotes.length) {
+            return res.json({ ok: false, erro: errosLotes[0], produtos: [] });
         }
 
         const produtos = [];
         for (const item of extraidos) {
             if (!item.sku || !item.nome) continue;
+
+            if (skuPareceDescricaoInventada(item.sku)) {
+                if (item.part_number_automotivo && !skuPareceDescricaoInventada(item.part_number_automotivo)) {
+                    item.sku = item.part_number_automotivo;
+                } else {
+                    continue; // sem código real identificável — não inventa, não cadastra
+                }
+            }
 
             if (item.codigo_ncm && !validarNCM(item.codigo_ncm)) item.codigo_ncm = null;
             if (item.ean && !validarGTIN(item.ean)) item.ean = null;
@@ -946,7 +1003,12 @@ REGRAS ABSOLUTAS:
             produtos.push({ id: salvo.id, sku: item.sku, nome: item.nome, ntc: resultado.ntc, decisao: resultado.decisao, status: statusLuminoso(resultado.ntc) });
         }
 
-        res.json({ ok: true, total: produtos.length, produtos });
+        res.json({
+            ok: true,
+            total: produtos.length,
+            produtos,
+            aviso: errosLotes.length ? `${errosLotes.length} de ${lotes.length} lote(s) tiveram problemas: ${errosLotes[0]}` : undefined,
+        });
     } catch (e) {
         console.error('[Mapeador Universal] IA:', e.message);
         res.json({ ok: false, erro: e.message, produtos: [] });
@@ -1017,7 +1079,8 @@ app.get('/api/imagens/buscar', async (req, res) => {
     const { q, fonte } = req.query;
     if (!q) return res.json({ ok: false, erro: 'Parametro q obrigatorio', imagens: [] });
 
-    if (!process.env.BRAVE_API_KEY && !process.env.SERPER_API_KEY && !(process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX)) {
+    const temProvedorReal = process.env.BRAVE_API_KEY || process.env.SERPER_API_KEY || (process.env.GOOGLE_SEARCH_KEY && process.env.GOOGLE_SEARCH_CX);
+    if (!temProvedorReal && !process.env.DEEPSEEK_API_KEY) {
         return res.json({
             ok: false, imagens: [],
             mensagem: 'Configure BRAVE_API_KEY (primário) ou SERPER_API_KEY no Render para busca de imagens.',
@@ -1027,7 +1090,7 @@ app.get('/api/imagens/buscar', async (req, res) => {
 
     try {
         const imagens = await buscarImagensReais(q, 12);
-        const provider = process.env.BRAVE_API_KEY ? 'brave' : process.env.SERPER_API_KEY ? 'serper' : 'google';
+        const provider = process.env.BRAVE_API_KEY ? 'brave' : process.env.SERPER_API_KEY ? 'serper' : process.env.GOOGLE_SEARCH_KEY ? 'google' : 'deepseek';
         res.json({ ok: true, imagens, total: imagens.length, q, fonte, provider });
     } catch (e) {
         res.json({ ok: false, erro: e.message, imagens: [] });

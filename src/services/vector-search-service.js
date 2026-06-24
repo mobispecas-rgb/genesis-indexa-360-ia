@@ -1,10 +1,10 @@
 'use strict';
 
-// Busca Vetorial (Vector Search) do Genesis — gera embeddings via Gemini
-// (@google/genai, mesma GEMINI_API_KEY do enriquecimento de DNA) e faz busca
-// por similaridade de cosseno sobre os vetores persistidos no SQLite
-// (tabela produto_embeddings). Não depende de infraestrutura externa
-// (BigQuery/Vertex AI Vector Search) — tudo roda dentro do próprio Genesis.
+// Busca Vetorial (Vector Search) do Genesis — usa o mesmo motor único de IA
+// (DeepSeek, src/services/llm.js) para comparação semântica entre o texto de
+// busca e os textos já indexados de cada produto. Não depende de embeddings
+// nem de infraestrutura externa (BigQuery/Vertex AI Vector Search) — tudo
+// roda dentro do próprio Genesis, com uma única API/chave (DEEPSEEK_API_KEY).
 //
 // REGRA NTC PARA VECTOR SEARCH (não violar):
 // Este módulo NUNCA cria/confirma sozinho aplicação veicular (AV), código OEM
@@ -15,13 +15,12 @@
 // reais depois de validação documental (ex.: confirmados via
 // dna-enricher.js, que sempre exige fonte_url). Só então o dado pode
 // alimentar os módulos AV/CC/CO/DNA do ntc-engine.js. A `confianca` aqui é
-// derivada PURAMENTE da similaridade vetorial (não é confiança documental) e
+// derivada PURAMENTE da similaridade semântica (não é confiança documental) e
 // NUNCA deve ser usada para aumentar o score NTC.
 const db = require('./db');
+const { chamarLLM } = require('./llm');
 
-// text-embedding-004 foi descontinuado na Gemini API (retorna 404 em v1beta);
-// gemini-embedding-001 é o modelo de embedding atual.
-const MODELO_EMBEDDING = process.env.EMBEDDING_MODEL || 'gemini-embedding-001';
+const MODELO_EMBEDDING = 'deepseek-semantic-match';
 
 // Campos vetoriais indexáveis e o texto composto que cada um representa,
 // extraído do mesmo objeto `dados` usado pelo NTC engine / DNA enricher.
@@ -58,49 +57,21 @@ function textoCrossCodes(dados) {
 
 const GERADORES_TEXTO = { dna: textoDna, oem: textoOem, aplicacao: textoAplicacao, cross_codes: textoCrossCodes };
 
-// Gera o vetor de embedding de um texto via Gemini. Lança erro se
-// GEMINI_API_KEY não estiver configurada ou se a chamada falhar.
-async function gerarEmbedding(texto) {
-    if (!texto || !texto.trim()) return null;
-    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY não configurada');
-
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.embedContent({ model: MODELO_EMBEDDING, contents: texto });
-
-    const valores = response?.embeddings?.[0]?.values || response?.embedding?.values;
-    if (!Array.isArray(valores) || !valores.length) throw new Error('Resposta de embedding vazia');
-    return valores;
-}
-
-function similaridadeCosseno(a, b) {
-    if (!Array.isArray(a) || !Array.isArray(b) || !a.length || a.length !== b.length) return 0;
-    let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < a.length; i++) {
-        dot += a[i] * b[i];
-        normA += a[i] * a[i];
-        normB += b[i] * b[i];
-    }
-    if (!normA || !normB) return 0;
-    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-// Indexa (ou reindexa) os embeddings de um produto para todos os campos
-// vetoriais com texto disponível. Chamado pelo job de auto-enriquecimento
-// depois do DNA preenchido, para manter a busca vetorial sempre atualizada.
+// Indexa (ou reindexa) os textos compostos de um produto para todos os
+// campos vetoriais com texto disponível. Chamado pelo job de
+// auto-enriquecimento depois do DNA preenchido, para manter a busca
+// sempre atualizada. Não chama IA — só persiste o texto composto; a
+// comparação semântica acontece em buscarSimilaridade, no momento da busca.
 async function indexarProduto(row) {
-    if (!process.env.GEMINI_API_KEY) return { ok: false, erro: 'GEMINI_API_KEY não configurada', indexados: [] };
     const dados = row.dados || {};
     const indexados = [];
     for (const campo of CAMPOS_VETOR) {
         const texto = GERADORES_TEXTO[campo](dados);
         if (!texto || !texto.trim()) continue;
         try {
-            const embedding = await gerarEmbedding(texto);
-            if (!embedding) continue;
             db.salvarEmbeddingProduto({
                 produto_id: row.id, sku: row.sku, campo, texto,
-                embedding: JSON.stringify(embedding), modelo: MODELO_EMBEDDING,
+                embedding: JSON.stringify([]), modelo: MODELO_EMBEDDING,
             });
             indexados.push(campo);
         } catch (e) {
@@ -119,43 +90,65 @@ function classificarConfiancaVetorial(similaridade) {
     return 'baixa';
 }
 
-// Busca por similaridade de cosseno entre o texto de busca e os embeddings
-// já indexados de um campo (dna | oem | aplicacao | cross_codes). Retorna
-// SUGESTÕES (não dados confirmados) dos produtos mais próximos (similaridade
-// >= threshold), ordenados desc. Cada sugestão tem `valor: null`,
-// `fonte: null`, `url_origem: null` e `status: "Sugestão Vetorial"` — só uma
-// validação documental posterior (ex.: dna-enricher.js) pode promover o
-// `valor_sugerido` a dado real e alimentar os módulos AV/CC/CO/DNA do NTC.
+// Busca por similaridade semântica (via DeepSeek) entre o texto de busca e
+// os textos já indexados de um campo (dna | oem | aplicacao | cross_codes).
+// Retorna SUGESTÕES (não dados confirmados) dos produtos mais próximos
+// (similaridade >= threshold), ordenados desc. Cada sugestão tem
+// `valor: null`, `fonte: null`, `url_origem: null` e
+// `status: "Sugestão Vetorial"` — só uma validação documental posterior
+// (ex.: dna-enricher.js) pode promover o `valor_sugerido` a dado real e
+// alimentar os módulos AV/CC/CO/DNA do NTC.
 async function buscarSimilaridade(texto, { campo = 'dna', limit = 5, threshold = 0.85 } = {}) {
     if (!CAMPOS_VETOR.includes(campo)) throw new Error(`campo inválido: ${campo}`);
-    const embeddingBusca = await gerarEmbedding(texto);
-    if (!embeddingBusca) return [];
+    if (!texto || !texto.trim()) return [];
 
     const linhas = db.listarEmbeddingsPorCampo(campo);
-    const resultados = linhas.map(l => {
-        let embedding = [];
-        try { embedding = JSON.parse(l.embedding); } catch (e) { /* linha corrompida — similaridade 0 */ }
-        return {
-            produto_id: l.produto_id,
-            sku: l.sku,
-            campo,
-            valor_sugerido: l.texto,
-            similaridade: similaridadeCosseno(embeddingBusca, embedding),
-        };
-    });
+    if (!linhas.length) return [];
 
-    return resultados
-        .filter(r => r.similaridade >= threshold)
+    const candidatos = linhas.map((l, i) => `${i}: ${l.texto}`).join('\n');
+    const system = 'Voce e um motor de similaridade semantica para pecas automotivas (autopecas). ' +
+        'Compare o texto de busca com cada candidato numerado da lista e responda APENAS com um JSON array ' +
+        '(sem markdown, sem comentarios) no formato [{"indice":N,"similaridade":0.0a1.0}], contendo somente ' +
+        'os candidatos cuja similaridade tecnica (mesmo codigo/peca/fabricante/aplicacao) seja >= ' + threshold + '. ' +
+        'Nunca invente correspondencia — se nenhum candidato for realmente similar, responda [].';
+    const userContent = `Texto de busca: "${texto}"\n\nCandidatos:\n${candidatos}`;
+
+    let resposta;
+    try {
+        ({ texto: resposta } = await chamarLLM({ system, userContent, maxTokens: 1500 }));
+    } catch (e) {
+        console.error('[Vector Search] buscarSimilaridade DeepSeek:', e.message);
+        return [];
+    }
+
+    let pares = [];
+    try {
+        const jsonStr = resposta.match(/\[[\s\S]*\]/)?.[0] || '[]';
+        pares = JSON.parse(jsonStr);
+    } catch (e) {
+        console.error('[Vector Search] resposta DeepSeek invalida:', e.message);
+        return [];
+    }
+
+    return pares
+        .filter(p => Number.isInteger(p.indice) && linhas[p.indice] && typeof p.similaridade === 'number' && p.similaridade >= threshold)
         .sort((a, b) => b.similaridade - a.similaridade)
         .slice(0, limit)
-        .map(r => ({
-            ...r,
-            valor: null,
-            fonte: null,
-            url_origem: null,
-            confianca: classificarConfiancaVetorial(r.similaridade),
-            status: 'Sugestão Vetorial',
-        }));
+        .map(p => {
+            const l = linhas[p.indice];
+            return {
+                produto_id: l.produto_id,
+                sku: l.sku,
+                campo,
+                valor_sugerido: l.texto,
+                similaridade: p.similaridade,
+                valor: null,
+                fonte: null,
+                url_origem: null,
+                confianca: classificarConfiancaVetorial(p.similaridade),
+                status: 'Sugestão Vetorial',
+            };
+        });
 }
 
 function buscarOEM(texto, opts = {}) { return buscarSimilaridade(texto, { ...opts, campo: 'oem' }); }
@@ -165,8 +158,6 @@ function buscarDNA(texto, opts = {}) { return buscarSimilaridade(texto, { ...opt
 
 module.exports = {
     CAMPOS_VETOR,
-    gerarEmbedding,
-    similaridadeCosseno,
     classificarConfiancaVetorial,
     indexarProduto,
     buscarSimilaridade,
