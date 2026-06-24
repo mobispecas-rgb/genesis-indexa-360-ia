@@ -70,7 +70,7 @@ async function buscarBrave(query, num) {
   try {
     const data = await httpsJSON({
       hostname: 'api.search.brave.com',
-      path: '/res/v1/web/search?q=' + encodeURIComponent(query) + '&count=' + Math.min(num, 20) + '&country=br&search_lang=pt',
+      path: '/res/v1/web/search?q=' + encodeURIComponent(query) + '&count=' + Math.min(num, 20) + '&country=br&search_lang=pt-br',
       method: 'GET',
       headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY.trim() }
     }, null, 10000);
