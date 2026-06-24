@@ -169,7 +169,7 @@ async function colonizarImagensSeNecessario(row, dados, acoes, forcar) {
 // (src/services/vector-search-service.js), para que o matching semântico
 // reflita sempre o DNA mais recente do produto.
 async function indexarVetorSeNecessario(row, dados, acoes) {
-  if (!process.env.GEMINI_API_KEY) return;
+  if (!process.env.DEEPSEEK_API_KEY) return;
   try {
     const resultado = await vectorSearch.indexarProduto({ id: row.id, sku: row.sku, dados });
     if (resultado.ok && resultado.indexados.length) acoes.push('vetor:' + resultado.indexados.join(','));

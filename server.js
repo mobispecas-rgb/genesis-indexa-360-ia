@@ -543,10 +543,10 @@ app.post('/api/motor/enriquecer-dna', async (req, res) => {
     res.json(resultado);
 });
 
-// Busca Vetorial (Vector Search) — embeddings via Gemini + similaridade de
-// cosseno sobre o DNA/OEM/aplicação/cross-codes já indexados pelo job de
-// auto-enriquecimento (src/services/vector-search-service.js). Roda dentro
-// do próprio Genesis, sem depender de BigQuery/Vertex AI Vector Search.
+// Busca Vetorial (Vector Search) — comparação semântica via DeepSeek sobre o
+// DNA/OEM/aplicação/cross-codes já indexados pelo job de auto-enriquecimento
+// (src/services/vector-search-service.js). Roda dentro do próprio Genesis,
+// sem depender de BigQuery/Vertex AI Vector Search nem de Gemini.
 //
 // REGRA NTC: cada item de `resultados` é uma SUGESTÃO (status "Sugestão
 // Vetorial"), nunca um dado confirmado — `valor`/`fonte`/`url_origem` vêm
