@@ -65,6 +65,27 @@ async function buscarSerper(query, num) {
   }
 }
 
+async function buscarBrave(query, num) {
+  if (!process.env.BRAVE_API_KEY) return [];
+  try {
+    const data = await httpsJSON({
+      hostname: 'api.search.brave.com',
+      path: '/res/v1/web/search?q=' + encodeURIComponent(query) + '&count=' + Math.min(num, 20) + '&country=br&search_lang=pt',
+      method: 'GET',
+      headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY }
+    }, null, 10000);
+    if (data.type === 'ErrorResponse' || data.message) {
+      console.error('[DNA] Brave erro:', data.message || JSON.stringify(data));
+      return [];
+    }
+    return (data.web?.results || []).filter(i => i.title && i.description)
+      .map(i => ({ titulo: i.title, fonte: i.url, trecho: i.description }));
+  } catch (e) {
+    console.error('[DNA] Brave:', e.message);
+    return [];
+  }
+}
+
 async function buscarDDG(query, num) {
   return new Promise(resolve => {
     const q = encodeURIComponent(query);
@@ -162,6 +183,7 @@ async function buscarMultiQuery({ fabricante, sku, nome, numResultados = 10, niv
   const seen = new Set(); const all = [];
   for (const q of queries) {
     let res = await buscarSerper(q, numResultados);
+    if (res.length === 0) res = await buscarBrave(q, numResultados);
     if (res.length === 0) res = await buscarDDG(q, numResultados);
     for (const r of res) {
       if (r.fonte && !seen.has(r.fonte)) { seen.add(r.fonte); all.push(r); }
