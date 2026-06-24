@@ -82,7 +82,7 @@ async function buscarImagensReais(q, max = 12) {
         hostname: 'api.search.brave.com',
         path: '/res/v1/images/search?q=' + encoded + '&count=' + count + '&country=br&safesearch=off',
         method: 'GET',
-        headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY }
+        headers: { 'Accept': 'application/json', 'X-Subscription-Token': process.env.BRAVE_API_KEY.trim() }
       });
       if (data.type === 'ErrorResponse' || data.message) {
         console.error('[Imagens] Brave erro:', data.message || JSON.stringify(data));
