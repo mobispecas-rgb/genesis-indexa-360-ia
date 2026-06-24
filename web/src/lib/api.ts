@@ -31,6 +31,21 @@ function decisaoParaStatus(decisao: string | null): Product["status"] {
   return "pending";
 }
 
+// Toda resposta da API deveria ser JSON. Se o servidor cair, expirar no proxy
+// ou a rota não existir, o que volta é a página HTML do SPA (catch-all) ou do
+// proxy — sem essa checagem, `r.json()` quebra com "Unexpected token '<'",
+// um erro de baixo nível que não diz nada ao usuário.
+async function jsonOuErro(r: Response): Promise<any> {
+  if (!r.headers.get("content-type")?.includes("application/json")) {
+    throw new Error(
+      r.status >= 500 || r.status === 0
+        ? "O servidor demorou demais ou caiu durante o processamento. Tente novamente em alguns instantes."
+        : `Resposta inesperada do servidor (status ${r.status}). Tente novamente.`,
+    );
+  }
+  return r.json();
+}
+
 function rowParaProduct(row: BackendProdutoRow): Product {
   const d = row.dados || {};
   const base = emptyProduct();
@@ -84,7 +99,7 @@ function productParaDados(p: Product): Record<string, unknown> {
 
 export async function apiListarProdutos(): Promise<Product[]> {
   const r = await fetch("/api/produtos?limite=200");
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao listar produtos");
   return (json.produtos as BackendProdutoRow[]).map(rowParaProduct);
 }
@@ -95,7 +110,7 @@ export async function apiSalvarProduto(p: Product): Promise<Product> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sku: p.sku, dados: productParaDados(p), fonte: "manual" }),
   });
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao salvar produto");
   return rowParaProduct(json.produto);
 }
@@ -106,14 +121,14 @@ export async function apiAtualizarStatus(p: Product, status: Product["status"]):
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ decisao: statusParaDecisao(status) }),
   });
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao atualizar status");
   return rowParaProduct(json.produto);
 }
 
 export async function apiExcluirProduto(id: string): Promise<void> {
   const r = await fetch(`/api/produtos/${id}`, { method: "DELETE" });
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao excluir produto");
 }
 
@@ -132,7 +147,7 @@ export async function apiEnriquecerDna(p: Product): Promise<EnrichApiResult> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sku: p.sku, fabricante: p.fabricante, nome: p.nome }),
   });
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao buscar DNA na web");
 
   const patch: Partial<Product> = {};
@@ -180,7 +195,7 @@ export interface ImagemBusca {
 // nesse caso `mensagem` explica o que falta configurar no Render.
 export async function apiBuscarImagens(q: string): Promise<{ imagens: ImagemBusca[]; mensagem?: string }> {
   const r = await fetch(`/api/imagens/buscar?q=${encodeURIComponent(q)}`);
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) return { imagens: [], mensagem: json.mensagem || json.erro || "Falha ao buscar imagens" };
   return { imagens: json.imagens as ImagemBusca[] };
 }
@@ -193,12 +208,12 @@ export interface IntegracaoStatus {
 
 export async function apiStatusWix(): Promise<IntegracaoStatus> {
   const r = await fetch("/api/wix/status");
-  return r.json();
+  return jsonOuErro(r);
 }
 
 export async function apiStatusBling(): Promise<IntegracaoStatus> {
   const r = await fetch("/api/bling/status");
-  return r.json();
+  return jsonOuErro(r);
 }
 
 export interface SincronizarResultado {
@@ -212,7 +227,7 @@ export interface SincronizarResultado {
 // backend, isso só chama o endpoint combinado).
 export async function apiSincronizarProduto(id: string): Promise<SincronizarResultado> {
   const r = await fetch(`/api/produtos/${id}/sincronizar`, { method: "POST" });
-  return r.json();
+  return jsonOuErro(r);
 }
 
 export interface CategoriaResumo {
@@ -223,7 +238,7 @@ export interface CategoriaResumo {
 
 export async function apiListarCategorias(): Promise<CategoriaResumo[]> {
   const r = await fetch("/api/categorias");
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao listar categorias");
   return json.categorias as CategoriaResumo[];
 }
@@ -256,7 +271,7 @@ export interface PerformanceSistema {
 
 export async function apiPerformance(): Promise<PerformanceSistema> {
   const r = await fetch("/api/sistema/performance");
-  return r.json();
+  return jsonOuErro(r);
 }
 
 export interface QuotaIa {
@@ -275,7 +290,7 @@ export interface QuotaIa {
 // ainda pode cadastrar/enriquecer no dia.
 export async function apiQuotaIa(): Promise<QuotaIa> {
   const r = await fetch("/api/ia/quota");
-  return r.json();
+  return jsonOuErro(r);
 }
 
 export interface VectorResultado {
@@ -313,7 +328,7 @@ export async function apiVectorBusca(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ texto, limit: 15 }),
   });
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha na busca DNA");
   return { resultados: json.resultados as VectorResultado[], buscaWeb: (json.busca_web as BuscaWebFallback) ?? null };
 }
@@ -360,7 +375,7 @@ export async function apiMapeadorUniversalProcessar(
         : `Resposta inesperada do servidor (status ${r.status}). Tente novamente.`,
     );
   }
-  const json = await r.json();
+  const json = await jsonOuErro(r);
   if (!json.ok) throw new Error(json.erro || "Falha ao processar texto");
   return json.produtos as MapeadorUniversalProduto[];
 }

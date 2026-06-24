@@ -1,16 +1,15 @@
 'use strict';
 
 // ============================================================
-// Agente DNA OEM 360 — Motor NTC 4.0  ·  v5.3 (2026-06-22)
-// LLM   : Gemini 2.0 Flash (GEMINI_API_KEY — gratuito até a cota diária,
-//         pago é o mais barato do mercado) → Claude Haiku como fallback
-//         se só ANTHROPIC_API_KEY estiver configurada
+// Agente DNA OEM 360 — Motor NTC 4.0  ·  v6.0 (2026-06-23)
+// LLM   : DeepSeek Chat (DEEPSEEK_API_KEY) — agente universal único
 // Busca : Serper → DuckDuckGo HTML (sem chave, gratuito)
 // ============================================================
 const https = require('https');
 const { validarGTIN, validarNCM, consultarNCMOficial, httpsJSON, fetchHtmlSeguro, htmlParaTexto } = require('./web-utils');
 const { listarSimilaresConfirmados, registrarUsoApi } = require('./db');
 const { validarRespostaAgente } = require('./ntc-normalizer-patch');
+const { chamarLLM: chamarLLMUniversal } = require('./llm');
 
 // Campos elegíveis para herança por família técnica (nunca cross-codes/EAN —
 // são específicos demais por peça para herdar de um produto "parecido").
@@ -295,52 +294,18 @@ function canonParaLegado(can) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AGENTE PRINCIPAL — Claude Haiku + busca web (Serper/DDG)
+// AGENTE PRINCIPAL — DeepSeek (agente universal único) + busca web (Serper/DDG)
 // ─────────────────────────────────────────────────────────────
-// Chama o LLM de interpretação do DNA. Prioriza Gemini 2.0 Flash
-// (GEMINI_API_KEY) — gratuito até a cota diária e o mais barato do mercado
-// no tier pago. Se Gemini falhar por cota esgotada (429/RESOURCE_EXHAUSTED) e
-// ANTHROPIC_API_KEY também estiver configurada, tenta Claude Haiku como
-// failover real — só nesse caso de exceção, para não gerar custo do Claude
-// sem necessidade enquanto o Gemini estiver funcionando normalmente.
 async function chamarLLM({ system, userContent, maxTokens }) {
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      const { GoogleGenAI } = require('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: userContent,
-        config: { systemInstruction: system, maxOutputTokens: maxTokens, temperature: 0.2 },
-      });
-      const texto = response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      registrarUsoApi('gemini');
-      return { texto, motor: 'Gemini 2.0 Flash' };
-    } catch (e) {
-      const cotaExcedida = /RESOURCE_EXHAUSTED|429|quota/i.test(e.message || '');
-      if (!cotaExcedida || !process.env.ANTHROPIC_API_KEY) throw e;
-      console.error('[DNA v5.3] Gemini cota esgotada — failover para Claude Haiku:', e.message);
-    }
-  }
-  if (process.env.ANTHROPIC_API_KEY) {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: userContent }],
-    });
-    registrarUsoApi('claude');
-    return { texto: msg.content?.[0]?.text || '{}', motor: 'Claude Haiku' };
-  }
-  throw new Error('GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada');
+  const { texto, motor } = await chamarLLMUniversal({ system, userContent, maxTokens });
+  registrarUsoApi('deepseek');
+  return { texto, motor };
 }
 
 async function enriquecerDnaViaWeb({ sku, fabricante, nome, nivel_busca }) {
   if (!sku && !nome) return { ok: false, erro: 'SKU ou Nome obrigatorio', campos: camposVazios(), pendente_confirmacao: true, usou_busca_web: usouBusca };
-  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, erro: 'GEMINI_API_KEY ou ANTHROPIC_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
+  if (!process.env.DEEPSEEK_API_KEY) {
+    return { ok: false, erro: 'DEEPSEEK_API_KEY nao configurada', campos: camposVazios(), pendente_confirmacao: true };
   }
 
   const codigoEntrada = sku || nome;
